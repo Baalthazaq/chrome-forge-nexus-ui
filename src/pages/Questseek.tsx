@@ -141,7 +141,7 @@ const Questseek = () => {
           <Card className="p-4 bg-gray-900/30 border-gray-700/50 text-center">
             <div className="text-2xl font-bold text-blue-400">98%</div>
             <div className="text-gray-400 text-sm">Success Rate</div>
-          </div>
+          </Card>
         </div>
       </div>
     </div>
