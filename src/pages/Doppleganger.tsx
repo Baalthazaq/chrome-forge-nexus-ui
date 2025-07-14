@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, User, Shield, Zap, Eye, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 
-const Mimic = () => {
+const Doppleganger = () => {
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 via-black to-purple-900/20"></div>
@@ -20,7 +20,7 @@ const Mimic = () => {
             </Button>
           </Link>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-            Mimic
+            Doppleganger
           </h1>
           <div className="w-20"></div>
         </div>
@@ -158,4 +158,4 @@ const Mimic = () => {
   );
 };
 
-export default Mimic;
+export default Doppleganger;

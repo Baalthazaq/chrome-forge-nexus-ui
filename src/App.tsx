@@ -11,7 +11,8 @@ import Sending from "./pages/Sending";
 import Vault from "./pages/Vault";
 import Questseek from "./pages/Questseek";
 import Succubus from "./pages/Succubus";
-import Mimic from "./pages/Mimic";
+import Doppleganger from "./pages/Doppleganger";
+import BeholdR from "./pages/BeholdR";
 import Crucible from "./pages/Crucible";
 import NexusWire from "./pages/NexusWire";
 import Brittlewisp from "./pages/Brittlewisp";
@@ -32,7 +33,8 @@ const App = () => (
           <Route path="/vault" element={<Vault />} />
           <Route path="/questseek" element={<Questseek />} />
           <Route path="/succubus" element={<Succubus />} />
-          <Route path="/mimic" element={<Mimic />} />
+          <Route path="/doppleganger" element={<Doppleganger />} />
+          <Route path="/beholdr" element={<BeholdR />} />
           <Route path="/crucible" element={<Crucible />} />
           <Route path="/nexuswire" element={<NexusWire />} />
           <Route path="/brittlewisp" element={<Brittlewisp />} />

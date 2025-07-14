@@ -11,13 +11,16 @@ import {
   Monitor, 
   ShoppingCart,
   Shield,
-  Calendar
+  Calendar,
+  Heart,
+  Eye,
+  Sparkles
 } from "lucide-react";
 
 const apps = [
   {
     id: "charisma",
-    name: "Charisma",
+    name: "Cha",
     icon: Star,
     description: "Social Credit Network",
     route: "/charisma",
@@ -42,7 +45,7 @@ const apps = [
   {
     id: "succubus",
     name: "Succubus",
-    icon: Star,
+    icon: Heart,
     description: "Social Connections",
     route: "/succubus",
     color: "from-red-500 to-pink-500"
@@ -56,11 +59,11 @@ const apps = [
     color: "from-yellow-400 to-orange-500"
   },
   {
-    id: "mimic",
-    name: "Mimic",
+    id: "doppleganger",
+    name: "Doppleganger",
     icon: User,
     description: "ID Profile",
-    route: "/mimic",
+    route: "/doppleganger",
     color: "from-indigo-500 to-purple-500"
   },
   {
@@ -74,7 +77,7 @@ const apps = [
   {
     id: "nexuswire",
     name: "NexusWire",
-    icon: Monitor,
+    icon: Sparkles,
     description: "News Network",
     route: "/nexuswire",
     color: "from-blue-500 to-cyan-500"
@@ -94,6 +97,14 @@ const apps = [
     description: "Shopping Network",
     route: "/wyrmcart",
     color: "from-green-500 to-emerald-500"
+  },
+  {
+    id: "beholdr",
+    name: "BeholdR",
+    icon: Eye,
+    description: "Neural Video Feed",
+    route: "/beholdr",
+    color: "from-purple-500 to-blue-500"
   }
 ];
 
