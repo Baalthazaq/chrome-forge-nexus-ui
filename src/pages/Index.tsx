@@ -1,6 +1,9 @@
 
+import { useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   User, 
   Send, 
@@ -16,7 +19,8 @@ import {
   Eye,
   Sparkles,
   BookOpen,
-  Users
+  Users,
+  LogOut
 } from "lucide-react";
 
 const apps = [
@@ -127,6 +131,27 @@ const apps = [
 ];
 
 const Index = () => {
+  const { user, isLoading, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate('/auth');
+    }
+  }, [user, isLoading, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-cyan-400 text-xl font-mono">Loading Nexus...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Will redirect to auth
+  }
+
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
       {/* Background Effects */}
@@ -150,6 +175,17 @@ const Index = () => {
           <p className="text-gray-400 text-sm mt-4 font-mono">
             Neural Interface v2.7.4 • Authenticated
           </p>
+          <div className="mt-4">
+            <Button 
+              onClick={signOut} 
+              variant="outline" 
+              size="sm"
+              className="bg-gray-900/50 border-gray-700 hover:bg-gray-800/50 text-gray-400 hover:text-gray-300"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         {/* Status Bar */}
