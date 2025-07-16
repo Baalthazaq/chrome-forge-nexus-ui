@@ -17,6 +17,8 @@ import Crucible from "./pages/Crucible";
 import NexusWire from "./pages/NexusWire";
 import Brittlewisp from "./pages/Brittlewisp";
 import Wyrmcart from "./pages/Wyrmcart";
+import ToMe from "./pages/ToMe";
+import Roldex from "./pages/Roldex";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +41,8 @@ const App = () => (
           <Route path="/nexuswire" element={<NexusWire />} />
           <Route path="/brittlewisp" element={<Brittlewisp />} />
           <Route path="/wyrmcart" element={<Wyrmcart />} />
+          <Route path="/tome" element={<ToMe />} />
+          <Route path="/roldex" element={<Roldex />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

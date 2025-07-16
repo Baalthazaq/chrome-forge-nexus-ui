@@ -14,7 +14,9 @@ import {
   Calendar,
   Heart,
   Eye,
-  Sparkles
+  Sparkles,
+  BookOpen,
+  Users
 } from "lucide-react";
 
 const apps = [
@@ -105,6 +107,22 @@ const apps = [
     description: "Neural Video Feed",
     route: "/beholdr",
     color: "from-purple-500 to-blue-500"
+  },
+  {
+    id: "tome",
+    name: "ToMe",
+    icon: BookOpen,
+    description: "Digital Notes",
+    route: "/tome",
+    color: "from-indigo-500 to-purple-500"
+  },
+  {
+    id: "roldex",
+    name: "Rol'dex",
+    icon: Users,
+    description: "Contact Network",
+    route: "/roldex",
+    color: "from-blue-500 to-indigo-500"
   }
 ];
 
