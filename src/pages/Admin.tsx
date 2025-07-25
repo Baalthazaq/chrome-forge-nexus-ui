@@ -5,13 +5,26 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { User, Shield, Eye, Settings } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { User, Shield, Eye, Settings, UserPlus, Zap } from 'lucide-react';
 
 const Admin = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isAdmin, isLoading, impersonatedUser, startImpersonation, stopImpersonation, getAllUsers } = useAdmin();
   const [users, setUsers] = useState<any[]>([]);
+  const [isCreatingNPC, setIsCreatingNPC] = useState(false);
+  const [npcForm, setNpcForm] = useState({
+    character_name: '',
+    character_class: '',
+    level: 1,
+    credits: 100
+  });
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
@@ -27,6 +40,91 @@ const Admin = () => {
   const loadUsers = async () => {
     const usersList = await getAllUsers();
     setUsers(usersList);
+  };
+
+  const createNPCAccount = async () => {
+    if (!npcForm.character_name.trim()) {
+      toast({
+        title: "Error",
+        description: "Character name is required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsCreatingNPC(true);
+    try {
+      // Create a random email for the NPC
+      const randomEmail = `npc_${Date.now()}@nexus.game`;
+      const randomPassword = `npc_${Math.random().toString(36).substring(7)}`;
+
+      // Create the auth user using admin function
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: randomEmail,
+        password: randomPassword,
+        email_confirm: true,
+        user_metadata: {
+          character_name: npcForm.character_name,
+          is_npc: true
+        }
+      });
+
+      if (authError) throw authError;
+
+      // Create the profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: authData.user.id,
+          character_name: npcForm.character_name,
+          character_class: npcForm.character_class || 'NPC',
+          level: npcForm.level,
+          credits: npcForm.credits,
+          bio: 'NPC Account'
+        });
+
+      if (profileError) throw profileError;
+
+      toast({
+        title: "NPC Created",
+        description: `${npcForm.character_name} has been created successfully`,
+      });
+
+      // Reset form and reload users
+      setNpcForm({
+        character_name: '',
+        character_class: '',
+        level: 1,
+        credits: 100
+      });
+      loadUsers();
+
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create NPC account",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingNPC(false);
+    }
+  };
+
+  const generateRandomNPC = () => {
+    const names = ['Vex', 'Cypher', 'Nova', 'Raven', 'Ghost', 'Phoenix', 'Shadow', 'Echo', 'Byte', 'Neon'];
+    const classes = ['Netrunner', 'Street Samurai', 'Corpo', 'Techie', 'Medic', 'Fixer', 'Solo', 'Nomad'];
+    
+    const randomName = names[Math.floor(Math.random() * names.length)];
+    const randomClass = classes[Math.floor(Math.random() * classes.length)];
+    const randomLevel = Math.floor(Math.random() * 10) + 1;
+    const randomCredits = Math.floor(Math.random() * 1000) + 100;
+
+    setNpcForm({
+      character_name: `${randomName}-${Math.floor(Math.random() * 1000)}`,
+      character_class: randomClass,
+      level: randomLevel,
+      credits: randomCredits
+    });
   };
 
   if (isLoading) {
@@ -98,6 +196,94 @@ const Admin = () => {
                   <span className="text-xs text-muted-foreground">Admin View</span>
                 </Button>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quick NPC Creation */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Quick NPC Creation
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              <div className="space-y-2">
+                <Label htmlFor="character_name">Character Name</Label>
+                <Input
+                  id="character_name"
+                  value={npcForm.character_name}
+                  onChange={(e) => setNpcForm(prev => ({ ...prev, character_name: e.target.value }))}
+                  placeholder="Enter NPC name"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="character_class">Class</Label>
+                <Select
+                  value={npcForm.character_class}
+                  onValueChange={(value) => setNpcForm(prev => ({ ...prev, character_class: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Netrunner">Netrunner</SelectItem>
+                    <SelectItem value="Street Samurai">Street Samurai</SelectItem>
+                    <SelectItem value="Corpo">Corpo</SelectItem>
+                    <SelectItem value="Techie">Techie</SelectItem>
+                    <SelectItem value="Medic">Medic</SelectItem>
+                    <SelectItem value="Fixer">Fixer</SelectItem>
+                    <SelectItem value="Solo">Solo</SelectItem>
+                    <SelectItem value="Nomad">Nomad</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="level">Level</Label>
+                <Input
+                  id="level"
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={npcForm.level}
+                  onChange={(e) => setNpcForm(prev => ({ ...prev, level: parseInt(e.target.value) || 1 }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="credits">Credits</Label>
+                <Input
+                  id="credits"
+                  type="number"
+                  min="0"
+                  value={npcForm.credits}
+                  onChange={(e) => setNpcForm(prev => ({ ...prev, credits: parseInt(e.target.value) || 0 }))}
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                onClick={createNPCAccount}
+                disabled={isCreatingNPC || !npcForm.character_name.trim()}
+                className="flex items-center gap-2"
+              >
+                <UserPlus className="h-4 w-4" />
+                {isCreatingNPC ? 'Creating...' : 'Create NPC'}
+              </Button>
+              
+              <Button
+                onClick={generateRandomNPC}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Zap className="h-4 w-4" />
+                Random NPC
+              </Button>
             </div>
           </CardContent>
         </Card>
