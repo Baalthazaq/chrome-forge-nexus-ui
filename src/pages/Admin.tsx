@@ -54,40 +54,22 @@ const Admin = () => {
 
     setIsCreatingNPC(true);
     try {
-      // Create a random email for the NPC
-      const randomEmail = `npc_${Date.now()}@nexus.game`;
-      const randomPassword = `npc_${Math.random().toString(36).substring(7)}`;
-
-      // Create the auth user using admin function
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: randomEmail,
-        password: randomPassword,
-        email_confirm: true,
-        user_metadata: {
+      const { data, error } = await supabase.functions.invoke('create-npc', {
+        body: {
           character_name: npcForm.character_name,
-          is_npc: true
+          character_class: npcForm.character_class,
+          level: npcForm.level,
+          credits: npcForm.credits
         }
       });
 
-      if (authError) throw authError;
-
-      // Create the profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: authData.user.id,
-          character_name: npcForm.character_name,
-          character_class: npcForm.character_class || 'NPC',
-          level: npcForm.level,
-          credits: npcForm.credits,
-          bio: 'NPC Account'
-        });
-
-      if (profileError) throw profileError;
+      if (error) {
+        throw new Error(error.message);
+      }
 
       toast({
         title: "NPC Created",
-        description: `${npcForm.character_name} has been created successfully`,
+        description: data.message,
       });
 
       // Reset form and reload users
@@ -100,6 +82,7 @@ const Admin = () => {
       loadUsers();
 
     } catch (error: any) {
+      console.error('NPC creation error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to create NPC account",
