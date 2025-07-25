@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Plus, Search, BookOpen, StickyNote, Star, Clock, Edit3, Trash2, Pin, GripVertical } from "lucide-react";
+import { ArrowLeft, Plus, Search, BookOpen, StickyNote, Star, Clock, Edit3, Trash2, Pin, GripVertical, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -106,8 +106,11 @@ const ToMe = () => {
   const [isNewNoteOpen, setIsNewNoteOpen] = useState(false);
   
   // Form states
-  const [newEntry, setNewEntry] = useState({ title: '', content: '', tags: '', pages: 1 });
+  const [newEntry, setNewEntry] = useState({ title: '', content: '', tags: '' });
   const [newNote, setNewNote] = useState({ content: '', color: 'from-blue-500 to-cyan-500' });
+  const [expandedTome, setExpandedTome] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [editingTome, setEditingTome] = useState<string | null>(null);
 
   // Use impersonated user if available, otherwise use authenticated user
   const displayUser = impersonatedUser || user;
@@ -196,11 +199,26 @@ const ToMe = () => {
     }
   };
 
+  // Calculate pages based on content length (approximately 250 words per page)
+  const calculatePages = (content: string) => {
+    const wordCount = content.trim().split(/\s+/).length;
+    return Math.max(1, Math.ceil(wordCount / 250));
+  };
+
+  const getPageContent = (content: string, pageNumber: number) => {
+    const words = content.trim().split(/\s+/);
+    const wordsPerPage = 250;
+    const startIndex = (pageNumber - 1) * wordsPerPage;
+    const endIndex = startIndex + wordsPerPage;
+    return words.slice(startIndex, endIndex).join(' ');
+  };
+
   const createTomeEntry = async () => {
     if (!displayUser || !newEntry.title.trim()) return;
     
     try {
       const tagsArray = newEntry.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      const pages = calculatePages(newEntry.content);
       
       const { error } = await supabase
         .from('tome_entries')
@@ -209,12 +227,12 @@ const ToMe = () => {
           title: newEntry.title,
           content: newEntry.content,
           tags: tagsArray,
-          pages: newEntry.pages,
+          pages: pages,
         });
 
       if (error) throw error;
 
-      setNewEntry({ title: '', content: '', tags: '', pages: 1 });
+      setNewEntry({ title: '', content: '', tags: '' });
       setIsNewEntryOpen(false);
       fetchData();
       toast({
@@ -226,6 +244,43 @@ const ToMe = () => {
       toast({
         title: "Error",
         description: "Failed to create tome entry",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateTomeEntry = async () => {
+    if (!editingTome || !newEntry.title.trim()) return;
+    
+    try {
+      const tagsArray = newEntry.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      const pages = calculatePages(newEntry.content);
+      
+      const { error } = await supabase
+        .from('tome_entries')
+        .update({
+          title: newEntry.title,
+          content: newEntry.content,
+          tags: tagsArray,
+          pages: pages,
+        })
+        .eq('id', editingTome);
+
+      if (error) throw error;
+
+      setNewEntry({ title: '', content: '', tags: '' });
+      setEditingTome(null);
+      setIsNewEntryOpen(false);
+      fetchData();
+      toast({
+        title: "Success",
+        description: "Tome entry updated",
+      });
+    } catch (error) {
+      console.error('Error updating tome entry:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update tome entry",
         variant: "destructive",
       });
     }
@@ -352,7 +407,17 @@ const ToMe = () => {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
             ToMe
           </h1>
-          <Dialog open={activeTab === "tome" ? isNewEntryOpen : isNewNoteOpen} onOpenChange={activeTab === "tome" ? setIsNewEntryOpen : setIsNewNoteOpen}>
+          <Dialog open={activeTab === "tome" ? isNewEntryOpen : isNewNoteOpen} onOpenChange={(open) => {
+            if (activeTab === "tome") {
+              setIsNewEntryOpen(open);
+              if (!open) {
+                setEditingTome(null);
+                setNewEntry({ title: '', content: '', tags: '' });
+              }
+            } else {
+              setIsNewNoteOpen(open);
+            }
+          }}>
             <DialogTrigger asChild>
               <Button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600">
                 <Plus className="w-4 h-4 mr-2" />
@@ -363,9 +428,11 @@ const ToMe = () => {
             {activeTab === "tome" ? (
               <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700">
                 <DialogHeader>
-                  <DialogTitle className="text-white">Create New Tome Entry</DialogTitle>
+                  <DialogTitle className="text-white">
+                    {editingTome ? "Edit Tome Entry" : "Create New Tome Entry"}
+                  </DialogTitle>
                   <DialogDescription className="text-gray-400">
-                    Add a new entry to your tome archives.
+                    {editingTome ? "Modify your tome entry." : "Add a new entry to your tome archives."}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -382,17 +449,12 @@ const ToMe = () => {
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="pages" className="text-right text-gray-300">
+                    <Label className="text-right text-gray-300">
                       Pages
                     </Label>
-                    <Input
-                      id="pages"
-                      type="number"
-                      value={newEntry.pages}
-                      onChange={(e) => setNewEntry({...newEntry, pages: parseInt(e.target.value) || 1})}
-                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
-                      min="1"
-                    />
+                    <div className="col-span-3 text-gray-400 text-sm py-2">
+                      Auto-calculated based on content length
+                    </div>
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="tags" className="text-right text-gray-300">
@@ -423,10 +485,10 @@ const ToMe = () => {
                 <DialogFooter>
                   <Button 
                     type="submit" 
-                    onClick={createTomeEntry}
+                    onClick={editingTome ? updateTomeEntry : createTomeEntry}
                     className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
                   >
-                    Create Entry
+                    {editingTome ? "Update Entry" : "Create Entry"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -553,7 +615,20 @@ const ToMe = () => {
                       </div>
                     </div>
                     <div className="flex space-x-2">
-                      <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-gray-400 hover:text-white"
+                        onClick={() => {
+                          setEditingTome(entry.id);
+                          setNewEntry({
+                            title: entry.title,
+                            content: entry.content || '',
+                            tags: entry.tags?.join(', ') || ''
+                          });
+                          setIsNewEntryOpen(true);
+                        }}
+                      >
                         <Edit3 className="w-4 h-4" />
                       </Button>
                       <Button 
@@ -577,7 +652,14 @@ const ToMe = () => {
                         </Badge>
                       ))}
                     </div>
-                    <Button variant="outline" className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white">
+                    <Button 
+                      variant="outline" 
+                      className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white"
+                      onClick={() => {
+                        setExpandedTome(entry.id);
+                        setCurrentPage(1);
+                      }}
+                    >
                       Open Tome
                     </Button>
                   </div>
@@ -637,6 +719,74 @@ const ToMe = () => {
           </Card>
         </div>
       </div>
+
+      {/* Expanded Tome View */}
+      {expandedTome && (
+        <div className="fixed inset-0 bg-black z-50 flex flex-col">
+          <div className="flex items-center justify-between p-6 border-b border-gray-700">
+            <Button 
+              variant="ghost" 
+              onClick={() => setExpandedTome(null)}
+              className="text-gray-400 hover:text-white"
+            >
+              <X className="w-5 h-5 mr-2" />
+              Close
+            </Button>
+            
+            {(() => {
+              const entry = tomeEntries.find(e => e.id === expandedTome);
+              const totalPages = entry?.pages || 1;
+              return (
+                <>
+                  <h2 className="text-2xl font-bold text-white">{entry?.title}</h2>
+                  <div className="flex items-center space-x-4">
+                    <Button
+                      variant="ghost"
+                      disabled={currentPage <= 1}
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      className="text-gray-400 hover:text-white disabled:opacity-50"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                      Previous
+                    </Button>
+                    <span className="text-gray-300">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      disabled={currentPage >= totalPages}
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      className="text-gray-400 hover:text-white disabled:opacity-50"
+                    >
+                      Next
+                      <ChevronRight className="w-5 h-5" />
+                    </Button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+          
+          <div className="flex-1 p-8 overflow-y-auto">
+            {(() => {
+              const entry = tomeEntries.find(e => e.id === expandedTome);
+              if (!entry) return null;
+              
+              const pageContent = getPageContent(entry.content || '', currentPage);
+              
+              return (
+                <div className="max-w-4xl mx-auto">
+                  <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-8">
+                    <div className="text-white text-lg leading-relaxed whitespace-pre-wrap">
+                      {pageContent}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
