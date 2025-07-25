@@ -1,13 +1,17 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { ArrowLeft, Plus, Search, BookOpen, StickyNote, Star, Clock, Edit3, Trash2, Pin, GripVertical } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import {
   DndContext,
   closestCenter,
@@ -90,11 +94,20 @@ const SortableQuickNote = ({ note, onDelete, onUpdate }: { note: any, onDelete: 
 const ToMe = () => {
   const { user } = useAuth();
   const { impersonatedUser } = useAdmin();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("tome");
   const [tomeEntries, setTomeEntries] = useState([]);
   const [quickNotes, setQuickNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Dialog states
+  const [isNewEntryOpen, setIsNewEntryOpen] = useState(false);
+  const [isNewNoteOpen, setIsNewNoteOpen] = useState(false);
+  
+  // Form states
+  const [newEntry, setNewEntry] = useState({ title: '', content: '', tags: '', pages: 1 });
+  const [newNote, setNewNote] = useState({ content: '', color: 'from-blue-500 to-cyan-500' });
 
   // Use impersonated user if available, otherwise use authenticated user
   const displayUser = impersonatedUser || user;
@@ -133,7 +146,11 @@ const ToMe = () => {
       setQuickNotes(notesData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast.error('Failed to load data');
+      toast({
+        title: "Error",
+        description: "Failed to load data",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -168,10 +185,81 @@ const ToMe = () => {
         }
       } catch (error) {
         console.error('Error updating sort order:', error);
-        toast.error('Failed to update note order');
+        toast({
+          title: "Error",
+          description: "Failed to update note order",
+          variant: "destructive",
+        });
         // Revert the change
         fetchData();
       }
+    }
+  };
+
+  const createTomeEntry = async () => {
+    if (!displayUser || !newEntry.title.trim()) return;
+    
+    try {
+      const tagsArray = newEntry.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      
+      const { error } = await supabase
+        .from('tome_entries')
+        .insert({
+          user_id: displayUser.user_id || displayUser.id,
+          title: newEntry.title,
+          content: newEntry.content,
+          tags: tagsArray,
+          pages: newEntry.pages,
+        });
+
+      if (error) throw error;
+
+      setNewEntry({ title: '', content: '', tags: '', pages: 1 });
+      setIsNewEntryOpen(false);
+      fetchData();
+      toast({
+        title: "Success",
+        description: "Tome entry created",
+      });
+    } catch (error) {
+      console.error('Error creating tome entry:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create tome entry",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const createQuickNote = async () => {
+    if (!displayUser || !newNote.content.trim()) return;
+    
+    try {
+      const { error } = await supabase
+        .from('quick_notes')
+        .insert({
+          user_id: displayUser.user_id || displayUser.id,
+          content: newNote.content,
+          color: newNote.color,
+          sort_order: quickNotes.length,
+        });
+
+      if (error) throw error;
+
+      setNewNote({ content: '', color: 'from-blue-500 to-cyan-500' });
+      setIsNewNoteOpen(false);
+      fetchData();
+      toast({
+        title: "Success",
+        description: "Quick note created",
+      });
+    } catch (error) {
+      console.error('Error creating quick note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create quick note",
+        variant: "destructive",
+      });
     }
   };
 
@@ -185,10 +273,17 @@ const ToMe = () => {
       if (error) throw error;
 
       setQuickNotes(quickNotes.filter(note => note.id !== noteId));
-      toast.success('Note deleted');
+      toast({
+        title: "Success",
+        description: "Note deleted",
+      });
     } catch (error) {
       console.error('Error deleting note:', error);
-      toast.error('Failed to delete note');
+      toast({
+        title: "Error",
+        description: "Failed to delete note",
+        variant: "destructive",
+      });
     }
   };
 
@@ -202,10 +297,17 @@ const ToMe = () => {
       if (error) throw error;
 
       setTomeEntries(tomeEntries.filter(entry => entry.id !== entryId));
-      toast.success('Tome entry deleted');
+      toast({
+        title: "Success",
+        description: "Tome entry deleted",
+      });
     } catch (error) {
       console.error('Error deleting tome entry:', error);
-      toast.error('Failed to delete tome entry');
+      toast({
+        title: "Error",
+        description: "Failed to delete tome entry",
+        variant: "destructive",
+      });
     }
   };
 
@@ -250,10 +352,137 @@ const ToMe = () => {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
             ToMe
           </h1>
-          <Button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600">
-            <Plus className="w-4 h-4 mr-2" />
-            New Entry
-          </Button>
+          <Dialog open={activeTab === "tome" ? isNewEntryOpen : isNewNoteOpen} onOpenChange={activeTab === "tome" ? setIsNewEntryOpen : setIsNewNoteOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600">
+                <Plus className="w-4 h-4 mr-2" />
+                New {activeTab === "tome" ? "Entry" : "Note"}
+              </Button>
+            </DialogTrigger>
+            
+            {activeTab === "tome" ? (
+              <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Create New Tome Entry</DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    Add a new entry to your tome archives.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="title" className="text-right text-gray-300">
+                      Title
+                    </Label>
+                    <Input
+                      id="title"
+                      value={newEntry.title}
+                      onChange={(e) => setNewEntry({...newEntry, title: e.target.value})}
+                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
+                      placeholder="Enter tome title..."
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="pages" className="text-right text-gray-300">
+                      Pages
+                    </Label>
+                    <Input
+                      id="pages"
+                      type="number"
+                      value={newEntry.pages}
+                      onChange={(e) => setNewEntry({...newEntry, pages: parseInt(e.target.value) || 1})}
+                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
+                      min="1"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="tags" className="text-right text-gray-300">
+                      Tags
+                    </Label>
+                    <Input
+                      id="tags"
+                      value={newEntry.tags}
+                      onChange={(e) => setNewEntry({...newEntry, tags: e.target.value})}
+                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
+                      placeholder="tag1, tag2, tag3..."
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-start gap-4">
+                    <Label htmlFor="content" className="text-right text-gray-300 mt-2">
+                      Content
+                    </Label>
+                    <Textarea
+                      id="content"
+                      value={newEntry.content}
+                      onChange={(e) => setNewEntry({...newEntry, content: e.target.value})}
+                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
+                      placeholder="Enter tome content..."
+                      rows={4}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button 
+                    type="submit" 
+                    onClick={createTomeEntry}
+                    className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
+                  >
+                    Create Entry
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            ) : (
+              <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Create New Quick Note</DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    Add a new quick note with custom styling.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-start gap-4">
+                    <Label htmlFor="note-content" className="text-right text-gray-300 mt-2">
+                      Note
+                    </Label>
+                    <Textarea
+                      id="note-content"
+                      value={newNote.content}
+                      onChange={(e) => setNewNote({...newNote, content: e.target.value})}
+                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
+                      placeholder="Enter your quick note..."
+                      rows={3}
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="color" className="text-right text-gray-300">
+                      Color
+                    </Label>
+                    <select
+                      id="color"
+                      value={newNote.color}
+                      onChange={(e) => setNewNote({...newNote, color: e.target.value})}
+                      className="col-span-3 bg-gray-800 border border-gray-600 text-white rounded-md p-2"
+                    >
+                      <option value="from-blue-500 to-cyan-500">Blue</option>
+                      <option value="from-red-500 to-pink-500">Red</option>
+                      <option value="from-green-500 to-emerald-500">Green</option>
+                      <option value="from-purple-500 to-violet-500">Purple</option>
+                      <option value="from-yellow-500 to-orange-500">Orange</option>
+                      <option value="from-indigo-500 to-blue-500">Indigo</option>
+                    </select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button 
+                    type="submit" 
+                    onClick={createQuickNote}
+                    className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
+                  >
+                    Create Note
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            )}
+          </Dialog>
         </div>
 
         {/* Tab Navigation */}
