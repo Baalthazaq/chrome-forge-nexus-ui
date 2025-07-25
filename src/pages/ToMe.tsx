@@ -449,14 +449,6 @@ const ToMe = () => {
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right text-gray-300">
-                      Pages
-                    </Label>
-                    <div className="col-span-3 text-gray-400 text-sm py-2">
-                      Auto-calculated based on content length
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="tags" className="text-right text-gray-300">
                       Tags
                     </Label>
