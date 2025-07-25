@@ -78,10 +78,10 @@ serve(async (req) => {
       return new Response(authError.message, { status: 400, headers: corsHeaders })
     }
 
-    // Create the profile using the admin client
+    // Update the profile (it may already exist due to trigger)
     const { error: profileError } = await adminClient
       .from('profiles')
-      .insert({
+      .upsert({
         user_id: authData.user.id,
         character_name,
         character_class: character_class || 'NPC',
