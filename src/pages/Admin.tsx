@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, Shield, Eye, Settings, UserPlus, Zap } from 'lucide-react';
+import { User, Shield, Eye, Settings, UserPlus, Zap, Trash2 } from 'lucide-react';
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -18,6 +18,7 @@ const Admin = () => {
   const { isAdmin, isLoading, impersonatedUser, startImpersonation, stopImpersonation, getAllUsers } = useAdmin();
   const [users, setUsers] = useState<any[]>([]);
   const [isCreatingNPC, setIsCreatingNPC] = useState(false);
+  const [isDeletingUser, setIsDeletingUser] = useState<string | null>(null);
   const [npcForm, setNpcForm] = useState({
     character_name: '',
     character_class: '',
@@ -108,6 +109,41 @@ const Admin = () => {
       level: randomLevel,
       credits: randomCredits
     });
+  };
+
+  const deleteUser = async (userId: string, userName: string) => {
+    if (!confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) {
+      return;
+    }
+
+    setIsDeletingUser(userId);
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { user_id: userId }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      toast({
+        title: "User Deleted",
+        description: data.message,
+      });
+
+      // Reload users
+      loadUsers();
+
+    } catch (error: any) {
+      console.error('User deletion error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete user",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeletingUser(null);
+    }
   };
 
   if (isLoading) {
@@ -319,6 +355,15 @@ const Admin = () => {
                     >
                       <Eye className="h-4 w-4 mr-1" />
                       {impersonatedUser?.user_id === userProfile.user_id ? 'Current View' : 'View As'}
+                    </Button>
+                    <Button
+                      onClick={() => deleteUser(userProfile.user_id, userProfile.character_name || 'Unknown User')}
+                      disabled={isDeletingUser === userProfile.user_id || userProfile.user_id === user?.id}
+                      size="sm"
+                      variant="destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      {isDeletingUser === userProfile.user_id ? 'Deleting...' : 'Delete'}
                     </Button>
                   </div>
                 </div>
