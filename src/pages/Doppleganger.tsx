@@ -4,8 +4,53 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, User, Shield, Zap, Eye, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 
 const Doppleganger = () => {
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!error && data) {
+        setProfile(data);
+      }
+      setLoading(false);
+    };
+
+    fetchProfile();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user || !profile) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Please log in to access your profile.</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 via-black to-purple-900/20"></div>
@@ -32,8 +77,8 @@ const Doppleganger = () => {
               <User className="w-12 h-12 text-white" />
             </div>
             <div className="flex-1">
-              <h2 className="text-3xl font-bold text-white mb-2">Alex "Razor" Chen</h2>
-              <div className="text-indigo-400 text-lg mb-2">Netrunner • Class VII</div>
+              <h2 className="text-3xl font-bold text-white mb-2">{profile.character_name || 'Unnamed Character'}</h2>
+              <div className="text-indigo-400 text-lg mb-2">{profile.character_class || 'Netrunner'} • Level {profile.level || 1}</div>
               <div className="flex space-x-2">
                 <Badge className="bg-green-600">Verified</Badge>
                 <Badge className="bg-blue-600">Premium</Badge>

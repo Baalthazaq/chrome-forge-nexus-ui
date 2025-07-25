@@ -3,8 +3,53 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Star, TrendingUp, Users, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 
 const Charisma = () => {
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!error && data) {
+        setProfile(data);
+      }
+      setLoading(false);
+    };
+
+    fetchProfile();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user || !profile) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Please log in to access Charisma.</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-pink-900/20 via-black to-purple-900/20"></div>
@@ -27,11 +72,11 @@ const Charisma = () => {
         {/* Social Credit Score */}
         <Card className="p-6 bg-gray-900/50 border-pink-500/30 mb-8">
           <div className="text-center">
-            <h2 className="text-pink-400 text-lg mb-2">Social Credit Score</h2>
-            <div className="text-6xl font-bold text-white mb-2">847</div>
+            <h2 className="text-pink-400 text-lg mb-2">Social Credit Score for {profile.character_name}</h2>
+            <div className="text-6xl font-bold text-white mb-2">{profile.credits || 0}</div>
             <div className="flex items-center justify-center space-x-2 text-green-400">
               <TrendingUp className="w-4 h-4" />
-              <span>+23 this week</span>
+              <span>Level {profile.level || 1}</span>
             </div>
           </div>
         </Card>
