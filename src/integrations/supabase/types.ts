@@ -77,6 +77,75 @@ export type Database = {
         }
         Relationships: []
       }
+      quick_notes: {
+        Row: {
+          color: string | null
+          content: string
+          created_at: string
+          id: string
+          is_pinned: boolean | null
+          sort_order: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean | null
+          sort_order?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean | null
+          sort_order?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tome_entries: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          is_pinned: boolean | null
+          pages: number | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_pinned?: boolean | null
+          pages?: number | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_pinned?: boolean | null
+          pages?: number | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
