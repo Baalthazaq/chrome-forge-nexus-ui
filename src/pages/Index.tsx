@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { 
   User, 
   Send, 
@@ -132,6 +133,7 @@ const apps = [
 
 const Index = () => {
   const { user, isLoading, signOut } = useAuth();
+  const { isAdmin } = useAdmin();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -175,7 +177,18 @@ const Index = () => {
           <p className="text-gray-400 text-sm mt-4 font-mono">
             Neural Interface v2.7.4 • Authenticated
           </p>
-          <div className="mt-4">
+          <div className="mt-4 flex gap-2">
+            {isAdmin && (
+              <Button 
+                onClick={() => navigate('/admin')}
+                variant="outline" 
+                size="sm"
+                className="bg-purple-900/50 border-purple-700 hover:bg-purple-800/50 text-purple-400 hover:text-purple-300"
+              >
+                <Shield className="w-4 h-4 mr-2" />
+                Admin
+              </Button>
+            )}
             <Button 
               onClick={signOut} 
               variant="outline" 
