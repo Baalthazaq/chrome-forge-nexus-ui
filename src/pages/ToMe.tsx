@@ -32,7 +32,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 // Sortable Quick Note Component
-const SortableQuickNote = ({ note, onDelete, onUpdate }: { note: any, onDelete: (id: string) => void, onUpdate: (note: any) => void }) => {
+const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (id: string) => void, onEdit: (note: any) => void }) => {
   const {
     attributes,
     listeners,
@@ -72,7 +72,12 @@ const SortableQuickNote = ({ note, onDelete, onUpdate }: { note: any, onDelete: 
             <span className="text-xs text-gray-400">{formatDate(note.created_at)}</span>
           </div>
           <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-400 hover:text-white">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0 text-gray-400 hover:text-white"
+              onClick={() => onEdit(note)}
+            >
               <Edit3 className="w-3 h-3" />
             </Button>
             <Button 
@@ -111,6 +116,7 @@ const ToMe = () => {
   const [expandedTome, setExpandedTome] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [editingTome, setEditingTome] = useState<string | null>(null);
+  const [editingNote, setEditingNote] = useState<string | null>(null);
 
   // Use impersonated user if available, otherwise use authenticated user
   const displayUser = impersonatedUser || user;
@@ -318,6 +324,38 @@ const ToMe = () => {
     }
   };
 
+  const updateQuickNote = async () => {
+    if (!editingNote || !newNote.content.trim()) return;
+    
+    try {
+      const { error } = await supabase
+        .from('quick_notes')
+        .update({
+          content: newNote.content,
+          color: newNote.color,
+        })
+        .eq('id', editingNote);
+
+      if (error) throw error;
+
+      setNewNote({ content: '', color: 'from-blue-500 to-cyan-500' });
+      setEditingNote(null);
+      setIsNewNoteOpen(false);
+      fetchData();
+      toast({
+        title: "Success",
+        description: "Quick note updated",
+      });
+    } catch (error) {
+      console.error('Error updating quick note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update quick note",
+        variant: "destructive",
+      });
+    }
+  };
+
   const deleteQuickNote = async (noteId) => {
     try {
       const { error } = await supabase
@@ -416,6 +454,10 @@ const ToMe = () => {
               }
             } else {
               setIsNewNoteOpen(open);
+              if (!open) {
+                setEditingNote(null);
+                setNewNote({ content: '', color: 'from-blue-500 to-cyan-500' });
+              }
             }
           }}>
             <DialogTrigger asChild>
@@ -487,9 +529,11 @@ const ToMe = () => {
             ) : (
               <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700">
                 <DialogHeader>
-                  <DialogTitle className="text-white">Create New Quick Note</DialogTitle>
+                  <DialogTitle className="text-white">
+                    {editingNote ? "Edit Quick Note" : "Create New Quick Note"}
+                  </DialogTitle>
                   <DialogDescription className="text-gray-400">
-                    Add a new quick note with custom styling.
+                    {editingNote ? "Modify your quick note." : "Add a new quick note with custom styling."}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -528,10 +572,10 @@ const ToMe = () => {
                 <DialogFooter>
                   <Button 
                     type="submit" 
-                    onClick={createQuickNote}
+                    onClick={editingNote ? updateQuickNote : createQuickNote}
                     className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
                   >
-                    Create Note
+                    {editingNote ? "Update Note" : "Create Note"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -673,14 +717,21 @@ const ToMe = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredQuickNotes.map((note) => (
-                    <SortableQuickNote 
-                      key={note.id} 
-                      note={note} 
-                      onDelete={deleteQuickNote}
-                      onUpdate={() => {}}
-                    />
-                  ))}
+                   {filteredQuickNotes.map((note) => (
+                     <SortableQuickNote 
+                       key={note.id} 
+                       note={note} 
+                       onDelete={deleteQuickNote}
+                       onEdit={(note) => {
+                         setEditingNote(note.id);
+                         setNewNote({
+                           content: note.content,
+                           color: note.color
+                         });
+                         setIsNewNoteOpen(true);
+                       }}
+                     />
+                   ))}
                 </div>
               )}
             </SortableContext>
