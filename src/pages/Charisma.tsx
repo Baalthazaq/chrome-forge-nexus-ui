@@ -4,17 +4,22 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Star, TrendingUp, Users, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
 const Charisma = () => {
   const { user } = useAuth();
+  const { impersonatedUser } = useAdmin();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // Use impersonated user if available, otherwise use authenticated user
+  const displayUser = impersonatedUser || user;
+
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!user) {
+      if (!displayUser) {
         setLoading(false);
         return;
       }
@@ -22,7 +27,7 @@ const Charisma = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', displayUser.user_id || displayUser.id)
         .single();
 
       if (!error && data) {
@@ -32,7 +37,7 @@ const Charisma = () => {
     };
 
     fetchProfile();
-  }, [user]);
+  }, [displayUser]);
 
   if (loading) {
     return (
