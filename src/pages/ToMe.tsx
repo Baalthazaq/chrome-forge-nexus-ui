@@ -56,13 +56,7 @@ const ColumnDropZone = ({ columnIndex }: { columnIndex: number }) => {
 };
 
 // Sortable Quick Note Component
-const SortableQuickNote = ({ note, onDelete, onEdit, activeId, overId }: { 
-  note: any, 
-  onDelete: (id: string) => void, 
-  onEdit: (note: any) => void,
-  activeId?: string | null,
-  overId?: string | null
-}) => {
+const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (id: string) => void, onEdit: (note: any) => void }) => {
   const {
     attributes,
     listeners,
@@ -72,15 +66,9 @@ const SortableQuickNote = ({ note, onDelete, onEdit, activeId, overId }: {
     isDragging,
   } = useSortable({ id: note.id });
 
-  // Calculate if this note should show insertion spacing
-  const isAboveInsertion = activeId && overId === note.id && activeId !== note.id;
-  const shouldShowSpacing = isAboveInsertion;
-
   const style = {
     // Completely disable all transforms during any drag operation
     opacity: isDragging ? 0 : 1,
-    marginBottom: shouldShowSpacing ? '120px' : '0px', // Create space for insertion
-    transition: shouldShowSpacing ? 'margin-bottom 0.2s ease' : 'none',
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -180,7 +168,6 @@ const ToMe = () => {
   const [editingTome, setEditingTome] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
 
   // Use impersonated user if available, otherwise use authenticated user
   const displayUser = impersonatedUser || user;
@@ -237,10 +224,6 @@ const ToMe = () => {
     setActiveId(event.active.id);
   };
 
-  const handleDragOver = (event) => {
-    setOverId(event.over?.id || null);
-  };
-
   const handleDragEnd = async (event) => {
     const { active, over } = event;
     
@@ -286,7 +269,6 @@ const ToMe = () => {
     }
 
     setActiveId(null);
-    setOverId(null);
         });
       } else {
         // Moving up: shift down everything between new and old-1
@@ -1040,7 +1022,6 @@ const ToMe = () => {
             sensors={sensors}
             collisionDetection={closestCorners}
             onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
             <SortableContext items={filteredQuickNotes.map(note => note.id)} strategy={verticalListSortingStrategy}>
@@ -1079,8 +1060,6 @@ const ToMe = () => {
                                  });
                                  setIsNewNoteOpen(true);
                               }}
-                              activeId={activeId}
-                              overId={overId}
                             />
                           ))
                         )}
@@ -1102,8 +1081,6 @@ const ToMe = () => {
                   note={filteredQuickNotes.find(note => note.id === activeId)!} 
                   onDelete={() => {}} 
                   onEdit={() => {}}
-                  activeId={activeId}
-                  overId={overId}
                 />
               ) : null}
             </DragOverlay>
