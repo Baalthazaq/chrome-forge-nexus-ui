@@ -67,8 +67,8 @@ const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (i
   } = useSortable({ id: note.id });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+    transform: isDragging ? 'none' : CSS.Transform.toString(transform),
+    transition: isDragging ? 'none' : transition,
     opacity: isDragging ? 0.5 : 1,
   };
 
