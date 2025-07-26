@@ -17,11 +17,13 @@ import { useToast } from "@/hooks/use-toast";
 import {
   DndContext,
   closestCenter,
-  pointerWithin,
+  closestCorners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
+  DragEndEvent,
+  DragOverlay,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -1012,7 +1014,7 @@ const ToMe = () => {
         ) : (
           <DndContext
             sensors={sensors}
-            collisionDetection={pointerWithin}
+            collisionDetection={closestCorners}
             onDragEnd={handleDragEnd}
           >
             <SortableContext items={filteredQuickNotes.map(note => note.id)} strategy={verticalListSortingStrategy}>
