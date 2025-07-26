@@ -56,8 +56,8 @@ const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (i
     const diffInHours = Math.abs(now.getTime() - date.getTime()) / 36e5;
     
     if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return 'Today';
-    if (diffInHours < 48) return 'Yesterday';
+    if (diffInHours < 24) return `Today ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    if (diffInHours < 48) return `Yesterday ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     return Math.floor(diffInHours / 24) + ' days ago';
   };
 
@@ -92,7 +92,16 @@ const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (i
             </Button>
           </div>
         </div>
-        <p className="text-white text-sm leading-relaxed">{note.content}</p>
+        <p className="text-white text-sm leading-relaxed mb-3">{note.content}</p>
+        {note.tags && note.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {note.tags.map((tag: string, index: number) => (
+              <Badge key={index} variant="outline" className="border-purple-600 text-purple-400 text-xs">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
     </Card>
   );
@@ -114,7 +123,7 @@ const ToMe = () => {
   
   // Form states
   const [newEntry, setNewEntry] = useState({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }] });
-  const [newNote, setNewNote] = useState({ content: '', color: 'from-blue-500 to-cyan-500' });
+  const [newNote, setNewNote] = useState({ content: '', color: 'from-blue-500 to-cyan-500', tags: '' });
   const [expandedTome, setExpandedTome] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [currentChapter, setCurrentChapter] = useState(0);
@@ -329,18 +338,19 @@ const ToMe = () => {
     if (!displayUser || !newNote.content.trim()) return;
     
     try {
-      const { error } = await supabase
+        const { error } = await supabase
         .from('quick_notes')
         .insert({
           user_id: displayUser.user_id || displayUser.id,
           content: newNote.content,
           color: newNote.color,
+          tags: newNote.tags ? newNote.tags.split(',').map(tag => tag.trim()) : null,
           sort_order: quickNotes.length,
         });
 
       if (error) throw error;
 
-      setNewNote({ content: '', color: 'from-blue-500 to-cyan-500' });
+      setNewNote({ content: '', color: 'from-blue-500 to-cyan-500', tags: '' });
       setIsNewNoteOpen(false);
       fetchData();
       toast({
@@ -361,17 +371,18 @@ const ToMe = () => {
     if (!editingNote || !newNote.content.trim()) return;
     
     try {
-      const { error } = await supabase
+        const { error } = await supabase
         .from('quick_notes')
         .update({
           content: newNote.content,
           color: newNote.color,
+          tags: newNote.tags ? newNote.tags.split(',').map(tag => tag.trim()) : null,
         })
         .eq('id', editingNote);
 
       if (error) throw error;
 
-      setNewNote({ content: '', color: 'from-blue-500 to-cyan-500' });
+      setNewNote({ content: '', color: 'from-blue-500 to-cyan-500', tags: '' });
       setEditingNote(null);
       setIsNewNoteOpen(false);
       fetchData();
@@ -448,7 +459,8 @@ const ToMe = () => {
   });
 
   const filteredQuickNotes = quickNotes.filter(note =>
-    note.content.toLowerCase().includes(searchQuery.toLowerCase())
+    note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (note.tags && note.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase())))
   );
 
   const formatDate = (dateString) => {
@@ -494,7 +506,7 @@ const ToMe = () => {
               setIsNewNoteOpen(open);
               if (!open) {
                 setEditingNote(null);
-                setNewNote({ content: '', color: 'from-blue-500 to-cyan-500' });
+                setNewNote({ content: '', color: 'from-blue-500 to-cyan-500', tags: '' });
               }
             }
           }}>
@@ -678,7 +690,19 @@ const ToMe = () => {
                       <option value="from-purple-500 to-violet-500">Purple</option>
                       <option value="from-yellow-500 to-orange-500">Orange</option>
                       <option value="from-indigo-500 to-blue-500">Indigo</option>
-                    </select>
+                     </select>
+                  </div>
+                  <div className="grid grid-cols-4 items-start gap-4">
+                    <Label htmlFor="note-tags" className="text-right text-gray-300 mt-2">
+                      Tags
+                    </Label>
+                    <Input
+                      id="note-tags"
+                      value={newNote.tags}
+                      onChange={(e) => setNewNote({...newNote, tags: e.target.value})}
+                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
+                      placeholder="Enter tags separated by commas..."
+                    />
                   </div>
                 </div>
                 <DialogFooter>
@@ -801,10 +825,21 @@ const ToMe = () => {
                   </div>
 
                   <p className="text-gray-300 mb-4 line-clamp-2">
-                    {typeof entry.content === 'string' 
-                      ? entry.content 
-                      : JSON.parse(entry.content || '[]')[0]?.content || 'No content'
-                    }
+                    {(() => {
+                      try {
+                        if (typeof entry.content === 'string') {
+                          // Try to parse as JSON first to check if it's chapter format
+                          const parsed = JSON.parse(entry.content);
+                          return Array.isArray(parsed) && parsed[0]?.content 
+                            ? parsed[0].content 
+                            : entry.content;
+                        }
+                        return entry.content || 'No content';
+                      } catch {
+                        // If parsing fails, it's regular string content
+                        return entry.content || 'No content';
+                      }
+                    })()}
                   </p>
 
                   <div className="flex justify-between items-center">
@@ -852,10 +887,11 @@ const ToMe = () => {
                        onDelete={deleteQuickNote}
                        onEdit={(note) => {
                          setEditingNote(note.id);
-                         setNewNote({
-                           content: note.content,
-                           color: note.color
-                         });
+                          setNewNote({
+                            content: note.content,
+                            color: note.color,
+                            tags: note.tags?.join(', ') || ''
+                          });
                          setIsNewNoteOpen(true);
                        }}
                      />
