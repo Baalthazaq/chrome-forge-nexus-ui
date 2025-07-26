@@ -69,8 +69,7 @@ const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (i
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.3 : 1,
-    zIndex: isDragging ? 1000 : 'auto',
+    opacity: isDragging ? 0 : 1, // Hide original when dragging
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -169,6 +168,7 @@ const ToMe = () => {
   const [currentChapter, setCurrentChapter] = useState(0);
   const [editingTome, setEditingTome] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   // Use impersonated user if available, otherwise use authenticated user
   const displayUser = impersonatedUser || user;
@@ -221,6 +221,10 @@ const ToMe = () => {
     fetchData();
   }, [displayUser]);
 
+  const handleDragStart = (event) => {
+    setActiveId(event.active.id);
+  };
+
   const handleDragEnd = async (event) => {
     const { active, over } = event;
     
@@ -263,7 +267,9 @@ const ToMe = () => {
               (note.layout_position ?? 0) <= newPosition) {
             note.layout_position = (note.layout_position ?? 0) - 1;
             updates.push({ id: note.id, layout_position: note.layout_position });
-          }
+    }
+
+    setActiveId(null);
         });
       } else {
         // Moving up: shift down everything between new and old-1
@@ -1016,6 +1022,7 @@ const ToMe = () => {
           <DndContext
             sensors={sensors}
             collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
             <SortableContext items={filteredQuickNotes.map(note => note.id)} strategy={verticalListSortingStrategy}>
@@ -1069,6 +1076,15 @@ const ToMe = () => {
                 </div>
               )}
             </SortableContext>
+            <DragOverlay>
+              {activeId ? (
+                <SortableQuickNote 
+                  note={filteredQuickNotes.find(note => note.id === activeId)!} 
+                  onDelete={() => {}} 
+                  onEdit={() => {}}
+                />
+              ) : null}
+            </DragOverlay>
           </DndContext>
         )}
 
