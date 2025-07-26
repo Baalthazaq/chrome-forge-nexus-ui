@@ -1027,42 +1027,48 @@ const ToMe = () => {
                   <p className="text-gray-400">No quick notes found</p>
                 </div>
               ) : (
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
-                   {Array.from({ length: window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1 }, (_, colIndex) => {
-                     const columnNotes = filteredQuickNotes
-                       .filter((note, index) => {
-                         // Assign notes to columns in round-robin fashion if no column is set
-                         const noteColumn = note.layout_column !== undefined ? note.layout_column : index % (window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1);
-                         return noteColumn === colIndex;
-                       })
-                       .sort((a, b) => (a.layout_position || 0) - (b.layout_position || 0));
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+                  {Array.from({ length: window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1 }, (_, colIndex) => {
+                    const columnNotes = filteredQuickNotes
+                      .filter((note, index) => {
+                        // Assign notes to columns in round-robin fashion if no column is set
+                        const noteColumn = note.layout_column !== undefined ? note.layout_column : index % (window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1);
+                        return noteColumn === colIndex;
+                      })
+                      .sort((a, b) => (a.layout_position || 0) - (b.layout_position || 0));
 
-                     return (
-                       <div key={colIndex} className="space-y-4 min-h-[200px]">
-                         {columnNotes.length === 0 ? (
-                           <ColumnDropZone columnIndex={colIndex} />
-                         ) : (
-                           columnNotes.map((note) => (
-                             <SortableQuickNote 
-                               key={note.id} 
-                               note={note} 
-                               onDelete={deleteQuickNote}
-                               onEdit={(note) => {
-                                 setEditingNote(note.id);
-                                  setNewNote({
-                                    content: note.content,
-                                    color: note.color,
-                                    tags: note.tags?.join(', ') || ''
-                                  });
-                                  setIsNewNoteOpen(true);
-                               }}
-                             />
-                           ))
-                         )}
-                       </div>
-                     );
-                   })}
-                 </div>
+                    return (
+                      <div key={colIndex} className="space-y-4 min-h-[200px]">
+                        {columnNotes.length === 0 ? (
+                          <ColumnDropZone columnIndex={colIndex} />
+                        ) : (
+                          columnNotes.map((note) => (
+                            <SortableQuickNote 
+                              key={note.id} 
+                              note={note} 
+                              onDelete={deleteQuickNote}
+                              onEdit={(note) => {
+                                setEditingNote(note.id);
+                                 setNewNote({
+                                   content: note.content,
+                                   color: note.color,
+                                   tags: note.tags?.join(', ') || ''
+                                 });
+                                 setIsNewNoteOpen(true);
+                              }}
+                            />
+                          ))
+                        )}
+                        {/* Always show drop zone at bottom of each column */}
+                        {columnNotes.length > 0 && (
+                          <div className="h-16">
+                            <ColumnDropZone columnIndex={colIndex} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </SortableContext>
           </DndContext>
