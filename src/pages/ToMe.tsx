@@ -218,11 +218,7 @@ const ToMe = () => {
   }, [displayUser]);
 
   const handleDragEnd = async (event) => {
-    event.preventDefault(); // Prevent any default browser behavior
-    
     const { active, over } = event;
-    
-    console.log('Drag end:', { activeId: active.id, overId: over?.id });
     
     if (!over || active.id === over.id) return;
 
