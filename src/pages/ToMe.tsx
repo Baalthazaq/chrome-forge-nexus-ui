@@ -908,10 +908,10 @@ const ToMe = () => {
                        {filteredQuickNotes
                          .filter((note, index) => {
                            // Assign notes to columns in round-robin fashion if no column is set
-                           const noteColumn = note.column !== undefined ? note.column : index % (window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1);
+                           const noteColumn = note.layout_column !== undefined ? note.layout_column : index % (window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1);
                            return noteColumn === colIndex;
                          })
-                         .sort((a, b) => (a.position || 0) - (b.position || 0))
+                         .sort((a, b) => (a.layout_position || 0) - (b.layout_position || 0))
                          .map((note) => (
                            <SortableQuickNote 
                              key={note.id} 

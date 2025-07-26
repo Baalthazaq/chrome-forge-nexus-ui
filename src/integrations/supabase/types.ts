@@ -84,7 +84,10 @@ export type Database = {
           created_at: string
           id: string
           is_pinned: boolean | null
+          layout_column: number | null
+          layout_position: number | null
           sort_order: number | null
+          tags: string[] | null
           updated_at: string
           user_id: string
         }
@@ -94,7 +97,10 @@ export type Database = {
           created_at?: string
           id?: string
           is_pinned?: boolean | null
+          layout_column?: number | null
+          layout_position?: number | null
           sort_order?: number | null
+          tags?: string[] | null
           updated_at?: string
           user_id: string
         }
@@ -104,7 +110,10 @@ export type Database = {
           created_at?: string
           id?: string
           is_pinned?: boolean | null
+          layout_column?: number | null
+          layout_position?: number | null
           sort_order?: number | null
+          tags?: string[] | null
           updated_at?: string
           user_id?: string
         }
