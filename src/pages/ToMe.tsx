@@ -2,10 +2,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Plus, Search, BookOpen, StickyNote, Star, Clock, Edit3, Trash2, Pin, GripVertical, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Plus, Search, BookOpen, StickyNote, Star, Clock, Edit3, Trash2, Pin, GripVertical, ChevronLeft, ChevronRight, X, FileText, List } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -111,10 +113,11 @@ const ToMe = () => {
   const [isNewNoteOpen, setIsNewNoteOpen] = useState(false);
   
   // Form states
-  const [newEntry, setNewEntry] = useState({ title: '', content: '', tags: '' });
+  const [newEntry, setNewEntry] = useState({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }] });
   const [newNote, setNewNote] = useState({ content: '', color: 'from-blue-500 to-cyan-500' });
   const [expandedTome, setExpandedTome] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [currentChapter, setCurrentChapter] = useState(0);
   const [editingTome, setEditingTome] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<string | null>(null);
 
@@ -205,18 +208,44 @@ const ToMe = () => {
     }
   };
 
-  // Calculate pages based on content length (approximately 250 words per page)
+  // Calculate pages based on content length (approximately 750 words per page)
   const calculatePages = (content: string) => {
     const wordCount = content.trim().split(/\s+/).length;
-    return Math.max(1, Math.ceil(wordCount / 250));
+    return Math.max(1, Math.ceil(wordCount / 750));
   };
 
   const getPageContent = (content: string, pageNumber: number) => {
     const words = content.trim().split(/\s+/);
-    const wordsPerPage = 250;
+    const wordsPerPage = 750;
     const startIndex = (pageNumber - 1) * wordsPerPage;
     const endIndex = startIndex + wordsPerPage;
     return words.slice(startIndex, endIndex).join(' ');
+  };
+
+  const getChapterContent = (chapters: any[], chapterIndex: number) => {
+    if (!chapters || !chapters[chapterIndex]) return '';
+    return chapters[chapterIndex].content || '';
+  };
+
+  const addChapter = () => {
+    const newChapters = [...newEntry.chapters, { title: `Chapter ${newEntry.chapters.length + 1}`, content: '' }];
+    setNewEntry({ ...newEntry, chapters: newChapters });
+    setCurrentChapter(newChapters.length - 1);
+  };
+
+  const removeChapter = (chapterIndex: number) => {
+    if (newEntry.chapters.length <= 1) return; // Don't allow removing the last chapter
+    const newChapters = newEntry.chapters.filter((_, index) => index !== chapterIndex);
+    setNewEntry({ ...newEntry, chapters: newChapters });
+    if (currentChapter >= newChapters.length) {
+      setCurrentChapter(newChapters.length - 1);
+    }
+  };
+
+  const updateChapter = (chapterIndex: number, field: string, value: string) => {
+    const newChapters = [...newEntry.chapters];
+    newChapters[chapterIndex] = { ...newChapters[chapterIndex], [field]: value };
+    setNewEntry({ ...newEntry, chapters: newChapters });
   };
 
   const createTomeEntry = async () => {
@@ -224,21 +253,23 @@ const ToMe = () => {
     
     try {
       const tagsArray = newEntry.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
-      const pages = calculatePages(newEntry.content);
+      const allContent = newEntry.chapters.map(chapter => chapter.content).join('\n\n');
+      const pages = calculatePages(allContent);
       
       const { error } = await supabase
         .from('tome_entries')
         .insert({
           user_id: displayUser.user_id || displayUser.id,
           title: newEntry.title,
-          content: newEntry.content,
+          content: JSON.stringify(newEntry.chapters), // Store chapters as JSON
           tags: tagsArray,
           pages: pages,
         });
 
       if (error) throw error;
 
-      setNewEntry({ title: '', content: '', tags: '' });
+      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }] });
+      setCurrentChapter(0);
       setIsNewEntryOpen(false);
       fetchData();
       toast({
@@ -260,13 +291,14 @@ const ToMe = () => {
     
     try {
       const tagsArray = newEntry.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
-      const pages = calculatePages(newEntry.content);
+      const allContent = newEntry.chapters.map(chapter => chapter.content).join('\n\n');
+      const pages = calculatePages(allContent);
       
       const { error } = await supabase
         .from('tome_entries')
         .update({
           title: newEntry.title,
-          content: newEntry.content,
+          content: JSON.stringify(newEntry.chapters), // Store chapters as JSON
           tags: tagsArray,
           pages: pages,
         })
@@ -274,7 +306,8 @@ const ToMe = () => {
 
       if (error) throw error;
 
-      setNewEntry({ title: '', content: '', tags: '' });
+      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }] });
+      setCurrentChapter(0);
       setEditingTome(null);
       setIsNewEntryOpen(false);
       fetchData();
@@ -404,11 +437,15 @@ const ToMe = () => {
     }
   };
 
-  const filteredTomeEntries = tomeEntries.filter(entry => 
-    entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    entry.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    entry.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredTomeEntries = tomeEntries.filter(entry => {
+    const contentToSearch = typeof entry.content === 'string' 
+      ? entry.content 
+      : JSON.stringify(entry.content);
+    
+    return entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      contentToSearch.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      entry.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+  });
 
   const filteredQuickNotes = quickNotes.filter(note =>
     note.content.toLowerCase().includes(searchQuery.toLowerCase())
@@ -448,10 +485,11 @@ const ToMe = () => {
           <Dialog open={activeTab === "tome" ? isNewEntryOpen : isNewNoteOpen} onOpenChange={(open) => {
             if (activeTab === "tome") {
               setIsNewEntryOpen(open);
-              if (!open) {
-                setEditingTome(null);
-                setNewEntry({ title: '', content: '', tags: '' });
-              }
+            if (!open) {
+              setEditingTome(null);
+              setCurrentChapter(0);
+              setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }] });
+            }
             } else {
               setIsNewNoteOpen(open);
               if (!open) {
@@ -468,7 +506,7 @@ const ToMe = () => {
             </DialogTrigger>
             
             {activeTab === "tome" ? (
-              <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700">
+              <DialogContent className="max-w-6xl w-[90vw] h-[90vh] bg-gray-900 border-gray-700">
                 <DialogHeader>
                   <DialogTitle className="text-white">
                     {editingTome ? "Edit Tome Entry" : "Create New Tome Entry"}
@@ -477,42 +515,116 @@ const ToMe = () => {
                     {editingTome ? "Modify your tome entry." : "Add a new entry to your tome archives."}
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="title" className="text-right text-gray-300">
-                      Title
-                    </Label>
-                    <Input
-                      id="title"
-                      value={newEntry.title}
-                      onChange={(e) => setNewEntry({...newEntry, title: e.target.value})}
-                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
-                      placeholder="Enter tome title..."
-                    />
+                <div className="flex-1 grid grid-cols-3 gap-6 py-4 overflow-hidden">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="title" className="text-gray-300 mb-2 block">
+                        Title
+                      </Label>
+                      <Input
+                        id="title"
+                        value={newEntry.title}
+                        onChange={(e) => setNewEntry({...newEntry, title: e.target.value})}
+                        className="bg-gray-800 border-gray-600 text-white"
+                        placeholder="Enter tome title..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="tags" className="text-gray-300 mb-2 block">
+                        Tags
+                      </Label>
+                      <Input
+                        id="tags"
+                        value={newEntry.tags}
+                        onChange={(e) => setNewEntry({...newEntry, tags: e.target.value})}
+                        className="bg-gray-800 border-gray-600 text-white"
+                        placeholder="tag1, tag2, tag3..."
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-gray-300">Chapters</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={addChapter}
+                          className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white"
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add Chapter
+                        </Button>
+                      </div>
+                      <Select value={currentChapter.toString()} onValueChange={(value) => setCurrentChapter(parseInt(value))}>
+                        <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                          <SelectValue placeholder="Select chapter" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-gray-800 border-gray-600">
+                          {newEntry.chapters.map((chapter, index) => (
+                            <SelectItem key={index} value={index.toString()} className="text-white hover:bg-gray-700">
+                              {chapter.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="chapter-title" className="text-gray-300 mb-2 block">
+                        Chapter Title
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="chapter-title"
+                          value={newEntry.chapters[currentChapter]?.title || ''}
+                          onChange={(e) => updateChapter(currentChapter, 'title', e.target.value)}
+                          className="bg-gray-800 border-gray-600 text-white flex-1"
+                          placeholder="Enter chapter title..."
+                        />
+                        {newEntry.chapters.length > 1 && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-gray-900 border-gray-700">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="text-white">Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription className="text-gray-400">
+                                  This action cannot be undone. This will permanently delete the chapter "{newEntry.chapters[currentChapter]?.title}".
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="bg-gray-800 border-gray-600 text-white hover:bg-gray-700">
+                                  Cancel
+                                </AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => removeChapter(currentChapter)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Delete Chapter
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="tags" className="text-right text-gray-300">
-                      Tags
-                    </Label>
-                    <Input
-                      id="tags"
-                      value={newEntry.tags}
-                      onChange={(e) => setNewEntry({...newEntry, tags: e.target.value})}
-                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
-                      placeholder="tag1, tag2, tag3..."
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-start gap-4">
-                    <Label htmlFor="content" className="text-right text-gray-300 mt-2">
-                      Content
+                  <div className="col-span-2">
+                    <Label htmlFor="chapter-content" className="text-gray-300 mb-2 block">
+                      Chapter Content
                     </Label>
                     <Textarea
-                      id="content"
-                      value={newEntry.content}
-                      onChange={(e) => setNewEntry({...newEntry, content: e.target.value})}
-                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
-                      placeholder="Enter tome content..."
-                      rows={4}
+                      id="chapter-content"
+                      value={newEntry.chapters[currentChapter]?.content || ''}
+                      onChange={(e) => updateChapter(currentChapter, 'content', e.target.value)}
+                      className="bg-gray-800 border-gray-600 text-white h-[calc(100vh-240px)] resize-none"
+                      placeholder="Enter chapter content..."
                     />
                   </div>
                 </div>
@@ -657,11 +769,21 @@ const ToMe = () => {
                         className="text-gray-400 hover:text-white"
                         onClick={() => {
                           setEditingTome(entry.id);
+                          let chapters;
+                          try {
+                            chapters = typeof entry.content === 'string' 
+                              ? JSON.parse(entry.content)
+                              : [{ title: 'Chapter 1', content: entry.content || '' }];
+                          } catch {
+                            chapters = [{ title: 'Chapter 1', content: entry.content || '' }];
+                          }
                           setNewEntry({
                             title: entry.title,
                             content: entry.content || '',
-                            tags: entry.tags?.join(', ') || ''
+                            tags: entry.tags?.join(', ') || '',
+                            chapters: chapters
                           });
+                          setCurrentChapter(0);
                           setIsNewEntryOpen(true);
                         }}
                       >
@@ -678,7 +800,12 @@ const ToMe = () => {
                     </div>
                   </div>
 
-                  <p className="text-gray-300 mb-4 line-clamp-2">{entry.content}</p>
+                  <p className="text-gray-300 mb-4 line-clamp-2">
+                    {typeof entry.content === 'string' 
+                      ? entry.content 
+                      : JSON.parse(entry.content || '[]')[0]?.content || 'No content'
+                    }
+                  </p>
 
                   <div className="flex justify-between items-center">
                     <div className="flex space-x-2">
@@ -694,6 +821,7 @@ const ToMe = () => {
                       onClick={() => {
                         setExpandedTome(entry.id);
                         setCurrentPage(1);
+                        setCurrentChapter(0);
                       }}
                     >
                       Open Tome
@@ -778,10 +906,43 @@ const ToMe = () => {
             
             {(() => {
               const entry = tomeEntries.find(e => e.id === expandedTome);
-              const totalPages = entry?.pages || 1;
+              let chapters;
+              try {
+                chapters = typeof entry?.content === 'string' 
+                  ? JSON.parse(entry.content)
+                  : [{ title: 'Chapter 1', content: entry?.content || '' }];
+              } catch {
+                chapters = [{ title: 'Chapter 1', content: entry?.content || '' }];
+              }
+              
+              const currentChapterContent = chapters[currentChapter]?.content || '';
+              const totalPages = calculatePages(currentChapterContent);
+              
               return (
                 <>
-                  <h2 className="text-2xl font-bold text-white">{entry?.title}</h2>
+                  <div className="flex items-center space-x-4">
+                    <h2 className="text-2xl font-bold text-white">{entry?.title}</h2>
+                    {chapters.length > 1 && (
+                      <Select value={currentChapter.toString()} onValueChange={(value) => {
+                        setCurrentChapter(parseInt(value));
+                        setCurrentPage(1);
+                      }}>
+                        <SelectTrigger className="w-[200px] bg-gray-800 border-gray-600 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-gray-800 border-gray-600">
+                          {chapters.map((chapter, index) => (
+                            <SelectItem key={index} value={index.toString()} className="text-white hover:bg-gray-700">
+                              <div className="flex items-center space-x-2">
+                                <List className="w-4 h-4" />
+                                <span>{chapter.title}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
                   <div className="flex items-center space-x-4">
                     <Button
                       variant="ghost"
@@ -815,11 +976,27 @@ const ToMe = () => {
               const entry = tomeEntries.find(e => e.id === expandedTome);
               if (!entry) return null;
               
-              const pageContent = getPageContent(entry.content || '', currentPage);
+              let chapters;
+              try {
+                chapters = typeof entry.content === 'string' 
+                  ? JSON.parse(entry.content)
+                  : [{ title: 'Chapter 1', content: entry.content || '' }];
+              } catch {
+                chapters = [{ title: 'Chapter 1', content: entry.content || '' }];
+              }
+              
+              const currentChapterContent = chapters[currentChapter]?.content || '';
+              const pageContent = getPageContent(currentChapterContent, currentPage);
               
               return (
                 <div className="max-w-4xl mx-auto">
                   <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-8">
+                    {chapters.length > 1 && (
+                      <h3 className="text-xl font-semibold text-purple-400 mb-6 flex items-center">
+                        <FileText className="w-5 h-5 mr-2" />
+                        {chapters[currentChapter]?.title}
+                      </h3>
+                    )}
                     <div className="text-white text-lg leading-relaxed whitespace-pre-wrap">
                       {pageContent}
                     </div>
