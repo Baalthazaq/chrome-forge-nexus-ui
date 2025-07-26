@@ -48,11 +48,7 @@ const ColumnDropZone = ({ columnIndex }: { columnIndex: number }) => {
           ? 'border-purple-400 bg-purple-400/10' 
           : 'border-gray-600 hover:border-gray-500'
       }`}
-    >
-      <div className="flex items-center justify-center h-full text-gray-500 text-sm">
-        {isOver ? 'Drop note here' : 'Empty column'}
-      </div>
-    </div>
+    />
   );
 };
 
@@ -225,6 +221,8 @@ const ToMe = () => {
     event.preventDefault(); // Prevent any default browser behavior
     
     const { active, over } = event;
+    
+    console.log('Drag end:', { activeId: active.id, overId: over?.id });
     
     if (!over || active.id === over.id) return;
 
