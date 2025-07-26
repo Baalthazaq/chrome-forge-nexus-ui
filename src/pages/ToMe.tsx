@@ -32,6 +32,29 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useDroppable } from '@dnd-kit/core';
+
+// Drop Zone Component for empty columns
+const ColumnDropZone = ({ columnIndex }: { columnIndex: number }) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `column-${columnIndex}`,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`min-h-[100px] rounded-lg border-2 border-dashed transition-colors ${
+        isOver 
+          ? 'border-purple-400 bg-purple-400/10' 
+          : 'border-gray-600 hover:border-gray-500'
+      }`}
+    >
+      <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+        {isOver ? 'Drop note here' : 'Empty column'}
+      </div>
+    </div>
+  );
+};
 
 // Sortable Quick Note Component
 const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (id: string) => void, onEdit: (note: any) => void }) => {
@@ -48,6 +71,10 @@ const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (i
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent page reload
   };
 
   const formatDate = (dateString: string) => {
@@ -71,6 +98,7 @@ const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (i
         <div 
           {...attributes} 
           {...listeners} 
+          onMouseDown={handleMouseDown}
           className="absolute top-0 left-0 right-0 h-8 cursor-grab active:cursor-grabbing z-10"
         ></div>
         
@@ -84,7 +112,10 @@ const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (i
               variant="ghost" 
               size="sm" 
               className="h-6 w-6 p-0 text-gray-400 hover:text-white"
-              onClick={() => onEdit(note)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(note);
+              }}
             >
               <Edit3 className="w-3 h-3" />
             </Button>
@@ -92,7 +123,10 @@ const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (i
               variant="ghost" 
               size="sm" 
               className="h-6 w-6 p-0 text-gray-400 hover:text-red-400"
-              onClick={() => onDelete(note.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(note.id);
+              }}
             >
               <Trash2 className="w-3 h-3" />
             </Button>
@@ -188,19 +222,34 @@ const ToMe = () => {
   }, [displayUser]);
 
   const handleDragEnd = async (event) => {
+    event.preventDefault(); // Prevent any default browser behavior
+    
     const { active, over } = event;
     
     if (!over || active.id === over.id) return;
 
     const activeNote = quickNotes.find(note => note.id === active.id);
-    const overNote = quickNotes.find(note => note.id === over.id);
-    
-    if (!activeNote || !overNote) return;
+    if (!activeNote) return;
 
     const oldColumn = activeNote.layout_column ?? 0;
     const oldPosition = activeNote.layout_position ?? 0;
-    const newColumn = overNote.layout_column ?? 0;
-    const newPosition = overNote.layout_position ?? 0;
+    
+    let newColumn: number;
+    let newPosition: number;
+
+    // Check if dropping on a column drop zone
+    if (over.id.toString().startsWith('column-')) {
+      newColumn = parseInt(over.id.toString().replace('column-', ''));
+      // Get the count of notes in target column to place at bottom
+      newPosition = quickNotes.filter(note => (note.layout_column ?? 0) === newColumn).length;
+    } else {
+      // Dropping on another note
+      const overNote = quickNotes.find(note => note.id === over.id);
+      if (!overNote) return;
+      
+      newColumn = overNote.layout_column ?? 0;
+      newPosition = overNote.layout_position ?? 0;
+    }
 
     try {
       const updates = [];
@@ -977,35 +1026,42 @@ const ToMe = () => {
                   <p className="text-gray-400">No quick notes found</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
-                   {Array.from({ length: window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1 }, (_, colIndex) => (
-                     <div key={colIndex} className="space-y-4">
-                       {filteredQuickNotes
-                         .filter((note, index) => {
-                           // Assign notes to columns in round-robin fashion if no column is set
-                           const noteColumn = note.layout_column !== undefined ? note.layout_column : index % (window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1);
-                           return noteColumn === colIndex;
-                         })
-                         .sort((a, b) => (a.layout_position || 0) - (b.layout_position || 0))
-                         .map((note) => (
-                           <SortableQuickNote 
-                             key={note.id} 
-                             note={note} 
-                             onDelete={deleteQuickNote}
-                             onEdit={(note) => {
-                               setEditingNote(note.id);
-                                setNewNote({
-                                  content: note.content,
-                                  color: note.color,
-                                  tags: note.tags?.join(', ') || ''
-                                });
-                               setIsNewNoteOpen(true);
-                             }}
-                           />
-                         ))}
-                     </div>
-                   ))}
-                </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+                   {Array.from({ length: window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1 }, (_, colIndex) => {
+                     const columnNotes = filteredQuickNotes
+                       .filter((note, index) => {
+                         // Assign notes to columns in round-robin fashion if no column is set
+                         const noteColumn = note.layout_column !== undefined ? note.layout_column : index % (window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1);
+                         return noteColumn === colIndex;
+                       })
+                       .sort((a, b) => (a.layout_position || 0) - (b.layout_position || 0));
+
+                     return (
+                       <div key={colIndex} className="space-y-4 min-h-[200px]">
+                         {columnNotes.length === 0 ? (
+                           <ColumnDropZone columnIndex={colIndex} />
+                         ) : (
+                           columnNotes.map((note) => (
+                             <SortableQuickNote 
+                               key={note.id} 
+                               note={note} 
+                               onDelete={deleteQuickNote}
+                               onEdit={(note) => {
+                                 setEditingNote(note.id);
+                                  setNewNote({
+                                    content: note.content,
+                                    color: note.color,
+                                    tags: note.tags?.join(', ') || ''
+                                  });
+                                  setIsNewNoteOpen(true);
+                               }}
+                             />
+                           ))
+                         )}
+                       </div>
+                     );
+                   })}
+                 </div>
               )}
             </SortableContext>
           </DndContext>
