@@ -62,14 +62,20 @@ const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (i
   };
 
   return (
-    <Card ref={setNodeRef} style={style} className="relative overflow-hidden group cursor-move">
-      <div className={`absolute inset-0 bg-gradient-to-br ${note.color} opacity-20`}></div>
+    <Card ref={setNodeRef} style={style} className="relative overflow-hidden group h-fit">
+      {/* Color bar at top */}
+      <div className={`h-1 bg-gradient-to-r ${note.color}`}></div>
+      
       <div className="relative p-4 bg-gray-900/80 border border-gray-700/50 hover:border-gray-600 transition-all duration-300">
+        {/* Grippable top bar */}
+        <div 
+          {...attributes} 
+          {...listeners} 
+          className="absolute top-0 left-0 right-0 h-8 cursor-grab active:cursor-grabbing z-10"
+        ></div>
+        
         <div className="flex justify-between items-start mb-3">
           <div className="flex items-center space-x-2">
-            <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
-              <GripVertical className="w-4 h-4 text-gray-500" />
-            </div>
             {note.is_pinned && <Pin className="w-4 h-4 text-yellow-400" />}
             <span className="text-xs text-gray-400">{formatDate(note.created_at)}</span>
           </div>
@@ -782,7 +788,22 @@ const ToMe = () => {
                         </div>
                         <div className="flex items-center space-x-1">
                           <BookOpen className="w-4 h-4" />
-                          <span>{entry.pages} pages</span>
+                          <span>
+                            {entry.pages} pages
+                            {(() => {
+                              try {
+                                if (typeof entry.content === 'string') {
+                                  const parsed = JSON.parse(entry.content);
+                                  if (Array.isArray(parsed)) {
+                                    return ` • ${parsed.length} chapters`;
+                                  }
+                                }
+                                return ' • 1 chapter';
+                              } catch {
+                                return ' • 1 chapter';
+                              }
+                            })()}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -830,9 +851,11 @@ const ToMe = () => {
                         if (typeof entry.content === 'string') {
                           // Try to parse as JSON first to check if it's chapter format
                           const parsed = JSON.parse(entry.content);
-                          return Array.isArray(parsed) && parsed[0]?.content 
-                            ? parsed[0].content 
-                            : entry.content;
+                          if (Array.isArray(parsed) && parsed[0]) {
+                            const chapterTitle = parsed[0].title ? `Chapter: ${parsed[0].title} | ` : '';
+                            return chapterTitle + (parsed[0].content || 'No content');
+                          }
+                          return entry.content;
                         }
                         return entry.content || 'No content';
                       } catch {
