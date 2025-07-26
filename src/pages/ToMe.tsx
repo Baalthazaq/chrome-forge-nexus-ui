@@ -251,70 +251,72 @@ const ToMe = () => {
       newPosition = overNote.layout_position ?? 0;
     }
 
-    try {
-      const updates = [];
+    // Update local state immediately for instant feedback
+    const updatedNotes = [...quickNotes];
+    const updates = [];
 
-      if (oldColumn === newColumn) {
-        // Same column: shift positions between old and new
-        if (oldPosition < newPosition) {
-          // Moving down: shift up everything between old+1 and new
-          quickNotes.forEach(note => {
-            if ((note.layout_column ?? 0) === oldColumn && 
-                (note.layout_position ?? 0) > oldPosition && 
-                (note.layout_position ?? 0) <= newPosition) {
-              updates.push({
-                id: note.id,
-                layout_position: (note.layout_position ?? 0) - 1
-              });
-            }
-          });
-        } else {
-          // Moving up: shift down everything between new and old-1
-          quickNotes.forEach(note => {
-            if ((note.layout_column ?? 0) === oldColumn && 
-                (note.layout_position ?? 0) >= newPosition && 
-                (note.layout_position ?? 0) < oldPosition) {
-              updates.push({
-                id: note.id,
-                layout_position: (note.layout_position ?? 0) + 1
-              });
-            }
-          });
-        }
-      } else {
-        // Different columns
-        // Remove from old column: shift up everything below old position
-        quickNotes.forEach(note => {
+    if (oldColumn === newColumn) {
+      // Same column: shift positions between old and new
+      if (oldPosition < newPosition) {
+        // Moving down: shift up everything between old+1 and new
+        updatedNotes.forEach(note => {
           if ((note.layout_column ?? 0) === oldColumn && 
-              (note.layout_position ?? 0) > oldPosition) {
-            updates.push({
-              id: note.id,
-              layout_position: (note.layout_position ?? 0) - 1
-            });
+              (note.layout_position ?? 0) > oldPosition && 
+              (note.layout_position ?? 0) <= newPosition) {
+            note.layout_position = (note.layout_position ?? 0) - 1;
+            updates.push({ id: note.id, layout_position: note.layout_position });
           }
         });
-
-        // Add to new column: shift down everything at/below new position
-        quickNotes.forEach(note => {
-          if ((note.layout_column ?? 0) === newColumn && 
+      } else {
+        // Moving up: shift down everything between new and old-1
+        updatedNotes.forEach(note => {
+          if ((note.layout_column ?? 0) === oldColumn && 
               (note.layout_position ?? 0) >= newPosition && 
-              note.id !== active.id) {
-            updates.push({
-              id: note.id,
-              layout_position: (note.layout_position ?? 0) + 1
-            });
+              (note.layout_position ?? 0) < oldPosition) {
+            note.layout_position = (note.layout_position ?? 0) + 1;
+            updates.push({ id: note.id, layout_position: note.layout_position });
           }
         });
       }
+    } else {
+      // Different columns
+      // Remove from old column: shift up everything below old position
+      updatedNotes.forEach(note => {
+        if ((note.layout_column ?? 0) === oldColumn && 
+            (note.layout_position ?? 0) > oldPosition) {
+          note.layout_position = (note.layout_position ?? 0) - 1;
+          updates.push({ id: note.id, layout_position: note.layout_position });
+        }
+      });
 
-      // Update the active note
+      // Add to new column: shift down everything at/below new position
+      updatedNotes.forEach(note => {
+        if ((note.layout_column ?? 0) === newColumn && 
+            (note.layout_position ?? 0) >= newPosition && 
+            note.id !== active.id) {
+          note.layout_position = (note.layout_position ?? 0) + 1;
+          updates.push({ id: note.id, layout_position: note.layout_position });
+        }
+      });
+    }
+
+    // Update the active note
+    const activeNoteInArray = updatedNotes.find(note => note.id === active.id);
+    if (activeNoteInArray) {
+      activeNoteInArray.layout_column = newColumn;
+      activeNoteInArray.layout_position = newPosition;
       updates.push({
         id: active.id,
         layout_column: newColumn,
         layout_position: newPosition
       });
+    }
 
-      // Apply all updates to database
+    // Update local state immediately
+    setQuickNotes(updatedNotes);
+
+    // Save to database in background
+    try {
       for (const update of updates) {
         await supabase
           .from('quick_notes')
@@ -324,9 +326,6 @@ const ToMe = () => {
           })
           .eq('id', update.id);
       }
-
-      // Refresh data to show updated positions
-      fetchData();
     } catch (error) {
       console.error('Error updating note positions:', error);
       toast({
@@ -334,6 +333,8 @@ const ToMe = () => {
         description: "Failed to update note order",
         variant: "destructive",
       });
+      // Revert on error
+      fetchData();
     }
   };
 
