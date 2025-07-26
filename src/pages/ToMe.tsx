@@ -58,7 +58,7 @@ const ColumnDropZone = ({ columnIndex }: { columnIndex: number }) => {
 
 // Insertion Indicator Component
 const InsertionIndicator = ({ position }: { position: 'above' | 'below' }) => (
-  <div className={`h-0.5 bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.6)] rounded-full ${position === 'above' ? 'mb-2' : 'mt-2'}`} />
+  <div className={`h-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full shadow-[0_0_12px_rgba(139,92,246,0.8)] ${position === 'above' ? 'mb-3' : 'mt-3'}`} />
 );
 
 // Sortable Quick Note Component
