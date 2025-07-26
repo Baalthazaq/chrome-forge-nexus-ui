@@ -24,6 +24,7 @@ import {
   useSensors,
   DragEndEvent,
   DragOverlay,
+  DragOverEvent,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -55,8 +56,19 @@ const ColumnDropZone = ({ columnIndex }: { columnIndex: number }) => {
   );
 };
 
+// Insertion Indicator Component
+const InsertionIndicator = ({ position }: { position: 'above' | 'below' }) => (
+  <div className={`h-0.5 bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.6)] rounded-full ${position === 'above' ? 'mb-2' : 'mt-2'}`} />
+);
+
 // Sortable Quick Note Component
-const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (id: string) => void, onEdit: (note: any) => void }) => {
+const SortableQuickNote = ({ note, onDelete, onEdit, showIndicator, indicatorPosition }: { 
+  note: any, 
+  onDelete: (id: string) => void, 
+  onEdit: (note: any) => void,
+  showIndicator?: boolean,
+  indicatorPosition?: 'above' | 'below'
+}) => {
   const {
     attributes,
     listeners,
@@ -87,9 +99,11 @@ const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (i
   };
 
   return (
-    <Card ref={setNodeRef} style={style} className="relative overflow-hidden group h-fit">
-      {/* Color bar at top */}
-      <div className={`h-1 bg-gradient-to-r ${note.color}`}></div>
+    <div>
+      {showIndicator && indicatorPosition === 'above' && <InsertionIndicator position="above" />}
+      <Card ref={setNodeRef} style={style} className="relative overflow-hidden group h-fit">
+        {/* Color bar at top */}
+        <div className={`h-1 bg-gradient-to-r ${note.color}`}></div>
       
       <div className="relative p-4 bg-gray-900/80 border border-gray-700/50 hover:border-gray-600 transition-all duration-300">
         {/* Grippable top bar */}
@@ -142,6 +156,8 @@ const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (i
         )}
       </div>
     </Card>
+    {showIndicator && indicatorPosition === 'below' && <InsertionIndicator position="below" />}
+    </div>
   );
 };
 
@@ -168,6 +184,7 @@ const ToMe = () => {
   const [editingTome, setEditingTome] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
 
   // Use impersonated user if available, otherwise use authenticated user
   const displayUser = impersonatedUser || user;
@@ -224,6 +241,10 @@ const ToMe = () => {
     setActiveId(event.active.id);
   };
 
+  const handleDragOver = (event: DragOverEvent) => {
+    setOverId(event.over?.id.toString() || null);
+  };
+
   const handleDragEnd = async (event) => {
     const { active, over } = event;
     
@@ -266,9 +287,7 @@ const ToMe = () => {
               (note.layout_position ?? 0) <= newPosition) {
             note.layout_position = (note.layout_position ?? 0) - 1;
             updates.push({ id: note.id, layout_position: note.layout_position });
-    }
-
-    setActiveId(null);
+          }
         });
       } else {
         // Moving up: shift down everything between new and old-1
@@ -339,6 +358,9 @@ const ToMe = () => {
       // Revert on error
       fetchData();
     }
+
+    setActiveId(null);
+    setOverId(null);
   };
 
   // Calculate pages based on content length (approximately 750 words per page)
@@ -1022,6 +1044,7 @@ const ToMe = () => {
             sensors={sensors}
             collisionDetection={closestCorners}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
             <SortableContext items={filteredQuickNotes.map(note => note.id)} strategy={verticalListSortingStrategy}>
@@ -1046,22 +1069,29 @@ const ToMe = () => {
                         {columnNotes.length === 0 ? (
                           <ColumnDropZone columnIndex={colIndex} />
                         ) : (
-                          columnNotes.map((note) => (
-                            <SortableQuickNote 
-                              key={note.id} 
-                              note={note} 
-                              onDelete={deleteQuickNote}
-                              onEdit={(note) => {
-                                setEditingNote(note.id);
-                                 setNewNote({
-                                   content: note.content,
-                                   color: note.color,
-                                   tags: note.tags?.join(', ') || ''
-                                 });
-                                 setIsNewNoteOpen(true);
-                              }}
-                            />
-                          ))
+                          columnNotes.map((note, index) => {
+                            const isOverThis = overId === note.id;
+                            const showIndicator = activeId && isOverThis;
+                            
+                            return (
+                              <SortableQuickNote 
+                                key={note.id} 
+                                note={note} 
+                                onDelete={deleteQuickNote}
+                                onEdit={(note) => {
+                                  setEditingNote(note.id);
+                                   setNewNote({
+                                     content: note.content,
+                                     color: note.color,
+                                     tags: note.tags?.join(', ') || ''
+                                   });
+                                   setIsNewNoteOpen(true);
+                                }}
+                                showIndicator={showIndicator}
+                                indicatorPosition="above"
+                              />
+                            );
+                          })
                         )}
                         {/* Always show drop zone at bottom of each column */}
                         {columnNotes.length > 0 && (
