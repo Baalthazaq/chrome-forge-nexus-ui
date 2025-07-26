@@ -189,37 +189,102 @@ const ToMe = () => {
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
+    
+    if (!over || active.id === over.id) return;
 
-    if (active.id !== over.id) {
-      const oldIndex = quickNotes.findIndex((note) => note.id === active.id);
-      const newIndex = quickNotes.findIndex((note) => note.id === over.id);
+    const activeNote = quickNotes.find(note => note.id === active.id);
+    const overNote = quickNotes.find(note => note.id === over.id);
+    
+    if (!activeNote || !overNote) return;
 
-      const newQuickNotes = arrayMove(quickNotes, oldIndex, newIndex);
-      setQuickNotes(newQuickNotes);
+    const oldColumn = activeNote.layout_column ?? 0;
+    const oldPosition = activeNote.layout_position ?? 0;
+    const newColumn = overNote.layout_column ?? 0;
+    const newPosition = overNote.layout_position ?? 0;
 
-      // Update sort order in database
-      try {
-        const updates = newQuickNotes.map((note, index) => ({
-          id: note.id,
-          sort_order: index,
-        }));
+    try {
+      const updates = [];
 
-        for (const update of updates) {
-          await supabase
-            .from('quick_notes')
-            .update({ sort_order: update.sort_order })
-            .eq('id', update.id);
+      if (oldColumn === newColumn) {
+        // Same column: shift positions between old and new
+        if (oldPosition < newPosition) {
+          // Moving down: shift up everything between old+1 and new
+          quickNotes.forEach(note => {
+            if ((note.layout_column ?? 0) === oldColumn && 
+                (note.layout_position ?? 0) > oldPosition && 
+                (note.layout_position ?? 0) <= newPosition) {
+              updates.push({
+                id: note.id,
+                layout_position: (note.layout_position ?? 0) - 1
+              });
+            }
+          });
+        } else {
+          // Moving up: shift down everything between new and old-1
+          quickNotes.forEach(note => {
+            if ((note.layout_column ?? 0) === oldColumn && 
+                (note.layout_position ?? 0) >= newPosition && 
+                (note.layout_position ?? 0) < oldPosition) {
+              updates.push({
+                id: note.id,
+                layout_position: (note.layout_position ?? 0) + 1
+              });
+            }
+          });
         }
-      } catch (error) {
-        console.error('Error updating sort order:', error);
-        toast({
-          title: "Error",
-          description: "Failed to update note order",
-          variant: "destructive",
+      } else {
+        // Different columns
+        // Remove from old column: shift up everything below old position
+        quickNotes.forEach(note => {
+          if ((note.layout_column ?? 0) === oldColumn && 
+              (note.layout_position ?? 0) > oldPosition) {
+            updates.push({
+              id: note.id,
+              layout_position: (note.layout_position ?? 0) - 1
+            });
+          }
         });
-        // Revert the change
-        fetchData();
+
+        // Add to new column: shift down everything at/below new position
+        quickNotes.forEach(note => {
+          if ((note.layout_column ?? 0) === newColumn && 
+              (note.layout_position ?? 0) >= newPosition && 
+              note.id !== active.id) {
+            updates.push({
+              id: note.id,
+              layout_position: (note.layout_position ?? 0) + 1
+            });
+          }
+        });
       }
+
+      // Update the active note
+      updates.push({
+        id: active.id,
+        layout_column: newColumn,
+        layout_position: newPosition
+      });
+
+      // Apply all updates to database
+      for (const update of updates) {
+        await supabase
+          .from('quick_notes')
+          .update({ 
+            layout_column: update.layout_column, 
+            layout_position: update.layout_position 
+          })
+          .eq('id', update.id);
+      }
+
+      // Refresh data to show updated positions
+      fetchData();
+    } catch (error) {
+      console.error('Error updating note positions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update note order",
+        variant: "destructive",
+      });
     }
   };
 
@@ -344,14 +409,24 @@ const ToMe = () => {
     if (!displayUser || !newNote.content.trim()) return;
     
     try {
-        const { error } = await supabase
+      // Find the shortest column (with leftmost preference in case of ties)
+      const columnCounts = [0, 1, 2].map(colIndex => 
+        quickNotes.filter(note => (note.layout_column ?? 0) === colIndex).length
+      );
+      const minCount = Math.min(...columnCounts);
+      const targetColumn = columnCounts.findIndex(count => count === minCount);
+      const targetPosition = columnCounts[targetColumn];
+
+      const { error } = await supabase
         .from('quick_notes')
         .insert({
           user_id: displayUser.user_id || displayUser.id,
           content: newNote.content,
           color: newNote.color,
           tags: newNote.tags ? newNote.tags.split(',').map(tag => tag.trim()) : null,
-          sort_order: quickNotes.length,
+          layout_column: targetColumn,
+          layout_position: targetPosition,
+          sort_order: quickNotes.length, // Keep for backwards compatibility
         });
 
       if (error) throw error;
