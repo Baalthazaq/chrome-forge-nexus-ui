@@ -67,9 +67,10 @@ const SortableQuickNote = ({ note, onDelete, onEdit }: { note: any, onDelete: (i
   } = useSortable({ id: note.id });
 
   const style = {
-    transform: isDragging ? 'none' : CSS.Transform.toString(transform),
-    transition: isDragging ? 'none' : transition,
-    opacity: isDragging ? 0.5 : 1,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+    zIndex: isDragging ? 1000 : 'auto',
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
