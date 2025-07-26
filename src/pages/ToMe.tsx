@@ -1071,7 +1071,7 @@ const ToMe = () => {
                         ) : (
                           columnNotes.map((note, index) => {
                             const isOverThis = overId === note.id;
-                            const showIndicator = activeId && isOverThis;
+                            const showIndicator = activeId && isOverThis && activeId !== note.id;
                             
                             return (
                               <SortableQuickNote 
