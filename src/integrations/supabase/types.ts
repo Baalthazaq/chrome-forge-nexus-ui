@@ -38,6 +38,41 @@ export type Database = {
         }
         Relationships: []
       }
+      casts: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read_at: string | null
+          sender_id: string
+          stone_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read_at?: string | null
+          sender_id: string
+          stone_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read_at?: string | null
+          sender_id?: string
+          stone_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "casts_stone_id_fkey"
+            columns: ["stone_id"]
+            isOneToOne: false
+            referencedRelation: "stones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -116,6 +151,33 @@ export type Database = {
           tags?: string[] | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      stones: {
+        Row: {
+          created_at: string
+          id: string
+          last_cast_at: string | null
+          participant_one_id: string
+          participant_two_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_cast_at?: string | null
+          participant_one_id: string
+          participant_two_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_cast_at?: string | null
+          participant_one_id?: string
+          participant_two_id?: string
+          updated_at?: string
         }
         Relationships: []
       }
