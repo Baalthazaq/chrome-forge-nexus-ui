@@ -121,6 +121,9 @@ export const TomeShareNotifications = ({ onTomeAdded }: TomeShareNotificationsPr
       if (onTomeAdded) {
         onTomeAdded();
       }
+
+      // Reload pending shares to ensure UI is in sync
+      await loadPendingShares();
       
       toast({
         title: "Success",
@@ -145,8 +148,12 @@ export const TomeShareNotifications = ({ onTomeAdded }: TomeShareNotificationsPr
 
       if (error) throw error;
 
+      // Remove from pending shares immediately
       setPendingShares(prev => prev.filter(s => s.id !== shareId));
       setIsPreviewOpen(false);
+      
+      // Reload pending shares to ensure UI is in sync
+      await loadPendingShares();
       
       toast({
         title: "Declined",
