@@ -120,17 +120,23 @@ const Sending = () => {
 
   const loadProfiles = async () => {
     try {
+      console.log('Current user ID:', user?.id);
+      
       // Get current user's actual profile to exclude them from the list
       const { data: currentProfile } = await supabase
         .from('profiles')
         .select('user_id')
         .eq('user_id', user?.id)
-        .single();
+        .maybeSingle();
+
+      console.log('Current profile:', currentProfile);
 
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .neq('user_id', currentProfile?.user_id || user?.id);
+
+      console.log('All profiles query result:', data, error);
 
       if (error) throw error;
       setProfiles(data || []);
