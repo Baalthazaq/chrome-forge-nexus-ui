@@ -54,7 +54,8 @@ export const TomeShareDialog = ({ tomeEntry, children }: TomeShareDialogProps) =
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .neq('user_id', displayUser.user_id || displayUser.id);
+        .neq('user_id', displayUser.user_id || displayUser.id)
+        .neq('bio', 'NPC Account'); // Exclude NPCs based on bio
 
       if (error) throw error;
       setProfiles(data || []);
