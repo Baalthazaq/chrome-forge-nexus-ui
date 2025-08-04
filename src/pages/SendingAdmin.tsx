@@ -217,11 +217,17 @@ const SendingAdmin = () => {
                 </div>
               ) : (
                 stones.map((stone) => (
-                  <Dialog key={stone.id}>
+                  <Dialog 
+                    key={stone.id}
+                    onOpenChange={(open) => {
+                      if (open) {
+                        loadConversationCasts(stone);
+                      }
+                    }}
+                  >
                     <DialogTrigger asChild>
                       <div 
                         className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
-                        onClick={() => loadConversationCasts(stone)}
                       >
                         <div className="flex items-center gap-4 flex-1">
                           <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
