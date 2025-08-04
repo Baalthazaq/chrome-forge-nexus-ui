@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { toast } from "sonner";
 
 interface Stone {
@@ -43,6 +44,10 @@ interface Profile {
 
 const Sending = () => {
   const { user } = useAuth();
+  const { impersonatedUser } = useAdmin();
+  
+  // Use impersonated user if available, otherwise use authenticated user
+  const currentUser = impersonatedUser ? { id: impersonatedUser.user_id } : user;
   const [message, setMessage] = useState("");
   const [selectedStone, setSelectedStone] = useState<Stone | null>(null);
   const [stones, setStones] = useState<Stone[]>([]);
@@ -56,11 +61,11 @@ const Sending = () => {
   const wordCount = message.trim().split(/\s+/).filter(word => word.length > 0).length;
 
   useEffect(() => {
-    if (user) {
+    if (currentUser) {
       loadStones();
       loadProfiles();
     }
-  }, [user]);
+  }, [currentUser]);
 
   useEffect(() => {
     if (selectedStone) {
@@ -83,7 +88,7 @@ const Sending = () => {
       // Get latest cast for each stone and other participant info
       const stonesWithInfo = await Promise.all(
         data.map(async (stone) => {
-          const otherParticipantId = stone.participant_one_id === user?.id 
+          const otherParticipantId = stone.participant_one_id === currentUser?.id 
             ? stone.participant_two_id 
             : stone.participant_one_id;
 
@@ -120,21 +125,12 @@ const Sending = () => {
 
   const loadProfiles = async () => {
     try {
-      console.log('Current user ID:', user?.id);
+      console.log('Current user ID:', currentUser?.id);
       
-      // Get current user's actual profile to exclude them from the list
-      const { data: currentProfile } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-
-      console.log('Current profile:', currentProfile);
-
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .neq('user_id', currentProfile?.user_id || user?.id);
+        .neq('user_id', currentUser?.id);
 
       console.log('All profiles query result:', data, error);
 
@@ -167,7 +163,7 @@ const Sending = () => {
       const { data: existingStone } = await supabase
         .from('stones')
         .select('*')
-        .or(`and(participant_one_id.eq.${user?.id},participant_two_id.eq.${recipientId}),and(participant_one_id.eq.${recipientId},participant_two_id.eq.${user?.id})`)
+        .or(`and(participant_one_id.eq.${currentUser?.id},participant_two_id.eq.${recipientId}),and(participant_one_id.eq.${recipientId},participant_two_id.eq.${currentUser?.id})`)
         .single();
 
       if (existingStone) {
@@ -178,7 +174,7 @@ const Sending = () => {
       const { data, error } = await supabase
         .from('stones')
         .insert({
-          participant_one_id: user?.id,
+          participant_one_id: currentUser?.id,
           participant_two_id: recipientId
         })
         .select()
@@ -218,7 +214,7 @@ const Sending = () => {
         .from('casts')
         .insert({
           stone_id: selectedStone.id,
-          sender_id: user?.id,
+          sender_id: currentUser?.id,
           message: message.trim()
         })
         .select()
@@ -368,7 +364,7 @@ const Sending = () => {
                     </div>
                     {stone.latest_cast && (
                       <p className="text-sm text-gray-300 truncate">
-                        {stone.latest_cast.sender_id === user?.id ? 'You: ' : ''}
+                        {stone.latest_cast.sender_id === currentUser?.id ? 'You: ' : ''}
                         {stone.latest_cast.message}
                       </p>
                     )}
@@ -394,11 +390,11 @@ const Sending = () => {
                   {casts.map((cast) => (
                     <div
                       key={cast.id}
-                      className={`flex ${cast.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${cast.sender_id === currentUser?.id ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
                         className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                          cast.sender_id === user?.id
+                          cast.sender_id === currentUser?.id
                             ? 'bg-cyan-500 text-white ml-12'
                             : 'bg-gray-700 text-gray-100 mr-12'
                         }`}
