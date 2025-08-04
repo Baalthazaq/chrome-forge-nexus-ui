@@ -26,6 +26,7 @@ interface Stone {
     sender_id: string;
     created_at: string;
   };
+  unread_count?: number;
 }
 
 interface Cast {
@@ -78,6 +79,7 @@ const Sending = () => {
   useEffect(() => {
     if (selectedStone) {
       loadCasts(selectedStone.id);
+      markMessagesAsRead(selectedStone.id);
     }
   }, [selectedStone]);
 
@@ -116,10 +118,20 @@ const Sending = () => {
             .limit(1)
             .single();
 
+          // Count unread messages (messages from other participant that haven't been read)
+          const { count: unreadCount } = await supabase
+            .from('casts')
+            .select('*', { count: 'exact' })
+            .eq('stone_id', stone.id)
+            .eq('is_deleted', false)
+            .neq('sender_id', currentUser?.id) // Messages from other participant
+            .is('read_at', null); // Not read yet
+
           return {
             ...stone,
             other_participant: profile,
-            latest_cast: latestCast
+            latest_cast: latestCast,
+            unread_count: unreadCount || 0
           };
         })
       );
@@ -165,6 +177,24 @@ const Sending = () => {
     } catch (error) {
       console.error('Error loading casts:', error);
       toast.error('Failed to load messages');
+    }
+  };
+
+  const markMessagesAsRead = async (stoneId: string) => {
+    try {
+      const { error } = await supabase
+        .from('casts')
+        .update({ read_at: new Date().toISOString() })
+        .eq('stone_id', stoneId)
+        .neq('sender_id', currentUser?.id) // Only mark messages from other participant as read
+        .is('read_at', null); // Only update unread messages
+
+      if (error) throw error;
+      
+      // Reload stones to update unread counts
+      loadStones();
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
     }
   };
 
@@ -418,7 +448,7 @@ const Sending = () => {
                   <div
                     key={stone.id}
                     onClick={() => setSelectedStone(stone)}
-                    className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                    className={`p-3 rounded-lg cursor-pointer transition-colors relative ${
                       selectedStone?.id === stone.id
                         ? 'bg-cyan-500/20 border border-cyan-500/30'
                         : 'bg-gray-800/50 hover:bg-gray-800/80'
@@ -428,9 +458,16 @@ const Sending = () => {
                       <span className="font-semibold text-cyan-400">
                         {stone.other_participant?.character_name || 'Unknown'}
                       </span>
-                      <span className="text-xs text-gray-400">
-                        {stone.latest_cast ? formatTime(stone.latest_cast.created_at) : 'New'}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        {stone.unread_count && stone.unread_count > 0 && (
+                          <span className="bg-cyan-500 text-black text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                            {stone.unread_count}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-400">
+                          {stone.latest_cast ? formatTime(stone.latest_cast.created_at) : 'New'}
+                        </span>
+                      </div>
                     </div>
                     {stone.latest_cast && (
                       <p className="text-sm text-gray-300 truncate">
@@ -447,7 +484,7 @@ const Sending = () => {
           {/* Chat Area */}
           <Card className="lg:col-span-2 bg-gray-900/30 border-gray-700/50">
             {selectedStone ? (
-              <div className="h-96 flex flex-col">
+              <div className="h-[600px] flex flex-col">
                 {/* Chat Header */}
                 <div className="p-4 border-b border-gray-700/50">
                   <h3 className="text-lg font-semibold text-white">
@@ -554,7 +591,7 @@ const Sending = () => {
                 </div>
               </div>
             ) : (
-              <div className="h-96 flex items-center justify-center">
+              <div className="h-[600px] flex items-center justify-center">
                 <div className="text-center text-gray-400">
                   <MessageCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
                   <p className="text-lg">Select a stone to start messaging</p>

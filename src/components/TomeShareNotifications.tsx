@@ -92,6 +92,8 @@ export const TomeShareNotifications = ({ onTomeAdded }: TomeShareNotificationsPr
 
   const acceptShare = async (share: TomeShare) => {
     try {
+      console.log('Accepting share:', share.id);
+      
       // Copy the tome entry to the recipient's collection
       const { error: tomeError } = await supabase
         .from('tome_entries')
@@ -112,18 +114,20 @@ export const TomeShareNotifications = ({ onTomeAdded }: TomeShareNotificationsPr
         .eq('id', share.id);
 
       if (shareError) throw shareError;
+      console.log('Share status updated to accepted');
 
       // Remove from pending shares immediately
-      setPendingShares(prev => prev.filter(s => s.id !== share.id));
+      setPendingShares(prev => {
+        const filtered = prev.filter(s => s.id !== share.id);
+        console.log('Pending shares after filtering:', filtered.length);
+        return filtered;
+      });
       setIsPreviewOpen(false);
       
       // Trigger parent refresh if callback provided
       if (onTomeAdded) {
         onTomeAdded();
       }
-
-      // Reload pending shares to ensure UI is in sync
-      await loadPendingShares();
       
       toast({
         title: "Success",
