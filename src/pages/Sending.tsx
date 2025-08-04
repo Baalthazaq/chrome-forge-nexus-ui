@@ -3,13 +3,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Send, Clock, User, MessageCircle, Users } from "lucide-react";
+import { ArrowLeft, Send, Clock, User, MessageCircle, Users, Edit, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface Stone {
   id: string;
@@ -34,6 +35,11 @@ interface Cast {
   message: string;
   created_at: string;
   read_at: string | null;
+  deleted_at: string | null;
+  edited_at: string | null;
+  original_message: string | null;
+  is_deleted: boolean;
+  is_edited: boolean;
 }
 
 interface Profile {
@@ -57,6 +63,8 @@ const Sending = () => {
   const [sending, setSending] = useState(false);
   const [showNewStone, setShowNewStone] = useState(false);
   const [newRecipientId, setNewRecipientId] = useState("");
+  const [editingCast, setEditingCast] = useState<Cast | null>(null);
+  const [editMessage, setEditMessage] = useState("");
   
   const wordCount = message.trim().split(/\s+/).filter(word => word.length > 0).length;
 
@@ -103,6 +111,7 @@ const Sending = () => {
             .from('casts')
             .select('*')
             .eq('stone_id', stone.id)
+            .eq('is_deleted', false) // Only show non-deleted messages
             .order('created_at', { ascending: false })
             .limit(1)
             .single();
@@ -148,6 +157,7 @@ const Sending = () => {
         .from('casts')
         .select('*')
         .eq('stone_id', stoneId)
+        .eq('is_deleted', false) // Only show non-deleted messages for users
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -234,6 +244,65 @@ const Sending = () => {
       toast.error('Failed to send message');
     } finally {
       setSending(false);
+    }
+  };
+
+  const editCast = async () => {
+    if (!editingCast || !editMessage.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('casts')
+        .update({
+          original_message: editingCast.message,
+          message: editMessage.trim(),
+          is_edited: true,
+          edited_at: new Date().toISOString()
+        })
+        .eq('id', editingCast.id);
+
+      if (error) throw error;
+
+      setCasts(prev => prev.map(cast => 
+        cast.id === editingCast.id 
+          ? { 
+              ...cast, 
+              original_message: cast.message,
+              message: editMessage.trim(),
+              is_edited: true,
+              edited_at: new Date().toISOString()
+            }
+          : cast
+      ));
+      
+      setEditingCast(null);
+      setEditMessage("");
+      toast.success('Message updated');
+      loadStones(); // Refresh stones list
+    } catch (error) {
+      console.error('Error editing cast:', error);
+      toast.error('Failed to edit message');
+    }
+  };
+
+  const deleteCast = async (castId: string) => {
+    try {
+      const { error } = await supabase
+        .from('casts')
+        .update({
+          is_deleted: true,
+          deleted_at: new Date().toISOString()
+        })
+        .eq('id', castId);
+
+      if (error) throw error;
+
+      setCasts(prev => prev.filter(cast => cast.id !== castId));
+      toast.success('Message deleted');
+      loadStones(); // Refresh stones list
+    } catch (error) {
+      console.error('Error deleting cast:', error);
+      toast.error('Failed to delete message');
     }
   };
 
@@ -394,16 +463,63 @@ const Sending = () => {
                       className={`flex ${cast.sender_id === currentUser?.id ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg relative group ${
                           cast.sender_id === currentUser?.id
                             ? 'bg-cyan-500 text-white ml-12'
                             : 'bg-gray-700 text-gray-100 mr-12'
                         }`}
                       >
                         <p className="text-sm font-mono leading-relaxed">{cast.message}</p>
-                        <p className="text-xs mt-1 opacity-70">
-                          {formatTime(cast.created_at)}
-                        </p>
+                        <div className="flex items-center justify-between mt-1">
+                          <p className="text-xs opacity-70">
+                            {formatTime(cast.created_at)}
+                            {cast.is_edited && <span className="ml-1">(edited)</span>}
+                          </p>
+                          {cast.sender_id === currentUser?.id && (
+                            <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <button
+                                    onClick={() => {
+                                      setEditingCast(cast);
+                                      setEditMessage(cast.message);
+                                    }}
+                                    className="p-1 hover:bg-white/20 rounded"
+                                  >
+                                    <Edit className="w-3 h-3" />
+                                  </button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Edit Message</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <Textarea
+                                      value={editMessage}
+                                      onChange={(e) => setEditMessage(e.target.value)}
+                                      className="bg-gray-800/50 border-gray-600 text-white"
+                                      rows={3}
+                                    />
+                                    <div className="flex justify-end space-x-2">
+                                      <Button variant="outline" onClick={() => setEditingCast(null)}>
+                                        Cancel
+                                      </Button>
+                                      <Button onClick={editCast}>
+                                        Save Changes
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                              <button
+                                onClick={() => deleteCast(cast.id)}
+                                className="p-1 hover:bg-red-500/20 rounded"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}

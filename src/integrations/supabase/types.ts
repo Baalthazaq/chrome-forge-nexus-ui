@@ -41,24 +41,39 @@ export type Database = {
       casts: {
         Row: {
           created_at: string
+          deleted_at: string | null
+          edited_at: string | null
           id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
           message: string
+          original_message: string | null
           read_at: string | null
           sender_id: string
           stone_id: string
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
           id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
           message: string
+          original_message?: string | null
           read_at?: string | null
           sender_id: string
           stone_id: string
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
           id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
           message?: string
+          original_message?: string | null
           read_at?: string | null
           sender_id?: string
           stone_id?: string
@@ -216,6 +231,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      tome_shares: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          recipient_id: string
+          sender_id: string
+          status: string | null
+          tome_entry_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          recipient_id: string
+          sender_id: string
+          status?: string | null
+          tome_entry_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          recipient_id?: string
+          sender_id?: string
+          status?: string | null
+          tome_entry_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tome_shares_tome_entry_id_fkey"
+            columns: ["tome_entry_id"]
+            isOneToOne: false
+            referencedRelation: "tome_entries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

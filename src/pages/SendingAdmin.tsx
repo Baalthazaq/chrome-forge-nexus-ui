@@ -17,6 +17,11 @@ interface Cast {
   message: string;
   created_at: string;
   read_at: string | null;
+  deleted_at: string | null;
+  edited_at: string | null;
+  original_message: string | null;
+  is_deleted: boolean;
+  is_edited: boolean;
 }
 
 interface StoneWithParticipants {
@@ -33,6 +38,9 @@ interface StoneWithParticipants {
     message: string;
     sender_id: string;
     created_at: string;
+    is_deleted: boolean;
+    is_edited: boolean;
+    original_message: string | null;
   };
 }
 
@@ -89,10 +97,10 @@ const SendingAdmin = () => {
             .select('*', { count: 'exact', head: true })
             .eq('stone_id', stone.id);
 
-          // Get latest cast
+          // Get latest cast (including deleted ones for admin view)
           const { data: latestCast } = await supabase
             .from('casts')
-            .select('message, sender_id, created_at')
+            .select('message, sender_id, created_at, is_deleted, is_edited, original_message')
             .eq('stone_id', stone.id)
             .order('created_at', { ascending: false })
             .limit(1)
@@ -246,6 +254,12 @@ const SendingAdmin = () => {
                               <div className="space-y-1">
                                 <p className="text-sm text-muted-foreground truncate max-w-lg">
                                   Latest: "{stone.latest_cast.message}"
+                                  {stone.latest_cast.is_deleted && (
+                                    <span className="text-red-400 ml-2">[DELETED]</span>
+                                  )}
+                                  {stone.latest_cast.is_edited && (
+                                    <span className="text-yellow-400 ml-2">[EDITED]</span>
+                                  )}
                                 </p>
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                   <Clock className="h-3 w-3" />
@@ -316,6 +330,8 @@ const SendingAdmin = () => {
                                 >
                                   <div
                                     className={`max-w-sm lg:max-w-md px-4 py-3 rounded-lg ${
+                                      cast.is_deleted ? 'opacity-50 border-2 border-dashed border-red-400' : ''
+                                    } ${
                                       cast.sender_id === stone.participant_one_id
                                         ? 'bg-muted mr-12'
                                         : 'bg-primary text-primary-foreground ml-12'
@@ -330,8 +346,28 @@ const SendingAdmin = () => {
                                       <span className="text-xs opacity-70">
                                         {formatTime(cast.created_at)}
                                       </span>
+                                      {cast.is_deleted && (
+                                        <span className="text-xs font-bold text-red-400">[DELETED]</span>
+                                      )}
+                                      {cast.is_edited && (
+                                        <span className="text-xs font-bold text-yellow-400">[EDITED]</span>
+                                      )}
                                     </div>
-                                    <p className="text-sm font-mono leading-relaxed">{cast.message}</p>
+                                    
+                                    {cast.is_deleted ? (
+                                      <p className="text-sm font-mono leading-relaxed text-red-400 italic">
+                                        [Message was deleted]
+                                      </p>
+                                    ) : (
+                                      <p className="text-sm font-mono leading-relaxed">{cast.message}</p>
+                                    )}
+                                    
+                                    {cast.is_edited && cast.original_message && !cast.is_deleted && (
+                                      <div className="mt-2 pt-2 border-t border-gray-300/20">
+                                        <p className="text-xs text-muted-foreground mb-1">Original message:</p>
+                                        <p className="text-xs font-mono opacity-70 italic">{cast.original_message}</p>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               ))}
