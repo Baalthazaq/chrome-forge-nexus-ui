@@ -81,6 +81,7 @@ const Sending = () => {
           *,
           casts!inner(message, sender_id, created_at)
         `)
+        .or(`participant_one_id.eq.${currentUser?.id},participant_two_id.eq.${currentUser?.id}`)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
