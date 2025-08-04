@@ -917,7 +917,7 @@ const ToMe = () => {
         </Card>
 
         {/* Shared ToMe Notifications */}
-        <TomeShareNotifications />
+        <TomeShareNotifications onTomeAdded={fetchData} />
 
         {/* Content */}
         {activeTab === "tome" ? (

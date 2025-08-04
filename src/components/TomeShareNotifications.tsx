@@ -29,7 +29,11 @@ interface TomeShare {
   };
 }
 
-export const TomeShareNotifications = () => {
+interface TomeShareNotificationsProps {
+  onTomeAdded?: () => void;
+}
+
+export const TomeShareNotifications = ({ onTomeAdded }: TomeShareNotificationsProps) => {
   const { user } = useAuth();
   const { impersonatedUser } = useAdmin();
   const { toast } = useToast();
@@ -109,8 +113,14 @@ export const TomeShareNotifications = () => {
 
       if (shareError) throw shareError;
 
+      // Remove from pending shares immediately
       setPendingShares(prev => prev.filter(s => s.id !== share.id));
       setIsPreviewOpen(false);
+      
+      // Trigger parent refresh if callback provided
+      if (onTomeAdded) {
+        onTomeAdded();
+      }
       
       toast({
         title: "Success",
