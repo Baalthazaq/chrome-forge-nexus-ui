@@ -20,12 +20,6 @@ interface Stone {
   other_participant?: {
     character_name: string;
   };
-  participant_one?: {
-    character_name: string;
-  };
-  participant_two?: {
-    character_name: string;
-  };
   latest_cast?: {
     message: string;
     sender_id: string;
@@ -50,7 +44,7 @@ interface Profile {
 
 const Sending = () => {
   const { user } = useAuth();
-  const { impersonatedUser, isAdmin } = useAdmin();
+  const { impersonatedUser } = useAdmin();
   
   // Use impersonated user if available, otherwise use authenticated user
   const currentUser = impersonatedUser ? { id: impersonatedUser.user_id } : user;
@@ -81,80 +75,43 @@ const Sending = () => {
 
   const loadStones = async () => {
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('stones')
         .select(`
           *,
           casts!inner(message, sender_id, created_at)
-        `);
-
-      // For admin, show all stones. For regular users, filter by participation
-      if (!isAdmin) {
-        query = query.or(`participant_one_id.eq.${currentUser?.id},participant_two_id.eq.${currentUser?.id}`);
-      }
-
-      const { data, error } = await query.order('updated_at', { ascending: false });
+        `)
+        .or(`participant_one_id.eq.${currentUser?.id},participant_two_id.eq.${currentUser?.id}`)
+        .order('updated_at', { ascending: false });
 
       if (error) throw error;
 
-      // Get latest cast and participant info for each stone
+      // Get latest cast for each stone and other participant info
       const stonesWithInfo = await Promise.all(
         data.map(async (stone) => {
-          // For admin view, get both participant names
-          if (isAdmin) {
-            const [participantOneProfile, participantTwoProfile, latestCast] = await Promise.all([
-              supabase
-                .from('profiles')
-                .select('character_name')
-                .eq('user_id', stone.participant_one_id)
-                .maybeSingle(),
-              supabase
-                .from('profiles')
-                .select('character_name')
-                .eq('user_id', stone.participant_two_id)
-                .maybeSingle(),
-              supabase
-                .from('casts')
-                .select('*')
-                .eq('stone_id', stone.id)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle()
-            ]);
+          const otherParticipantId = stone.participant_one_id === currentUser?.id 
+            ? stone.participant_two_id 
+            : stone.participant_one_id;
 
-            return {
-              ...stone,
-              participant_one: participantOneProfile.data,
-              participant_two: participantTwoProfile.data,
-              latest_cast: latestCast.data
-            };
-          } else {
-            // For regular users, get only the other participant
-            const otherParticipantId = stone.participant_one_id === currentUser?.id 
-              ? stone.participant_two_id 
-              : stone.participant_one_id;
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('character_name')
+            .eq('user_id', otherParticipantId)
+            .single();
 
-            const [profile, latestCast] = await Promise.all([
-              supabase
-                .from('profiles')
-                .select('character_name')
-                .eq('user_id', otherParticipantId)
-                .maybeSingle(),
-              supabase
-                .from('casts')
-                .select('*')
-                .eq('stone_id', stone.id)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle()
-            ]);
+          const { data: latestCast } = await supabase
+            .from('casts')
+            .select('*')
+            .eq('stone_id', stone.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
 
-            return {
-              ...stone,
-              other_participant: profile.data,
-              latest_cast: latestCast.data
-            };
-          }
+          return {
+            ...stone,
+            other_participant: profile,
+            latest_cast: latestCast
+          };
         })
       );
 
@@ -398,13 +355,10 @@ const Sending = () => {
                         : 'bg-gray-800/50 hover:bg-gray-800/80'
                     }`}
                   >
-                     <div className="flex items-center justify-between mb-1">
-                       <span className="font-semibold text-cyan-400">
-                         {isAdmin 
-                           ? `${stone.participant_one?.character_name || 'Unknown'} ↔ ${stone.participant_two?.character_name || 'Unknown'}`
-                           : stone.other_participant?.character_name || 'Unknown'
-                         }
-                       </span>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-cyan-400">
+                        {stone.other_participant?.character_name || 'Unknown'}
+                      </span>
                       <span className="text-xs text-gray-400">
                         {stone.latest_cast ? formatTime(stone.latest_cast.created_at) : 'New'}
                       </span>
@@ -427,12 +381,9 @@ const Sending = () => {
               <div className="h-96 flex flex-col">
                 {/* Chat Header */}
                 <div className="p-4 border-b border-gray-700/50">
-                   <h3 className="text-lg font-semibold text-white">
-                     {isAdmin 
-                       ? `${selectedStone.participant_one?.character_name || 'Unknown'} ↔ ${selectedStone.participant_two?.character_name || 'Unknown'}`
-                       : selectedStone.other_participant?.character_name || 'Unknown'
-                     }
-                   </h3>
+                  <h3 className="text-lg font-semibold text-white">
+                    {selectedStone.other_participant?.character_name || 'Unknown'}
+                  </h3>
                 </div>
 
                 {/* Messages */}
