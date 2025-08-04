@@ -5,8 +5,19 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, MessageCircle, Users, Eye, Clock } from 'lucide-react';
+
+interface Cast {
+  id: string;
+  stone_id: string;
+  sender_id: string;
+  message: string;
+  created_at: string;
+  read_at: string | null;
+}
 
 interface StoneWithParticipants {
   id: string;
@@ -30,7 +41,10 @@ const SendingAdmin = () => {
   const { user } = useAuth();
   const { isAdmin, isLoading } = useAdmin();
   const [stones, setStones] = useState<StoneWithParticipants[]>([]);
+  const [selectedStone, setSelectedStone] = useState<StoneWithParticipants | null>(null);
+  const [conversationCasts, setConversationCasts] = useState<Cast[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingCasts, setLoadingCasts] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
@@ -99,6 +113,25 @@ const SendingAdmin = () => {
       console.error('Error loading conversations:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadConversationCasts = async (stone: StoneWithParticipants) => {
+    setLoadingCasts(true);
+    try {
+      const { data, error } = await supabase
+        .from('casts')
+        .select('*')
+        .eq('stone_id', stone.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setConversationCasts(data || []);
+      setSelectedStone(stone);
+    } catch (error) {
+      console.error('Error loading conversation casts:', error);
+    } finally {
+      setLoadingCasts(false);
     }
   };
 
@@ -184,57 +217,124 @@ const SendingAdmin = () => {
                 </div>
               ) : (
                 stones.map((stone) => (
-                  <div 
-                    key={stone.id} 
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                        <MessageCircle className="h-6 w-6 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-lg">
-                            {stone.participant_one_name} ↔ {stone.participant_two_name}
-                          </h3>
-                          <Badge variant="secondary" className="text-xs">
-                            {stone.cast_count} messages
-                          </Badge>
-                        </div>
-                        {stone.latest_cast ? (
-                          <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground truncate max-w-lg">
-                              Latest: "{stone.latest_cast.message}"
-                            </p>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <Clock className="h-3 w-3" />
-                              <span>{formatTime(stone.latest_cast.created_at)}</span>
-                              <span>•</span>
-                              <span>
-                                Sent by: {
-                                  stone.latest_cast.sender_id === stone.participant_one_id 
-                                    ? stone.participant_one_name 
-                                    : stone.participant_two_name
-                                }
-                              </span>
-                            </div>
+                  <Dialog key={stone.id}>
+                    <DialogTrigger asChild>
+                      <div 
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                        onClick={() => loadConversationCasts(stone)}
+                      >
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                            <MessageCircle className="h-6 w-6 text-primary" />
                           </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">No messages yet</p>
-                        )}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold text-lg">
+                                {stone.participant_one_name} ↔ {stone.participant_two_name}
+                              </h3>
+                              <Badge variant="secondary" className="text-xs">
+                                {stone.cast_count} messages
+                              </Badge>
+                            </div>
+                            {stone.latest_cast ? (
+                              <div className="space-y-1">
+                                <p className="text-sm text-muted-foreground truncate max-w-lg">
+                                  Latest: "{stone.latest_cast.message}"
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Clock className="h-3 w-3" />
+                                  <span>{formatTime(stone.latest_cast.created_at)}</span>
+                                  <span>•</span>
+                                  <span>
+                                    Sent by: {
+                                      stone.latest_cast.sender_id === stone.participant_one_id 
+                                        ? stone.participant_one_name 
+                                        : stone.participant_two_name
+                                    }
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">No messages yet</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            Created: {new Date(stone.created_at).toLocaleDateString()}
+                          </p>
+                          {stone.last_cast_at && (
+                            <p className="text-xs text-muted-foreground">
+                              Last activity: {formatTime(stone.last_cast_at)}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right space-y-1">
-                      <p className="text-xs text-muted-foreground">
-                        Created: {new Date(stone.created_at).toLocaleDateString()}
-                      </p>
-                      {stone.last_cast_at && (
-                        <p className="text-xs text-muted-foreground">
-                          Last activity: {formatTime(stone.last_cast_at)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl max-h-[80vh]">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <MessageCircle className="h-5 w-5" />
+                          {stone.participant_one_name} ↔ {stone.participant_two_name}
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <Badge variant="outline">{stone.cast_count} messages</Badge>
+                          <span>Created: {new Date(stone.created_at).toLocaleDateString()}</span>
+                          {stone.last_cast_at && (
+                            <span>Last activity: {formatTime(stone.last_cast_at)}</span>
+                          )}
+                        </div>
+                        <ScrollArea className="h-[400px] border rounded-lg p-4">
+                          {loadingCasts ? (
+                            <div className="flex items-center justify-center h-full">
+                              <div className="text-center">
+                                <MessageCircle className="h-8 w-8 mx-auto mb-2 text-primary animate-pulse" />
+                                <p>Loading conversation...</p>
+                              </div>
+                            </div>
+                          ) : conversationCasts.length === 0 ? (
+                            <div className="text-center text-muted-foreground">
+                              <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                              <p>No messages in this conversation yet</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {conversationCasts.map((cast) => (
+                                <div
+                                  key={cast.id}
+                                  className={`flex ${
+                                    cast.sender_id === stone.participant_one_id ? 'justify-start' : 'justify-end'
+                                  }`}
+                                >
+                                  <div
+                                    className={`max-w-sm lg:max-w-md px-4 py-3 rounded-lg ${
+                                      cast.sender_id === stone.participant_one_id
+                                        ? 'bg-muted mr-12'
+                                        : 'bg-primary text-primary-foreground ml-12'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-xs font-medium">
+                                        {cast.sender_id === stone.participant_one_id 
+                                          ? stone.participant_one_name 
+                                          : stone.participant_two_name}
+                                      </span>
+                                      <span className="text-xs opacity-70">
+                                        {formatTime(cast.created_at)}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm font-mono leading-relaxed">{cast.message}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </ScrollArea>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 ))
               )}
             </div>
