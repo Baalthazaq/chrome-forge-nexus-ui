@@ -23,6 +23,7 @@ import Brittlewisp from "./pages/Brittlewisp";
 import Wyrmcart from "./pages/Wyrmcart";
 import ToMe from "./pages/ToMe";
 import Roldex from "./pages/Roldex";
+import SendingAdmin from "./pages/SendingAdmin";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/sending" element={<SendingAdmin />} />
             <Route path="/admin/:app" element={<Admin />} />
             <Route path="/charisma" element={<Charisma />} />
             <Route path="/sending" element={<Sending />} />
