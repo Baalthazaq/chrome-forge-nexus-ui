@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { ContactNotesDialog } from "@/components/ContactNotesDialog";
 import { AddContactDialog } from "@/components/AddContactDialog";
 
@@ -16,35 +17,39 @@ const Roldex = () => {
   const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { impersonatedUser } = useAdmin();
+  
+  // Use impersonated user if available, otherwise use authenticated user
+  const effectiveUser = impersonatedUser || user;
 
   useEffect(() => {
-    if (user) {
+    if (effectiveUser) {
       loadData();
     }
-  }, [user]);
+  }, [effectiveUser]);
 
   const loadData = async () => {
-    if (!user) return;
+    if (!effectiveUser) return;
     
     try {
       setLoading(true);
       
-      // Load all profiles (excluding current user)
+      // Load all profiles (excluding current effective user)
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
-        .neq('user_id', user.id);
+        .neq('user_id', effectiveUser.user_id || effectiveUser.id);
 
       if (profilesError) throw profilesError;
 
-      // Load user's active contacts with their personal data
+      // Load effective user's active contacts with their personal data
       const { data: contactsData, error: contactsError } = await supabase
         .from('contacts')
         .select(`
           *,
           contact_tags (tag)
         `)
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUser.user_id || effectiveUser.id)
         .eq('is_active', true);
 
       if (contactsError) throw contactsError;
@@ -122,14 +127,14 @@ const Roldex = () => {
   });
 
   const handleAddContact = async (profileUserId: string) => {
-    if (!user) return;
+    if (!effectiveUser) return;
     
     try {
       // Check if contact already exists (including inactive ones)
       const { data: existingContact } = await supabase
         .from('contacts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUser.user_id || effectiveUser.id)
         .eq('contact_user_id', profileUserId)
         .maybeSingle();
 
@@ -146,7 +151,7 @@ const Roldex = () => {
         const { error } = await supabase
           .from('contacts')
           .insert({
-            user_id: user.id,
+            user_id: effectiveUser.user_id || effectiveUser.id,
             contact_user_id: profileUserId,
             personal_rating: 3,
             is_active: true
@@ -163,14 +168,14 @@ const Roldex = () => {
   };
 
   const handleRemoveContact = async (contactId: string) => {
-    if (!user) return;
+    if (!effectiveUser) return;
     
     try {
       const { error } = await supabase
         .from('contacts')
         .update({ is_active: false })
         .eq('id', contactId)
-        .eq('user_id', user.id);
+        .eq('user_id', effectiveUser.user_id || effectiveUser.id);
 
       if (error) throw error;
       

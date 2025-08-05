@@ -7,6 +7,7 @@ import { Search, Plus, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 
 interface AddContactDialogProps {
   onContactAdded: () => void;
@@ -19,25 +20,29 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
   const [availableProfiles, setAvailableProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+  const { impersonatedUser } = useAdmin();
   const { toast } = useToast();
+
+  // Use impersonated user if available, otherwise use authenticated user
+  const effectiveUser = impersonatedUser || user;
 
   useEffect(() => {
     if (open) {
       loadAvailableProfiles();
     }
-  }, [open, existingContacts]);
+  }, [open, existingContacts, effectiveUser]);
 
   const loadAvailableProfiles = async () => {
-    if (!user) return;
+    if (!effectiveUser) return;
     
     try {
       setLoading(true);
       
-      // Get all profiles except current user
+      // Get all profiles except current effective user
       const { data: profilesData, error } = await supabase
         .from('profiles')
         .select('*')
-        .neq('user_id', user.id);
+        .neq('user_id', effectiveUser.user_id || effectiveUser.id);
 
       if (error) throw error;
 
@@ -45,7 +50,7 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
       const { data: allContacts } = await supabase
         .from('contacts')
         .select('contact_user_id, is_active')
-        .eq('user_id', user.id);
+        .eq('user_id', effectiveUser.user_id || effectiveUser.id);
 
       // Filter out profiles that are already active contacts
       const activeContactUserIds = (allContacts || [])
@@ -76,14 +81,14 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
   );
 
   const handleAddContact = async (profileUserId: string, profileName: string) => {
-    if (!user) return;
+    if (!effectiveUser) return;
     
     try {
       // Check if contact already exists (including inactive ones)
       const { data: existingContact } = await supabase
         .from('contacts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUser.user_id || effectiveUser.id)
         .eq('contact_user_id', profileUserId)
         .maybeSingle();
 
@@ -105,7 +110,7 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
         const { error } = await supabase
           .from('contacts')
           .insert({
-            user_id: user.id,
+            user_id: effectiveUser.user_id || effectiveUser.id,
             contact_user_id: profileUserId,
             personal_rating: 3,
             is_active: true

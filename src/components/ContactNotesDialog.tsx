@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Star, Save, FileText, X, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 
 interface ContactNotesDialogProps {
   contact: any;
@@ -22,6 +24,11 @@ export const ContactNotesDialog = ({ contact, contactId, onUpdate }: ContactNote
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { impersonatedUser } = useAdmin();
+  
+  // Use impersonated user if available, otherwise use authenticated user
+  const effectiveUser = impersonatedUser || user;
 
   useEffect(() => {
     if (open && contactId) {
@@ -122,13 +129,12 @@ export const ContactNotesDialog = ({ contact, contactId, onUpdate }: ContactNote
 
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      if (!effectiveUser) throw new Error('Not authenticated');
 
       await supabase
         .from('tome_entries')
         .insert({
-          user_id: user.id,
+          user_id: effectiveUser.user_id || effectiveUser.id,
           title: `Notes on ${contact.name}`,
           content: notes,
           tags: [`Contact: ${contact.name}`, ...tags]
