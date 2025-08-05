@@ -88,6 +88,8 @@ serve(async (req) => {
         level: level || 1,
         credits: credits || 100,
         bio: 'NPC Account'
+      }, {
+        onConflict: 'user_id'
       })
 
     if (profileError) {
