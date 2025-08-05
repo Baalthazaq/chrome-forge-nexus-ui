@@ -78,8 +78,12 @@ const Doppleganger = () => {
         {/* Profile Header */}
         <Card className="p-6 bg-gradient-to-r from-indigo-900/30 to-purple-900/30 border-indigo-500/30 mb-8">
           <div className="flex items-center space-x-6">
-            <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
-              <User className="w-12 h-12 text-white" />
+            <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-indigo-500">
+              <img 
+                src={profile.avatar_url || `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face`}
+                alt={profile.character_name || 'Character'}
+                className="w-full h-full object-cover"
+              />
             </div>
             <div className="flex-1">
               <h2 className="text-3xl font-bold text-white mb-2">{profile.character_name || 'Unnamed Character'}</h2>
