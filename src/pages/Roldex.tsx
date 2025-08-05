@@ -10,87 +10,71 @@ import { ContactNotesDialog } from "@/components/ContactNotesDialog";
 
 const Roldex = () => {
   const [activeFilter, setActiveFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
-  const contacts = [
-    {
-      id: 1,
-      name: "Marcus Kane",
-      alias: "ShadowRunner",
-      role: "Data Broker",
-      company: "Independent",
-      phone: "+1-555-CYBER-01",
-      email: "marcus.encrypted@darknet.neural",
-      lastContact: "2 hours ago",
-      trustLevel: "Verified",
-      tags: ["Intel", "Hacking", "Reliable"],
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-      status: "online",
-      rating: 4.9
-    },
-    {
-      id: 2,
-      name: "Dr. Elena Vasquez",
-      alias: "BioHack",
-      role: "Cybernetics Specialist",
-      company: "Nexus Medical",
-      phone: "+1-555-NEURAL-02",
-      email: "e.vasquez@nexusmed.corp",
-      lastContact: "1 day ago",
-      trustLevel: "Corporate",
-      tags: ["Medical", "Augmentation", "Expensive"],
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b820?w=150&h=150&fit=crop&crop=face",
-      status: "busy",
-      rating: 4.7
-    },
-    {
-      id: 3,
-      name: "Jin Watanabe",
-      alias: "CodeGhost",
-      role: "Security Consultant",
-      company: "Phantom Securities",
-      phone: "+1-555-GHOST-03",
-      email: "jin@phantom.secure",
-      lastContact: "3 days ago",
-      trustLevel: "Trusted",
-      tags: ["Security", "Encryption", "Discrete"],
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-      status: "away",
-      rating: 4.8
-    },
-    {
-      id: 4,
-      name: "Zara Chen",
-      alias: "NeonWire",
-      role: "Info Trader",
-      company: "Street Network",
-      phone: "+1-555-NEON-04",
-      email: "zara.neon@streetnet.mesh",
-      lastContact: "1 week ago",
-      trustLevel: "Unverified",
-      tags: ["Intel", "Rumors", "Cheap"],
-      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-      status: "offline",
-      rating: 3.2
-    },
-    {
-      id: 5,
-      name: "Viktor Kozlov",
-      alias: "IronWall",
-      role: "Combat Specialist",
-      company: "Mercenary Guild",
-      phone: "+1-555-IRON-05",
-      email: "viktor@mercguild.combat",
-      lastContact: "2 weeks ago",
-      trustLevel: "Combat Tested",
-      tags: ["Security", "Combat", "Expensive"],
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
-      status: "online",
-      rating: 4.5
+  useEffect(() => {
+    if (user) {
+      loadData();
     }
-  ];
+  }, [user]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
+  const loadData = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      
+      // Load all profiles (excluding current user)
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .neq('user_id', user.id);
+
+      if (profilesError) throw profilesError;
+
+      // Load user's contacts with their personal data
+      const { data: contactsData, error: contactsError } = await supabase
+        .from('contacts')
+        .select(`
+          *,
+          contact_tags (tag)
+        `)
+        .eq('user_id', user.id);
+
+      if (contactsError) throw contactsError;
+
+      setProfiles(profilesData || []);
+      setContacts(contactsData || []);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getContactData = (profileUserId: string) => {
+    return contacts.find(contact => contact.contact_user_id === profileUserId);
+  };
+
+  const getContactTags = (profileUserId: string) => {
+    const contactData = getContactData(profileUserId);
+    return contactData?.contact_tags?.map((tag: any) => tag.tag) || [];
+  };
+
+  const getPersonalRating = (profileUserId: string) => {
+    const contactData = getContactData(profileUserId);
+    return contactData?.personal_rating || 3;
+  };
+
+  const getStatusColor = (status?: string) => {
+    // For now, randomize status since we don't have real-time status
+    const statuses = ['online', 'busy', 'away', 'offline'];
+    const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+    switch (randomStatus) {
       case "online": return "bg-green-400";
       case "busy": return "bg-red-400";
       case "away": return "bg-yellow-400";
@@ -99,20 +83,69 @@ const Roldex = () => {
     }
   };
 
-  const getTrustColor = (trust: string) => {
-    switch (trust) {
-      case "Verified": return "text-green-400 border-green-400";
-      case "Trusted": return "text-blue-400 border-blue-400";
-      case "Corporate": return "text-purple-400 border-purple-400";
-      case "Combat Tested": return "text-orange-400 border-orange-400";
-      case "Unverified": return "text-gray-400 border-gray-400";
-      default: return "text-gray-400 border-gray-400";
+  const getTrustColor = (rating: number) => {
+    if (rating >= 5) return "text-green-400 border-green-400";
+    if (rating >= 4) return "text-blue-400 border-blue-400";
+    if (rating >= 3) return "text-purple-400 border-purple-400";
+    if (rating >= 2) return "text-orange-400 border-orange-400";
+    return "text-gray-400 border-gray-400";
+  };
+
+  const getTrustLevel = (rating: number) => {
+    if (rating >= 5) return "Trusted";
+    if (rating >= 4) return "Reliable";
+    if (rating >= 3) return "Neutral";
+    if (rating >= 2) return "Questionable";
+    return "Untrusted";
+  };
+
+  const filteredProfiles = profiles.filter(profile => {
+    const matchesSearch = !searchTerm || 
+      profile.character_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      profile.character_class?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    
+    if (activeFilter === "all") return true;
+    
+    const rating = getPersonalRating(profile.user_id);
+    const trustLevel = getTrustLevel(rating).toLowerCase();
+    
+    return trustLevel.includes(activeFilter);
+  });
+
+  const handleAddContact = async (profileUserId: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('contacts')
+        .insert({
+          user_id: user.id,
+          contact_user_id: profileUserId,
+          personal_rating: 3
+        });
+
+      if (error) throw error;
+      
+      // Reload data
+      loadData();
+    } catch (error) {
+      console.error('Error adding contact:', error);
     }
   };
 
-  const filteredContacts = activeFilter === "all" 
-    ? contacts 
-    : contacts.filter(contact => contact.trustLevel.toLowerCase().includes(activeFilter));
+  const updateContact = () => {
+    loadData();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Loading contacts...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
@@ -143,14 +176,16 @@ const Roldex = () => {
           <div className="flex items-center space-x-4 mb-4">
             <Search className="w-5 h-5 text-blue-400" />
             <input 
-              placeholder="Search contacts by name, alias, or company..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search contacts by name or class..."
               className="flex-1 bg-transparent text-white placeholder-gray-400 outline-none"
             />
           </div>
           <div className="flex items-center space-x-2">
             <Filter className="w-4 h-4 text-gray-400" />
             <div className="flex space-x-2 flex-wrap">
-              {["all", "verified", "trusted", "corporate", "unverified"].map((filter) => (
+              {["all", "trusted", "reliable", "neutral", "questionable", "untrusted"].map((filter) => (
                 <Button
                   key={filter}
                   variant={activeFilter === filter ? "default" : "outline"}
@@ -168,86 +203,130 @@ const Roldex = () => {
           </div>
         </Card>
 
-        {/* Contacts Grid */}
+        {/* Profiles Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredContacts.map((contact) => (
-            <Card key={contact.id} className="p-6 bg-gray-900/30 border-gray-700/50 hover:border-blue-500/30 transition-all duration-300">
-              <div className="flex items-start space-x-4">
-                {/* Avatar */}
-                <div className="relative">
-                  <img 
-                    src={contact.avatar} 
-                    alt={contact.name}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-gray-600"
-                  />
-                  <div className={`absolute -bottom-1 -right-1 w-5 h-5 ${getStatusColor(contact.status)} rounded-full border-2 border-gray-900`}></div>
-                </div>
-
-                {/* Contact Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <h3 className="text-lg font-semibold text-white truncate">{contact.name}</h3>
-                    <Badge variant="outline" className={getTrustColor(contact.trustLevel)}>
-                      {contact.trustLevel}
-                    </Badge>
-                  </div>
-                  
-                  <p className="text-blue-400 text-sm mb-1">@{contact.alias}</p>
-                  <p className="text-gray-300 text-sm mb-2">{contact.role} • {contact.company}</p>
-                  
-                  <div className="flex items-center space-x-4 text-xs text-gray-400 mb-3">
-                    <div className="flex items-center space-x-1">
-                      <Star className="w-3 h-3 text-yellow-400" />
-                      <span>{contact.rating}</span>
-                    </div>
-                    <span>Last: {contact.lastContact}</span>
-                  </div>
-
-                  {/* Tags */}
-                  <div className="flex space-x-1 mb-4">
-                    {contact.tags.map((tag, tagIndex) => (
-                      <Badge key={tagIndex} variant="outline" className="text-xs border-blue-600 text-blue-400">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-
-                  {/* Contact Actions */}
-                  <div className="flex space-x-2">
-                    <Link to="/sending" className="flex-1">
-                      <Button variant="outline" size="sm" className="w-full border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white">
-                        <Zap className="w-3 h-3 mr-1" />
-                        Stonecall
-                      </Button>
-                    </Link>
-                    <ContactNotesDialog 
-                      contact={contact}
-                      contactId={undefined} // Will be populated when we integrate with real data
-                      onUpdate={() => {}}
+          {filteredProfiles.map((profile) => {
+            const contactData = getContactData(profile.user_id);
+            const isContact = !!contactData;
+            const personalRating = getPersonalRating(profile.user_id);
+            const trustLevel = getTrustLevel(personalRating);
+            const tags = getContactTags(profile.user_id);
+            
+            return (
+              <Card key={profile.id} className="p-6 bg-gray-900/30 border-gray-700/50 hover:border-blue-500/30 transition-all duration-300">
+                <div className="flex items-start space-x-4">
+                  {/* Avatar */}
+                  <div className="relative">
+                    <img 
+                      src={profile.avatar_url || `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face`}
+                      alt={profile.character_name || 'Character'}
+                      className="w-16 h-16 rounded-full object-cover border-2 border-gray-600"
                     />
+                    <div className={`absolute -bottom-1 -right-1 w-5 h-5 ${getStatusColor()} rounded-full border-2 border-gray-900`}></div>
+                  </div>
+
+                  {/* Contact Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <h3 className="text-lg font-semibold text-white truncate">
+                        {profile.character_name || 'Unknown Character'}
+                      </h3>
+                      {isContact && (
+                        <Badge variant="outline" className={getTrustColor(personalRating)}>
+                          {trustLevel}
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    <p className="text-gray-300 text-sm mb-2">
+                      {profile.character_class || 'Unknown Class'} • Level {profile.level || 1}
+                    </p>
+                    
+                    {isContact && (
+                      <>
+                        <div className="flex items-center space-x-4 text-xs text-gray-400 mb-3">
+                          <div className="flex items-center space-x-1">
+                            <Star className="w-3 h-3 text-yellow-400" />
+                            <span>{personalRating}/5</span>
+                          </div>
+                          <span>Cha Delta: {personalRating - 3 > 0 ? '+' : ''}{personalRating - 3}</span>
+                        </div>
+
+                        {/* Personal Tags */}
+                        {tags.length > 0 && (
+                          <div className="flex space-x-1 mb-4">
+                            {tags.map((tag, tagIndex) => (
+                              <Badge key={tagIndex} variant="outline" className="text-xs border-blue-600 text-blue-400">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Contact Actions */}
+                    <div className="flex space-x-2">
+                      {isContact ? (
+                        <>
+                          <Link to="/sending" className="flex-1">
+                            <Button variant="outline" size="sm" className="w-full border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white">
+                              <Zap className="w-3 h-3 mr-1" />
+                              Stonecall
+                            </Button>
+                          </Link>
+                          <ContactNotesDialog 
+                            contact={profile}
+                            contactId={contactData.id}
+                            onUpdate={updateContact}
+                          />
+                        </>
+                      ) : (
+                        <Button 
+                          onClick={() => handleAddContact(profile.user_id)}
+                          className="w-full bg-blue-500 hover:bg-blue-600"
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add Contact
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
+
+        {filteredProfiles.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-gray-400">No characters found matching your search.</p>
+          </div>
+        )}
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12">
           <Card className="p-4 bg-gray-900/30 border-gray-700/50 text-center">
-            <div className="text-2xl font-bold text-white">{contacts.length}</div>
-            <div className="text-gray-400 text-sm">Total Contacts</div>
+            <div className="text-2xl font-bold text-white">{profiles.length}</div>
+            <div className="text-gray-400 text-sm">Total Characters</div>
           </Card>
           <Card className="p-4 bg-gray-900/30 border-gray-700/50 text-center">
-            <div className="text-2xl font-bold text-green-400">{contacts.filter(c => c.status === "online").length}</div>
-            <div className="text-gray-400 text-sm">Online Now</div>
+            <div className="text-2xl font-bold text-blue-400">{contacts.length}</div>
+            <div className="text-gray-400 text-sm">In Contacts</div>
           </Card>
           <Card className="p-4 bg-gray-900/30 border-gray-700/50 text-center">
-            <div className="text-2xl font-bold text-blue-400">{contacts.filter(c => c.trustLevel === "Verified" || c.trustLevel === "Trusted").length}</div>
+            <div className="text-2xl font-bold text-green-400">
+              {contacts.filter(c => getPersonalRating(c.contact_user_id) >= 4).length}
+            </div>
             <div className="text-gray-400 text-sm">Trusted</div>
           </Card>
           <Card className="p-4 bg-gray-900/30 border-gray-700/50 text-center">
-            <div className="text-2xl font-bold text-purple-400">4.6</div>
+            <div className="text-2xl font-bold text-purple-400">
+              {contacts.length > 0 ? 
+                (contacts.reduce((sum, c) => sum + getPersonalRating(c.contact_user_id), 0) / contacts.length).toFixed(1) 
+                : '0.0'
+              }
+            </div>
             <div className="text-gray-400 text-sm">Avg Rating</div>
           </Card>
         </div>
