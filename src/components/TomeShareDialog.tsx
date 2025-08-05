@@ -73,7 +73,15 @@ export const TomeShareDialog = ({ tomeEntry, children }: TomeShareDialogProps) =
 
     setIsSharing(true);
     try {
+      console.log('Sharing ToMe:', {
+        tomeEntry: tomeEntry.id,
+        sender: displayUser.user_id || displayUser.id,
+        recipient: selectedRecipient,
+        displayUser
+      });
+
       // Create tome share entry
+      // If we're impersonating, use the admin's session for RLS but the NPC's ID as sender
       const { error: shareError } = await supabase
         .from('tome_shares')
         .insert({
@@ -83,7 +91,10 @@ export const TomeShareDialog = ({ tomeEntry, children }: TomeShareDialogProps) =
           message: shareMessage.trim() || `${displayUser.character_name || 'Someone'} has shared a ToMe entry with you: "${tomeEntry.title}"`
         });
 
-      if (shareError) throw shareError;
+      if (shareError) {
+        console.error('Share error:', shareError);
+        throw shareError;
+      }
 
       // Create a notification message in Sending
       const { data: existingStone } = await supabase
