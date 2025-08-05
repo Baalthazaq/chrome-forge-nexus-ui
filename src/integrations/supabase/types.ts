@@ -122,6 +122,7 @@ export type Database = {
           contact_user_id: string
           created_at: string
           id: string
+          is_active: boolean | null
           notes: string | null
           personal_rating: number | null
           updated_at: string
@@ -131,6 +132,7 @@ export type Database = {
           contact_user_id: string
           created_at?: string
           id?: string
+          is_active?: boolean | null
           notes?: string | null
           personal_rating?: number | null
           updated_at?: string
@@ -140,6 +142,7 @@ export type Database = {
           contact_user_id?: string
           created_at?: string
           id?: string
+          is_active?: boolean | null
           notes?: string | null
           personal_rating?: number | null
           updated_at?: string

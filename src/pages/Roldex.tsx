@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Search, Star, Filter, Zap } from "lucide-react";
+import { ArrowLeft, Plus, Search, Star, Filter, Zap, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,14 +37,15 @@ const Roldex = () => {
 
       if (profilesError) throw profilesError;
 
-      // Load user's contacts with their personal data
+      // Load user's active contacts with their personal data
       const { data: contactsData, error: contactsError } = await supabase
         .from('contacts')
         .select(`
           *,
           contact_tags (tag)
         `)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('is_active', true);
 
       if (contactsError) throw contactsError;
 
@@ -124,20 +125,59 @@ const Roldex = () => {
     if (!user) return;
     
     try {
+      // Check if contact already exists (including inactive ones)
+      const { data: existingContact } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('contact_user_id', profileUserId)
+        .single();
+
+      if (existingContact) {
+        // Reactivate existing contact
+        const { error } = await supabase
+          .from('contacts')
+          .update({ is_active: true })
+          .eq('id', existingContact.id);
+        
+        if (error) throw error;
+      } else {
+        // Create new contact
+        const { error } = await supabase
+          .from('contacts')
+          .insert({
+            user_id: user.id,
+            contact_user_id: profileUserId,
+            personal_rating: 3,
+            is_active: true
+          });
+
+        if (error) throw error;
+      }
+      
+      // Reload data
+      loadData();
+    } catch (error) {
+      console.error('Error adding contact:', error);
+    }
+  };
+
+  const handleRemoveContact = async (contactId: string) => {
+    if (!user) return;
+    
+    try {
       const { error } = await supabase
         .from('contacts')
-        .insert({
-          user_id: user.id,
-          contact_user_id: profileUserId,
-          personal_rating: 3
-        });
+        .update({ is_active: false })
+        .eq('id', contactId)
+        .eq('user_id', user.id);
 
       if (error) throw error;
       
       // Reload data
       loadData();
     } catch (error) {
-      console.error('Error adding contact:', error);
+      console.error('Error removing contact:', error);
     }
   };
 
@@ -244,9 +284,11 @@ const Roldex = () => {
                       )}
                     </div>
                     
-                    <p className="text-gray-300 text-sm mb-2">
-                      {profile.character_class || 'Unknown Class'} • Level {profile.level || 1}
-                    </p>
+                    <div className="text-gray-300 text-sm mb-2 space-y-1">
+                      <div>{profile.ancestry || 'Unknown Ancestry'} • {profile.job || 'Unknown Job'}</div>
+                      <div>{profile.company || 'No Company'} • Cha: {profile.charisma_score || 10}</div>
+                      {profile.alias && <div className="text-blue-300">@{profile.alias}</div>}
+                    </div>
                     
                     {isContact && (
                       <>
@@ -284,6 +326,14 @@ const Roldex = () => {
                         contactId={contactData.id}
                         onUpdate={updateContact}
                       />
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleRemoveContact(contactData.id)}
+                        className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
                     </div>
                   </div>
                 </div>
