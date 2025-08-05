@@ -253,24 +253,12 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
 
             <div className="space-y-2">
               <Label htmlFor="character_class">Class</Label>
-              <Select
+              <Input
+                id="character_class"
                 value={form.character_class}
-                onValueChange={(value) => setForm(prev => ({ ...prev, character_class: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select class" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Netrunner">Netrunner</SelectItem>
-                  <SelectItem value="Street Samurai">Street Samurai</SelectItem>
-                  <SelectItem value="Corpo">Corpo</SelectItem>
-                  <SelectItem value="Techie">Techie</SelectItem>
-                  <SelectItem value="Medic">Medic</SelectItem>
-                  <SelectItem value="Fixer">Fixer</SelectItem>
-                  <SelectItem value="Solo">Solo</SelectItem>
-                  <SelectItem value="Nomad">Nomad</SelectItem>
-                </SelectContent>
-              </Select>
+                onChange={(e) => setForm(prev => ({ ...prev, character_class: e.target.value }))}
+                placeholder="e.g., Netrunner, Solo, Corpo"
+              />
             </div>
 
             <div className="space-y-2">
