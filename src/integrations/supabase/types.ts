@@ -88,6 +88,65 @@ export type Database = {
           },
         ]
       }
+      contact_tags: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          tag: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          tag: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_tags_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          contact_user_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          personal_rating: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact_user_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          personal_rating?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact_user_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          personal_rating?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

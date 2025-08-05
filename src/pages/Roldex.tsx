@@ -1,9 +1,12 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Search, User, Phone, Mail, MessageSquare, Star, Shield, Users, Filter } from "lucide-react";
+import { ArrowLeft, Plus, Search, Star, Filter, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { ContactNotesDialog } from "@/components/ContactNotesDialog";
 
 const Roldex = () => {
   const [activeFilter, setActiveFilter] = useState("all");
@@ -211,18 +214,17 @@ const Roldex = () => {
 
                   {/* Contact Actions */}
                   <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" className="flex-1 border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white">
-                      <Phone className="w-3 h-3 mr-1" />
-                      Call
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1 border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white">
-                      <Mail className="w-3 h-3 mr-1" />
-                      Mail
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1 border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white">
-                      <MessageSquare className="w-3 h-3 mr-1" />
-                      Chat
-                    </Button>
+                    <Link to="/sending" className="flex-1">
+                      <Button variant="outline" size="sm" className="w-full border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white">
+                        <Zap className="w-3 h-3 mr-1" />
+                        Stonecall
+                      </Button>
+                    </Link>
+                    <ContactNotesDialog 
+                      contact={contact}
+                      contactId={undefined} // Will be populated when we integrate with real data
+                      onUpdate={() => {}}
+                    />
                   </div>
                 </div>
               </div>
