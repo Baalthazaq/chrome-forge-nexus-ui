@@ -84,11 +84,13 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
     if (!effectiveUser) return;
     
     try {
+      const effectiveUserId = effectiveUser.user_id || effectiveUser.id;
+      
       // Check if contact already exists (including inactive ones)
       const { data: existingContact } = await supabase
         .from('contacts')
         .select('*')
-        .eq('user_id', effectiveUser.user_id || effectiveUser.id)
+        .eq('user_id', effectiveUserId)
         .eq('contact_user_id', profileUserId)
         .maybeSingle();
 
@@ -100,29 +102,54 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
           .eq('id', existingContact.id);
         
         if (error) throw error;
-        
-        toast({
-          title: "Contact reactivated",
-          description: `${profileName} has been re-added to your contacts.`,
-        });
       } else {
         // Create new contact
         const { error } = await supabase
           .from('contacts')
           .insert({
-            user_id: effectiveUser.user_id || effectiveUser.id,
+            user_id: effectiveUserId,
             contact_user_id: profileUserId,
             personal_rating: 3,
             is_active: true
           });
 
         if (error) throw error;
-        
-        toast({
-          title: "Contact added",
-          description: `${profileName} has been added to your contacts.`,
-        });
       }
+
+      // Create mutual contact - check if the reverse contact exists
+      const { data: existingMutualContact } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('user_id', profileUserId)
+        .eq('contact_user_id', effectiveUserId)
+        .maybeSingle();
+
+      if (existingMutualContact) {
+        // Reactivate existing mutual contact
+        const { error } = await supabase
+          .from('contacts')
+          .update({ is_active: true })
+          .eq('id', existingMutualContact.id);
+        
+        if (error) throw error;
+      } else {
+        // Create new mutual contact
+        const { error } = await supabase
+          .from('contacts')
+          .insert({
+            user_id: profileUserId,
+            contact_user_id: effectiveUserId,
+            personal_rating: 3,
+            is_active: true
+          });
+
+        if (error) throw error;
+      }
+      
+      toast({
+        title: "Contact added",
+        description: `${profileName} has been added to your contacts mutually.`,
+      });
 
       onContactAdded();
       loadAvailableProfiles(); // Refresh the list

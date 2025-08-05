@@ -51,18 +51,35 @@ export const TomeShareDialog = ({ tomeEntry, children }: TomeShareDialogProps) =
     if (!displayUser) return;
 
     try {
-      const { data, error } = await supabase
+      // Get active contacts first
+      const { data: contactsData, error: contactsError } = await supabase
+        .from('contacts')
+        .select('contact_user_id')
+        .eq('user_id', displayUser.user_id || displayUser.id)
+        .eq('is_active', true);
+
+      if (contactsError) throw contactsError;
+
+      if (!contactsData || contactsData.length === 0) {
+        setProfiles([]);
+        return;
+      }
+
+      // Get profiles for all contacts
+      const contactUserIds = contactsData.map(contact => contact.contact_user_id);
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
-        .neq('user_id', displayUser.user_id || displayUser.id);
+        .in('user_id', contactUserIds);
 
-      if (error) throw error;
-      setProfiles(data || []);
+      if (profilesError) throw profilesError;
+
+      setProfiles(profilesData || []);
     } catch (error) {
       console.error('Error loading profiles:', error);
       toast({
         title: "Error",
-        description: "Failed to load users",
+        description: "Failed to load contacts",
         variant: "destructive",
       });
     }

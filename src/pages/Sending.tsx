@@ -149,15 +149,34 @@ const Sending = () => {
     try {
       console.log('Current user ID:', currentUser?.id);
       
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .neq('user_id', currentUser?.id);
+      // Get active contacts first
+      const { data: contactsData, error } = await supabase
+        .from('contacts')
+        .select('contact_user_id')
+        .eq('user_id', currentUser?.id)
+        .eq('is_active', true);
 
-      console.log('All profiles query result:', data, error);
+      console.log('Contacts query result:', contactsData, error);
 
       if (error) throw error;
-      setProfiles(data || []);
+
+      if (!contactsData || contactsData.length === 0) {
+        setProfiles([]);
+        return;
+      }
+
+      // Get profiles for all contacts
+      const contactUserIds = contactsData.map(contact => contact.contact_user_id);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('user_id', contactUserIds);
+
+      console.log('Profiles query result:', profilesData, profilesError);
+
+      if (profilesError) throw profilesError;
+
+      setProfiles(profilesData || []);
     } catch (error) {
       console.error('Error loading profiles:', error);
     }
