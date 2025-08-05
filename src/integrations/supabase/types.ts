@@ -149,37 +149,52 @@ export type Database = {
       }
       profiles: {
         Row: {
+          alias: string | null
+          ancestry: string | null
           avatar_url: string | null
           bio: string | null
           character_class: string | null
           character_name: string | null
+          charisma_score: number | null
+          company: string | null
           created_at: string
           credits: number | null
           id: string
+          job: string | null
           level: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          alias?: string | null
+          ancestry?: string | null
           avatar_url?: string | null
           bio?: string | null
           character_class?: string | null
           character_name?: string | null
+          charisma_score?: number | null
+          company?: string | null
           created_at?: string
           credits?: number | null
           id?: string
+          job?: string | null
           level?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          alias?: string | null
+          ancestry?: string | null
           avatar_url?: string | null
           bio?: string | null
           character_class?: string | null
           character_name?: string | null
+          charisma_score?: number | null
+          company?: string | null
           created_at?: string
           credits?: number | null
           id?: string
+          job?: string | null
           level?: number | null
           updated_at?: string
           user_id?: string
