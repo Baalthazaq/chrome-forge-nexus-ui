@@ -131,7 +131,7 @@ const Roldex = () => {
         .select('*')
         .eq('user_id', user.id)
         .eq('contact_user_id', profileUserId)
-        .single();
+        .maybeSingle();
 
       if (existingContact) {
         // Reactivate existing contact

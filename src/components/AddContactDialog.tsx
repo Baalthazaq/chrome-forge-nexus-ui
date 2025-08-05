@@ -41,10 +41,19 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
 
       if (error) throw error;
 
-      // Filter out profiles that are already contacts
-      const existingContactUserIds = existingContacts.map(contact => contact.contact_user_id);
+      // Get all contacts (both active and inactive) to filter properly
+      const { data: allContacts } = await supabase
+        .from('contacts')
+        .select('contact_user_id, is_active')
+        .eq('user_id', user.id);
+
+      // Filter out profiles that are already active contacts
+      const activeContactUserIds = (allContacts || [])
+        .filter(contact => contact.is_active)
+        .map(contact => contact.contact_user_id);
+      
       const available = (profilesData || []).filter(profile => 
-        !existingContactUserIds.includes(profile.user_id)
+        !activeContactUserIds.includes(profile.user_id)
       );
 
       setAvailableProfiles(available);
@@ -70,20 +79,45 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
     if (!user) return;
     
     try {
-      const { error } = await supabase
+      // Check if contact already exists (including inactive ones)
+      const { data: existingContact } = await supabase
         .from('contacts')
-        .insert({
-          user_id: user.id,
-          contact_user_id: profileUserId,
-          personal_rating: 3
-        });
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('contact_user_id', profileUserId)
+        .maybeSingle();
 
-      if (error) throw error;
-      
-      toast({
-        title: "Contact added",
-        description: `${profileName} has been added to your contacts.`,
-      });
+      if (existingContact) {
+        // Reactivate existing contact
+        const { error } = await supabase
+          .from('contacts')
+          .update({ is_active: true })
+          .eq('id', existingContact.id);
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Contact reactivated",
+          description: `${profileName} has been re-added to your contacts.`,
+        });
+      } else {
+        // Create new contact
+        const { error } = await supabase
+          .from('contacts')
+          .insert({
+            user_id: user.id,
+            contact_user_id: profileUserId,
+            personal_rating: 3,
+            is_active: true
+          });
+
+        if (error) throw error;
+        
+        toast({
+          title: "Contact added",
+          description: `${profileName} has been added to your contacts.`,
+        });
+      }
 
       onContactAdded();
       loadAvailableProfiles(); // Refresh the list
