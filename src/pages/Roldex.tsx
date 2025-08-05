@@ -99,7 +99,12 @@ const Roldex = () => {
     return "Untrusted";
   };
 
-  const filteredProfiles = profiles.filter(profile => {
+  // Only show profiles that are in the user's contacts
+  const contactedProfiles = profiles.filter(profile => {
+    return contacts.some(contact => contact.contact_user_id === profile.user_id);
+  });
+
+  const filteredProfiles = contactedProfiles.filter(profile => {
     const matchesSearch = !searchTerm || 
       profile.character_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       profile.character_class?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -267,29 +272,17 @@ const Roldex = () => {
 
                     {/* Contact Actions */}
                     <div className="flex space-x-2">
-                      {isContact ? (
-                        <>
-                          <Link to="/sending" className="flex-1">
-                            <Button variant="outline" size="sm" className="w-full border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white">
-                              <Zap className="w-3 h-3 mr-1" />
-                              Stonecall
-                            </Button>
-                          </Link>
-                          <ContactNotesDialog 
-                            contact={profile}
-                            contactId={contactData.id}
-                            onUpdate={updateContact}
-                          />
-                        </>
-                      ) : (
-                        <Button 
-                          onClick={() => handleAddContact(profile.user_id)}
-                          className="w-full bg-blue-500 hover:bg-blue-600"
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          Add Contact
+                      <Link to="/sending" className="flex-1">
+                        <Button variant="outline" size="sm" className="w-full border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white">
+                          <Zap className="w-3 h-3 mr-1" />
+                          Stonecall
                         </Button>
-                      )}
+                      </Link>
+                      <ContactNotesDialog 
+                        contact={profile}
+                        contactId={contactData.id}
+                        onUpdate={updateContact}
+                      />
                     </div>
                   </div>
                 </div>
