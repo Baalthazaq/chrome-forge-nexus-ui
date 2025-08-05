@@ -273,15 +273,26 @@ const Roldex = () => {
 
                   {/* Contact Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <h3 className="text-lg font-semibold text-white truncate">
-                        {profile.character_name || 'Unknown Character'}
-                      </h3>
-                      {isContact && (
-                        <Badge variant="outline" className={getTrustColor(personalRating)}>
-                          {trustLevel}
-                        </Badge>
-                      )}
+                    <div className="flex items-center justify-between space-x-2 mb-1">
+                      <div className="flex items-center space-x-2">
+                        <h3 className="text-lg font-semibold text-white truncate">
+                          {profile.character_name || 'Unknown Character'}
+                        </h3>
+                        {isContact && (
+                          <Badge variant="outline" className={getTrustColor(personalRating)}>
+                            {trustLevel}
+                          </Badge>
+                        )}
+                      </div>
+                      {/* Delete button in top right */}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleRemoveContact(contactData.id)}
+                        className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white p-1 h-8 w-8"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
                     </div>
                     
                     <div className="text-gray-300 text-sm mb-2 space-y-1">
@@ -326,14 +337,6 @@ const Roldex = () => {
                         contactId={contactData.id}
                         onUpdate={updateContact}
                       />
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleRemoveContact(contactData.id)}
-                        className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
                     </div>
                   </div>
                 </div>
