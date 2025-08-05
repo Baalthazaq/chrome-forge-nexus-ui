@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ContactNotesDialog } from "@/components/ContactNotesDialog";
+import { AddContactDialog } from "@/components/AddContactDialog";
 
 const Roldex = () => {
   const [activeFilter, setActiveFilter] = useState("all");
@@ -170,10 +171,10 @@ const Roldex = () => {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
             Rol'dex
           </h1>
-          <Button className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Contact
-          </Button>
+          <AddContactDialog 
+            onContactAdded={loadData}
+            existingContacts={contacts}
+          />
         </div>
 
         {/* Search and Filters */}
