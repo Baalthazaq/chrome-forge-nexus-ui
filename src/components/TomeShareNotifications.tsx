@@ -187,24 +187,9 @@ export const TomeShareNotifications = ({ onTomeAdded }: TomeShareNotificationsPr
     }
   };
 
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Share2 className="h-5 w-5" />
-            Shared ToMe Entries
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Loading...</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (pendingShares.length === 0) {
-    return null; // Don't show the card if there are no pending shares
+  // Don't render anything while loading or if there are no pending shares
+  if (loading || pendingShares.length === 0) {
+    return null;
   }
 
   return (
