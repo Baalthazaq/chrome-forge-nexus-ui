@@ -44,7 +44,20 @@ serve(async (req) => {
     }
 
     // Parse the request body
-    const { character_name, character_class, level, credits } = await req.json()
+    const { 
+      character_name, 
+      character_class, 
+      level = 1, 
+      credits = 100,
+      credit_rating,
+      ancestry,
+      job,
+      company,
+      charisma_score = 10,
+      notes,
+      is_searchable = true,
+      has_succubus_profile = false
+    } = await req.json()
 
     if (!character_name?.trim()) {
       return new Response('Character name is required', { status: 400, headers: corsHeaders })
@@ -84,9 +97,17 @@ serve(async (req) => {
       .upsert({
         user_id: authData.user.id,
         character_name,
+        ancestry: ancestry || null,
+        job: job || null,
+        company: company || null,
         character_class: character_class || 'NPC',
         level: level || 1,
-        credits: credits || 100,
+        credits: credit_rating || credits || 100,
+        credit_rating: credit_rating || credits || 100,
+        charisma_score: charisma_score || 10,
+        notes: notes || null,
+        is_searchable: is_searchable ?? true,
+        has_succubus_profile: has_succubus_profile || false,
         bio: 'NPC Account'
       }, {
         onConflict: 'user_id'

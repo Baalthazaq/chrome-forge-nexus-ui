@@ -161,10 +161,14 @@ export type Database = {
           charisma_score: number | null
           company: string | null
           created_at: string
+          credit_rating: number | null
           credits: number | null
+          has_succubus_profile: boolean | null
           id: string
+          is_searchable: boolean | null
           job: string | null
           level: number | null
+          notes: string | null
           updated_at: string
           user_id: string
         }
@@ -178,10 +182,14 @@ export type Database = {
           charisma_score?: number | null
           company?: string | null
           created_at?: string
+          credit_rating?: number | null
           credits?: number | null
+          has_succubus_profile?: boolean | null
           id?: string
+          is_searchable?: boolean | null
           job?: string | null
           level?: number | null
+          notes?: string | null
           updated_at?: string
           user_id: string
         }
@@ -195,10 +203,14 @@ export type Database = {
           charisma_score?: number | null
           company?: string | null
           created_at?: string
+          credit_rating?: number | null
           credits?: number | null
+          has_succubus_profile?: boolean | null
           id?: string
+          is_searchable?: boolean | null
           job?: string | null
           level?: number | null
+          notes?: string | null
           updated_at?: string
           user_id?: string
         }

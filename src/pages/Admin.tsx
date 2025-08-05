@@ -10,21 +10,15 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, Shield, Eye, Settings, UserPlus, Zap, Trash2 } from 'lucide-react';
+import { User, Shield, Eye, Settings, UserPlus, Zap, Trash2, Edit } from 'lucide-react';
+import { NPCDialog } from '@/components/NPCDialog';
 
 const Admin = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isAdmin, isLoading, impersonatedUser, startImpersonation, stopImpersonation, getAllUsers } = useAdmin();
   const [users, setUsers] = useState<any[]>([]);
-  const [isCreatingNPC, setIsCreatingNPC] = useState(false);
   const [isDeletingUser, setIsDeletingUser] = useState<string | null>(null);
-  const [npcForm, setNpcForm] = useState({
-    character_name: '',
-    character_class: '',
-    level: 1,
-    credits: 100
-  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -43,73 +37,6 @@ const Admin = () => {
     setUsers(usersList);
   };
 
-  const createNPCAccount = async () => {
-    if (!npcForm.character_name.trim()) {
-      toast({
-        title: "Error",
-        description: "Character name is required",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsCreatingNPC(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-npc', {
-        body: {
-          character_name: npcForm.character_name,
-          character_class: npcForm.character_class,
-          level: npcForm.level,
-          credits: npcForm.credits
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      toast({
-        title: "NPC Created",
-        description: data.message,
-      });
-
-      // Reset form and reload users
-      setNpcForm({
-        character_name: '',
-        character_class: '',
-        level: 1,
-        credits: 100
-      });
-      loadUsers();
-
-    } catch (error: any) {
-      console.error('NPC creation error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create NPC account",
-        variant: "destructive"
-      });
-    } finally {
-      setIsCreatingNPC(false);
-    }
-  };
-
-  const generateRandomNPC = () => {
-    const names = ['Vex', 'Cypher', 'Nova', 'Raven', 'Ghost', 'Phoenix', 'Shadow', 'Echo', 'Byte', 'Neon'];
-    const classes = ['Netrunner', 'Street Samurai', 'Corpo', 'Techie', 'Medic', 'Fixer', 'Solo', 'Nomad'];
-    
-    const randomName = names[Math.floor(Math.random() * names.length)];
-    const randomClass = classes[Math.floor(Math.random() * classes.length)];
-    const randomLevel = Math.floor(Math.random() * 10) + 1;
-    const randomCredits = Math.floor(Math.random() * 1000) + 100;
-
-    setNpcForm({
-      character_name: `${randomName}-${Math.floor(Math.random() * 1000)}`,
-      character_class: randomClass,
-      level: randomLevel,
-      credits: randomCredits
-    });
-  };
 
   const deleteUser = async (userId: string, userName: string) => {
     if (!confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) {
@@ -230,91 +157,16 @@ const Admin = () => {
           </CardContent>
         </Card>
 
-        {/* Quick NPC Creation */}
+        {/* NPC Management */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5" />
-              Quick NPC Creation
+              NPC Management
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              <div className="space-y-2">
-                <Label htmlFor="character_name">Character Name</Label>
-                <Input
-                  id="character_name"
-                  value={npcForm.character_name}
-                  onChange={(e) => setNpcForm(prev => ({ ...prev, character_name: e.target.value }))}
-                  placeholder="Enter NPC name"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="character_class">Class</Label>
-                <Select
-                  value={npcForm.character_class}
-                  onValueChange={(value) => setNpcForm(prev => ({ ...prev, character_class: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Netrunner">Netrunner</SelectItem>
-                    <SelectItem value="Street Samurai">Street Samurai</SelectItem>
-                    <SelectItem value="Corpo">Corpo</SelectItem>
-                    <SelectItem value="Techie">Techie</SelectItem>
-                    <SelectItem value="Medic">Medic</SelectItem>
-                    <SelectItem value="Fixer">Fixer</SelectItem>
-                    <SelectItem value="Solo">Solo</SelectItem>
-                    <SelectItem value="Nomad">Nomad</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="level">Level</Label>
-                <Input
-                  id="level"
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={npcForm.level}
-                  onChange={(e) => setNpcForm(prev => ({ ...prev, level: parseInt(e.target.value) || 1 }))}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="credits">Credits</Label>
-                <Input
-                  id="credits"
-                  type="number"
-                  min="0"
-                  value={npcForm.credits}
-                  onChange={(e) => setNpcForm(prev => ({ ...prev, credits: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
-              <Button
-                onClick={createNPCAccount}
-                disabled={isCreatingNPC || !npcForm.character_name.trim()}
-                className="flex items-center gap-2"
-              >
-                <UserPlus className="h-4 w-4" />
-                {isCreatingNPC ? 'Creating...' : 'Create NPC'}
-              </Button>
-              
-              <Button
-                onClick={generateRandomNPC}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Zap className="h-4 w-4" />
-                Random NPC
-              </Button>
-            </div>
+            <NPCDialog onSuccess={loadUsers} />
           </CardContent>
         </Card>
 
@@ -347,6 +199,16 @@ const Admin = () => {
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    <NPCDialog 
+                      npc={userProfile} 
+                      onSuccess={loadUsers}
+                      trigger={
+                        <Button size="sm" variant="outline">
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                      }
+                    />
                     <Button
                       onClick={() => startImpersonation(userProfile.user_id)}
                       disabled={impersonatedUser?.user_id === userProfile.user_id}
