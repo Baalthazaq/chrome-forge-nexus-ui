@@ -123,6 +123,7 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
 
         if (error) throw error;
 
+        console.log('NPC Update successful, calling onSuccess...');
         toast({
           title: "NPC Updated",
           description: `${form.character_name} has been updated successfully.`,

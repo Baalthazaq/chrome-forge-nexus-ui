@@ -33,7 +33,9 @@ const Admin = () => {
   }, [isAdmin, isLoading, navigate]);
 
   const loadUsers = async () => {
+    console.log('Admin: Loading users...');
     const usersList = await getAllUsers();
+    console.log('Admin: Loaded users:', usersList);
     setUsers(usersList);
   };
 
