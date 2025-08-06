@@ -189,7 +189,7 @@ const Admin = () => {
                     <div>
                       <p className="font-semibold">{userProfile.character_name || 'Unnamed Character'}</p>
                       <p className="text-sm text-muted-foreground">
-                        Level {userProfile.level} • {userProfile.credits} credits
+                        Level {userProfile.level} • {userProfile.credit_rating || userProfile.credits} credit rating
                       </p>
                       {userProfile.character_class && (
                         <p className="text-xs text-muted-foreground">
