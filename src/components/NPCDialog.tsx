@@ -97,7 +97,13 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
     try {
       if (npc) {
         // Update existing NPC
-        const { error } = await supabase
+        console.log('Updating NPC with data:', {
+          form,
+          npc_user_id: npc.user_id,
+          npc_data: npc
+        });
+        
+        const { data, error } = await supabase
           .from('profiles')
           .update({
             character_name: form.character_name,
