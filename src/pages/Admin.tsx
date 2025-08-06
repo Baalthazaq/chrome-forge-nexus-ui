@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, Shield, Eye, Settings, UserPlus, Zap, Trash2, Edit } from 'lucide-react';
+import { User, Shield, Eye, Settings, UserPlus, Zap, Trash2, Edit, Search } from 'lucide-react';
 import { NPCDialog } from '@/components/NPCDialog';
 
 const Admin = () => {
@@ -19,6 +19,9 @@ const Admin = () => {
   const { isAdmin, isLoading, impersonatedUser, startImpersonation, stopImpersonation, getAllUsers } = useAdmin();
   const [users, setUsers] = useState<any[]>([]);
   const [isDeletingUser, setIsDeletingUser] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [levelFilter, setLevelFilter] = useState<string>('all');
+  const [classFilter, setClassFilter] = useState<string>('all');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -107,6 +110,38 @@ const Admin = () => {
     'brittlewisp', 'wyrmcart', 'tome', 'roldex'
   ];
 
+  // Filter users based on search and filter criteria
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
+      const matchesSearch = !searchTerm || 
+        user.character_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.character_class?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.ancestry?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.job?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.company?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesLevel = levelFilter === 'all' || 
+        (levelFilter === 'low' && user.level <= 5) ||
+        (levelFilter === 'medium' && user.level > 5 && user.level <= 15) ||
+        (levelFilter === 'high' && user.level > 15);
+
+      const matchesClass = classFilter === 'all' || 
+        user.character_class === classFilter ||
+        (classFilter === 'none' && !user.character_class);
+
+      return matchesSearch && matchesLevel && matchesClass;
+    });
+  }, [users, searchTerm, levelFilter, classFilter]);
+
+  // Get unique character classes for filter
+  const characterClasses = useMemo(() => {
+    const classes = users
+      .map(user => user.character_class)
+      .filter((className, index, arr) => className && arr.indexOf(className) === index)
+      .sort();
+    return classes;
+  }, [users]);
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -177,12 +212,62 @@ const Admin = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
-              User Management
+              User Management ({filteredUsers.length} of {users.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {/* Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-muted/50 rounded-lg">
+              <div className="space-y-2">
+                <Label htmlFor="search">Search Users</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="search"
+                    placeholder="Search by name, class, ancestry..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="level-filter">Level Range</Label>
+                <Select value={levelFilter} onValueChange={setLevelFilter}>
+                  <SelectTrigger id="level-filter">
+                    <SelectValue placeholder="All levels" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Levels</SelectItem>
+                    <SelectItem value="low">Low (1-5)</SelectItem>
+                    <SelectItem value="medium">Medium (6-15)</SelectItem>
+                    <SelectItem value="high">High (16+)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="class-filter">Character Class</Label>
+                <Select value={classFilter} onValueChange={setClassFilter}>
+                  <SelectTrigger id="class-filter">
+                    <SelectValue placeholder="All classes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Classes</SelectItem>
+                    <SelectItem value="none">No Class</SelectItem>
+                    {characterClasses.map((className) => (
+                      <SelectItem key={className} value={className}>
+                        {className}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="space-y-4">
-              {users.map((userProfile) => (
+              {filteredUsers.map((userProfile) => (
                 <div key={userProfile.user_id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-4">
                     <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -235,6 +320,11 @@ const Admin = () => {
               {users.length === 0 && (
                 <p className="text-center text-muted-foreground py-8">
                   No users found
+                </p>
+              )}
+              {users.length > 0 && filteredUsers.length === 0 && (
+                <p className="text-center text-muted-foreground py-8">
+                  No users match the current filters
                 </p>
               )}
             </div>
