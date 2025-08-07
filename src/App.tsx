@@ -23,6 +23,7 @@ import Brittlewisp from "./pages/Brittlewisp";
 import Wyrmcart from "./pages/Wyrmcart";
 import ToMe from "./pages/ToMe";
 import Roldex from "./pages/Roldex";
+import RoldexAdmin from "./pages/RoldexAdmin";
 import SendingAdmin from "./pages/SendingAdmin";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,7 @@ const App = () => (
             <Route path="/wyrmcart" element={<Wyrmcart />} />
             <Route path="/tome" element={<ToMe />} />
             <Route path="/roldex" element={<Roldex />} />
+            <Route path="/roldex-admin" element={<RoldexAdmin />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

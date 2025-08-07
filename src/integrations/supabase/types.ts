@@ -125,6 +125,7 @@ export type Database = {
           is_active: boolean | null
           notes: string | null
           personal_rating: number | null
+          relationship: string | null
           updated_at: string
           user_id: string
         }
@@ -135,6 +136,7 @@ export type Database = {
           is_active?: boolean | null
           notes?: string | null
           personal_rating?: number | null
+          relationship?: string | null
           updated_at?: string
           user_id: string
         }
@@ -145,6 +147,7 @@ export type Database = {
           is_active?: boolean | null
           notes?: string | null
           personal_rating?: number | null
+          relationship?: string | null
           updated_at?: string
           user_id?: string
         }

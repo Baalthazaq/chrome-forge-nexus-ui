@@ -190,6 +190,14 @@ const Admin = () => {
                   <span className="text-xs text-muted-foreground">Admin View</span>
                 </Button>
               ))}
+              <Button
+                onClick={() => navigate('/roldex-admin')}
+                variant="outline"
+                className="h-16 flex flex-col gap-2 hover:bg-primary/10"
+              >
+                <span className="font-semibold">Roldex Network</span>
+                <span className="text-xs text-muted-foreground">Network Admin</span>
+              </Button>
             </div>
           </CardContent>
         </Card>

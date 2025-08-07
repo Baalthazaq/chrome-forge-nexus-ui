@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Search, Plus, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,8 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
   const [searchTerm, setSearchTerm] = useState("");
   const [availableProfiles, setAvailableProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState<any>(null);
+  const [relationship, setRelationship] = useState("");
   const { user } = useAuth();
   const { impersonatedUser } = useAdmin();
   const { toast } = useToast();
@@ -95,10 +98,13 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
         .maybeSingle();
 
       if (existingContact) {
-        // Reactivate existing contact
+        // Reactivate existing contact and update relationship
         const { error } = await supabase
           .from('contacts')
-          .update({ is_active: true })
+          .update({ 
+            is_active: true,
+            relationship: relationship || null
+          })
           .eq('id', existingContact.id);
         
         if (error) throw error;
@@ -110,7 +116,8 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
             user_id: effectiveUserId,
             contact_user_id: profileUserId,
             personal_rating: 3,
-            is_active: true
+            is_active: true,
+            relationship: relationship || null
           });
 
         if (error) throw error;
@@ -153,6 +160,8 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
 
       onContactAdded();
       loadAvailableProfiles(); // Refresh the list
+      setSelectedProfile(null);
+      setRelationship("");
     } catch (error) {
       console.error('Error adding contact:', error);
       toast({
@@ -190,9 +199,63 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
             />
           </div>
 
-          {/* Available Contacts List */}
+          {/* Available Contacts List or Relationship Form */}
           <div className="flex-1 overflow-y-auto space-y-3">
-            {loading ? (
+            {selectedProfile ? (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 p-4 bg-gray-800/50 border border-blue-500/30 rounded-lg">
+                  <img
+                    src={selectedProfile.avatar_url || `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face`}
+                    alt={selectedProfile.character_name || 'Character'}
+                    className="w-12 h-12 rounded-full object-cover border-2 border-gray-600"
+                  />
+                  <div>
+                    <h3 className="font-semibold text-white">
+                      {selectedProfile.character_name || 'Unknown Character'}
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      {selectedProfile.character_class || 'Unknown Class'} • Level {selectedProfile.level || 1}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="relationship" className="text-white">
+                    Your relationship to {selectedProfile.character_name} (optional)
+                  </Label>
+                  <Input
+                    id="relationship"
+                    value={relationship}
+                    onChange={(e) => setRelationship(e.target.value)}
+                    placeholder="e.g. Colleague, Friend, Parent, Teacher, etc."
+                    className="bg-gray-800 border-gray-600 text-white"
+                  />
+                  <p className="text-xs text-gray-400">
+                    This helps you remember how you know them and will be shown in the network view.
+                  </p>
+                </div>
+                
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={() => {
+                      setSelectedProfile(null);
+                      setRelationship("");
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={() => handleAddContact(selectedProfile.user_id, selectedProfile.character_name || 'Unknown Character')}
+                    className="flex-1 bg-blue-500 hover:bg-blue-600"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Contact
+                  </Button>
+                </div>
+              </div>
+            ) : loading ? (
               <div className="text-center py-8 text-gray-400">
                 Loading available characters...
               </div>
@@ -227,7 +290,7 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
                     </div>
                   </div>
                   <Button
-                    onClick={() => handleAddContact(profile.user_id, profile.character_name || 'Unknown Character')}
+                    onClick={() => setSelectedProfile(profile)}
                     size="sm"
                     className="bg-blue-500 hover:bg-blue-600"
                   >

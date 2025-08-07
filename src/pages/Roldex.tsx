@@ -67,6 +67,11 @@ const Roldex = () => {
     return contacts.find(contact => contact.contact_user_id === profileUserId);
   };
 
+  const getRelationship = (profileUserId: string) => {
+    const contactData = getContactData(profileUserId);
+    return contactData?.relationship || null;
+  };
+
   const getContactTags = (profileUserId: string) => {
     const contactData = getContactData(profileUserId);
     return contactData?.contact_tags?.map((tag: any) => tag.tag) || [];
@@ -300,10 +305,15 @@ const Roldex = () => {
                       </Button>
                     </div>
                     
-                    <div className="text-gray-300 text-sm mb-2 space-y-1">
+                     <div className="text-gray-300 text-sm mb-2 space-y-1">
                       <div>{profile.ancestry || 'Unknown Ancestry'} • {profile.job || 'Unknown Job'}</div>
                       <div>{profile.company || 'No Company'} • Cha: {profile.charisma_score || 10}</div>
                       {profile.alias && <div className="text-blue-300">@{profile.alias}</div>}
+                      {getRelationship(profile.user_id) && (
+                        <div className="text-cyan-300 italic">
+                          Relationship: {getRelationship(profile.user_id)}
+                        </div>
+                      )}
                     </div>
                     
                     {isContact && (
