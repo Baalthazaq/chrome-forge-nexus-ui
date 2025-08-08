@@ -23,7 +23,7 @@ import {
   Users,
   LogOut
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+
 
 const apps = [
   {
@@ -145,15 +145,8 @@ const Index = () => {
   }, [user, isLoading, navigate]);
 
   useEffect(() => {
-    const loadIcon = async () => {
-      const { data, error } = await supabase.storage
-        .from('icons')
-        .createSignedUrl('BHoldRC.gif', 60 * 60);
-      if (!error && data?.signedUrl) {
-        setBeholdrIconUrl(data.signedUrl);
-      }
-    };
-    loadIcon();
+    // Use public bucket URL (icons is public)
+    setBeholdrIconUrl('https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/BHoldRC.gif');
   }, []);
 
   if (isLoading) {
