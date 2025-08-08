@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
@@ -23,6 +23,7 @@ import {
   Users,
   LogOut
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const apps = [
   {
@@ -135,12 +136,25 @@ const Index = () => {
   const { user, isLoading, signOut } = useAuth();
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
+  const [beholdrIconUrl, setBeholdrIconUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && !user) {
       navigate('/auth');
     }
   }, [user, isLoading, navigate]);
+
+  useEffect(() => {
+    const loadIcon = async () => {
+      const { data, error } = await supabase.storage
+        .from('icons')
+        .createSignedUrl('BHoldRC.gif', 60 * 60);
+      if (!error && data?.signedUrl) {
+        setBeholdrIconUrl(data.signedUrl);
+      }
+    };
+    loadIcon();
+  }, []);
 
   if (isLoading) {
     return (
@@ -234,7 +248,11 @@ const Index = () => {
                   {/* Icon */}
                   <div className="relative z-10 flex flex-col items-center space-y-3">
                     <div className={`p-4 rounded-xl bg-gradient-to-br ${app.color} group-hover:shadow-lg transition-all duration-300`}>
-                      <IconComponent className="w-8 h-8 text-white" />
+                      {app.id === 'beholdr' && beholdrIconUrl ? (
+                        <img src={beholdrIconUrl} alt="BeholdR app icon animated GIF" className="w-8 h-8 object-contain" loading="lazy" />
+                      ) : (
+                        <IconComponent className="w-8 h-8 text-white" />
+                      )}
                     </div>
                     
                     {/* App Info */}
