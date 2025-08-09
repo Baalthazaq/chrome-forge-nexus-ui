@@ -107,7 +107,7 @@ const Admin = () => {
   const apps = [
     'charisma', 'sending', 'vault', 'questseek', 'succubus',
     'doppleganger', 'beholdr', 'crucible', 'nexuswire', 
-    'brittlewisp', 'wyrmcart', 'tome', 'roldex'
+    'brittlewisp', 'wyrmcart', 'tome'
   ];
 
   // Filter users based on search and filter criteria
