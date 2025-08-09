@@ -2,6 +2,9 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft, User, Shield, Zap, Eye, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,33 +15,96 @@ import { useEffect, useState } from "react";
 const Doppleganger = () => {
   const { user } = useAuth();
   const { impersonatedUser } = useAdmin();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [form, setForm] = useState<{ character_name: string; alias: string | null; bio: string | null; age: number | null; level: number | null; }>({
+    character_name: '',
+    alias: null,
+    bio: null,
+    age: null,
+    level: 1,
+  });
 
   // Use impersonated user if available, otherwise use authenticated user
   const displayUser = impersonatedUser || user;
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!displayUser) {
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', displayUser.user_id || displayUser.id)
-        .single();
-
-      if (!error && data) {
-        setProfile(data);
-      }
+useEffect(() => {
+  const fetchProfile = async () => {
+    if (!displayUser) {
       setLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', (displayUser as any).user_id || (displayUser as any).id)
+      .maybeSingle();
+
+    if (!error && data) {
+      setProfile(data);
+      setForm({
+        character_name: data.character_name || '',
+        alias: data.alias ?? null,
+        bio: data.bio ?? null,
+        age: (data as any).age ?? null,
+        level: data.level ?? 1,
+      });
+    }
+    setLoading(false);
+  };
+
+  fetchProfile();
+}, [displayUser]);
+
+useEffect(() => {
+  if (!profile) return;
+  document.title = `Doppleganger – ${profile.character_name || 'Profile'}`;
+  const meta = document.querySelector('meta[name="description"]');
+  if (meta) {
+    meta.setAttribute('content', `Identity profile for ${profile.character_name || 'user'} including name, alias, age, and level.`);
+  }
+}, [profile]);
+
+const handleSave = async () => {
+  if (!displayUser) return;
+  try {
+    setLoading(true);
+    const updates: any = {
+      character_name: form.character_name,
+      alias: form.alias,
+      bio: form.bio,
+      age: form.age,
+      level: form.level ?? 1,
+      updated_at: new Date().toISOString(),
     };
 
-    fetchProfile();
-  }, [displayUser]);
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('user_id', (displayUser as any).user_id || (displayUser as any).id)
+      .select('*')
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (data) {
+      setProfile(data);
+    } else {
+      setProfile((prev: any) => ({ ...(prev || {}), ...updates }));
+    }
+
+    toast({ title: 'Profile updated' });
+    setIsEditing(false);
+  } catch (e: any) {
+    console.error(e);
+    toast({ title: 'Update failed', description: e.message });
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (loading) {
     return (
@@ -94,10 +160,10 @@ const Doppleganger = () => {
                 <Badge className="bg-purple-600">Elite Status</Badge>
               </div>
             </div>
-            <Button variant="outline" className="border-indigo-500 text-indigo-400">
-              <Settings className="w-4 h-4 mr-2" />
-              Edit Profile
-            </Button>
+<Button variant="outline" className="border-indigo-500 text-indigo-400" onClick={() => setIsEditing((v) => !v)}>
+  <Settings className="w-4 h-4 mr-2" />
+  {isEditing ? "Cancel" : "Edit Profile"}
+</Button>
           </div>
         </Card>
 
@@ -144,36 +210,98 @@ const Doppleganger = () => {
           </Card>
         </div>
 
-        {/* Augmentations */}
-        <Card className="p-6 bg-gray-900/30 border-gray-700/50 mb-8">
-          <h3 className="text-xl font-semibold text-white mb-4">Active Augmentations</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { name: "Neural Interface MK-VII", type: "Neural", status: "Online", efficiency: "98%" },
-              { name: "Retinal Display System", type: "Ocular", status: "Online", efficiency: "95%" },
-              { name: "Subdermal Armor Plating", type: "Defensive", status: "Online", efficiency: "100%" },
-              { name: "Enhanced Reflexes", type: "Motor", status: "Online", efficiency: "92%" },
-              { name: "Encrypted Memory Bank", type: "Storage", status: "Online", efficiency: "100%" },
-              { name: "Bio-Monitor Suite", type: "Medical", status: "Online", efficiency: "89%" }
-            ].map((aug, index) => (
-              <div key={index} className="p-4 bg-gray-800/50 rounded-lg">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <div className="text-white font-semibold">{aug.name}</div>
-                    <div className="text-gray-400 text-sm">{aug.type}</div>
-                  </div>
-                  <Badge className={aug.status === "Online" ? "bg-green-600" : "bg-red-600"}>
-                    {aug.status}
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400 text-sm">Efficiency</span>
-                  <span className="text-green-400 font-mono">{aug.efficiency}</span>
-                </div>
-              </div>
-            ))}
+{/* Identity */}
+<Card className="p-6 bg-gray-900/30 border-gray-700/50 mb-8">
+  <h3 className="text-xl font-semibold text-white mb-4">Identity</h3>
+  {!isEditing ? (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <div className="text-gray-400 text-sm">Name</div>
+        <div className="text-white">{profile.character_name || '-'}</div>
+      </div>
+      <div>
+        <div className="text-gray-400 text-sm">Alias</div>
+        <div className="text-white">{profile.alias || '-'}</div>
+      </div>
+      <div>
+        <div className="text-gray-400 text-sm">Age</div>
+        <div className="text-white">{profile.age ?? '-'}</div>
+      </div>
+      <div>
+        <div className="text-gray-400 text-sm">Level</div>
+        <div className="text-white">{profile.level ?? '-'}</div>
+      </div>
+      <div className="md:col-span-2">
+        <div className="text-gray-400 text-sm">Bio</div>
+        <div className="text-white">{profile.bio || '-'}</div>
+      </div>
+      <div className="md:col-span-2">
+        <div className="text-gray-400 text-sm">Charisma (Cha)</div>
+        <div className="text-white">{profile.charisma_score ?? 10} <span className="text-gray-400 text-sm">(managed by Charisma network)</span></div>
+      </div>
+    </div>
+  ) : (
+    <div className="space-y-4">
+      <div>
+        <label className="text-gray-400 text-sm mb-1 block">Name</label>
+        <Input value={form.character_name} onChange={(e) => setForm({ ...form, character_name: e.target.value })} />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="text-gray-400 text-sm mb-1 block">Alias</label>
+          <Input value={form.alias ?? ''} onChange={(e) => setForm({ ...form, alias: e.target.value })} />
+        </div>
+        <div>
+          <label className="text-gray-400 text-sm mb-1 block">Age</label>
+          <Input type="number" min={0} value={form.age ?? ''} onChange={(e) => setForm({ ...form, age: e.target.value === '' ? null : Number(e.target.value) })} />
+        </div>
+        <div>
+          <label className="text-gray-400 text-sm mb-1 block">Level</label>
+          <Input type="number" min={1} value={form.level ?? 1} onChange={(e) => setForm({ ...form, level: e.target.value === '' ? 1 : Number(e.target.value) })} />
+        </div>
+      </div>
+      <div>
+        <label className="text-gray-400 text-sm mb-1 block">Bio</label>
+        <Textarea value={form.bio ?? ''} onChange={(e) => setForm({ ...form, bio: e.target.value })} rows={4} />
+      </div>
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={loading} className="border-indigo-500">Save Changes</Button>
+      </div>
+      <p className="text-xs text-gray-400">Charisma (Cha) is non-editable here; it's synced from the Charisma network.</p>
+    </div>
+  )}
+</Card>
+
+{/* Augmentations */}
+<Card className="p-6 bg-gray-900/30 border-gray-700/50 mb-8">
+  <h3 className="text-xl font-semibold text-white mb-4">Active Augmentations</h3>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {[
+      { name: "Neural Interface MK-VII", type: "Neural", status: "Online", efficiency: "98%" },
+      { name: "Retinal Display System", type: "Ocular", status: "Online", efficiency: "95%" },
+      { name: "Subdermal Armor Plating", type: "Defensive", status: "Online", efficiency: "100%" },
+      { name: "Enhanced Reflexes", type: "Motor", status: "Online", efficiency: "92%" },
+      { name: "Encrypted Memory Bank", type: "Storage", status: "Online", efficiency: "100%" },
+      { name: "Bio-Monitor Suite", type: "Medical", status: "Online", efficiency: "89%" }
+    ].map((aug, index) => (
+      <div key={index} className="p-4 bg-gray-800/50 rounded-lg">
+        <div className="flex justify-between items-start mb-2">
+          <div>
+            <div className="text-white font-semibold">{aug.name}</div>
+            <div className="text-gray-400 text-sm">{aug.type}</div>
           </div>
-        </Card>
+          <Badge className={aug.status === "Online" ? "bg-green-600" : "bg-red-600"}>
+            {aug.status}
+          </Badge>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-gray-400 text-sm">Efficiency</span>
+          <span className="text-green-400 font-mono">{aug.efficiency}</span>
+        </div>
+      </div>
+    ))}
+  </div>
+</Card>
 
         {/* Tags & Reputation */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

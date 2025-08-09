@@ -155,6 +155,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          age: number | null
           alias: string | null
           ancestry: string | null
           avatar_url: string | null
@@ -176,6 +177,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          age?: number | null
           alias?: string | null
           ancestry?: string | null
           avatar_url?: string | null
@@ -197,6 +199,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          age?: number | null
           alias?: string | null
           ancestry?: string | null
           avatar_url?: string | null
