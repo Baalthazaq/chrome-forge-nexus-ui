@@ -240,9 +240,9 @@ const Index = () => {
                   
                   {/* Icon */}
                   <div className="relative z-10 flex flex-col items-center space-y-3">
-                    <div className={`rounded-xl bg-gradient-to-br ${app.color} group-hover:shadow-lg transition-all duration-300 ${app.id === 'beholdr' ? 'w-16 h-16 overflow-hidden' : 'p-4'}`}>
+                    <div className={`group-hover:shadow-lg transition-all duration-300 ${app.id === 'beholdr' ? 'w-16 h-16' : ''} ${app.id !== 'beholdr' ? `p-4 rounded-xl bg-gradient-to-br ${app.color}` : ''}`}>
                       {app.id === 'beholdr' && beholdrIconUrl ? (
-                        <img src={beholdrIconUrl} alt="BeholdR app icon animated GIF" className={`${app.id === 'beholdr' ? 'w-full h-full object-cover' : 'w-8 h-8 object-contain'}`} loading="lazy" />
+                        <img src={beholdrIconUrl} alt="BeholdR app icon animated GIF" className="w-full h-full object-contain" loading="lazy" />
                       ) : (
                         <IconComponent className="w-8 h-8 text-white" />
                       )}
