@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
-import { Shield, LogOut } from "lucide-react";
+import { Shield, LogOut, Heart } from "lucide-react";
 
 
 const apps = [
@@ -42,12 +42,12 @@ const apps = [
     color: "from-yellow-400 to-orange-500"
   },
   {
-    id: "doppleganger",
-    name: "Doppleganger",
-    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif",
-    description: "ID Profile",
-    route: "/doppleganger",
-    color: "from-indigo-500 to-purple-500"
+    id: "succubus",
+    name: "Succubus",
+    icon: Heart,
+    description: "Social Connections",
+    route: "/succubus",
+    color: "from-red-500 to-pink-500"
   },
   {
     id: "crucible",
@@ -201,12 +201,18 @@ const Index = () => {
                   {/* Icon */}
                   <div className="relative z-10 flex flex-col items-center space-y-3">
                     <div className="w-16 h-16 group-hover:shadow-lg transition-all duration-300">
-                      <img 
-                        src={app.iconUrl} 
-                        alt={`${app.name} app icon`} 
-                        className="w-full h-full object-contain" 
-                        loading="lazy" 
-                      />
+                      {app.iconUrl ? (
+                        <img 
+                          src={app.iconUrl} 
+                          alt={`${app.name} app icon`} 
+                          className="w-full h-full object-contain" 
+                          loading="lazy" 
+                        />
+                      ) : (
+                        <div className={`w-full h-full p-4 rounded-xl bg-gradient-to-br ${app.color} flex items-center justify-center`}>
+                          <app.icon className="w-8 h-8 text-white" />
+                        </div>
+                      )}
                     </div>
                     
                     {/* App Info */}
