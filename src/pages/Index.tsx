@@ -35,7 +35,7 @@ const apps = [
   },
   {
     id: "vault",
-    name: "Vault",
+    name: "App of Holding",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Vault.gif",
     description: "Inventory & Funds",
     route: "/vault",
