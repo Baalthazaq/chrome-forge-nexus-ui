@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
-import { Shield, LogOut, Heart } from "lucide-react";
+import { Shield, LogOut } from "lucide-react";
 
 
 const apps = [
@@ -44,7 +44,7 @@ const apps = [
   {
     id: "succubus",
     name: "Succubus",
-    icon: Heart,
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Succubus.gif",
     description: "Social Connections",
     route: "/succubus",
     color: "from-red-500 to-pink-500"
@@ -201,18 +201,12 @@ const Index = () => {
                   {/* Icon */}
                   <div className="relative z-10 flex flex-col items-center space-y-3">
                     <div className="w-16 h-16 group-hover:shadow-lg transition-all duration-300">
-                      {app.iconUrl ? (
-                        <img 
-                          src={app.iconUrl} 
-                          alt={`${app.name} app icon`} 
-                          className="w-full h-full object-contain" 
-                          loading="lazy" 
-                        />
-                      ) : (
-                        <div className={`w-full h-full p-4 rounded-xl bg-gradient-to-br ${app.color} flex items-center justify-center`}>
-                          <app.icon className="w-8 h-8 text-white" />
-                        </div>
-                      )}
+                      <img 
+                        src={app.iconUrl} 
+                        alt={`${app.name} app icon`} 
+                        className="w-full h-full object-contain" 
+                        loading="lazy" 
+                      />
                     </div>
                     
                     {/* App Info */}
