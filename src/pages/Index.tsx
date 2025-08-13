@@ -5,31 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
-import { 
-  User, 
-  Send, 
-  Search, 
-  Star, 
-  Vault, 
-  Settings, 
-  Monitor, 
-  ShoppingCart,
-  Shield,
-  Calendar,
-  Heart,
-  Eye,
-  Sparkles,
-  BookOpen,
-  Users,
-  LogOut
-} from "lucide-react";
+import { Shield, LogOut } from "lucide-react";
 
 
 const apps = [
   {
     id: "charisma",
     name: "Cha",
-    icon: Star,
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Cha.gif",
     description: "Social Credit Network",
     route: "/charisma",
     color: "from-pink-500 to-purple-600"
@@ -37,7 +20,7 @@ const apps = [
   {
     id: "sending",
     name: "Sending",
-    icon: Send,
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Sending%20Stone.gif",
     description: "25-Word Messages",
     route: "/sending",
     color: "from-cyan-400 to-blue-500"
@@ -45,23 +28,15 @@ const apps = [
   {
     id: "questseek",
     name: "Questseek",
-    icon: Search,
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Questseek.gif",
     description: "Job Board",
     route: "/questseek",
     color: "from-emerald-400 to-teal-500"
   },
   {
-    id: "succubus",
-    name: "Succubus",
-    icon: Heart,
-    description: "Social Connections",
-    route: "/succubus",
-    color: "from-red-500 to-pink-500"
-  },
-  {
     id: "vault",
     name: "Vault",
-    icon: Vault,
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Vault.gif",
     description: "Inventory & Funds",
     route: "/vault",
     color: "from-yellow-400 to-orange-500"
@@ -69,39 +44,31 @@ const apps = [
   {
     id: "doppleganger",
     name: "Doppleganger",
-    icon: User,
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif",
     description: "ID Profile",
     route: "/doppleganger",
     color: "from-indigo-500 to-purple-500"
   },
   {
     id: "crucible",
-    name: "Crucible",
-    icon: Settings,
+    name: "@tunes",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Attunes.gif",
     description: "Cybernetics Interface",
     route: "/crucible",
     color: "from-gray-500 to-slate-600"
   },
   {
     id: "nexuswire",
-    name: "NexusWire",
-    icon: Sparkles,
+    name: "CVNews",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Nexus%20News.gif",
     description: "News Network",
     route: "/nexuswire",
     color: "from-blue-500 to-cyan-500"
   },
   {
-    id: "brittlewisp",
-    name: "Brittlewisp.inc",
-    icon: Shield,
-    description: "Security Services",
-    route: "/brittlewisp",
-    color: "from-violet-500 to-purple-600"
-  },
-  {
     id: "wyrmcart",
     name: "Wyrmcart",
-    icon: ShoppingCart,
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Wyrmcart.gif",
     description: "Shopping Network",
     route: "/wyrmcart",
     color: "from-green-500 to-emerald-500"
@@ -109,7 +76,7 @@ const apps = [
   {
     id: "beholdr",
     name: "BeholdR",
-    icon: Eye,
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/BHoldRC.gif",
     description: "Neural Video Feed",
     route: "/beholdr",
     color: "from-purple-500 to-blue-500"
@@ -117,7 +84,7 @@ const apps = [
   {
     id: "tome",
     name: "ToMe",
-    icon: BookOpen,
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Tome.gif",
     description: "Digital Notes",
     route: "/tome",
     color: "from-indigo-500 to-purple-500"
@@ -125,7 +92,7 @@ const apps = [
   {
     id: "roldex",
     name: "Rol'dex",
-    icon: Users,
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Roldex.gif",
     description: "Contact Network",
     route: "/roldex",
     color: "from-blue-500 to-indigo-500"
@@ -136,18 +103,12 @@ const Index = () => {
   const { user, isLoading, signOut } = useAuth();
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
-  const [beholdrIconUrl, setBeholdrIconUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && !user) {
       navigate('/auth');
     }
   }, [user, isLoading, navigate]);
-
-  useEffect(() => {
-    // Use public bucket URL (icons is public)
-    setBeholdrIconUrl('https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/BHoldRC.gif');
-  }, []);
 
   if (isLoading) {
     return (
@@ -231,7 +192,6 @@ const Index = () => {
         {/* App Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 max-w-6xl mx-auto">
           {apps.map((app) => {
-            const IconComponent = app.icon;
             return (
               <Link key={app.id} to={app.route} className="group">
                 <Card className="relative p-6 bg-gray-900/30 border-gray-700/50 backdrop-blur-sm hover:bg-gray-800/40 transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg group-hover:shadow-cyan-500/20">
@@ -240,12 +200,13 @@ const Index = () => {
                   
                   {/* Icon */}
                   <div className="relative z-10 flex flex-col items-center space-y-3">
-                    <div className={`group-hover:shadow-lg transition-all duration-300 ${app.id === 'beholdr' ? 'w-16 h-16' : ''} ${app.id !== 'beholdr' ? `p-4 rounded-xl bg-gradient-to-br ${app.color}` : ''}`}>
-                      {app.id === 'beholdr' && beholdrIconUrl ? (
-                        <img src={beholdrIconUrl} alt="BeholdR app icon animated GIF" className="w-full h-full object-contain" loading="lazy" />
-                      ) : (
-                        <IconComponent className="w-8 h-8 text-white" />
-                      )}
+                    <div className="w-16 h-16 group-hover:shadow-lg transition-all duration-300">
+                      <img 
+                        src={app.iconUrl} 
+                        alt={`${app.name} app icon`} 
+                        className="w-full h-full object-contain" 
+                        loading="lazy" 
+                      />
                     </div>
                     
                     {/* App Info */}
