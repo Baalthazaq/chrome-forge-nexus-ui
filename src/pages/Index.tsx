@@ -13,13 +13,13 @@ const apps = [
     id: "charisma",
     name: "Cha",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Cha.gif",
-    description: "Social Credit Network",
+    description: "Social Credit Score",
     route: "/charisma",
     color: "from-pink-500 to-purple-600"
   },
   {
     id: "sending",
-    name: "Sending",
+    name: "Sending Stone",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Sending%20Stone.gif",
     description: "25-Word Messages",
     route: "/sending",
@@ -29,7 +29,7 @@ const apps = [
     id: "questseek",
     name: "Questseek",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Questseek.gif",
-    description: "Job Board",
+    description: "Notice Board",
     route: "/questseek",
     color: "from-emerald-400 to-teal-500"
   },
@@ -53,7 +53,7 @@ const apps = [
     id: "crucible",
     name: "@tunes",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Attunes.gif",
-    description: "Cybernetics Interface",
+    description: "Attunement",
     route: "/crucible",
     color: "from-gray-500 to-slate-600"
   },
@@ -69,7 +69,7 @@ const apps = [
     id: "wyrmcart",
     name: "Wyrmcart",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Wyrmcart.gif",
-    description: "Shopping Network",
+    description: "Shopping",
     route: "/wyrmcart",
     color: "from-green-500 to-emerald-500"
   },
@@ -77,7 +77,7 @@ const apps = [
     id: "beholdr",
     name: "BeholdR",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/BHoldRC.gif",
-    description: "Neural Video Feed",
+    description: "Video Feed",
     route: "/beholdr",
     color: "from-purple-500 to-blue-500"
   },
@@ -93,7 +93,7 @@ const apps = [
     id: "roldex",
     name: "Rol'dex",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Roldex.gif",
-    description: "Contact Network",
+    description: "Contacts",
     route: "/roldex",
     color: "from-blue-500 to-indigo-500"
   }
