@@ -84,7 +84,7 @@ const apps = [
   {
     id: "tome",
     name: "ToMe",
-    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Tome.gif",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Tome2.gif",
     description: "Digital Notes",
     route: "/tome",
     color: "from-indigo-500 to-purple-500"
