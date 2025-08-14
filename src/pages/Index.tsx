@@ -204,7 +204,7 @@ const Index = () => {
                       <img 
                         src={app.iconUrl} 
                         alt={`${app.name} app icon`} 
-                        className="w-full h-full object-contain"
+                        className={`h-full object-cover ${app.id === 'tome' ? 'w-12' : 'w-full object-contain'}`}
                         loading="lazy" 
                       />
                     </div>
