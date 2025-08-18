@@ -76,17 +76,19 @@ const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) =>
   setAvatarUploading(true);
   try {
     const fileExt = file.name.split('.').pop();
-    const fileName = `${(displayUser as any).user_id || (displayUser as any).id}_${Date.now()}.${fileExt}`;
+    const uid = (displayUser as any).user_id || (displayUser as any).id;
+    const filePath = `${uid}/${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(fileName, file);
+      .upload(filePath, file, { upsert: true, contentType: file.type });
 
     if (uploadError) throw uploadError;
 
-    const { data: { publicUrl } } = supabase.storage
+    const { data: publicData } = supabase.storage
       .from('avatars')
-      .getPublicUrl(fileName);
+      .getPublicUrl(filePath);
+    const publicUrl = publicData.publicUrl;
 
     const { error: updateError } = await supabase
       .from('profiles')
