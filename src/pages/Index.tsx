@@ -10,6 +10,14 @@ import { Shield, LogOut } from "lucide-react";
 
 const apps = [
   {
+    id: "doppleganger",
+    name: "Doppleganger",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/placeholder.svg",
+    description: "Digital Identity",
+    route: "/doppleganger",
+    color: "from-violet-500 to-purple-600"
+  },
+  {
     id: "charisma",
     name: "Cha",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Cha.gif",
@@ -96,14 +104,6 @@ const apps = [
     description: "Contacts",
     route: "/roldex",
     color: "from-blue-500 to-indigo-500"
-  },
-  {
-    id: "doppleganger",
-    name: "Doppleganger",
-    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif",
-    description: "Digital Identity",
-    route: "/doppleganger",
-    color: "from-violet-500 to-purple-600"
   }
 ];
 

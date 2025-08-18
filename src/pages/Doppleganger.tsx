@@ -75,33 +75,52 @@ const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) =>
 
   setAvatarUploading(true);
   try {
+    // Simple file name without folder structure first
     const fileExt = file.name.split('.').pop();
-    const uid = (displayUser as any).user_id || (displayUser as any).id;
-    const filePath = `${uid}/${Date.now()}.${fileExt}`;
+    const fileName = `avatar_${Date.now()}.${fileExt}`;
 
-    const { error: uploadError } = await supabase.storage
+    // Try uploading without folder structure
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(filePath, file, { upsert: true, contentType: file.type });
+      .upload(fileName, file, { 
+        cacheControl: '3600',
+        upsert: true 
+      });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      throw uploadError;
+    }
 
-    const { data: publicData } = supabase.storage
+    // Get public URL
+    const { data: urlData } = supabase.storage
       .from('avatars')
-      .getPublicUrl(filePath);
-    const publicUrl = publicData.publicUrl;
+      .getPublicUrl(fileName);
 
+    if (!urlData?.publicUrl) {
+      throw new Error('Failed to get public URL');
+    }
+
+    // Update profile
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ avatar_url: publicUrl })
+      .update({ avatar_url: urlData.publicUrl })
       .eq('user_id', (displayUser as any).user_id || (displayUser as any).id);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('Profile update error:', updateError);
+      throw updateError;
+    }
 
-    setProfile((prev: any) => ({ ...prev, avatar_url: publicUrl }));
+    setProfile((prev: any) => ({ ...prev, avatar_url: urlData.publicUrl }));
     toast({ title: 'Avatar updated successfully' });
   } catch (e: any) {
-    console.error(e);
-    toast({ title: 'Avatar upload failed', description: e.message, variant: 'destructive' });
+    console.error('Avatar upload failed:', e);
+    toast({ 
+      title: 'Avatar upload failed', 
+      description: e.message || 'Unknown error occurred', 
+      variant: 'destructive' 
+    });
   } finally {
     setAvatarUploading(false);
   }
