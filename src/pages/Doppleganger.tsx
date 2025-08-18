@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, User, Shield, Zap, Eye, Settings } from "lucide-react";
+import { ArrowLeft, User, Shield, Zap, Eye, Settings, Camera } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -19,6 +19,7 @@ const Doppleganger = () => {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [form, setForm] = useState<{ character_name: string; alias: string | null; bio: string | null; age: number | null; level: number | null; }>({
     character_name: '',
     alias: null,
@@ -67,6 +68,42 @@ useEffect(() => {
     meta.setAttribute('content', `Identity profile for ${profile.character_name || 'user'} including name, alias, age, and level.`);
   }
 }, [profile]);
+
+const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const file = event.target.files?.[0];
+  if (!file || !displayUser) return;
+
+  setAvatarUploading(true);
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${(displayUser as any).user_id || (displayUser as any).id}_${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ avatar_url: publicUrl })
+      .eq('user_id', (displayUser as any).user_id || (displayUser as any).id);
+
+    if (updateError) throw updateError;
+
+    setProfile((prev: any) => ({ ...prev, avatar_url: publicUrl }));
+    toast({ title: 'Avatar updated successfully' });
+  } catch (e: any) {
+    console.error(e);
+    toast({ title: 'Avatar upload failed', description: e.message, variant: 'destructive' });
+  } finally {
+    setAvatarUploading(false);
+  }
+};
 
 const handleSave = async () => {
   if (!displayUser) return;
@@ -144,12 +181,31 @@ const handleSave = async () => {
         {/* Profile Header */}
         <Card className="p-6 bg-gradient-to-r from-indigo-900/30 to-purple-900/30 border-indigo-500/30 mb-8">
           <div className="flex items-center space-x-6">
-            <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-indigo-500">
+            <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-indigo-500">
               <img 
                 src={profile.avatar_url || `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face`}
                 alt={profile.character_name || 'Character'}
                 className="w-full h-full object-cover"
               />
+              {isEditing && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                  <label className="cursor-pointer">
+                    <Camera className="w-6 h-6 text-white" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      disabled={avatarUploading}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              )}
+              {avatarUploading && (
+                <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                  <div className="text-white text-xs">Uploading...</div>
+                </div>
+              )}
             </div>
             <div className="flex-1">
               <h2 className="text-3xl font-bold text-white mb-2">{profile.character_name || 'Unnamed Character'}</h2>
