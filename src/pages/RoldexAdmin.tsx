@@ -30,7 +30,6 @@ interface Profile {
   avatar_url: string;
   job: string;
   company: string;
-  level: number;
 }
 
 interface Contact {
@@ -423,7 +422,7 @@ const RoldexAdmin = () => {
                           {selectedNodeDetails.profile.character_name}
                         </h3>
                         <p className="text-gray-400">
-                          {selectedNodeDetails.profile.character_class} • Level {selectedNodeDetails.profile.level}
+                          {selectedNodeDetails.profile.character_class}
                         </p>
                         <p className="text-gray-500 text-sm">
                           {selectedNodeDetails.profile.job} at {selectedNodeDetails.profile.company}

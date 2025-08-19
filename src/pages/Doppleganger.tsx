@@ -1,11 +1,11 @@
-
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, User, Shield, Zap, Eye, Settings, Camera } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft, User, Shield, Zap, Eye, Settings, Camera, Activity, Dumbbell, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -14,155 +14,240 @@ import { useEffect, useState } from "react";
 
 const Doppleganger = () => {
   const { user } = useAuth();
-  const { impersonatedUser } = useAdmin();
+  const { impersonatedUser, isAdmin } = useAdmin();
   const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [form, setForm] = useState<{ character_name: string; alias: string | null; bio: string | null; age: number | null; level: number | null; }>({
+  const [reputationTags, setReputationTags] = useState<string[]>([]);
+  const [userActivity, setUserActivity] = useState<any[]>([]);
+  const [augmentations, setAugmentations] = useState<any[]>([]);
+  const [selectedDisplayName, setSelectedDisplayName] = useState('');
+  
+  const [form, setForm] = useState({
     character_name: '',
-    alias: null,
-    bio: null,
-    age: null,
-    level: 1,
+    job: '',
+    employer: '',
+    education: '',
+    address: '',
+    bio: '',
+    age: null as number | null,
+    aliases: [] as string[],
+    security_rating: 'C',
+    agility: 10,
+    strength: 10,
+    finesse: 10,
+    instinct: 10,
+    presence: 10,
+    knowledge: 10,
   });
 
   // Use impersonated user if available, otherwise use authenticated user
   const displayUser = impersonatedUser || user;
 
-useEffect(() => {
-  const fetchProfile = async () => {
-    if (!displayUser) {
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!displayUser) {
+        setLoading(false);
+        return;
+      }
+
+      const userId = (displayUser as any).user_id || (displayUser as any).id;
+
+      // Fetch profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!profileError && profileData) {
+        setProfile(profileData);
+        setForm({
+          character_name: profileData.character_name || '',
+          job: profileData.job || '',
+          employer: profileData.employer || '',
+          education: profileData.education || '',
+          address: profileData.address || '',
+          bio: profileData.bio || '',
+          age: profileData.age,
+          aliases: profileData.aliases || [],
+          security_rating: profileData.security_rating || 'C',
+          agility: profileData.agility || 10,
+          strength: profileData.strength || 10,
+          finesse: profileData.finesse || 10,
+          instinct: profileData.instinct || 10,
+          presence: profileData.presence || 10,
+          knowledge: profileData.knowledge || 10,
+        });
+        
+        // Set initial display name
+        const displayOptions = [profileData.character_name, ...(profileData.aliases || [])].filter(Boolean);
+        setSelectedDisplayName(displayOptions[0] || profileData.character_name || '');
+      }
+
+      // Fetch reputation tags
+      const { data: tagsData } = await supabase
+        .from('reputation_tags')
+        .select('tag')
+        .eq('target_user_id', userId);
+      
+      if (tagsData) {
+        setReputationTags(tagsData.map(t => t.tag));
+      }
+
+      // Fetch user activity
+      const { data: activityData } = await supabase
+        .from('user_activity')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      
+      if (activityData) {
+        setUserActivity(activityData);
+      }
+
+      // Fetch augmentations
+      const { data: augData } = await supabase
+        .from('user_augmentations')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'active');
+      
+      if (augData) {
+        setAugmentations(augData);
+      }
+
       setLoading(false);
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', (displayUser as any).user_id || (displayUser as any).id)
-      .maybeSingle();
-
-    if (!error && data) {
-      setProfile(data);
-      setForm({
-        character_name: data.character_name || '',
-        alias: data.alias ?? null,
-        bio: data.bio ?? null,
-        age: (data as any).age ?? null,
-        level: data.level ?? 1,
-      });
-    }
-    setLoading(false);
-  };
-
-  fetchProfile();
-}, [displayUser]);
-
-useEffect(() => {
-  if (!profile) return;
-  document.title = `Doppleganger – ${profile.character_name || 'Profile'}`;
-  const meta = document.querySelector('meta[name="description"]');
-  if (meta) {
-    meta.setAttribute('content', `Identity profile for ${profile.character_name || 'user'} including name, alias, age, and level.`);
-  }
-}, [profile]);
-
-const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-  const file = event.target.files?.[0];
-  if (!file || !displayUser) return;
-
-  setAvatarUploading(true);
-  try {
-    // Simple file name without folder structure first
-    const fileExt = file.name.split('.').pop();
-    const fileName = `avatar_${Date.now()}.${fileExt}`;
-
-    // Try uploading without folder structure
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(fileName, file, { 
-        cacheControl: '3600',
-        upsert: true 
-      });
-
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
-      throw uploadError;
-    }
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(fileName);
-
-    if (!urlData?.publicUrl) {
-      throw new Error('Failed to get public URL');
-    }
-
-    // Update profile
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ avatar_url: urlData.publicUrl })
-      .eq('user_id', (displayUser as any).user_id || (displayUser as any).id);
-
-    if (updateError) {
-      console.error('Profile update error:', updateError);
-      throw updateError;
-    }
-
-    setProfile((prev: any) => ({ ...prev, avatar_url: urlData.publicUrl }));
-    toast({ title: 'Avatar updated successfully' });
-  } catch (e: any) {
-    console.error('Avatar upload failed:', e);
-    toast({ 
-      title: 'Avatar upload failed', 
-      description: e.message || 'Unknown error occurred', 
-      variant: 'destructive' 
-    });
-  } finally {
-    setAvatarUploading(false);
-  }
-};
-
-const handleSave = async () => {
-  if (!displayUser) return;
-  try {
-    setLoading(true);
-    const updates: any = {
-      character_name: form.character_name,
-      alias: form.alias,
-      bio: form.bio,
-      age: form.age,
-      level: form.level ?? 1,
-      updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('user_id', (displayUser as any).user_id || (displayUser as any).id)
-      .select('*')
-      .maybeSingle();
+    fetchData();
+  }, [displayUser]);
 
-    if (error) throw error;
-
-    if (data) {
-      setProfile(data);
-    } else {
-      setProfile((prev: any) => ({ ...(prev || {}), ...updates }));
+  useEffect(() => {
+    if (!profile) return;
+    document.title = `Doppleganger – ${profile.character_name || 'Profile'}`;
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) {
+      meta.setAttribute('content', `Identity profile for ${profile.character_name || 'user'} with enhanced biometric data and augmentation status.`);
     }
+  }, [profile]);
 
-    toast({ title: 'Profile updated' });
-    setIsEditing(false);
-  } catch (e: any) {
-    console.error(e);
-    toast({ title: 'Update failed', description: e.message });
-  } finally {
-    setLoading(false);
-  }
-};
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !displayUser) return;
+
+    setAvatarUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `avatar_${Date.now()}.${fileExt}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { 
+          cacheControl: '3600',
+          upsert: true 
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      if (!urlData?.publicUrl) {
+        throw new Error('Failed to get public URL');
+      }
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: urlData.publicUrl })
+        .eq('user_id', (displayUser as any).user_id || (displayUser as any).id);
+
+      if (updateError) throw updateError;
+
+      setProfile((prev: any) => ({ ...prev, avatar_url: urlData.publicUrl }));
+      toast({ title: 'Avatar updated successfully' });
+    } catch (e: any) {
+      toast({ 
+        title: 'Avatar upload failed', 
+        description: e.message || 'Unknown error occurred', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!displayUser) return;
+    try {
+      setLoading(true);
+      const updates: any = {
+        character_name: form.character_name,
+        job: form.job,
+        employer: form.employer,
+        education: form.education,
+        address: form.address,
+        bio: form.bio,
+        age: form.age,
+        aliases: form.aliases,
+        security_rating: form.security_rating,
+        agility: form.agility,
+        strength: form.strength,
+        finesse: form.finesse,
+        instinct: form.instinct,
+        presence: form.presence,
+        knowledge: form.knowledge,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('user_id', (displayUser as any).user_id || (displayUser as any).id)
+        .select('*')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setProfile(data);
+        // Update display name options
+        const displayOptions = [data.character_name, ...(data.aliases || [])].filter(Boolean);
+        if (!displayOptions.includes(selectedDisplayName)) {
+          setSelectedDisplayName(displayOptions[0] || data.character_name || '');
+        }
+      }
+
+      toast({ title: 'Profile updated' });
+      setIsEditing(false);
+    } catch (e: any) {
+      toast({ title: 'Update failed', description: e.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addAlias = () => {
+    setForm(prev => ({ ...prev, aliases: [...prev.aliases, ''] }));
+  };
+
+  const updateAlias = (index: number, value: string) => {
+    setForm(prev => ({
+      ...prev,
+      aliases: prev.aliases.map((alias, i) => i === index ? value : alias)
+    }));
+  };
+
+  const removeAlias = (index: number) => {
+    setForm(prev => ({
+      ...prev,
+      aliases: prev.aliases.filter((_, i) => i !== index)
+    }));
+  };
 
   if (loading) {
     return (
@@ -179,6 +264,9 @@ const handleSave = async () => {
       </div>
     );
   }
+
+  const displayOptions = [profile.character_name, ...(profile.aliases || [])].filter(Boolean);
+  const repScore = profile.charisma_score || 10;
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
@@ -229,18 +317,30 @@ const handleSave = async () => {
               )}
             </div>
             <div className="flex-1">
-              <h2 className="text-3xl font-bold text-white mb-2">{profile.character_name || 'Unnamed Character'}</h2>
-              <div className="text-indigo-400 text-lg mb-2">{profile.character_class || 'Netrunner'} • Level {profile.level || 1}</div>
+              <div className="flex items-center gap-2 mb-2">
+                <Select value={selectedDisplayName} onValueChange={setSelectedDisplayName}>
+                  <SelectTrigger className="w-auto bg-transparent border-none text-3xl font-bold text-white p-0 h-auto">
+                    <SelectValue />
+                    <ChevronDown className="w-4 h-4 ml-2" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {displayOptions.map((name, index) => (
+                      <SelectItem key={index} value={name}>{name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="text-indigo-400 text-lg mb-2">{profile.job || 'Netrunner'}</div>
               <div className="flex space-x-2">
                 <Badge className="bg-green-600">Verified</Badge>
                 <Badge className="bg-blue-600">Premium</Badge>
                 <Badge className="bg-purple-600">Elite Status</Badge>
               </div>
             </div>
-<Button variant="outline" className="border-indigo-500 text-indigo-400" onClick={() => setIsEditing((v) => !v)}>
-  <Settings className="w-4 h-4 mr-2" />
-  {isEditing ? "Cancel" : "Edit Profile"}
-</Button>
+            <Button variant="outline" className="border-indigo-500 text-indigo-400" onClick={() => setIsEditing((v) => !v)}>
+              <Settings className="w-4 h-4 mr-2" />
+              {isEditing ? "Cancel" : "Edit Profile"}
+            </Button>
           </div>
         </Card>
 
@@ -251,7 +351,7 @@ const handleSave = async () => {
               <Shield className="w-8 h-8 text-blue-400" />
               <div>
                 <div className="text-gray-400 text-sm">Security Level</div>
-                <div className="text-2xl font-bold text-white">AAA</div>
+                <div className="text-2xl font-bold text-white">{profile.security_rating || 'C'}</div>
               </div>
             </div>
           </Card>
@@ -261,7 +361,7 @@ const handleSave = async () => {
               <Zap className="w-8 h-8 text-yellow-400" />
               <div>
                 <div className="text-gray-400 text-sm">Neural Rating</div>
-                <div className="text-2xl font-bold text-white">9.2</div>
+                <div className="text-2xl font-bold text-white">{Math.round((profile.neural_rating || 0) * 10) / 10}</div>
               </div>
             </div>
           </Card>
@@ -271,7 +371,7 @@ const handleSave = async () => {
               <Eye className="w-8 h-8 text-green-400" />
               <div>
                 <div className="text-gray-400 text-sm">Stealth Index</div>
-                <div className="text-2xl font-bold text-white">87%</div>
+                <div className="text-2xl font-bold text-white">{Math.round((profile.stealth_index || 0) * 10) / 10}</div>
               </div>
             </div>
           </Card>
@@ -280,135 +380,239 @@ const handleSave = async () => {
             <div className="flex items-center space-x-3">
               <User className="w-8 h-8 text-purple-400" />
               <div>
-                <div className="text-gray-400 text-sm">Rep Score</div>
-                <div className="text-2xl font-bold text-white">1,247</div>
+                <div className="text-gray-400 text-sm">Rep Score (Cha)</div>
+                <div className="text-2xl font-bold text-white">{repScore}</div>
               </div>
             </div>
           </Card>
         </div>
 
-{/* Identity */}
-<Card className="p-6 bg-gray-900/30 border-gray-700/50 mb-8">
-  <h3 className="text-xl font-semibold text-white mb-4">Identity</h3>
-  {!isEditing ? (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <div className="text-gray-400 text-sm">Name</div>
-        <div className="text-white">{profile.character_name || '-'}</div>
-      </div>
-      <div>
-        <div className="text-gray-400 text-sm">Alias</div>
-        <div className="text-white">{profile.alias || '-'}</div>
-      </div>
-      <div>
-        <div className="text-gray-400 text-sm">Age</div>
-        <div className="text-white">{profile.age ?? '-'}</div>
-      </div>
-      <div>
-        <div className="text-gray-400 text-sm">Level</div>
-        <div className="text-white">{profile.level ?? '-'}</div>
-      </div>
-      <div className="md:col-span-2">
-        <div className="text-gray-400 text-sm">Bio</div>
-        <div className="text-white">{profile.bio || '-'}</div>
-      </div>
-      <div className="md:col-span-2">
-        <div className="text-gray-400 text-sm">Charisma (Cha)</div>
-        <div className="text-white">{profile.charisma_score ?? 10} <span className="text-gray-400 text-sm">(managed by Charisma network)</span></div>
-      </div>
-    </div>
-  ) : (
-    <div className="space-y-4">
-      <div>
-        <label className="text-gray-400 text-sm mb-1 block">Name</label>
-        <Input value={form.character_name} onChange={(e) => setForm({ ...form, character_name: e.target.value })} />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label className="text-gray-400 text-sm mb-1 block">Alias</label>
-          <Input value={form.alias ?? ''} onChange={(e) => setForm({ ...form, alias: e.target.value })} />
-        </div>
-        <div>
-          <label className="text-gray-400 text-sm mb-1 block">Age</label>
-          <Input type="number" min={0} value={form.age ?? ''} onChange={(e) => setForm({ ...form, age: e.target.value === '' ? null : Number(e.target.value) })} />
-        </div>
-        <div>
-          <label className="text-gray-400 text-sm mb-1 block">Level</label>
-          <Input type="number" min={1} value={form.level ?? 1} onChange={(e) => setForm({ ...form, level: e.target.value === '' ? 1 : Number(e.target.value) })} />
-        </div>
-      </div>
-      <div>
-        <label className="text-gray-400 text-sm mb-1 block">Bio</label>
-        <Textarea value={form.bio ?? ''} onChange={(e) => setForm({ ...form, bio: e.target.value })} rows={4} />
-      </div>
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={loading} className="border-indigo-500">Save Changes</Button>
-      </div>
-      <p className="text-xs text-gray-400">Charisma (Cha) is non-editable here; it's synced from the Charisma network.</p>
-    </div>
-  )}
-</Card>
+        {/* Identity & Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Identity */}
+          <Card className="p-6 bg-gray-900/30 border-gray-700/50">
+            <h3 className="text-xl font-semibold text-white mb-4">Identity</h3>
+            {!isEditing ? (
+              <div className="space-y-3">
+                <div>
+                  <div className="text-gray-400 text-sm">Name</div>
+                  <div className="text-white">{profile.character_name || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm">Aliases</div>
+                  <div className="text-white">{(profile.aliases || []).join(', ') || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm">Job</div>
+                  <div className="text-white">{profile.job || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm">Employer</div>
+                  <div className="text-white">{profile.employer || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm">Education</div>
+                  <div className="text-white">{profile.education || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm">Address</div>
+                  <div className="text-white">{profile.address || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm">Age</div>
+                  <div className="text-white">{profile.age ?? '-'}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm">Bio</div>
+                  <div className="text-white">{profile.bio || '-'}</div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-gray-400 text-sm mb-1 block">Name</label>
+                  <Input value={form.character_name} onChange={(e) => setForm({ ...form, character_name: e.target.value })} />
+                </div>
+                
+                <div>
+                  <label className="text-gray-400 text-sm mb-1 block">Aliases</label>
+                  {form.aliases.map((alias, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <Input value={alias} onChange={(e) => updateAlias(index, e.target.value)} />
+                      <Button variant="outline" size="sm" onClick={() => removeAlias(index)}>Remove</Button>
+                    </div>
+                  ))}
+                  <Button variant="outline" size="sm" onClick={addAlias}>Add Alias</Button>
+                </div>
 
-{/* Augmentations */}
-<Card className="p-6 bg-gray-900/30 border-gray-700/50 mb-8">
-  <h3 className="text-xl font-semibold text-white mb-4">Active Augmentations</h3>
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    {[
-      { name: "Neural Interface MK-VII", type: "Neural", status: "Online", efficiency: "98%" },
-      { name: "Retinal Display System", type: "Ocular", status: "Online", efficiency: "95%" },
-      { name: "Subdermal Armor Plating", type: "Defensive", status: "Online", efficiency: "100%" },
-      { name: "Enhanced Reflexes", type: "Motor", status: "Online", efficiency: "92%" },
-      { name: "Encrypted Memory Bank", type: "Storage", status: "Online", efficiency: "100%" },
-      { name: "Bio-Monitor Suite", type: "Medical", status: "Online", efficiency: "89%" }
-    ].map((aug, index) => (
-      <div key={index} className="p-4 bg-gray-800/50 rounded-lg">
-        <div className="flex justify-between items-start mb-2">
-          <div>
-            <div className="text-white font-semibold">{aug.name}</div>
-            <div className="text-gray-400 text-sm">{aug.type}</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-gray-400 text-sm mb-1 block">Job</label>
+                    <Input value={form.job} onChange={(e) => setForm({ ...form, job: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-sm mb-1 block">Employer</label>
+                    <Input value={form.employer} onChange={(e) => setForm({ ...form, employer: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-sm mb-1 block">Education</label>
+                    <Input value={form.education} onChange={(e) => setForm({ ...form, education: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-sm mb-1 block">Age</label>
+                    <Input type="number" min={0} value={form.age ?? ''} onChange={(e) => setForm({ ...form, age: e.target.value === '' ? null : Number(e.target.value) })} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-gray-400 text-sm mb-1 block">Address</label>
+                  <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+                </div>
+
+                {isAdmin && (
+                  <div>
+                    <label className="text-gray-400 text-sm mb-1 block">Security Rating</label>
+                    <Select value={form.security_rating} onValueChange={(value) => setForm({ ...form, security_rating: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="F">F</SelectItem>
+                        <SelectItem value="E">E</SelectItem>
+                        <SelectItem value="D">D</SelectItem>
+                        <SelectItem value="C">C</SelectItem>
+                        <SelectItem value="B">B</SelectItem>
+                        <SelectItem value="A">A</SelectItem>
+                        <SelectItem value="AA">AA</SelectItem>
+                        <SelectItem value="AAA">AAA</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-gray-400 text-sm mb-1 block">Bio</label>
+                  <Textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} rows={4} />
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* Hidden Stats for Editing */}
+          {isEditing && (
+            <Card className="p-6 bg-gray-900/30 border-gray-700/50">
+              <h3 className="text-xl font-semibold text-white mb-4">Core Stats</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-gray-400 text-sm mb-1 block">Agility</label>
+                  <Input type="number" min={1} max={20} value={form.agility} onChange={(e) => setForm({ ...form, agility: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-gray-400 text-sm mb-1 block">Strength</label>
+                  <Input type="number" min={1} max={20} value={form.strength} onChange={(e) => setForm({ ...form, strength: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-gray-400 text-sm mb-1 block">Finesse</label>
+                  <Input type="number" min={1} max={20} value={form.finesse} onChange={(e) => setForm({ ...form, finesse: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-gray-400 text-sm mb-1 block">Instinct</label>
+                  <Input type="number" min={1} max={20} value={form.instinct} onChange={(e) => setForm({ ...form, instinct: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-gray-400 text-sm mb-1 block">Presence</label>
+                  <Input type="number" min={1} max={20} value={form.presence} onChange={(e) => setForm({ ...form, presence: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-gray-400 text-sm mb-1 block">Knowledge</label>
+                  <Input type="number" min={1} max={20} value={form.knowledge} onChange={(e) => setForm({ ...form, knowledge: Number(e.target.value) })} />
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mt-4">
+                These stats auto-calculate Fitness ({Math.round((profile.fitness_rating || 0) * 10) / 10}), Neural ({Math.round((profile.neural_rating || 0) * 10) / 10}), and Stealth ({Math.round((profile.stealth_index || 0) * 10) / 10}) ratings.
+              </p>
+            </Card>
+          )}
+
+          {/* Fitness Rating when not editing */}
+          {!isEditing && (
+            <Card className="p-6 bg-gray-900/30 border-gray-700/50">
+              <h3 className="text-xl font-semibold text-white mb-4">Physical Metrics</h3>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <Dumbbell className="w-8 h-8 text-orange-400" />
+                  <div>
+                    <div className="text-gray-400 text-sm">Fitness Rating</div>
+                    <div className="text-2xl font-bold text-white">{Math.round((profile.fitness_rating || 0) * 10) / 10}</div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+        </div>
+
+        {isEditing && (
+          <div className="mb-8">
+            <Button onClick={handleSave} disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">
+              Save Changes
+            </Button>
           </div>
-          <Badge className={aug.status === "Online" ? "bg-green-600" : "bg-red-600"}>
-            {aug.status}
-          </Badge>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="text-gray-400 text-sm">Efficiency</span>
-          <span className="text-green-400 font-mono">{aug.efficiency}</span>
-        </div>
-      </div>
-    ))}
-  </div>
-</Card>
+        )}
 
-        {/* Tags & Reputation */}
+        {/* Augmentations */}
+        <Card className="p-6 bg-gray-900/30 border-gray-700/50 mb-8">
+          <h3 className="text-xl font-semibold text-white mb-4">Active Augmentations</h3>
+          {augmentations.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {augmentations.map((aug) => (
+                <div key={aug.id} className="p-4 bg-gray-800/50 rounded-lg">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="text-white font-semibold">{aug.name}</div>
+                      <div className="text-gray-400 text-sm">{aug.category}</div>
+                    </div>
+                    <Badge className={aug.status === "active" ? "bg-green-600" : "bg-red-600"}>
+                      {aug.status}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-sm">Efficiency</span>
+                    <span className="text-green-400 font-mono">{aug.efficiency_percent}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-gray-400 text-center py-8">No active augmentations</div>
+          )}
+        </Card>
+
+        {/* Tags & Activity */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="p-6 bg-gray-900/30 border-gray-700/50">
             <h3 className="text-xl font-semibold text-white mb-4">Reputation Tags</h3>
             <div className="flex flex-wrap gap-2">
-              {[
-                "Reliable", "Tech Specialist", "Discrete", "Fast Learner", 
-                "Problem Solver", "Team Player", "Night Owl", "Risk Taker"
-              ].map((tag, index) => (
+              {reputationTags.length > 0 ? reputationTags.map((tag, index) => (
                 <Badge key={index} variant="outline" className="border-indigo-500 text-indigo-400">
                   {tag}
                 </Badge>
-              ))}
+              )) : (
+                <div className="text-gray-400 text-sm">No reputation tags yet</div>
+              )}
             </div>
           </Card>
 
           <Card className="p-6 bg-gray-900/30 border-gray-700/50">
             <h3 className="text-xl font-semibold text-white mb-4">Recent Activity</h3>
             <div className="space-y-3">
-              {[
-                "Completed neural interface calibration",
-                "Updated security protocols",
-                "Earned 'Elite Netrunner' certification",
-                "Profile verification renewed"
-              ].map((activity, index) => (
-                <div key={index} className="text-gray-300 text-sm p-2 bg-gray-800/50 rounded">
-                  {activity}
+              {userActivity.length > 0 ? userActivity.map((activity) => (
+                <div key={activity.id} className="text-gray-300 text-sm p-2 bg-gray-800/50 rounded">
+                  <div>{activity.activity_description}</div>
+                  <div className="text-xs text-gray-500">{new Date(activity.created_at).toLocaleDateString()}</div>
                 </div>
-              ))}
+              )) : (
+                <div className="text-gray-400 text-sm">No recent activity</div>
+              )}
             </div>
           </Card>
         </div>
