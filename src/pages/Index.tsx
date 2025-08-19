@@ -12,7 +12,7 @@ const apps = [
   {
     id: "doppleganger",
     name: "Doppleganger",
-    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/placeholder.svg",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif",
     description: "Digital Identity",
     route: "/doppleganger",
     color: "from-violet-500 to-purple-600"
