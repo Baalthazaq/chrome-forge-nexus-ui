@@ -155,8 +155,11 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: string | null
           age: number | null
+          agility: number | null
           alias: string | null
+          aliases: string[] | null
           ancestry: string | null
           avatar_url: string | null
           bio: string | null
@@ -167,18 +170,31 @@ export type Database = {
           created_at: string
           credit_rating: number | null
           credits: number | null
+          education: string | null
+          employer: string | null
+          finesse: number | null
+          fitness_rating: number | null
           has_succubus_profile: boolean | null
           id: string
+          instinct: number | null
           is_searchable: boolean | null
           job: string | null
-          level: number | null
+          knowledge: number | null
+          neural_rating: number | null
           notes: string | null
+          presence: number | null
+          security_rating: string | null
+          stealth_index: number | null
+          strength: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          address?: string | null
           age?: number | null
+          agility?: number | null
           alias?: string | null
+          aliases?: string[] | null
           ancestry?: string | null
           avatar_url?: string | null
           bio?: string | null
@@ -189,18 +205,31 @@ export type Database = {
           created_at?: string
           credit_rating?: number | null
           credits?: number | null
+          education?: string | null
+          employer?: string | null
+          finesse?: number | null
+          fitness_rating?: number | null
           has_succubus_profile?: boolean | null
           id?: string
+          instinct?: number | null
           is_searchable?: boolean | null
           job?: string | null
-          level?: number | null
+          knowledge?: number | null
+          neural_rating?: number | null
           notes?: string | null
+          presence?: number | null
+          security_rating?: string | null
+          stealth_index?: number | null
+          strength?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          address?: string | null
           age?: number | null
+          agility?: number | null
           alias?: string | null
+          aliases?: string[] | null
           ancestry?: string | null
           avatar_url?: string | null
           bio?: string | null
@@ -211,12 +240,22 @@ export type Database = {
           created_at?: string
           credit_rating?: number | null
           credits?: number | null
+          education?: string | null
+          employer?: string | null
+          finesse?: number | null
+          fitness_rating?: number | null
           has_succubus_profile?: boolean | null
           id?: string
+          instinct?: number | null
           is_searchable?: boolean | null
           job?: string | null
-          level?: number | null
+          knowledge?: number | null
+          neural_rating?: number | null
           notes?: string | null
+          presence?: number | null
+          security_rating?: string | null
+          stealth_index?: number | null
+          strength?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -261,6 +300,30 @@ export type Database = {
           tags?: string[] | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      reputation_tags: {
+        Row: {
+          created_at: string | null
+          id: string
+          tag: string
+          tagger_user_id: string
+          target_user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          tag: string
+          tagger_user_id: string
+          target_user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          tag?: string
+          tagger_user_id?: string
+          target_user_id?: string
         }
         Relationships: []
       }
@@ -367,6 +430,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_activity: {
+        Row: {
+          activity_description: string
+          activity_type: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          activity_description: string
+          activity_type: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          activity_description?: string
+          activity_type?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_augmentations: {
+        Row: {
+          category: string
+          efficiency_percent: number | null
+          id: string
+          installed_at: string | null
+          last_maintenance: string | null
+          metadata: Json | null
+          name: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          category: string
+          efficiency_percent?: number | null
+          id?: string
+          installed_at?: string | null
+          last_maintenance?: string | null
+          metadata?: Json | null
+          name: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string
+          efficiency_percent?: number | null
+          id?: string
+          installed_at?: string | null
+          last_maintenance?: string | null
+          metadata?: Json | null
+          name?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
