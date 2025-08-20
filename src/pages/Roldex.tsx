@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { ContactNotesDialog } from "@/components/ContactNotesDialog";
 import { AddContactDialog } from "@/components/AddContactDialog";
-import { ReputationTagDialog } from "@/components/ReputationTagDialog";
+
 
 const Roldex = () => {
   const [activeFilter, setActiveFilter] = useState("all");
@@ -351,10 +351,6 @@ const Roldex = () => {
                       <ContactNotesDialog 
                         contact={profile}
                         contactId={contactData.id}
-                        onUpdate={updateContact}
-                      />
-                      <ReputationTagDialog
-                        targetProfile={profile}
                         onUpdate={updateContact}
                       />
                     </div>

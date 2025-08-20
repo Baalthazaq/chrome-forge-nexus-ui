@@ -89,11 +89,14 @@ const Doppleganger = () => {
         setSelectedDisplayName(displayOptions[0] || profileData.character_name || '');
       }
 
-      // Fetch reputation tags
+      // Fetch reputation tags from contact_tags where user is the contact
       const { data: tagsData } = await supabase
-        .from('reputation_tags')
-        .select('tag')
-        .eq('target_user_id', userId);
+        .from('contact_tags')
+        .select(`
+          tag,
+          contacts!inner(contact_user_id)
+        `)
+        .eq('contacts.contact_user_id', userId);
       
       if (tagsData) {
         setReputationTags(tagsData.map(t => t.tag));
