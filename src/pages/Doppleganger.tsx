@@ -331,18 +331,10 @@ const Doppleganger = () => {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-start gap-2 mb-2">
-                <Select value={selectedDisplayName} onValueChange={setSelectedDisplayName}>
-                  <SelectTrigger className="flex-1 bg-transparent border-none text-3xl font-bold text-white p-0 h-auto text-left justify-start truncate">
-                    <SelectValue className="truncate" />
-                    <ChevronDown className="w-4 h-4 ml-2 flex-shrink-0" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {displayOptions.map((name, index) => (
-                      <SelectItem key={index} value={name}>{name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="mb-2">
+                <h2 className="text-3xl font-bold text-white break-words overflow-wrap-anywhere">
+                  {selectedDisplayName}
+                </h2>
               </div>
               <div className="text-indigo-400 text-lg mb-2">{profile.job || 'Netrunner'}</div>
               <div className="flex space-x-2">
@@ -450,6 +442,20 @@ const Doppleganger = () => {
                 <div>
                   <label className="text-gray-400 text-sm mb-1 block">Name</label>
                   <Input value={form.character_name} onChange={(e) => setForm({ ...form, character_name: e.target.value })} />
+                </div>
+                
+                <div>
+                  <label className="text-gray-400 text-sm mb-1 block">Display Name</label>
+                  <Select value={selectedDisplayName} onValueChange={setSelectedDisplayName}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select display name" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {displayOptions.map((name, index) => (
+                        <SelectItem key={index} value={name}>{name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div>
