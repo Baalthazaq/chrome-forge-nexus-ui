@@ -35,6 +35,7 @@ const Doppleganger = () => {
     age: null as number | null,
     aliases: [] as string[],
     security_rating: 'C',
+    ancestry: '',
     agility: 10,
     strength: 10,
     finesse: 10,
@@ -74,6 +75,7 @@ const Doppleganger = () => {
           age: profileData.age,
           aliases: profileData.aliases || [],
           security_rating: profileData.security_rating || 'C',
+          ancestry: profileData.ancestry || '',
           agility: profileData.agility || 10,
           strength: profileData.strength || 10,
           finesse: profileData.finesse || 10,
@@ -195,6 +197,7 @@ const Doppleganger = () => {
         age: form.age,
         aliases: form.aliases,
         security_rating: form.security_rating,
+        ancestry: form.ancestry,
         agility: form.agility,
         strength: form.strength,
         finesse: form.finesse,
@@ -203,6 +206,14 @@ const Doppleganger = () => {
         knowledge: form.knowledge,
         updated_at: new Date().toISOString(),
       };
+
+      // Track activity
+      await supabase.from('user_activity').insert({
+        user_id: (displayUser as any).user_id || (displayUser as any).id,
+        activity_type: 'profile_update',
+        activity_description: 'Updated profile information',
+        metadata: { fields_updated: Object.keys(updates) }
+      });
 
       const { data, error } = await supabase
         .from('profiles')
@@ -403,6 +414,10 @@ const Doppleganger = () => {
                   <div className="text-white">{(profile.aliases || []).join(', ') || '-'}</div>
                 </div>
                 <div>
+                  <div className="text-gray-400 text-sm">Ancestry</div>
+                  <div className="text-white">{profile.ancestry || '-'}</div>
+                </div>
+                <div>
                   <div className="text-gray-400 text-sm">Job</div>
                   <div className="text-white">{profile.job || '-'}</div>
                 </div>
@@ -443,6 +458,11 @@ const Doppleganger = () => {
                     </div>
                   ))}
                   <Button variant="outline" size="sm" onClick={addAlias}>Add Alias</Button>
+                </div>
+
+                <div>
+                  <label className="text-gray-400 text-sm mb-1 block">Ancestry</label>
+                  <Input value={form.ancestry} onChange={(e) => setForm({ ...form, ancestry: e.target.value })} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
