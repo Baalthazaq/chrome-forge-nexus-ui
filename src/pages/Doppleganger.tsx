@@ -330,12 +330,12 @@ const Doppleganger = () => {
                 </div>
               )}
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start gap-2 mb-2">
                 <Select value={selectedDisplayName} onValueChange={setSelectedDisplayName}>
-                  <SelectTrigger className="w-auto bg-transparent border-none text-3xl font-bold text-white p-0 h-auto">
-                    <SelectValue />
-                    <ChevronDown className="w-4 h-4 ml-2" />
+                  <SelectTrigger className="flex-1 bg-transparent border-none text-3xl font-bold text-white p-0 h-auto text-left justify-start truncate">
+                    <SelectValue className="truncate" />
+                    <ChevronDown className="w-4 h-4 ml-2 flex-shrink-0" />
                   </SelectTrigger>
                   <SelectContent>
                     {displayOptions.map((name, index) => (
