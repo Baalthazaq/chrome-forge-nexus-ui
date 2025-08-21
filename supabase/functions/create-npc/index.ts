@@ -43,7 +43,7 @@ serve(async (req) => {
       return new Response('Forbidden - Admin access required', { status: 403, headers: corsHeaders })
     }
 
-    // Parse the request body
+    // Parse the request body with all attributes
     const { 
       character_name, 
       character_class, 
@@ -56,7 +56,22 @@ serve(async (req) => {
       charisma_score = 10,
       notes,
       is_searchable = true,
-      has_succubus_profile = false
+      has_succubus_profile = false,
+      // Core stats
+      agility = 10,
+      strength = 10,
+      finesse = 10,
+      instinct = 10,
+      presence = 10,
+      knowledge = 10,
+      // Profile details
+      age,
+      bio,
+      employer,
+      education,
+      address,
+      aliases = [],
+      security_rating = 'C'
     } = await req.json()
 
     if (!character_name?.trim()) {
@@ -91,7 +106,7 @@ serve(async (req) => {
       return new Response(authError.message, { status: 400, headers: corsHeaders })
     }
 
-    // Update the profile (it may already exist due to trigger)
+    // Update the profile with all attributes
     const { error: profileError } = await adminClient
       .from('profiles')
       .upsert({
@@ -108,7 +123,21 @@ serve(async (req) => {
         notes: notes || null,
         is_searchable: is_searchable ?? true,
         has_succubus_profile: has_succubus_profile || false,
-        bio: 'NPC Account'
+        // Core stats
+        agility: agility || 10,
+        strength: strength || 10,
+        finesse: finesse || 10,
+        instinct: instinct || 10,
+        presence: presence || 10,
+        knowledge: knowledge || 10,
+        // Profile details
+        age: age || null,
+        bio: bio || 'NPC Account',
+        employer: employer || null,
+        education: education || null,
+        address: address || null,
+        aliases: aliases || [],
+        security_rating: security_rating || 'C'
       }, {
         onConflict: 'user_id'
       })

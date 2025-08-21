@@ -30,7 +30,21 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
     charisma_score: 10,
     notes: '',
     is_searchable: true,
-    has_succubus_profile: false
+    has_succubus_profile: false,
+    // Add missing core stats to sync with Doppleganger
+    agility: 10,
+    strength: 10,
+    finesse: 10,
+    instinct: 10,
+    presence: 10,
+    knowledge: 10,
+    age: null as number | null,
+    bio: '',
+    employer: '',
+    education: '',
+    address: '',
+    aliases: [] as string[],
+    security_rating: 'C'
   });
   const { toast } = useToast();
 
@@ -47,7 +61,21 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
         charisma_score: npc.charisma_score || 10,
         notes: npc.notes || '',
         is_searchable: npc.is_searchable ?? true,
-        has_succubus_profile: npc.has_succubus_profile || false
+        has_succubus_profile: npc.has_succubus_profile || false,
+        // Sync all core stats
+        agility: npc.agility || 10,
+        strength: npc.strength || 10,
+        finesse: npc.finesse || 10,
+        instinct: npc.instinct || 10,
+        presence: npc.presence || 10,
+        knowledge: npc.knowledge || 10,
+        age: npc.age,
+        bio: npc.bio || '',
+        employer: npc.employer || '',
+        education: npc.education || '',
+        address: npc.address || '',
+        aliases: npc.aliases || [],
+        security_rating: npc.security_rating || 'C'
       });
     }
   }, [npc]);
@@ -79,7 +107,21 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
       charisma_score: randomCharisma,
       notes: `A mysterious ${randomJob.toLowerCase()} with connections to ${randomCompany}.`,
       is_searchable: Math.random() > 0.3, // 70% chance to be searchable
-      has_succubus_profile: Math.random() > 0.7 // 30% chance to have succubus profile
+      has_succubus_profile: Math.random() > 0.7, // 30% chance to have succubus profile
+      // Generate random core stats
+      agility: Math.floor(Math.random() * 20) + 1,
+      strength: Math.floor(Math.random() * 20) + 1,
+      finesse: Math.floor(Math.random() * 20) + 1,
+      instinct: Math.floor(Math.random() * 20) + 1,
+      presence: Math.floor(Math.random() * 20) + 1,
+      knowledge: Math.floor(Math.random() * 20) + 1,
+      age: Math.floor(Math.random() * 50) + 18,
+      bio: `A mysterious ${randomJob.toLowerCase()} with connections to ${randomCompany}.`,
+      employer: randomCompany,
+      education: 'Street University',
+      address: 'Night City',
+      aliases: [`${randomName}${Math.floor(Math.random() * 100)}`],
+      security_rating: ['D', 'C', 'B', 'A', 'S'][Math.floor(Math.random() * 5)]
     });
   };
 
@@ -117,7 +159,22 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
             charisma_score: form.charisma_score,
             notes: form.notes,
             is_searchable: form.is_searchable,
-            has_succubus_profile: form.has_succubus_profile
+            has_succubus_profile: form.has_succubus_profile,
+            // Update all core stats for consistency
+            agility: form.agility,
+            strength: form.strength,
+            finesse: form.finesse,
+            instinct: form.instinct,
+            presence: form.presence,
+            knowledge: form.knowledge,
+            age: form.age,
+            bio: form.bio,
+            employer: form.employer,
+            education: form.education,
+            address: form.address,
+            aliases: form.aliases,
+            security_rating: form.security_rating,
+            updated_at: new Date().toISOString()
           })
           .eq('user_id', npc.user_id);
 
@@ -142,7 +199,21 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
             charisma_score: form.charisma_score,
             notes: form.notes,
             is_searchable: form.is_searchable,
-            has_succubus_profile: form.has_succubus_profile
+            has_succubus_profile: form.has_succubus_profile,
+            // Include all core stats for full NPC creation
+            agility: form.agility,
+            strength: form.strength,
+            finesse: form.finesse,
+            instinct: form.instinct,
+            presence: form.presence,
+            knowledge: form.knowledge,
+            age: form.age,
+            bio: form.bio,
+            employer: form.employer,
+            education: form.education,
+            address: form.address,
+            aliases: form.aliases,
+            security_rating: form.security_rating
           }
         });
 
@@ -167,7 +238,20 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
           charisma_score: 10,
           notes: '',
           is_searchable: true,
-          has_succubus_profile: false
+          has_succubus_profile: false,
+          agility: 10,
+          strength: 10,
+          finesse: 10,
+          instinct: 10,
+          presence: 10,
+          knowledge: 10,
+          age: null,
+          bio: '',
+          employer: '',
+          education: '',
+          address: '',
+          aliases: [],
+          security_rating: 'C'
         });
       }
 
@@ -302,6 +386,136 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
                 onChange={(e) => setForm(prev => ({ ...prev, charisma_score: parseInt(e.target.value) || 10 }))}
               />
             </div>
+          </div>
+
+          {/* Core Stats Grid */}
+          <div className="space-y-4">
+            <h4 className="text-lg font-semibold">Core Stats</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="agility">Agility</Label>
+                <Input
+                  id="agility"
+                  type="number"
+                  value={form.agility}
+                  onChange={(e) => setForm(prev => ({ ...prev, agility: parseInt(e.target.value) || 10 }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="strength">Strength</Label>
+                <Input
+                  id="strength"
+                  type="number"
+                  value={form.strength}
+                  onChange={(e) => setForm(prev => ({ ...prev, strength: parseInt(e.target.value) || 10 }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="finesse">Finesse</Label>
+                <Input
+                  id="finesse"
+                  type="number"
+                  value={form.finesse}
+                  onChange={(e) => setForm(prev => ({ ...prev, finesse: parseInt(e.target.value) || 10 }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="instinct">Instinct</Label>
+                <Input
+                  id="instinct"
+                  type="number"
+                  value={form.instinct}
+                  onChange={(e) => setForm(prev => ({ ...prev, instinct: parseInt(e.target.value) || 10 }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="presence">Presence</Label>
+                <Input
+                  id="presence"
+                  type="number"
+                  value={form.presence}
+                  onChange={(e) => setForm(prev => ({ ...prev, presence: parseInt(e.target.value) || 10 }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="knowledge">Knowledge</Label>
+                <Input
+                  id="knowledge"
+                  type="number"
+                  value={form.knowledge}
+                  onChange={(e) => setForm(prev => ({ ...prev, knowledge: parseInt(e.target.value) || 10 }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Profile Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="age">Age</Label>
+              <Input
+                id="age"
+                type="number"
+                min="1"
+                value={form.age || ''}
+                onChange={(e) => setForm(prev => ({ ...prev, age: e.target.value ? parseInt(e.target.value) : null }))}
+                placeholder="Enter age"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="security_rating">Security Rating</Label>
+              <Select value={form.security_rating} onValueChange={(value) => setForm(prev => ({ ...prev, security_rating: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select rating" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="D">D - Minimal</SelectItem>
+                  <SelectItem value="C">C - Standard</SelectItem>
+                  <SelectItem value="B">B - Enhanced</SelectItem>
+                  <SelectItem value="A">A - High</SelectItem>
+                  <SelectItem value="S">S - Maximum</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="employer">Employer</Label>
+              <Input
+                id="employer"
+                value={form.employer}
+                onChange={(e) => setForm(prev => ({ ...prev, employer: e.target.value }))}
+                placeholder="Current employer"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="education">Education</Label>
+              <Input
+                id="education"
+                value={form.education}
+                onChange={(e) => setForm(prev => ({ ...prev, education: e.target.value }))}
+                placeholder="Educational background"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="address">Address</Label>
+            <Input
+              id="address"
+              value={form.address}
+              onChange={(e) => setForm(prev => ({ ...prev, address: e.target.value }))}
+              placeholder="Current address"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="bio">Biography</Label>
+            <Textarea
+              id="bio"
+              value={form.bio}
+              onChange={(e) => setForm(prev => ({ ...prev, bio: e.target.value }))}
+              placeholder="Character background and personality"
+              rows={3}
+            />
           </div>
 
           <div className="space-y-2">
