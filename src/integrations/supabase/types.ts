@@ -180,6 +180,7 @@ export type Database = {
           is_searchable: boolean | null
           job: string | null
           knowledge: number | null
+          level: number
           neural_rating: number | null
           notes: string | null
           presence: number | null
@@ -215,6 +216,7 @@ export type Database = {
           is_searchable?: boolean | null
           job?: string | null
           knowledge?: number | null
+          level?: number
           neural_rating?: number | null
           notes?: string | null
           presence?: number | null
@@ -250,6 +252,7 @@ export type Database = {
           is_searchable?: boolean | null
           job?: string | null
           knowledge?: number | null
+          level?: number
           neural_rating?: number | null
           notes?: string | null
           presence?: number | null
