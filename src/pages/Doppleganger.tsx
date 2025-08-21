@@ -527,41 +527,68 @@ const Doppleganger = () => {
             )}
           </Card>
 
-          {/* Hidden Stats for Editing */}
-          {isEditing && (
-            <Card className="p-6 bg-gray-900/30 border-gray-700/50">
-              <h3 className="text-xl font-semibold text-white mb-4">Core Stats</h3>
+          {/* Core Stats */}
+          <Card className="p-6 bg-gray-900/30 border-gray-700/50">
+            <h3 className="text-xl font-semibold text-white mb-4">Core Stats</h3>
+            {!isEditing ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-gray-400 text-sm">Agility</div>
+                  <div className="text-white text-xl font-bold">{profile.agility || 10}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm">Strength</div>
+                  <div className="text-white text-xl font-bold">{profile.strength || 10}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm">Finesse</div>
+                  <div className="text-white text-xl font-bold">{profile.finesse || 10}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm">Instinct</div>
+                  <div className="text-white text-xl font-bold">{profile.instinct || 10}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm">Presence</div>
+                  <div className="text-white text-xl font-bold">{profile.presence || 10}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm">Knowledge</div>
+                  <div className="text-white text-xl font-bold">{profile.knowledge || 10}</div>
+                </div>
+              </div>
+            ) : (
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-gray-400 text-sm mb-1 block">Agility</label>
-                  <Input type="number" min={1} max={20} value={form.agility} onChange={(e) => setForm({ ...form, agility: Number(e.target.value) })} />
+                  <Input type="number" value={form.agility} onChange={(e) => setForm({ ...form, agility: Number(e.target.value) || 0 })} />
                 </div>
                 <div>
                   <label className="text-gray-400 text-sm mb-1 block">Strength</label>
-                  <Input type="number" min={1} max={20} value={form.strength} onChange={(e) => setForm({ ...form, strength: Number(e.target.value) })} />
+                  <Input type="number" value={form.strength} onChange={(e) => setForm({ ...form, strength: Number(e.target.value) || 0 })} />
                 </div>
                 <div>
                   <label className="text-gray-400 text-sm mb-1 block">Finesse</label>
-                  <Input type="number" min={1} max={20} value={form.finesse} onChange={(e) => setForm({ ...form, finesse: Number(e.target.value) })} />
+                  <Input type="number" value={form.finesse} onChange={(e) => setForm({ ...form, finesse: Number(e.target.value) || 0 })} />
                 </div>
                 <div>
                   <label className="text-gray-400 text-sm mb-1 block">Instinct</label>
-                  <Input type="number" min={1} max={20} value={form.instinct} onChange={(e) => setForm({ ...form, instinct: Number(e.target.value) })} />
+                  <Input type="number" value={form.instinct} onChange={(e) => setForm({ ...form, instinct: Number(e.target.value) || 0 })} />
                 </div>
                 <div>
                   <label className="text-gray-400 text-sm mb-1 block">Presence</label>
-                  <Input type="number" min={1} max={20} value={form.presence} onChange={(e) => setForm({ ...form, presence: Number(e.target.value) })} />
+                  <Input type="number" value={form.presence} onChange={(e) => setForm({ ...form, presence: Number(e.target.value) || 0 })} />
                 </div>
                 <div>
                   <label className="text-gray-400 text-sm mb-1 block">Knowledge</label>
-                  <Input type="number" min={1} max={20} value={form.knowledge} onChange={(e) => setForm({ ...form, knowledge: Number(e.target.value) })} />
+                  <Input type="number" value={form.knowledge} onChange={(e) => setForm({ ...form, knowledge: Number(e.target.value) || 0 })} />
                 </div>
               </div>
-              <p className="text-xs text-gray-400 mt-4">
-                These stats auto-calculate Fitness ({Math.round((profile.fitness_rating || 0) * 10) / 10}), Neural ({Math.round((profile.neural_rating || 0) * 10) / 10}), and Stealth ({Math.round((profile.stealth_index || 0) * 10) / 10}) ratings.
-              </p>
-            </Card>
-          )}
+            )}
+            <p className="text-xs text-gray-400 mt-4">
+              These stats auto-calculate Fitness ({Math.round((profile.fitness_rating || 0) * 10) / 10}), Neural ({Math.round((profile.neural_rating || 0) * 10) / 10}), and Stealth ({Math.round((profile.stealth_index || 0) * 10) / 10}) ratings.
+            </p>
+          </Card>
 
           {/* Fitness Rating when not editing */}
           {!isEditing && (
