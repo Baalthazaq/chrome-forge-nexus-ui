@@ -45,6 +45,7 @@ const App = () => (
             <Route path="/charisma" element={<Charisma />} />
             <Route path="/sending" element={<Sending />} />
             <Route path="/vault" element={<Vault />} />
+            <Route path="/admin/financial" element={<Admin />} />
             <Route path="/questseek" element={<Questseek />} />
             <Route path="/succubus" element={<Succubus />} />
             <Route path="/doppleganger" element={<Doppleganger />} />

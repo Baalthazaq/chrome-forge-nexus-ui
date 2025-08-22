@@ -38,6 +38,63 @@ export type Database = {
         }
         Relationships: []
       }
+      bills: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          description: string
+          due_date: string | null
+          from_user_id: string
+          id: string
+          is_recurring: boolean
+          metadata: Json | null
+          next_due_date: string | null
+          recurring_count: number | null
+          recurring_interval: string | null
+          status: string
+          times_repeated: number
+          to_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          description: string
+          due_date?: string | null
+          from_user_id: string
+          id?: string
+          is_recurring?: boolean
+          metadata?: Json | null
+          next_due_date?: string | null
+          recurring_count?: number | null
+          recurring_interval?: string | null
+          status?: string
+          times_repeated?: number
+          to_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          description?: string
+          due_date?: string | null
+          from_user_id?: string
+          id?: string
+          is_recurring?: boolean
+          metadata?: Json | null
+          next_due_date?: string | null
+          recurring_count?: number | null
+          recurring_interval?: string | null
+          status?: string
+          times_repeated?: number
+          to_user_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       casts: {
         Row: {
           created_at: string
@@ -306,6 +363,57 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          description: string
+          from_user_id: string | null
+          id: string
+          interval_type: string
+          is_active: boolean
+          last_sent_at: string | null
+          metadata: Json | null
+          next_send_at: string
+          to_user_id: string
+          total_times_sent: number
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          description: string
+          from_user_id?: string | null
+          id?: string
+          interval_type: string
+          is_active?: boolean
+          last_sent_at?: string | null
+          metadata?: Json | null
+          next_send_at: string
+          to_user_id: string
+          total_times_sent?: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          description?: string
+          from_user_id?: string | null
+          id?: string
+          interval_type?: string
+          is_active?: boolean
+          last_sent_at?: string | null
+          metadata?: Json | null
+          next_send_at?: string
+          to_user_id?: string
+          total_times_sent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reputation_tags: {
         Row: {
           created_at: string | null
@@ -433,6 +541,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          description: string
+          from_user_id: string | null
+          id: string
+          metadata: Json | null
+          reference_id: string | null
+          status: string
+          to_user_id: string | null
+          transaction_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          description: string
+          from_user_id?: string | null
+          id?: string
+          metadata?: Json | null
+          reference_id?: string | null
+          status?: string
+          to_user_id?: string | null
+          transaction_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          description?: string
+          from_user_id?: string | null
+          id?: string
+          metadata?: Json | null
+          reference_id?: string | null
+          status?: string
+          to_user_id?: string | null
+          transaction_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_activity: {
         Row: {
