@@ -231,6 +231,9 @@ export type Database = {
           employer: string | null
           finesse: number | null
           fitness_rating: number | null
+          gold_bags: number | null
+          gold_chests: number | null
+          gold_handfuls: number | null
           has_succubus_profile: boolean | null
           id: string
           instinct: number | null
@@ -267,6 +270,9 @@ export type Database = {
           employer?: string | null
           finesse?: number | null
           fitness_rating?: number | null
+          gold_bags?: number | null
+          gold_chests?: number | null
+          gold_handfuls?: number | null
           has_succubus_profile?: boolean | null
           id?: string
           instinct?: number | null
@@ -303,6 +309,9 @@ export type Database = {
           employer?: string | null
           finesse?: number | null
           fitness_rating?: number | null
+          gold_bags?: number | null
+          gold_chests?: number | null
+          gold_handfuls?: number | null
           has_succubus_profile?: boolean | null
           id?: string
           instinct?: number | null

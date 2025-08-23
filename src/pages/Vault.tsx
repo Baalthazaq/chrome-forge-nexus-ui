@@ -26,6 +26,15 @@ const Vault = () => {
   const [sendRecipient, setSendRecipient] = useState("");
   const [sendDescription, setSendDescription] = useState("");
 
+  // Gold conversion utility
+  const formatGold = (handfuls: number, bags: number, chests: number) => {
+    const parts = [];
+    if (chests > 0) parts.push(`${chests} chest${chests !== 1 ? 's' : ''}`);
+    if (bags > 0) parts.push(`${bags} bag${bags !== 1 ? 's' : ''}`);
+    if (handfuls > 0) parts.push(`${handfuls} handful${handfuls !== 1 ? 's' : ''}`);
+    return parts.length > 0 ? parts.join(', ') : '0 gold';
+  };
+
   // Mock inventory data
   const inventoryItems = [
     { id: 1, name: "Neural Interface", quantity: 1, value: 25000, rarity: "legendary" },
@@ -203,12 +212,12 @@ const Vault = () => {
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="bg-green-900/50 border-green-700 hover:bg-green-800/50 text-green-400">
                   <Send className="w-4 h-4 mr-2" />
-                  Send Money
+                  Send Hex
                 </Button>
               </DialogTrigger>
               <DialogContent className="bg-gray-900 border-gray-700">
                 <DialogHeader>
-                  <DialogTitle className="text-cyan-400">Send Money</DialogTitle>
+                  <DialogTitle className="text-cyan-400">Send Hex</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
@@ -234,7 +243,7 @@ const Vault = () => {
                       value={sendAmount}
                       onChange={(e) => setSendAmount(e.target.value)}
                       className="bg-gray-800 border-gray-600"
-                      placeholder="Enter amount"
+                      placeholder="Enter amount in Hex"
                     />
                   </div>
                   <div>
@@ -248,7 +257,7 @@ const Vault = () => {
                     />
                   </div>
                   <Button onClick={handleSendMoney} className="w-full bg-green-600 hover:bg-green-700">
-                    Send Money
+                    Send Hex
                   </Button>
                 </div>
               </DialogContent>
@@ -260,18 +269,36 @@ const Vault = () => {
         </div>
 
         {/* Balance Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="bg-gray-900/50 border-gray-700/50 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-300">Credits Balance</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-300">Hex Balance</CardTitle>
               <CreditCard className="h-4 w-4 text-cyan-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-cyan-400">
-                {userProfile?.credits?.toLocaleString() || 0} credits
+                ⬡{userProfile?.credits?.toLocaleString() || 0}
               </div>
               <p className="text-xs text-gray-400 mt-1">
                 Available for transactions
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gray-900/50 border-gray-700/50 backdrop-blur-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-300">Gold</CardTitle>
+              <Wallet className="h-4 w-4 text-yellow-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-lg font-bold text-yellow-400">
+                {formatGold(
+                  userProfile?.gold_handfuls || 0,
+                  userProfile?.gold_bags || 0,
+                  userProfile?.gold_chests || 0
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                Physical currency
               </p>
             </CardContent>
           </Card>
@@ -283,18 +310,18 @@ const Vault = () => {
             <CardContent>
               <div className="text-2xl font-bold text-red-400">{bills.length}</div>
               <p className="text-xs text-gray-400 mt-1">
-                Total owed: {bills.reduce((sum, bill) => sum + bill.amount, 0).toLocaleString()} credits
+                Total owed: ⬡{bills.reduce((sum, bill) => sum + bill.amount, 0).toLocaleString()}
               </p>
             </CardContent>
           </Card>
           <Card className="bg-gray-900/50 border-gray-700/50 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-300">Physical Assets</CardTitle>
-              <Wallet className="h-4 w-4 text-yellow-400" />
+              <Package className="h-4 w-4 text-purple-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-400">
-                {inventoryItems.reduce((sum, item) => sum + item.value, 0).toLocaleString()} credits
+              <div className="text-2xl font-bold text-purple-400">
+                ⬡{inventoryItems.reduce((sum, item) => sum + item.value, 0).toLocaleString()}
               </div>
               <p className="text-xs text-gray-400 mt-1">
                 Estimated inventory value
@@ -326,7 +353,7 @@ const Vault = () => {
                       </div>
                       <div className="text-right">
                         <div className="text-xl font-bold text-red-400">
-                          {bill.amount.toLocaleString()} credits
+                          ⬡{bill.amount.toLocaleString()}
                         </div>
                         <Button
                           onClick={() => handlePayBill(bill.id)}
@@ -370,7 +397,7 @@ const Vault = () => {
                         Qty: {item.quantity}
                       </Badge>
                       <div className="text-yellow-400 font-mono text-xs">
-                        {item.value.toLocaleString()} credits
+                        ⬡{item.value.toLocaleString()}
                       </div>
                     </div>
                   </div>
@@ -418,7 +445,7 @@ const Vault = () => {
                         transaction.amount > 0 ? 'text-green-400' : 'text-red-400'
                       }`}>
                         <span className="font-mono font-bold">
-                          {transaction.amount > 0 ? '+' : ''}{transaction.amount.toLocaleString()} credits
+                          {transaction.amount > 0 ? '+' : ''}⬡{transaction.amount.toLocaleString()}
                         </span>
                       </div>
                     </div>
