@@ -82,7 +82,7 @@ const Wyrmcart = () => {
             <Search className="w-5 h-5 text-green-400" />
             <input 
               placeholder="Search black market inventory..."
-              className="flex-1 bg-transparent text-white placeholder-gray-400 outline-none"
+              className="flex-1 bg-transparent text-foreground placeholder-muted-foreground outline-none"
             />
           </div>
         </Card>

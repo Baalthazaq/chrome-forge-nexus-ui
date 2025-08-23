@@ -82,9 +82,9 @@ const BeholdR = () => {
 
                 {/* Video Info */}
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white mb-2">{video.title}</h3>
-                  <div className="text-gray-400 text-sm mb-2">
-                    <span className="text-purple-400">{video.channel}</span> • {video.views} • {video.time}
+              <h3 className="text-lg font-semibold text-foreground mb-2">{video.title}</h3>
+              <div className="text-muted-foreground text-sm mb-2">
+                <span className="text-purple-400">{video.channel}</span> • {video.views} • {video.time}
                   </div>
                   <div className="flex space-x-2 mb-3">
                     {video.tags.map((tag, tagIndex) => (
@@ -100,16 +100,16 @@ const BeholdR = () => {
                       <Play className="w-4 h-4 mr-1" />
                       Watch
                     </Button>
-                    <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white">
+                    <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground">
                       <ThumbsUp className="w-4 h-4" />
                     </Button>
-                    <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white">
+                    <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground">
                       <ThumbsDown className="w-4 h-4" />
                     </Button>
-                    <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white">
+                    <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground">
                       <Share2 className="w-4 h-4" />
                     </Button>
-                    <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white">
+                    <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground">
                       <Bookmark className="w-4 h-4" />
                     </Button>
                   </div>
@@ -121,21 +121,21 @@ const BeholdR = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-          <Card className="p-4 bg-gray-900/30 border-gray-700/50 text-center">
-            <div className="text-2xl font-bold text-white">156</div>
-            <div className="text-gray-400 text-sm">Videos Watched</div>
+          <Card className="p-4 bg-card/50 border-border text-center">
+            <div className="text-2xl font-bold text-foreground">156</div>
+            <div className="text-muted-foreground text-sm">Videos Watched</div>
           </Card>
-          <Card className="p-4 bg-gray-900/30 border-gray-700/50 text-center">
+          <Card className="p-4 bg-card/50 border-border text-center">
             <div className="text-2xl font-bold text-purple-400">24.7K</div>
-            <div className="text-gray-400 text-sm">Watch Time (hrs)</div>
+            <div className="text-muted-foreground text-sm">Watch Time (hrs)</div>
           </Card>
-          <Card className="p-4 bg-gray-900/30 border-gray-700/50 text-center">
+          <Card className="p-4 bg-card/50 border-border text-center">
             <div className="text-2xl font-bold text-blue-400">47</div>
-            <div className="text-gray-400 text-sm">Subscriptions</div>
+            <div className="text-muted-foreground text-sm">Subscriptions</div>
           </Card>
-          <Card className="p-4 bg-gray-900/30 border-gray-700/50 text-center">
+          <Card className="p-4 bg-card/50 border-border text-center">
             <div className="text-2xl font-bold text-green-400">89%</div>
-            <div className="text-gray-400 text-sm">Ad Block Rate</div>
+            <div className="text-muted-foreground text-sm">Ad Block Rate</div>
           </Card>
         </div>
       </div>

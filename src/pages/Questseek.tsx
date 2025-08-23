@@ -64,7 +64,7 @@ const Questseek = () => {
             <Search className="w-5 h-5 text-emerald-400" />
             <input 
               placeholder="Search available quests..."
-              className="flex-1 bg-transparent text-white placeholder-gray-400 outline-none"
+              className="flex-1 bg-transparent text-foreground placeholder-muted-foreground outline-none"
             />
             <div className="flex space-x-2">
               <Badge variant="outline" className="border-emerald-500 text-emerald-400">All Risks</Badge>
