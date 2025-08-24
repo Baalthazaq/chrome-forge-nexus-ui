@@ -351,7 +351,7 @@ const Doppleganger = () => {
         </Card>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <Card className="p-4 bg-gray-900/30 border-gray-700/50">
             <div className="flex items-center space-x-3">
               <Shield className="w-8 h-8 text-blue-400" />
@@ -388,6 +388,15 @@ const Doppleganger = () => {
               <div>
                 <div className="text-gray-400 text-sm">Rep Score (Cha)</div>
                 <div className="text-2xl font-bold text-white">{repScore}</div>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4 bg-gray-900/30 border-gray-700/50">
+            <div className="flex items-center space-x-3">
+              <Dumbbell className="w-8 h-8 text-orange-400" />
+              <div>
+                <div className="text-gray-400 text-sm">Physical Metrics</div>
+                <div className="text-2xl font-bold text-white">{Math.round((profile.fitness_rating || 0) * 10) / 10}</div>
               </div>
             </div>
           </Card>
@@ -590,21 +599,6 @@ const Doppleganger = () => {
             </p>
           </Card>
 
-          {/* Fitness Rating when not editing */}
-          {!isEditing && (
-            <Card className="p-6 bg-gray-900/30 border-gray-700/50">
-              <h3 className="text-xl font-semibold text-white mb-4">Physical Metrics</h3>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <Dumbbell className="w-8 h-8 text-orange-400" />
-                  <div>
-                    <div className="text-gray-400 text-sm">Fitness Rating</div>
-                    <div className="text-2xl font-bold text-white">{Math.round((profile.fitness_rating || 0) * 10) / 10}</div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )}
         </div>
 
         {isEditing && (

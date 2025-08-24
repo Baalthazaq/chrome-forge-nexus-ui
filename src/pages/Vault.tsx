@@ -208,42 +208,42 @@ const Vault = () => {
               </DialogTrigger>
               <DialogContent className="bg-gray-900 border-gray-700">
                 <DialogHeader>
-                  <DialogTitle className="text-cyan-400">Send Hex</DialogTitle>
+                  <DialogTitle className="text-cyan-400 font-light">Send Hex</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="recipient">Recipient</Label>
+                    <Label htmlFor="recipient" className="font-light text-foreground">Recipient</Label>
                     <Select value={sendRecipient} onValueChange={setSendRecipient}>
-                      <SelectTrigger className="bg-gray-800 border-gray-600">
+                      <SelectTrigger className="bg-gray-800 border-gray-600 font-light">
                         <SelectValue placeholder="Select recipient" />
                       </SelectTrigger>
-                      <SelectContent className="bg-gray-800 border-gray-600">
+                      <SelectContent className="bg-gray-800 border-gray-600 font-light">
                         {profiles.map((profile) => (
-                          <SelectItem key={profile.user_id} value={profile.user_id}>
-                            {profile.character_name}
-                          </SelectItem>
+                            <SelectItem key={profile.user_id} value={profile.user_id} className="font-light">
+                              {profile.character_name}
+                            </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="amount">Amount</Label>
+                    <Label htmlFor="amount" className="font-light text-foreground">Amount</Label>
                     <Input
                       id="amount"
                       type="number"
                       value={sendAmount}
                       onChange={(e) => setSendAmount(e.target.value)}
-                      className="bg-gray-800 border-gray-600"
+                      className="bg-gray-800 border-gray-600 font-light text-foreground"
                       placeholder="Enter amount in Hex"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="description">Description</Label>
+                    <Label htmlFor="description" className="font-light text-foreground">Description</Label>
                     <Textarea
                       id="description"
                       value={sendDescription}
                       onChange={(e) => setSendDescription(e.target.value)}
-                      className="bg-gray-800 border-gray-600"
+                      className="bg-gray-800 border-gray-600 font-light text-foreground"
                       placeholder="Enter description"
                     />
                   </div>
@@ -366,7 +366,7 @@ const Vault = () => {
                   <div className="text-center">
                     <h3 className="font-semibold text-white text-sm mb-2">{item.name}</h3>
                     <div className="space-y-1">
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs font-light text-foreground">
                         Qty: {item.quantity}
                       </Badge>
                       <div className="text-yellow-400 font-mono text-xs">
