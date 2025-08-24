@@ -215,15 +215,15 @@ const Vault = () => {
                     <Label htmlFor="recipient" className="font-light text-foreground">Recipient</Label>
                     <Select value={sendRecipient} onValueChange={setSendRecipient}>
                       <SelectTrigger className="bg-gray-800 border-gray-600 font-light">
-                        <SelectValue placeholder="Select recipient" />
+                        <SelectValue placeholder="Select recipient" className="text-gray-300" />
                       </SelectTrigger>
-                      <SelectContent className="bg-gray-800 border-gray-600 font-light">
-                        {profiles.map((profile) => (
-                            <SelectItem key={profile.user_id} value={profile.user_id} className="font-light">
-                              {profile.character_name}
-                            </SelectItem>
-                        ))}
-                      </SelectContent>
+                       <SelectContent className="bg-gray-800 border-gray-600 text-gray-300">
+                         {profiles.map((profile) => (
+                             <SelectItem key={profile.user_id} value={profile.user_id} className="text-gray-300">
+                               {profile.character_name}
+                             </SelectItem>
+                         ))}
+                       </SelectContent>
                     </Select>
                   </div>
                   <div>
@@ -366,9 +366,9 @@ const Vault = () => {
                   <div className="text-center">
                     <h3 className="font-semibold text-white text-sm mb-2">{item.name}</h3>
                     <div className="space-y-1">
-                      <Badge variant="outline" className="text-xs font-light text-foreground">
-                        Qty: {item.quantity}
-                      </Badge>
+                       <Badge variant="outline" className="text-xs text-gray-300">
+                         Qty: {item.quantity}
+                       </Badge>
                       <div className="text-yellow-400 font-mono text-xs">
                         ⬡{item.value.toLocaleString()}
                       </div>
