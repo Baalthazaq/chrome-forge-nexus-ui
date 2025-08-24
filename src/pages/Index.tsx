@@ -219,7 +219,7 @@ const Index = () => {
                     
                     {/* App Info */}
                     <div className="text-center">
-                      <h3 className="text-cyan-300 font-light text-sm group-hover:text-cyan-100 transition-colors">
+                      <h3 className="text-cyan-300 font-bold text-sm group-hover:text-cyan-100 transition-colors">
                         {app.name}
                       </h3>
                       <p className="text-muted-foreground text-xs mt-1 font-mono">
