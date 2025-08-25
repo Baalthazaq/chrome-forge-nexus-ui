@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import VaultAdmin from "./pages/VaultAdmin";
 import Charisma from "./pages/Charisma";
 import Sending from "./pages/Sending";
 import Vault from "./pages/Vault";
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/sending" element={<SendingAdmin />} />
+            <Route path="/admin/app-of-holding" element={<VaultAdmin />} />
             <Route path="/admin/:app" element={<Admin />} />
             <Route path="/charisma" element={<Charisma />} />
             <Route path="/sending" element={<Sending />} />
