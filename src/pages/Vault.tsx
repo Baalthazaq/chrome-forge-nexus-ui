@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, CreditCard, Wallet, Package, TrendingUp, TrendingDown, Send, Receipt, RefreshCw } from "lucide-react";
+import { ArrowLeft, CreditCard, Wallet, Package, TrendingUp, TrendingDown, Send, Receipt, RefreshCw, Settings, Users, Plus, Play, PlayCircle, XCircle, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,22 +9,56 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const Vault = () => {
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const { toast } = useToast();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [bills, setBills] = useState<any[]>([]);
+  const [allBills, setAllBills] = useState<any[]>([]);
+  const [recurringPayments, setRecurringPayments] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Send Money Dialog State
   const [sendMoneyOpen, setSendMoneyOpen] = useState(false);
   const [sendAmount, setSendAmount] = useState("");
   const [sendRecipient, setSendRecipient] = useState("");
   const [sendDescription, setSendDescription] = useState("");
+  
+  // Admin Dialog States
+  const [adminDialogOpen, setAdminDialogOpen] = useState(false);
+  const [billDialogOpen, setBillDialogOpen] = useState(false);
+  const [creditDialogOpen, setCreditDialogOpen] = useState(false);
+  const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
+  
+  // Admin Form States
+  const [billForm, setBillForm] = useState({
+    to_user_id: "",
+    amount: "",
+    description: "",
+    due_date: "",
+    is_recurring: false,
+    recurring_interval: ""
+  });
+  const [creditForm, setCreditForm] = useState({
+    user_id: "",
+    amount: ""
+  });
+  const [recurringForm, setRecurringForm] = useState({
+    to_user_id: "",
+    amount: "",
+    description: "",
+    interval_type: ""
+  });
 
   // Mock inventory data
   const inventoryItems = [
@@ -84,6 +118,34 @@ const Vault = () => {
       
       setProfiles(profileData || []);
 
+      // Load admin data if user is admin
+      if (isAdmin) {
+        // Load all bills for admin view
+        const { data: allBillData } = await supabase
+          .from("bills")
+          .select(`
+            *,
+            from_profile:from_user_id(character_name),
+            to_profile:to_user_id(character_name)
+          `)
+          .eq("status", "unpaid")
+          .order("created_at", { ascending: false });
+        
+        setAllBills(allBillData || []);
+
+        // Load recurring payments
+        const { data: recurringData } = await supabase
+          .from("recurring_payments")
+          .select(`
+            *,
+            from_profile:from_user_id(character_name),
+            to_profile:to_user_id(character_name)
+          `)
+          .order("created_at", { ascending: false });
+        
+        setRecurringPayments(recurringData || []);
+      }
+
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
@@ -93,7 +155,7 @@ const Vault = () => {
 
   useEffect(() => {
     loadData();
-  }, [user]);
+  }, [user, isAdmin]);
 
   const handleSendMoney = async () => {
     if (!sendRecipient || !sendAmount || !sendDescription) {
@@ -172,6 +234,235 @@ const Vault = () => {
     }
   };
 
+  // Admin Functions
+  const handleSendBill = async () => {
+    if (!billForm.to_user_id || !billForm.amount || !billForm.description) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const amount = parseInt(billForm.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid amount",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.functions.invoke('admin-financial', {
+        body: {
+          operation: 'send_bill',
+          to_user_id: billForm.to_user_id,
+          amount,
+          description: billForm.description,
+          due_date: billForm.due_date || null,
+          is_recurring: billForm.is_recurring,
+          recurring_interval: billForm.is_recurring ? billForm.recurring_interval : null
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Bill sent successfully"
+      });
+
+      setBillDialogOpen(false);
+      setBillForm({ to_user_id: "", amount: "", description: "", due_date: "", is_recurring: false, recurring_interval: "" });
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send bill",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSetCredits = async () => {
+    if (!creditForm.user_id || !creditForm.amount) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const amount = parseInt(creditForm.amount);
+    if (isNaN(amount) || amount < 0) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid amount",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.functions.invoke('admin-financial', {
+        body: {
+          operation: 'set_user_credits',
+          user_id: creditForm.user_id,
+          amount
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Credits updated successfully"
+      });
+
+      setCreditDialogOpen(false);
+      setCreditForm({ user_id: "", amount: "" });
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update credits",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleCreateRecurringPayment = async () => {
+    if (!recurringForm.to_user_id || !recurringForm.amount || !recurringForm.description || !recurringForm.interval_type) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const amount = parseInt(recurringForm.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid amount",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.functions.invoke('admin-financial', {
+        body: {
+          operation: 'create_recurring_payment',
+          to_user_id: recurringForm.to_user_id,
+          amount,
+          description: recurringForm.description,
+          interval_type: recurringForm.interval_type
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Recurring payment created successfully"
+      });
+
+      setRecurringDialogOpen(false);
+      setRecurringForm({ to_user_id: "", amount: "", description: "", interval_type: "" });
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create recurring payment",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleProcessRecurring = async (recurringId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('admin-financial', {
+        body: {
+          operation: 'process_recurring_payment',
+          recurring_payment_id: recurringId
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Recurring payment processed successfully"
+      });
+
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to process recurring payment",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleProcessAllRecurring = async () => {
+    try {
+      const { error } = await supabase.functions.invoke('admin-financial', {
+        body: {
+          operation: 'process_all_recurring'
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "All recurring payments processed successfully"
+      });
+
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to process recurring payments",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleToggleRecurring = async (recurringId: string, isActive: boolean) => {
+    try {
+      const { error } = await supabase.functions.invoke('admin-financial', {
+        body: {
+          operation: 'toggle_recurring_status',
+          recurring_payment_id: recurringId,
+          is_active: !isActive
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Recurring payment ${!isActive ? 'activated' : 'deactivated'} successfully`
+      });
+
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to toggle recurring payment",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -199,6 +490,315 @@ const Vault = () => {
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="bg-purple-900/50 border-purple-700 hover:bg-purple-800/50 text-purple-400">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Admin Panel
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-gray-900 border-gray-700 max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="text-purple-400 font-light">Financial Administration</DialogTitle>
+                  </DialogHeader>
+                  <Tabs defaultValue="bills" className="w-full">
+                    <TabsList className="grid w-full grid-cols-4">
+                      <TabsTrigger value="bills">Bills</TabsTrigger>
+                      <TabsTrigger value="credits">Credits</TabsTrigger>
+                      <TabsTrigger value="recurring">Recurring</TabsTrigger>
+                      <TabsTrigger value="overview">Overview</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="bills" className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-semibold text-gray-300">All Unpaid Bills</h3>
+                        <Dialog open={billDialogOpen} onOpenChange={setBillDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button size="sm" className="bg-red-600 hover:bg-red-700">
+                              <Plus className="w-4 h-4 mr-2" />
+                              Send Bill
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="bg-gray-900 border-gray-700">
+                            <DialogHeader>
+                              <DialogTitle className="text-red-400">Send Bill</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <Label className="text-gray-300">To User</Label>
+                                <Select value={billForm.to_user_id} onValueChange={(value) => setBillForm({...billForm, to_user_id: value})}>
+                                  <SelectTrigger className="bg-gray-800 border-gray-600">
+                                    <SelectValue placeholder="Select user" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-gray-800 border-gray-600">
+                                    {profiles.map((profile) => (
+                                      <SelectItem key={profile.user_id} value={profile.user_id}>
+                                        {profile.character_name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-gray-300">Amount</Label>
+                                <Input
+                                  type="number"
+                                  value={billForm.amount}
+                                  onChange={(e) => setBillForm({...billForm, amount: e.target.value})}
+                                  className="bg-gray-800 border-gray-600 text-gray-300"
+                                  placeholder="Amount in Hex"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-gray-300">Description</Label>
+                                <Textarea
+                                  value={billForm.description}
+                                  onChange={(e) => setBillForm({...billForm, description: e.target.value})}
+                                  className="bg-gray-800 border-gray-600 text-gray-300"
+                                  placeholder="Bill description"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-gray-300">Due Date (Optional)</Label>
+                                <Input
+                                  type="date"
+                                  value={billForm.due_date}
+                                  onChange={(e) => setBillForm({...billForm, due_date: e.target.value})}
+                                  className="bg-gray-800 border-gray-600 text-gray-300"
+                                />
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={billForm.is_recurring}
+                                  onCheckedChange={(checked) => setBillForm({...billForm, is_recurring: checked})}
+                                />
+                                <Label className="text-gray-300">Recurring Bill</Label>
+                              </div>
+                              {billForm.is_recurring && (
+                                <div>
+                                  <Label className="text-gray-300">Interval</Label>
+                                  <Select value={billForm.recurring_interval} onValueChange={(value) => setBillForm({...billForm, recurring_interval: value})}>
+                                    <SelectTrigger className="bg-gray-800 border-gray-600">
+                                      <SelectValue placeholder="Select interval" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-800 border-gray-600">
+                                      <SelectItem value="daily">Daily</SelectItem>
+                                      <SelectItem value="weekly">Weekly</SelectItem>
+                                      <SelectItem value="monthly">Monthly</SelectItem>
+                                      <SelectItem value="yearly">Yearly</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+                              <Button onClick={handleSendBill} className="w-full bg-red-600 hover:bg-red-700">
+                                Send Bill
+                              </Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {allBills.map((bill) => (
+                          <Card key={bill.id} className="bg-red-900/20 border-red-700/50 p-3">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-red-400 font-medium">{bill.description}</p>
+                                <p className="text-sm text-gray-400">
+                                  From: {bill.from_profile?.character_name || "System"} → To: {bill.to_profile?.character_name}
+                                </p>
+                                <p className="text-sm text-gray-400">Amount: ⬡{bill.amount.toLocaleString()}</p>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="credits" className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-semibold text-gray-300">Manage User Credits</h3>
+                        <Dialog open={creditDialogOpen} onOpenChange={setCreditDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button size="sm" className="bg-cyan-600 hover:bg-cyan-700">
+                              <CreditCard className="w-4 h-4 mr-2" />
+                              Set Credits
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="bg-gray-900 border-gray-700">
+                            <DialogHeader>
+                              <DialogTitle className="text-cyan-400">Set User Credits</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <Label className="text-gray-300">User</Label>
+                                <Select value={creditForm.user_id} onValueChange={(value) => setCreditForm({...creditForm, user_id: value})}>
+                                  <SelectTrigger className="bg-gray-800 border-gray-600">
+                                    <SelectValue placeholder="Select user" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-gray-800 border-gray-600">
+                                    {profiles.map((profile) => (
+                                      <SelectItem key={profile.user_id} value={profile.user_id}>
+                                        {profile.character_name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-gray-300">New Credit Amount</Label>
+                                <Input
+                                  type="number"
+                                  value={creditForm.amount}
+                                  onChange={(e) => setCreditForm({...creditForm, amount: e.target.value})}
+                                  className="bg-gray-800 border-gray-600 text-gray-300"
+                                  placeholder="Total credits to set"
+                                />
+                              </div>
+                              <Button onClick={handleSetCredits} className="w-full bg-cyan-600 hover:bg-cyan-700">
+                                Set Credits
+                              </Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="recurring" className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-semibold text-gray-300">Recurring Payments</h3>
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={handleProcessAllRecurring}
+                            size="sm" 
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <PlayCircle className="w-4 h-4 mr-2" />
+                            Process All
+                          </Button>
+                          <Dialog open={recurringDialogOpen} onOpenChange={setRecurringDialogOpen}>
+                            <DialogTrigger asChild>
+                              <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                                <Plus className="w-4 h-4 mr-2" />
+                                New Recurring
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="bg-gray-900 border-gray-700">
+                              <DialogHeader>
+                                <DialogTitle className="text-blue-400">Create Recurring Payment</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label className="text-gray-300">To User</Label>
+                                  <Select value={recurringForm.to_user_id} onValueChange={(value) => setRecurringForm({...recurringForm, to_user_id: value})}>
+                                    <SelectTrigger className="bg-gray-800 border-gray-600">
+                                      <SelectValue placeholder="Select user" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-800 border-gray-600">
+                                      {profiles.map((profile) => (
+                                        <SelectItem key={profile.user_id} value={profile.user_id}>
+                                          {profile.character_name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-gray-300">Amount</Label>
+                                  <Input
+                                    type="number"
+                                    value={recurringForm.amount}
+                                    onChange={(e) => setRecurringForm({...recurringForm, amount: e.target.value})}
+                                    className="bg-gray-800 border-gray-600 text-gray-300"
+                                    placeholder="Amount per payment"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-gray-300">Description</Label>
+                                  <Input
+                                    value={recurringForm.description}
+                                    onChange={(e) => setRecurringForm({...recurringForm, description: e.target.value})}
+                                    className="bg-gray-800 border-gray-600 text-gray-300"
+                                    placeholder="Payment description"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-gray-300">Interval</Label>
+                                  <Select value={recurringForm.interval_type} onValueChange={(value) => setRecurringForm({...recurringForm, interval_type: value})}>
+                                    <SelectTrigger className="bg-gray-800 border-gray-600">
+                                      <SelectValue placeholder="Select interval" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-800 border-gray-600">
+                                      <SelectItem value="daily">Daily</SelectItem>
+                                      <SelectItem value="weekly">Weekly</SelectItem>
+                                      <SelectItem value="monthly">Monthly</SelectItem>
+                                      <SelectItem value="yearly">Yearly</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <Button onClick={handleCreateRecurringPayment} className="w-full bg-blue-600 hover:bg-blue-700">
+                                  Create Recurring Payment
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </div>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {recurringPayments.map((payment) => (
+                          <Card key={payment.id} className="bg-blue-900/20 border-blue-700/50 p-3">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-blue-400 font-medium">{payment.description}</p>
+                                <p className="text-sm text-gray-400">
+                                  From: {payment.from_profile?.character_name || "System"} → To: {payment.to_profile?.character_name}
+                                </p>
+                                <p className="text-sm text-gray-400">
+                                  ⬡{payment.amount.toLocaleString()} • {payment.interval_type} • Sent {payment.total_times_sent} times
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  onClick={() => handleProcessRecurring(payment.id)}
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  <Play className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  onClick={() => handleToggleRecurring(payment.id, payment.is_active)}
+                                  size="sm"
+                                  variant={payment.is_active ? "destructive" : "default"}
+                                  className={payment.is_active ? "bg-red-600 hover:bg-red-700" : "bg-gray-600 hover:bg-gray-700"}
+                                >
+                                  {payment.is_active ? <XCircle className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                                </Button>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="overview" className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-300">Financial Overview</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Card className="bg-gray-800/50 border-gray-600 p-4">
+                          <h4 className="text-red-400 font-medium">Total Unpaid Bills</h4>
+                          <p className="text-2xl font-bold text-red-400">{allBills.length}</p>
+                          <p className="text-sm text-gray-400">⬡{allBills.reduce((sum, bill) => sum + bill.amount, 0).toLocaleString()} total</p>
+                        </Card>
+                        <Card className="bg-gray-800/50 border-gray-600 p-4">
+                          <h4 className="text-blue-400 font-medium">Active Recurring Payments</h4>
+                          <p className="text-2xl font-bold text-blue-400">{recurringPayments.filter(p => p.is_active).length}</p>
+                          <p className="text-sm text-gray-400">{recurringPayments.length} total configured</p>
+                        </Card>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </DialogContent>
+              </Dialog>
+            )}
             <Dialog open={sendMoneyOpen} onOpenChange={setSendMoneyOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="bg-green-900/50 border-green-700 hover:bg-green-800/50 text-green-400">
