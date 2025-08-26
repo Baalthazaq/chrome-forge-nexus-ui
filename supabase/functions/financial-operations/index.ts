@@ -59,14 +59,16 @@ serve(async (req) => {
           throw new Error("Sender profile not found");
         }
 
-        if (senderProfile.credits < amount) {
-          throw new Error("Insufficient funds");
+        // Check if sender has enough credits (including negative limit of -6000)
+        const newSenderBalance = senderProfile.credits - amount;
+        if (newSenderBalance < -6000) {
+          throw new Error("Insufficient funds. Would exceed credit limit.");
         }
 
         // Update sender's credits
         const { error: updateSenderError } = await supabase
           .from("profiles")
-          .update({ credits: senderProfile.credits - amount })
+          .update({ credits: newSenderBalance })
           .eq("user_id", user.id);
 
         if (updateSenderError) throw updateSenderError;
@@ -149,14 +151,16 @@ serve(async (req) => {
           throw new Error("User profile not found");
         }
 
-        if (userProfile.credits < bill.amount) {
-          throw new Error("Insufficient funds");
+        // Check if user has enough credits (including negative limit of -6000)
+        const newUserBalance = userProfile.credits - bill.amount;
+        if (newUserBalance < -6000) {
+          throw new Error("Insufficient funds. Would exceed credit limit.");
         }
 
         // Update user's credits
         const { error: updateUserError } = await supabase
           .from("profiles")
-          .update({ credits: userProfile.credits - bill.amount })
+          .update({ credits: newUserBalance })
           .eq("user_id", user.id);
 
         if (updateUserError) throw updateUserError;

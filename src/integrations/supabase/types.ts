@@ -321,6 +321,133 @@ export type Database = {
         }
         Relationships: []
       }
+      purchases: {
+        Row: {
+          created_at: string
+          id: string
+          quantity: number | null
+          shop_item_id: string
+          subscription_created: boolean | null
+          total_cost: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          quantity?: number | null
+          shop_item_id: string
+          subscription_created?: boolean | null
+          total_cost: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          quantity?: number | null
+          shop_item_id?: string
+          subscription_created?: boolean | null
+          total_cost?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_shop_item_id_fkey"
+            columns: ["shop_item_id"]
+            isOneToOne: false
+            referencedRelation: "shop_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quest_acceptances: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          final_payment: number | null
+          id: string
+          notes: string | null
+          quest_id: string
+          status: string | null
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          final_payment?: number | null
+          id?: string
+          notes?: string | null
+          quest_id: string
+          status?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          final_payment?: number | null
+          id?: string
+          notes?: string | null
+          quest_id?: string
+          status?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quest_acceptances_quest_id_fkey"
+            columns: ["quest_id"]
+            isOneToOne: false
+            referencedRelation: "quests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quests: {
+        Row: {
+          client: string | null
+          created_at: string
+          description: string | null
+          difficulty: string | null
+          id: string
+          reward: number
+          status: string | null
+          tags: string[] | null
+          time_limit: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          client?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty?: string | null
+          id?: string
+          reward?: number
+          status?: string | null
+          tags?: string[] | null
+          time_limit?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          client?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty?: string | null
+          id?: string
+          reward?: number
+          status?: string | null
+          tags?: string[] | null
+          time_limit?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       quick_notes: {
         Row: {
           color: string | null
@@ -374,8 +501,10 @@ export type Database = {
           interval_type: string
           is_active: boolean
           last_sent_at: string | null
+          max_cycles: number | null
           metadata: Json | null
           next_send_at: string
+          remaining_cycles: number | null
           to_user_id: string
           total_times_sent: number
           updated_at: string
@@ -390,8 +519,10 @@ export type Database = {
           interval_type: string
           is_active?: boolean
           last_sent_at?: string | null
+          max_cycles?: number | null
           metadata?: Json | null
           next_send_at: string
+          remaining_cycles?: number | null
           to_user_id: string
           total_times_sent?: number
           updated_at?: string
@@ -406,8 +537,10 @@ export type Database = {
           interval_type?: string
           is_active?: boolean
           last_sent_at?: string | null
+          max_cycles?: number | null
           metadata?: Json | null
           next_send_at?: string
+          remaining_cycles?: number | null
           to_user_id?: string
           total_times_sent?: number
           updated_at?: string
@@ -435,6 +568,54 @@ export type Database = {
           tag?: string
           tagger_user_id?: string
           target_user_id?: string
+        }
+        Relationships: []
+      }
+      shop_items: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          price: number
+          quantity_available: number | null
+          specifications: Json | null
+          subscription_fee: number | null
+          subscription_interval: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          price?: number
+          quantity_available?: number | null
+          specifications?: Json | null
+          subscription_fee?: number | null
+          subscription_interval?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          price?: number
+          quantity_available?: number | null
+          specifications?: Json | null
+          subscription_fee?: number | null
+          subscription_interval?: string | null
+          updated_at?: string
         }
         Relationships: []
       }

@@ -389,6 +389,106 @@ serve(async (req) => {
         });
       }
 
+      case "trigger_daily":
+      case "trigger_weekly": 
+      case "trigger_monthly":
+      case "trigger_yearly": {
+        const interval = operation.replace("trigger_", "");
+        
+        const { data: payments, error: fetchError } = await supabase
+          .from("recurring_payments")
+          .select("*")
+          .eq("is_active", true)
+          .eq("interval_type", interval);
+
+        if (fetchError) throw fetchError;
+
+        let processed = 0;
+        for (const payment of payments) {
+          try {
+            // Get user's current credits
+            const { data: profile, error: profileError } = await supabase
+              .from("profiles")
+              .select("credits")
+              .eq("user_id", payment.to_user_id)
+              .single();
+
+            if (profileError || !profile) {
+              logStep("Profile not found", { userId: payment.to_user_id });
+              continue;
+            }
+
+            // Check if user can afford the payment (enforce -6000 limit)
+            const newBalance = profile.credits - payment.amount;
+            if (newBalance < -6000) {
+              logStep("User would exceed credit limit", { 
+                userId: payment.to_user_id, 
+                currentBalance: profile.credits,
+                paymentAmount: payment.amount,
+                wouldBe: newBalance
+              });
+              continue;
+            }
+
+            // Update user's credits
+            const { error: updateError } = await supabase
+              .from("profiles")
+              .update({ credits: newBalance })
+              .eq("user_id", payment.to_user_id);
+
+            if (updateError) throw updateError;
+
+            // Update recurring payment
+            const updates: any = {
+              last_sent_at: new Date().toISOString(),
+              total_times_sent: payment.total_times_sent + 1
+            };
+
+            // Handle finite cycles
+            if (payment.max_cycles && payment.remaining_cycles) {
+              updates.remaining_cycles = payment.remaining_cycles - 1;
+              if (updates.remaining_cycles <= 0) {
+                updates.is_active = false;
+              }
+            }
+
+            const { error: paymentUpdateError } = await supabase
+              .from("recurring_payments")
+              .update(updates)
+              .eq("id", payment.id);
+
+            if (paymentUpdateError) throw paymentUpdateError;
+
+            // Create transaction record
+            await supabase
+              .from("transactions")
+              .insert({
+                user_id: payment.to_user_id,
+                transaction_type: "recurring_payment",
+                amount: -payment.amount,
+                description: payment.description,
+                reference_id: payment.id,
+                status: "completed",
+                metadata: {
+                  recurring_payment_id: payment.id,
+                  interval_type: payment.interval_type,
+                  triggered_manually: true
+                }
+              });
+
+            processed++;
+          } catch (error) {
+            logStep("Error processing payment", { paymentId: payment.id, error });
+          }
+        }
+
+        logStep(`${interval} payments processed`, { processed });
+        return new Response(JSON.stringify({ success: true, processed }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
       default:
         throw new Error("Invalid operation");
     }

@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { formatHex } from "@/lib/currency";
 
 const Vault = () => {
   const { user } = useAuth();
@@ -273,7 +274,7 @@ const Vault = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-cyan-400">
-                ⬡{userProfile?.credits?.toLocaleString() || 0}
+                {formatHex(userProfile?.credits || 0)}
               </div>
               <p className="text-xs text-gray-400 mt-1">
                 Available for transactions
@@ -288,7 +289,7 @@ const Vault = () => {
             <CardContent>
               <div className="text-2xl font-bold text-red-400">{bills.length}</div>
               <p className="text-xs text-gray-400 mt-1">
-                Total owed: ⬡{bills.reduce((sum, bill) => sum + bill.amount, 0).toLocaleString()}
+                Total owed: {formatHex(bills.reduce((sum, bill) => sum + bill.amount, 0))}
               </p>
             </CardContent>
           </Card>
@@ -331,7 +332,7 @@ const Vault = () => {
                       </div>
                       <div className="text-right">
                         <div className="text-xl font-bold text-red-400">
-                          ⬡{bill.amount.toLocaleString()}
+                          {formatHex(bill.amount)}
                         </div>
                         <Button
                           onClick={() => handlePayBill(bill.id)}
@@ -423,7 +424,7 @@ const Vault = () => {
                         transaction.amount > 0 ? 'text-green-400' : 'text-red-400'
                       }`}>
                         <span className="font-mono font-bold">
-                          {transaction.amount > 0 ? '+' : ''}⬡{transaction.amount.toLocaleString()}
+                          {transaction.amount > 0 ? '+' : ''}{formatHex(Math.abs(transaction.amount))}
                         </span>
                       </div>
                     </div>

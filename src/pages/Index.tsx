@@ -58,11 +58,11 @@ const apps = [
     color: "from-red-500 to-pink-500"
   },
   {
-    id: "crucible",
+    id: "atunes",
     name: "@tunes",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Attunes.gif",
-    description: "Attunement",
-    route: "/crucible",
+    description: "Attunement & Gear",
+    route: "/atunes",
     color: "from-gray-500 to-slate-600"
   },
   {

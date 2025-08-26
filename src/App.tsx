@@ -18,7 +18,7 @@ import Questseek from "./pages/Questseek";
 import Succubus from "./pages/Succubus";
 import Doppleganger from "./pages/Doppleganger";
 import BeholdR from "./pages/BeholdR";
-import Crucible from "./pages/Crucible";
+import Atunes from "./pages/Atunes";
 import NexusWire from "./pages/NexusWire";
 import Brittlewisp from "./pages/Brittlewisp";
 import Wyrmcart from "./pages/Wyrmcart";
@@ -52,7 +52,7 @@ const App = () => (
             <Route path="/succubus" element={<Succubus />} />
             <Route path="/doppleganger" element={<Doppleganger />} />
             <Route path="/beholdr" element={<BeholdR />} />
-            <Route path="/crucible" element={<Crucible />} />
+            <Route path="/atunes" element={<Atunes />} />
             <Route path="/nexuswire" element={<NexusWire />} />
             <Route path="/brittlewisp" element={<Brittlewisp />} />
             <Route path="/wyrmcart" element={<Wyrmcart />} />
