@@ -56,6 +56,52 @@ export function formatHex(amount: number): string {
   return `${prefix}${absAmount} Hex`;
 }
 
+export function getHexBreakdown(amount: number): { 
+  total: number, 
+  breakdown: string, 
+  colorClass: string 
+} {
+  const isPositive = amount > 0;
+  const colorClass = isPositive ? "text-green-400" : "text-red-400";
+  
+  if (amount === 0) {
+    return {
+      total: 0,
+      breakdown: "0 Hex",
+      colorClass: "text-red-400"
+    };
+  }
+  
+  const absAmount = Math.abs(amount);
+  const prefix = amount < 0 ? "-" : "";
+  
+  // Calculate all denominations
+  const chests = Math.floor(absAmount / 6000);
+  const bagsRemainder = absAmount % 6000;
+  const bags = Math.floor(bagsRemainder / 600);
+  const handfulRemainder = bagsRemainder % 600;
+  const handfuls = Math.floor(handfulRemainder / 60);
+  const coinRemainder = handfulRemainder % 60;
+  const coins = Math.floor(coinRemainder / 6);
+  const hex = coinRemainder % 6;
+  
+  // Build breakdown string
+  const parts = [];
+  if (chests > 0) parts.push(`${chests} chest${chests !== 1 ? 's' : ''}`);
+  if (bags > 0) parts.push(`${bags} bag${bags !== 1 ? 's' : ''}`);
+  if (handfuls > 0) parts.push(`${handfuls} handful${handfuls !== 1 ? 's' : ''}`);
+  if (coins > 0) parts.push(`${coins} coin${coins !== 1 ? 's' : ''}`);
+  if (hex > 0) parts.push(`${hex} Hex`);
+  
+  const breakdown = parts.length > 0 ? `${prefix}${parts.join(', ')}` : `${prefix}0 Hex`;
+  
+  return {
+    total: amount,
+    breakdown,
+    colorClass
+  };
+}
+
 export function parseHexInput(input: string): number {
   // Simple parser - just treat it as a number for now
   // Could be enhanced to parse "1 chest 2 bags" etc.

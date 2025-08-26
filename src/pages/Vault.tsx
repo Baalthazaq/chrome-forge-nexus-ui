@@ -13,7 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { formatHex } from "@/lib/currency";
+import { formatHex, getHexBreakdown } from "@/lib/currency";
 
 const Vault = () => {
   const { user } = useAuth();
@@ -274,10 +274,13 @@ const Vault = () => {
               <CreditCard className="h-4 w-4 text-cyan-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-cyan-400">
-                {formatHex(userProfile?.credits || 0)}
+              <div className={`text-2xl font-bold ${getHexBreakdown(userProfile?.credits || 0).colorClass}`}>
+                {userProfile?.credits || 0} Hex
               </div>
-              <p className="text-xs text-gray-400 mt-1">
+              <div className={`text-sm ${getHexBreakdown(userProfile?.credits || 0).colorClass} mt-1`}>
+                {getHexBreakdown(userProfile?.credits || 0).breakdown}
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
                 Available for transactions
               </p>
             </CardContent>
