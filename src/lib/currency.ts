@@ -10,10 +10,10 @@ export function formatHex(amount: number): string {
     const chests = Math.floor(absAmount / 6000);
     const remainder = absAmount % 6000;
     if (remainder === 0) {
-      return `${prefix}${chests} chest${chests !== 1 ? 's' : ''}`;
+      return `${prefix}${chests} Chest${chests !== 1 ? 's' : ''}`;
     } else {
       const formattedRemainder = formatHex(remainder);
-      return `${prefix}${chests} chest${chests !== 1 ? 's' : ''}, ${formattedRemainder}`;
+      return `${prefix}${chests} Chest${chests !== 1 ? 's' : ''}, ${formattedRemainder}`;
     }
   }
 
@@ -22,10 +22,10 @@ export function formatHex(amount: number): string {
     const bags = Math.floor(absAmount / 600);
     const remainder = absAmount % 600;
     if (remainder === 0) {
-      return `${prefix}${bags} bag${bags !== 1 ? 's' : ''}`;
+      return `${prefix}${bags} Bag${bags !== 1 ? 's' : ''}`;
     } else {
       const formattedRemainder = formatHex(remainder);
-      return `${prefix}${bags} bag${bags !== 1 ? 's' : ''}, ${formattedRemainder}`;
+      return `${prefix}${bags} Bag${bags !== 1 ? 's' : ''}, ${formattedRemainder}`;
     }
   }
 
@@ -34,10 +34,10 @@ export function formatHex(amount: number): string {
     const handfuls = Math.floor(absAmount / 60);
     const remainder = absAmount % 60;
     if (remainder === 0) {
-      return `${prefix}${handfuls} handful${handfuls !== 1 ? 's' : ''}`;
+      return `${prefix}${handfuls} Handful${handfuls !== 1 ? 's' : ''}`;
     } else {
       const formattedRemainder = formatHex(remainder);
-      return `${prefix}${handfuls} handful${handfuls !== 1 ? 's' : ''}, ${formattedRemainder}`;
+      return `${prefix}${handfuls} Handful${handfuls !== 1 ? 's' : ''}, ${formattedRemainder}`;
     }
   }
 
@@ -46,9 +46,9 @@ export function formatHex(amount: number): string {
     const coins = Math.floor(absAmount / 6);
     const hex = absAmount % 6;
     if (hex === 0) {
-      return `${prefix}${coins} coin${coins !== 1 ? 's' : ''}`;
+      return `${prefix}${coins} Coin${coins !== 1 ? 's' : ''}`;
     } else {
-      return `${prefix}${coins} coin${coins !== 1 ? 's' : ''}, ${hex} Hex`;
+      return `${prefix}${coins} Coin${coins !== 1 ? 's' : ''}, ${hex} Hex`;
     }
   }
 
@@ -68,29 +68,29 @@ export function formatHexDenomination(amount: number): string {
     const chests = Math.floor(absAmount / 6000);
     const remainder = absAmount % 6000;
     if (remainder === 0) {
-      return `${prefix}${chests} chest${chests !== 1 ? 's' : ''}`;
+      return `${prefix}${chests} Chest${chests !== 1 ? 's' : ''}`;
     } else {
       // For mixed denominations, show the largest denomination only
-      return `${prefix}${chests} chest${chests !== 1 ? 's' : ''}`;
+      return `${prefix}${chests} Chest${chests !== 1 ? 's' : ''}`;
     }
   }
 
   // 1 bag = 600 hex
   if (absAmount >= 600) {
     const bags = Math.floor(absAmount / 600);
-    return `${prefix}${bags} bag${bags !== 1 ? 's' : ''}`;
+    return `${prefix}${bags} Bag${bags !== 1 ? 's' : ''}`;
   }
 
   // 1 handful = 60 hex
   if (absAmount >= 60) {
     const handfuls = Math.floor(absAmount / 60);
-    return `${prefix}${handfuls} handful${handfuls !== 1 ? 's' : ''}`;
+    return `${prefix}${handfuls} Handful${handfuls !== 1 ? 's' : ''}`;
   }
 
   // 1 coin = 6 hex
   if (absAmount >= 6) {
     const coins = Math.floor(absAmount / 6);
-    return `${prefix}${coins} coin${coins !== 1 ? 's' : ''}`;
+    return `${prefix}${coins} Coin${coins !== 1 ? 's' : ''}`;
   }
 
   // Just hex
@@ -128,10 +128,10 @@ export function getHexBreakdown(amount: number): {
   
   // Build breakdown string
   const parts = [];
-  if (chests > 0) parts.push(`${chests} chest${chests !== 1 ? 's' : ''}`);
-  if (bags > 0) parts.push(`${bags} bag${bags !== 1 ? 's' : ''}`);
-  if (handfuls > 0) parts.push(`${handfuls} handful${handfuls !== 1 ? 's' : ''}`);
-  if (coins > 0) parts.push(`${coins} coin${coins !== 1 ? 's' : ''}`);
+  if (chests > 0) parts.push(`${chests} Chest${chests !== 1 ? 's' : ''}`);
+  if (bags > 0) parts.push(`${bags} Bag${bags !== 1 ? 's' : ''}`);
+  if (handfuls > 0) parts.push(`${handfuls} Handful${handfuls !== 1 ? 's' : ''}`);
+  if (coins > 0) parts.push(`${coins} Coin${coins !== 1 ? 's' : ''}`);
   if (hex > 0) parts.push(`${hex} Hex`);
   
   const breakdown = parts.length > 0 ? `${prefix}${parts.join(', ')}` : `${prefix}⏣0`;
