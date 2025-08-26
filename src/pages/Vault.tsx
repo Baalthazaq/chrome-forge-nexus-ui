@@ -275,7 +275,7 @@ const Vault = () => {
             </CardHeader>
             <CardContent>
               <div className={`text-2xl font-bold ${getHexBreakdown(userProfile?.credits || 0).colorClass}`}>
-                {userProfile?.credits || 0} Hex
+                {userProfile?.credits || 0} ⬢
               </div>
               <div className={`text-sm ${getHexBreakdown(userProfile?.credits || 0).colorClass} mt-1`}>
                 {getHexBreakdown(userProfile?.credits || 0).breakdown}
@@ -291,9 +291,14 @@ const Vault = () => {
               <Receipt className="h-4 w-4 text-red-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-400">{bills.length}</div>
-              <p className="text-xs text-gray-400 mt-1">
-                Total owed: {formatHex(bills.reduce((sum, bill) => sum + bill.amount, 0))}
+              <div className="text-2xl font-bold text-red-400">
+                {bills.reduce((sum, bill) => sum + bill.amount, 0)} ⬢
+              </div>
+              <div className="text-sm text-red-400 mt-1">
+                {getHexBreakdown(bills.reduce((sum, bill) => sum + bill.amount, 0)).breakdown}
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
+                Total owed ({bills.length} bill{bills.length !== 1 ? 's' : ''})
               </p>
             </CardContent>
           </Card>
@@ -304,9 +309,12 @@ const Vault = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-yellow-400">
-                {formatHex(inventoryItems.reduce((sum, item) => sum + item.value, 0))}
+                {inventoryItems.reduce((sum, item) => sum + item.value, 0)} ⬢
               </div>
-              <p className="text-xs text-gray-400 mt-1">
+              <div className="text-sm text-yellow-400 mt-1">
+                {getHexBreakdown(inventoryItems.reduce((sum, item) => sum + item.value, 0)).breakdown}
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
                 Estimated inventory value
               </p>
             </CardContent>
@@ -336,7 +344,10 @@ const Vault = () => {
                       </div>
                       <div className="text-right">
                         <div className="text-xl font-bold text-red-400">
-                          {formatHex(bill.amount)}
+                          {bill.amount} ⬢
+                        </div>
+                        <div className="text-sm text-red-400">
+                          {getHexBreakdown(bill.amount).breakdown}
                         </div>
                         <Button
                           onClick={() => handlePayBill(bill.id)}
@@ -379,9 +390,12 @@ const Vault = () => {
                        <Badge variant="outline" className="text-xs text-gray-300">
                          Qty: {item.quantity}
                        </Badge>
-                      <div className="text-yellow-400 font-mono text-xs">
-                        {formatHex(item.value)}
-                      </div>
+                       <div className="text-yellow-400 font-mono text-xs">
+                         {item.value} ⬢
+                       </div>
+                       <div className="text-yellow-400 font-mono text-xs">
+                         {getHexBreakdown(item.value).breakdown}
+                       </div>
                     </div>
                   </div>
                 </Card>
@@ -427,9 +441,9 @@ const Vault = () => {
                       <div className={`text-right ${
                         transaction.amount > 0 ? 'text-green-400' : 'text-red-400'
                       }`}>
-                        <span className="font-mono font-bold">
-                          {transaction.amount > 0 ? '+' : ''}{formatHex(Math.abs(transaction.amount))}
-                        </span>
+                       <span className="font-mono font-bold">
+                         {transaction.amount > 0 ? '+' : ''}{Math.abs(transaction.amount)} ⬢
+                       </span>
                       </div>
                     </div>
                   ))
