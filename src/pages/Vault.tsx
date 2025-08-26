@@ -304,7 +304,7 @@ const Vault = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-yellow-400">
-                ⬡{inventoryItems.reduce((sum, item) => sum + item.value, 0).toLocaleString()}
+                {formatHex(inventoryItems.reduce((sum, item) => sum + item.value, 0))}
               </div>
               <p className="text-xs text-gray-400 mt-1">
                 Estimated inventory value
@@ -380,7 +380,7 @@ const Vault = () => {
                          Qty: {item.quantity}
                        </Badge>
                       <div className="text-yellow-400 font-mono text-xs">
-                        ⬡{item.value.toLocaleString()}
+                        {formatHex(item.value)}
                       </div>
                     </div>
                   </div>

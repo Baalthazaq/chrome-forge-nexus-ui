@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Search, Star, Clock, User, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
+import { formatHexDenomination } from "@/lib/currency";
 
 const Questseek = () => {
   const quests = [
     {
       title: "Data Recovery - Corporate Sector",
       client: "NeonCorp Industries",
-      reward: "₢ 25,000",
+      reward: 25000,
       difficulty: "High Risk",
       timeLimit: "48 hours",
       description: "Retrieve encrypted financial records from abandoned server farm. Heavy security presence expected.",
@@ -20,7 +21,7 @@ const Questseek = () => {
     {
       title: "Package Delivery - Underground",
       client: "Anonymous",
-      reward: "₢ 8,500",
+      reward: 8500,
       difficulty: "Medium Risk",
       timeLimit: "12 hours",
       description: "Deliver sealed package to contact in Lower City. No questions asked. Discrete handling required.",
@@ -30,7 +31,7 @@ const Questseek = () => {
     {
       title: "Bodyguard Detail",
       client: "Dr. Sarah Chen",
-      reward: "₢ 15,000",
+      reward: 15000,
       difficulty: "Low Risk",
       timeLimit: "3 days",
       description: "Provide security for corporate scientist during research conference. Professional appearance required.",
@@ -96,7 +97,7 @@ const Questseek = () => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-emerald-400 mb-1">{quest.reward}</div>
+                  <div className="text-2xl font-bold text-emerald-400 mb-1">{formatHexDenomination(quest.reward)}</div>
                   <Badge variant={
                     quest.difficulty === "High Risk" ? "destructive" : 
                     quest.difficulty === "Medium Risk" ? "secondary" : "default"

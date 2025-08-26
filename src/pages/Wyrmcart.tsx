@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Search, ShoppingCart, Star, Zap, Shield, Cpu } from "lucide-react";
 import { Link } from "react-router-dom";
+import { formatHexDenomination, formatHex } from "@/lib/currency";
 
 const Wyrmcart = () => {
   const categories = [
@@ -16,7 +17,7 @@ const Wyrmcart = () => {
     {
       id: 1,
       name: "Neural Interface Mk-VII",
-      price: "₢ 45,000",
+      price: 45000,
       rating: 4.8,
       category: "Cybernetics",
       image: "🧠",
@@ -26,7 +27,7 @@ const Wyrmcart = () => {
     {
       id: 2,
       name: "Plasma Katana",
-      price: "₢ 28,500",
+      price: 28500,
       rating: 4.9,
       category: "Combat Gear", 
       image: "⚔️",
@@ -36,7 +37,7 @@ const Wyrmcart = () => {
     {
       id: 3,
       name: "Holographic Projector",
-      price: "₢ 12,000",
+      price: 12000,
       rating: 4.6,
       category: "Tech",
       image: "🔮",
@@ -46,7 +47,7 @@ const Wyrmcart = () => {
     {
       id: 4,
       name: "Stealth Cloak Gen-3",
-      price: "₢ 67,000",
+      price: 67000,
       rating: 4.7,
       category: "Tech",
       image: "👻",
@@ -105,7 +106,7 @@ const Wyrmcart = () => {
               <div className="flex items-start justify-between mb-4">
                 <div className="text-4xl">{item.image}</div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-green-400">{item.price}</div>
+                  <div className="text-2xl font-bold text-green-400">{formatHexDenomination(item.price)}</div>
                   <div className="flex items-center space-x-1 text-yellow-400">
                     <Star className="w-4 h-4 fill-current" />
                     <span className="text-sm">{item.rating}</span>
@@ -139,7 +140,7 @@ const Wyrmcart = () => {
         {/* Account Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
           <Card className="p-4 bg-gray-900/30 border-gray-700/50 text-center">
-            <div className="text-2xl font-bold text-green-400">₢ 125,840</div>
+            <div className="text-2xl font-bold text-green-400">{formatHex(125840)}</div>
             <div className="text-gray-400 text-sm">Wallet Balance</div>
           </Card>
           <Card className="p-4 bg-gray-900/30 border-gray-700/50 text-center">
