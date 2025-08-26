@@ -17,7 +17,7 @@ import { formatHex } from "@/lib/currency";
 
 const Vault = () => {
   const { user } = useAuth();
-  const { isAdmin } = useAdmin();
+  const { isAdmin, impersonatedUser } = useAdmin();
   const { toast } = useToast();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -42,14 +42,15 @@ const Vault = () => {
   ];
 
   const loadData = async () => {
-    if (!user) return;
+    const activeUserId = impersonatedUser?.user_id || user?.id;
+    if (!activeUserId) return;
     
     try {
       // Load user profile
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", activeUserId)
         .single();
       
       setUserProfile(profile);
@@ -62,7 +63,7 @@ const Vault = () => {
           from_profile:from_user_id(character_name),
           to_profile:to_user_id(character_name)
         `)
-        .or(`user_id.eq.${user.id},from_user_id.eq.${user.id},to_user_id.eq.${user.id}`)
+        .or(`user_id.eq.${activeUserId},from_user_id.eq.${activeUserId},to_user_id.eq.${activeUserId}`)
         .order("created_at", { ascending: false })
         .limit(10);
       
@@ -75,7 +76,7 @@ const Vault = () => {
           *,
           from_profile:from_user_id(character_name)
         `)
-        .eq("to_user_id", user.id)
+        .eq("to_user_id", activeUserId)
         .eq("status", "unpaid")
         .order("created_at", { ascending: false });
       
@@ -85,7 +86,7 @@ const Vault = () => {
       const { data: profileData } = await supabase
         .from("profiles")
         .select("user_id, character_name")
-        .neq("user_id", user.id);
+        .neq("user_id", activeUserId);
       
       setProfiles(profileData || []);
 
@@ -98,7 +99,7 @@ const Vault = () => {
 
   useEffect(() => {
     loadData();
-  }, [user]);
+  }, [user, impersonatedUser]);
 
   const handleSendMoney = async () => {
     if (!sendRecipient || !sendAmount || !sendDescription) {
