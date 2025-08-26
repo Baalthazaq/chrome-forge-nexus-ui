@@ -1,5 +1,5 @@
 export function formatHex(amount: number): string {
-  if (amount === 0) return "0 ⬢";
+  if (amount === 0) return "⏣0";
   
   const absAmount = Math.abs(amount);
   const isNegative = amount < 0;
@@ -48,16 +48,16 @@ export function formatHex(amount: number): string {
     if (hex === 0) {
       return `${prefix}${coins} coin${coins !== 1 ? 's' : ''}`;
     } else {
-      return `${prefix}${coins} coin${coins !== 1 ? 's' : ''}, ${hex} ⬢`;
+      return `${prefix}${coins} coin${coins !== 1 ? 's' : ''}, ${hex} Hex`;
     }
   }
 
   // Just hex
-  return `${prefix}${absAmount} ⬢`;
+  return `${prefix}${absAmount} Hex`;
 }
 
 export function formatHexDenomination(amount: number): string {
-  if (amount === 0) return "0 ⬢";
+  if (amount === 0) return "⏣0";
   
   const absAmount = Math.abs(amount);
   const isNegative = amount < 0;
@@ -94,7 +94,7 @@ export function formatHexDenomination(amount: number): string {
   }
 
   // Just hex
-  return `${prefix}${absAmount} ⬢`;
+  return `${prefix}${absAmount} Hex`;
 }
 
 export function getHexBreakdown(amount: number): { 
@@ -108,7 +108,7 @@ export function getHexBreakdown(amount: number): {
   if (amount === 0) {
     return {
       total: 0,
-      breakdown: "0 ⬢",
+      breakdown: "⏣0",
       colorClass: "text-red-400"
     };
   }
@@ -132,9 +132,9 @@ export function getHexBreakdown(amount: number): {
   if (bags > 0) parts.push(`${bags} bag${bags !== 1 ? 's' : ''}`);
   if (handfuls > 0) parts.push(`${handfuls} handful${handfuls !== 1 ? 's' : ''}`);
   if (coins > 0) parts.push(`${coins} coin${coins !== 1 ? 's' : ''}`);
-  if (hex > 0) parts.push(`${hex} ⬢`);
+  if (hex > 0) parts.push(`${hex} Hex`);
   
-  const breakdown = parts.length > 0 ? `${prefix}${parts.join(', ')}` : `${prefix}0 ⬢`;
+  const breakdown = parts.length > 0 ? `${prefix}${parts.join(', ')}` : `${prefix}⏣0`;
   
   return {
     total: amount,
