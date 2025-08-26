@@ -213,20 +213,20 @@ const Vault = () => {
                   Send Hex
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-gray-900 border-gray-700">
+              <DialogContent>
                 <DialogHeader>
-                  <DialogTitle className="text-cyan-400 font-light">Send Hex</DialogTitle>
+                  <DialogTitle>Send Hex</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="recipient" className="font-light text-foreground">Recipient</Label>
+                    <Label htmlFor="recipient">Recipient</Label>
                     <Select value={sendRecipient} onValueChange={setSendRecipient}>
-                      <SelectTrigger className="bg-gray-800 border-gray-600 font-light">
-                        <SelectValue placeholder="Select recipient" className="text-gray-300" />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select recipient" />
                       </SelectTrigger>
-                       <SelectContent className="bg-gray-800 border-gray-600 text-gray-300">
+                       <SelectContent>
                          {profiles.map((profile) => (
-                             <SelectItem key={profile.user_id} value={profile.user_id} className="text-gray-300">
+                             <SelectItem key={profile.user_id} value={profile.user_id}>
                                {profile.character_name}
                              </SelectItem>
                          ))}
@@ -234,27 +234,25 @@ const Vault = () => {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="amount" className="font-light text-foreground">Amount</Label>
+                    <Label htmlFor="amount">Amount</Label>
                     <Input
                       id="amount"
                       type="number"
                       value={sendAmount}
                       onChange={(e) => setSendAmount(e.target.value)}
-                      className="bg-gray-800 border-gray-600 font-light text-foreground"
                       placeholder="Enter amount in Hex"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="description" className="font-light text-foreground">Description</Label>
+                    <Label htmlFor="description">Description</Label>
                     <Textarea
                       id="description"
                       value={sendDescription}
                       onChange={(e) => setSendDescription(e.target.value)}
-                      className="bg-gray-800 border-gray-600 font-light text-foreground"
                       placeholder="Enter description"
                     />
                   </div>
-                  <Button onClick={handleSendMoney} className="w-full bg-green-600 hover:bg-green-700">
+                  <Button onClick={handleSendMoney} className="w-full">
                     Send Hex
                   </Button>
                 </div>
