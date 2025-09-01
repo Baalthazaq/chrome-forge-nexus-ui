@@ -61,7 +61,7 @@ serve(async (req) => {
         const { to_user_id, amount, description, due_date, is_recurring, recurring_interval, from_user_id, sender_alias } = params;
         
         const billData: any = {
-          from_user_id: from_user_id || null,
+          from_user_id: (from_user_id && from_user_id !== "system") ? from_user_id : null,
           to_user_id,
           amount,
           description: sender_alias ? `${description} (from: ${sender_alias})` : description,
@@ -160,7 +160,7 @@ serve(async (req) => {
             user_id: to_user_id,
             transaction_type: "credit",
             amount: amount,
-            from_user_id: from_user_id || null,
+            from_user_id: (from_user_id && from_user_id !== "system") ? from_user_id : null,
             description: sender_alias ? `${description || "Admin payment"} (from: ${sender_alias})` : (description || "Admin payment"),
             status: "completed"
           });
@@ -196,7 +196,7 @@ serve(async (req) => {
         const { error: recurringError } = await supabase
           .from("recurring_payments")
           .insert({
-            from_user_id: from_user_id || null,
+            from_user_id: (from_user_id && from_user_id !== "system") ? from_user_id : null,
             to_user_id,
             amount,
             description: sender_alias ? `${description} (from: ${sender_alias})` : description,

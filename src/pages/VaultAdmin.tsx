@@ -600,7 +600,7 @@ const VaultAdmin = () => {
                           <SelectValue placeholder="Select account" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">System</SelectItem>
+                          <SelectItem value="system">System</SelectItem>
                           {profiles.map((profile) => (
                             <SelectItem key={profile.user_id} value={profile.user_id}>
                               {profile.character_name}
@@ -772,7 +772,7 @@ const VaultAdmin = () => {
                           <SelectValue placeholder="Select account" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">System</SelectItem>
+                          <SelectItem value="system">System</SelectItem>
                           {profiles.map((profile) => (
                             <SelectItem key={profile.user_id} value={profile.user_id}>
                               {profile.character_name}
@@ -993,7 +993,7 @@ const VaultAdmin = () => {
                             <SelectValue placeholder="Select account" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">System</SelectItem>
+                            <SelectItem value="system">System</SelectItem>
                             {profiles.map((profile) => (
                               <SelectItem key={profile.user_id} value={profile.user_id}>
                                 {profile.character_name}
