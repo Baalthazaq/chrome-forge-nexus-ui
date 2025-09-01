@@ -39,7 +39,6 @@ const VaultAdmin = () => {
     recipient_ids: [] as string[],
     amount: "",
     description: "",
-    due_date: "",
     is_recurring: false,
     recurring_interval: "",
     process_immediately: false
@@ -156,7 +155,6 @@ const VaultAdmin = () => {
             to_user_id: recipientId,
             amount,
             description: billForm.description,
-            due_date: billForm.due_date || null,
             is_recurring: billForm.is_recurring,
             recurring_interval: billForm.is_recurring ? billForm.recurring_interval : null,
             process_immediately: billForm.process_immediately
@@ -181,7 +179,6 @@ const VaultAdmin = () => {
         recipient_ids: [], 
         amount: "", 
         description: "", 
-        due_date: "", 
         is_recurring: false, 
         recurring_interval: "",
         process_immediately: false
@@ -655,16 +652,6 @@ const VaultAdmin = () => {
                       />
                     </div>
                     
-                    <div className="grid gap-2">
-                      <Label htmlFor="bill-due-date">Due Date (Optional)</Label>
-                      <Input
-                        id="bill-due-date"
-                        type="date"
-                        value={billForm.due_date}
-                        onChange={(e) => setBillForm({...billForm, due_date: e.target.value})}
-                      />
-                    </div>
-                    
                     <div className="flex items-center space-x-2">
                       <Switch
                         id="bill-process-immediately"
@@ -723,11 +710,6 @@ const VaultAdmin = () => {
                           From: {bill.from_profile?.character_name} • 
                           Amount: {formatHex(bill.amount)}
                         </p>
-                        {bill.due_date && (
-                          <p className="text-sm text-muted-foreground">
-                            Due: {new Date(bill.due_date).toLocaleDateString()}
-                          </p>
-                        )}
                         <p className="text-sm text-muted-foreground">
                           Created: {new Date(bill.created_at).toLocaleDateString()}
                         </p>

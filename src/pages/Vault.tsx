@@ -451,9 +451,6 @@ const Vault = () => {
                             From: {bill.from_profile?.character_name || "System"}
                           </p>
                           <p className="text-sm text-gray-400">
-                            Due: {bill.due_date ? new Date(bill.due_date).toLocaleDateString() : "No due date"}
-                          </p>
-                          <p className="text-sm text-gray-400">
                             Created: {new Date(bill.created_at).toLocaleDateString()}
                           </p>
                         </div>
