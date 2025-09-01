@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,6 +39,8 @@ const Vault = () => {
   const [sendAmount, setSendAmount] = useState("");
   const [sendRecipient, setSendRecipient] = useState("");
   const [sendDescription, setSendDescription] = useState("");
+  const [overdraftDialogOpen, setOverdraftDialogOpen] = useState(false);
+  const [pendingBillPayment, setPendingBillPayment] = useState<{ billIds: string[], totalAmount: number } | null>(null);
 
   // Mock inventory data
   const inventoryItems = [
@@ -88,6 +91,7 @@ const Vault = () => {
         .from("profiles")
         .select("user_id, character_name")
         .neq("user_id", activeUserId);
+      setProfiles(profileData || []);
       
       // Load recurring payments for this user
       const { data: rpData } = await supabase
@@ -160,32 +164,37 @@ const Vault = () => {
     }
   };
 
-  const handlePaySelectedBills = async () => {
-    if (selectedBills.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please select bills to pay",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const totalAmount = selectedBills.reduce((sum, billId) => {
+  const checkOverdraftAndPay = (billIds: string[]) => {
+    const totalAmount = billIds.reduce((sum, billId) => {
       const bill = bills.find(b => b.id === billId);
       return sum + (bill?.amount || 0);
     }, 0);
 
-    if (!userProfile || userProfile.credits < totalAmount) {
-      toast({
-        title: "Error",
-        description: "Insufficient credits to pay selected bills",
-        variant: "destructive"
-      });
+    const currentCredits = userProfile?.credits || 0;
+    const resultingBalance = currentCredits - totalAmount;
+
+    // If sufficient funds, pay immediately
+    if (resultingBalance >= 0) {
+      processPayment(billIds);
       return;
     }
 
+    // Check if overdraft is within limits (up to 1 bag = 600 hex)
+    if (resultingBalance >= -600) {
+      setPendingBillPayment({ billIds, totalAmount });
+      setOverdraftDialogOpen(true);
+    } else {
+      toast({
+        title: "Error",
+        description: "Payment exceeds overdraft limit. Maximum overdraft is 1 Bag (600 Hex).",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const processPayment = async (billIds: string[]) => {
     try {
-      const promises = selectedBills.map(billId =>
+      const promises = billIds.map(billId =>
         supabase.functions.invoke('financial-operations', {
           body: {
             operation: 'pay_bill',
@@ -203,7 +212,7 @@ const Vault = () => {
 
       toast({
         title: "Success",
-        description: `Successfully paid ${selectedBills.length} bills`
+        description: `Successfully paid ${billIds.length} bill${billIds.length > 1 ? 's' : ''}`
       });
 
       setSelectedBills([]);
@@ -217,30 +226,29 @@ const Vault = () => {
     }
   };
 
-  const handlePayBill = async (billId: string) => {
-    try {
-      const { error } = await supabase.functions.invoke('financial-operations', {
-        body: {
-          operation: 'pay_bill',
-          bill_id: billId
-        }
-      });
+  const handleOverdraftConfirm = () => {
+    if (pendingBillPayment) {
+      processPayment(pendingBillPayment.billIds);
+      setPendingBillPayment(null);
+      setOverdraftDialogOpen(false);
+    }
+  };
 
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Bill paid successfully"
-      });
-
-      loadData();
-    } catch (error: any) {
+  const handlePaySelectedBills = async () => {
+    if (selectedBills.length === 0) {
       toast({
         title: "Error",
-        description: error.message || "Failed to pay bill",
+        description: "Please select bills to pay",
         variant: "destructive"
       });
+      return;
     }
+
+    checkOverdraftAndPay(selectedBills);
+  };
+
+  const handlePayBill = async (billId: string) => {
+    checkOverdraftAndPay([billId]);
   };
 
 
@@ -415,10 +423,6 @@ const Vault = () => {
                     onClick={handlePaySelectedBills}
                     size="sm"
                     className="bg-red-600 hover:bg-red-700"
-                    disabled={!userProfile || userProfile.credits < selectedBills.reduce((sum, billId) => {
-                      const bill = bills.find(b => b.id === billId);
-                      return sum + (bill?.amount || 0);
-                    }, 0)}
                   >
                     Pay Selected ({selectedBills.length})
                   </Button>
@@ -472,7 +476,6 @@ const Vault = () => {
                           onClick={() => handlePayBill(bill.id)}
                           size="sm"
                           className="mt-2 bg-red-600 hover:bg-red-700"
-                          disabled={!userProfile || userProfile.credits < bill.amount}
                         >
                           Pay Bill
                         </Button>
@@ -621,6 +624,35 @@ const Vault = () => {
           </Card>
         </div>
       </div>
+
+      {/* Overdraft Warning Dialog */}
+      <AlertDialog open={overdraftDialogOpen} onOpenChange={setOverdraftDialogOpen}>
+        <AlertDialogContent className="bg-gray-900 border-red-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-400">Account Overdraft Warning</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              This payment will overdraw your account by {pendingBillPayment ? formatHex(pendingBillPayment.totalAmount - (userProfile?.credits || 0)) : ''}.
+              <br /><br />
+              <strong>Current Balance:</strong> {formatHex(userProfile?.credits || 0)}
+              <br />
+              <strong>Payment Amount:</strong> {pendingBillPayment ? formatHex(pendingBillPayment.totalAmount) : ''}
+              <br />
+              <strong>Resulting Balance:</strong> <span className="text-red-400">{pendingBillPayment ? formatHex((userProfile?.credits || 0) - pendingBillPayment.totalAmount) : ''}</span>
+              <br /><br />
+              You have an overdraft limit of 1 Bag (600 Hex). Do you want to proceed with this payment?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-800 border-gray-600 text-gray-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleOverdraftConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Proceed with Overdraft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
