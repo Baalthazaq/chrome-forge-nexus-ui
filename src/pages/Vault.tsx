@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +25,7 @@ const Vault = () => {
   const [bills, setBills] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedBills, setSelectedBills] = useState<string[]>([]);
   
   // Send Money Dialog State
   const [sendMoneyOpen, setSendMoneyOpen] = useState(false);
@@ -147,6 +149,63 @@ const Vault = () => {
       toast({
         title: "Error",
         description: error.message || "Failed to send money",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handlePaySelectedBills = async () => {
+    if (selectedBills.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select bills to pay",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const totalAmount = selectedBills.reduce((sum, billId) => {
+      const bill = bills.find(b => b.id === billId);
+      return sum + (bill?.amount || 0);
+    }, 0);
+
+    if (!userProfile || userProfile.credits < totalAmount) {
+      toast({
+        title: "Error",
+        description: "Insufficient credits to pay selected bills",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const promises = selectedBills.map(billId =>
+        supabase.functions.invoke('financial-operations', {
+          body: {
+            operation: 'pay_bill',
+            bill_id: billId
+          }
+        })
+      );
+
+      const results = await Promise.all(promises);
+      const errors = results.filter(r => r.error);
+      
+      if (errors.length > 0) {
+        throw new Error(`Failed to pay ${errors.length} bills`);
+      }
+
+      toast({
+        title: "Success",
+        description: `Successfully paid ${selectedBills.length} bills`
+      });
+
+      setSelectedBills([]);
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to pay bills",
         variant: "destructive"
       });
     }
@@ -333,27 +392,75 @@ const Vault = () => {
         {/* Bills Section */}
         {bills.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-xl font-bold text-red-400 mb-4 flex items-center">
-              <Receipt className="w-5 h-5 mr-2" />
-              Unpaid Bills
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-red-400 flex items-center">
+                <Receipt className="w-5 h-5 mr-2" />
+                Unpaid Bills ({bills.length})
+              </h2>
+              {selectedBills.length > 0 && (
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-gray-400">
+                    {selectedBills.length} selected • Total: {formatHex(selectedBills.reduce((sum, billId) => {
+                      const bill = bills.find(b => b.id === billId);
+                      return sum + (bill?.amount || 0);
+                    }, 0))}
+                  </span>
+                  <Button
+                    onClick={handlePaySelectedBills}
+                    size="sm"
+                    className="bg-red-600 hover:bg-red-700"
+                    disabled={!userProfile || userProfile.credits < selectedBills.reduce((sum, billId) => {
+                      const bill = bills.find(b => b.id === billId);
+                      return sum + (bill?.amount || 0);
+                    }, 0)}
+                  >
+                    Pay Selected ({selectedBills.length})
+                  </Button>
+                  <Button
+                    onClick={() => setSelectedBills([])}
+                    size="sm"
+                    variant="outline"
+                    className="border-gray-600 text-gray-400 hover:bg-gray-800"
+                  >
+                    Clear Selection
+                  </Button>
+                </div>
+              )}
+            </div>
+            
             <div className="grid gap-4">
               {bills.map((bill) => (
                 <Card key={bill.id} className="bg-red-900/20 border-red-700/50 backdrop-blur-sm">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold text-red-400">{bill.description}</h3>
-                        <p className="text-sm text-gray-400">
-                          From: {bill.from_profile?.character_name || "System"}
-                        </p>
-                        <p className="text-sm text-gray-400">
-                          Due: {bill.due_date ? new Date(bill.due_date).toLocaleDateString() : "No due date"}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={selectedBills.includes(bill.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedBills([...selectedBills, bill.id]);
+                            } else {
+                              setSelectedBills(selectedBills.filter(id => id !== bill.id));
+                            }
+                          }}
+                          className="border-red-400 data-[state=checked]:bg-red-600"
+                        />
+                        <div>
+                          <h3 className="font-semibold text-red-400">{bill.description}</h3>
+                          <p className="text-sm text-gray-400">
+                            From: {bill.from_profile?.character_name || "System"}
+                          </p>
+                          <p className="text-sm text-gray-400">
+                            Due: {bill.due_date ? new Date(bill.due_date).toLocaleDateString() : "No due date"}
+                          </p>
+                          <p className="text-sm text-gray-400">
+                            Created: {new Date(bill.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
                       <div className="text-right">
                         <div className="text-xl font-bold text-red-400">
-                          ⏣{bill.amount}
+                          {formatHex(bill.amount)}
                         </div>
                         <div className="text-sm text-red-400">
                           {getHexBreakdown(bill.amount).breakdown}
@@ -371,6 +478,36 @@ const Vault = () => {
                   </CardContent>
                 </Card>
               ))}
+              
+              {/* Quick Actions */}
+              <div className="flex items-center justify-between p-4 bg-gray-900/30 border border-gray-700/50 rounded-lg">
+                <div className="text-sm text-gray-400">
+                  Quick Actions:
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setSelectedBills(bills.map(b => b.id))}
+                    size="sm"
+                    variant="outline"
+                    className="border-red-600 text-red-400 hover:bg-red-900/30"
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const affordableBills = bills.filter(bill => 
+                        userProfile && userProfile.credits >= bill.amount
+                      ).map(b => b.id);
+                      setSelectedBills(affordableBills);
+                    }}
+                    size="sm"
+                    variant="outline"
+                    className="border-yellow-600 text-yellow-400 hover:bg-yellow-900/30"
+                  >
+                    Select Affordable
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         )}
