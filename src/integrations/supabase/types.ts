@@ -45,7 +45,7 @@ export type Database = {
           currency: string
           description: string
           due_date: string | null
-          from_user_id: string
+          from_user_id: string | null
           id: string
           is_recurring: boolean
           metadata: Json | null
@@ -63,7 +63,7 @@ export type Database = {
           currency?: string
           description: string
           due_date?: string | null
-          from_user_id: string
+          from_user_id?: string | null
           id?: string
           is_recurring?: boolean
           metadata?: Json | null
@@ -81,7 +81,7 @@ export type Database = {
           currency?: string
           description?: string
           due_date?: string | null
-          from_user_id?: string
+          from_user_id?: string | null
           id?: string
           is_recurring?: boolean
           metadata?: Json | null
