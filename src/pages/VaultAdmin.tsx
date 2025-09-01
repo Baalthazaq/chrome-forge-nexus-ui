@@ -81,11 +81,7 @@ const VaultAdmin = () => {
       // Load all bills (both paid and unpaid)
       const { data: allBillData } = await supabase
         .from("bills")
-        .select(`
-          *,
-          from_profile:from_user_id(character_name),
-          to_profile:to_user_id(character_name)
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
       
       setAllBills(allBillData || []);
@@ -93,11 +89,7 @@ const VaultAdmin = () => {
       // Load all transactions
       const { data: transactionData } = await supabase
         .from("transactions")
-        .select(`
-          *,
-          from_profile:from_user_id(character_name),
-          to_profile:to_user_id(character_name)
-        `)
+        .select("*")
         .order("created_at", { ascending: false })
         .limit(50);
       
@@ -106,11 +98,7 @@ const VaultAdmin = () => {
       // Load recurring payments
       const { data: recurringData } = await supabase
         .from("recurring_payments")
-        .select(`
-          *,
-          from_profile:from_user_id(character_name),
-          to_profile:to_user_id(character_name)
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
       
       setRecurringPayments(recurringData || []);
@@ -487,6 +475,11 @@ const VaultAdmin = () => {
   const unpaidBills = allBills.filter(bill => bill.status === 'unpaid');
   const totalCredits = profiles.reduce((sum, profile) => sum + (profile.credits || 0), 0);
 
+  const getName = (id?: string | null) => {
+    const p = profiles.find((pr) => pr.user_id === id);
+    return p?.character_name || 'System';
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -568,7 +561,7 @@ const VaultAdmin = () => {
                       <div>
                         <p className="font-medium">{transaction.description}</p>
                         <p className="text-sm text-muted-foreground">
-                          {transaction.from_profile?.character_name || 'System'} → {transaction.to_profile?.character_name || 'System'}
+                          {getName(transaction.from_user_id)} → {getName(transaction.to_user_id)}
                         </p>
                       </div>
                       <div className="text-right">
@@ -706,8 +699,8 @@ const VaultAdmin = () => {
                       <div>
                         <h3 className="font-semibold">{bill.description}</h3>
                         <p className="text-sm text-muted-foreground">
-                          To: {bill.to_profile?.character_name} • 
-                          From: {bill.from_profile?.character_name} • 
+                          To: {getName(bill.to_user_id)} • 
+                          From: {getName(bill.from_user_id)} • 
                           Amount: {formatHex(bill.amount)}
                         </p>
                         <p className="text-sm text-muted-foreground">
@@ -1020,8 +1013,8 @@ const VaultAdmin = () => {
                       <div>
                         <h3 className="font-semibold">{payment.description}</h3>
                         <p className="text-sm text-muted-foreground">
-                          To: {payment.to_profile?.character_name} • 
-                          From: {payment.from_profile?.character_name} • 
+                          To: {getName(payment.to_user_id)} • 
+                          From: {getName(payment.from_user_id)} • 
                           Amount: {formatHex(payment.amount)} • 
                           Interval: {payment.interval_type}
                         </p>

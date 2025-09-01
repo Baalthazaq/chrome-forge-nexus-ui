@@ -23,9 +23,15 @@ const Vault = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [bills, setBills] = useState<any[]>([]);
+  const [recurringPayments, setRecurringPayments] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedBills, setSelectedBills] = useState<string[]>([]);
+
+  const getName = (id?: string | null) => {
+    const p = profiles.find((pr) => pr.user_id === id);
+    return p?.character_name || "System";
+  };
   
   // Send Money Dialog State
   const [sendMoneyOpen, setSendMoneyOpen] = useState(false);
@@ -60,11 +66,7 @@ const Vault = () => {
       // Load transactions
       const { data: transactionData } = await supabase
         .from("transactions")
-        .select(`
-          *,
-          from_profile:from_user_id(character_name),
-          to_profile:to_user_id(character_name)
-        `)
+        .select("*")
         .or(`user_id.eq.${activeUserId},from_user_id.eq.${activeUserId},to_user_id.eq.${activeUserId}`)
         .order("created_at", { ascending: false })
         .limit(10);
@@ -74,10 +76,7 @@ const Vault = () => {
       // Load bills
       const { data: billData } = await supabase
         .from("bills")
-        .select(`
-          *,
-          from_profile:from_user_id(character_name)
-        `)
+        .select("*")
         .eq("to_user_id", activeUserId)
         .eq("status", "unpaid")
         .order("created_at", { ascending: false });
@@ -90,7 +89,14 @@ const Vault = () => {
         .select("user_id, character_name")
         .neq("user_id", activeUserId);
       
-      setProfiles(profileData || []);
+      // Load recurring payments for this user
+      const { data: rpData } = await supabase
+        .from("recurring_payments")
+        .select("*")
+        .eq("to_user_id", activeUserId)
+        .order("created_at", { ascending: false });
+      setRecurringPayments(rpData || []);
+
 
     } catch (error) {
       console.error("Error loading data:", error);
@@ -448,7 +454,7 @@ const Vault = () => {
                         <div>
                           <h3 className="font-semibold text-red-400">{bill.description}</h3>
                           <p className="text-sm text-gray-400">
-                            From: {bill.from_profile?.character_name || "System"}
+                            From: {getName(bill.from_user_id)}
                           </p>
                           <p className="text-sm text-gray-400">
                             Created: {new Date(bill.created_at).toLocaleDateString()}
@@ -505,6 +511,29 @@ const Vault = () => {
                   </Button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Recurring Payments */}
+        {recurringPayments.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-green-400 mb-4">Recurring Payments</h2>
+            <div className="grid gap-4">
+              {recurringPayments.map((rp) => (
+                <Card key={rp.id} className="bg-green-900/20 border-green-700/50 backdrop-blur-sm">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-green-400">{rp.description}</h3>
+                      <p className="text-sm text-gray-400">Amount: {formatHex(rp.amount)} • Interval: {rp.interval_type}</p>
+                      <p className="text-xs text-gray-500">Last: {rp.last_sent_at ? new Date(rp.last_sent_at).toLocaleDateString() : 'Never'} • Next: {rp.next_send_at ? new Date(rp.next_send_at).toLocaleDateString() : 'Not scheduled'}</p>
+                    </div>
+                    <Badge variant={rp.is_active ? 'default' : 'secondary'}>
+                      {rp.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </div>
         )}
@@ -569,16 +598,12 @@ const Vault = () => {
                           <p className="text-xs text-gray-400">
                             {new Date(transaction.created_at).toLocaleString()}
                           </p>
-                          {transaction.from_profile && (
-                            <p className="text-xs text-blue-400">
-                              From: {transaction.from_profile.character_name}
-                            </p>
-                          )}
-                          {transaction.to_profile && (
-                            <p className="text-xs text-blue-400">
-                              To: {transaction.to_profile.character_name}
-                            </p>
-                          )}
+                          <p className="text-xs text-blue-400">
+                            From: {getName(transaction.from_user_id)}
+                          </p>
+                          <p className="text-xs text-blue-400">
+                            To: {getName(transaction.to_user_id)}
+                          </p>
                         </div>
                       </div>
                       <div className={`text-right ${
