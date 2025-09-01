@@ -37,6 +37,7 @@ const VaultAdmin = () => {
   // Admin Form States
   const [billForm, setBillForm] = useState({
     recipient_ids: [] as string[],
+    from_user_id: "",
     amount: "",
     description: "",
     is_recurring: false,
@@ -46,11 +47,9 @@ const VaultAdmin = () => {
   
   const [paymentForm, setPaymentForm] = useState({
     recipient_ids: [] as string[],
+    from_user_id: "",
     amount: "",
-    description: "",
-    is_recurring: false,
-    recurring_interval: "",
-    process_immediately: false
+    description: ""
   });
   
   const [creditForm, setCreditForm] = useState({
@@ -61,6 +60,7 @@ const VaultAdmin = () => {
   
   const [recurringForm, setRecurringForm] = useState({
     recipient_ids: [] as string[],
+    from_user_id: "",
     amount: "",
     description: "",
     interval_type: "",
@@ -116,10 +116,10 @@ const VaultAdmin = () => {
 
   // Admin Functions
   const handleSendBill = async () => {
-    if (!billForm.recipient_ids.length || !billForm.amount || !billForm.description) {
+    if (!billForm.recipient_ids.length || !billForm.from_user_id || !billForm.amount || !billForm.description) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields and select at least one recipient",
+        description: "Please fill in all required fields, select at least one recipient, and choose a From account",
         variant: "destructive"
       });
       return;
@@ -145,7 +145,8 @@ const VaultAdmin = () => {
             description: billForm.description,
             is_recurring: billForm.is_recurring,
             recurring_interval: billForm.is_recurring ? billForm.recurring_interval : null,
-            process_immediately: billForm.process_immediately
+            process_immediately: billForm.process_immediately,
+            from_user_id: billForm.from_user_id
           }
         })
       );
@@ -165,6 +166,7 @@ const VaultAdmin = () => {
       setBillDialogOpen(false);
       setBillForm({ 
         recipient_ids: [], 
+        from_user_id: "",
         amount: "", 
         description: "", 
         is_recurring: false, 
@@ -182,10 +184,10 @@ const VaultAdmin = () => {
   };
 
   const handleSendPayment = async () => {
-    if (!paymentForm.recipient_ids.length || !paymentForm.amount || !paymentForm.description) {
+    if (!paymentForm.recipient_ids.length || !paymentForm.from_user_id || !paymentForm.amount || !paymentForm.description) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields and select at least one recipient",
+        description: "Please fill in all required fields, select at least one recipient, and choose a From account",
         variant: "destructive"
       });
       return;
@@ -208,7 +210,8 @@ const VaultAdmin = () => {
             operation: 'send_payment',
             to_user_id: recipientId,
             amount,
-            description: paymentForm.description
+            description: paymentForm.description,
+            from_user_id: paymentForm.from_user_id
           }
         })
       );
@@ -228,11 +231,9 @@ const VaultAdmin = () => {
       setPaymentDialogOpen(false);
       setPaymentForm({ 
         recipient_ids: [], 
+        from_user_id: "", 
         amount: "", 
-        description: "", 
-        is_recurring: false, 
-        recurring_interval: "",
-        process_immediately: false
+        description: ""
       });
       loadData();
     } catch (error: any) {
@@ -310,10 +311,10 @@ const VaultAdmin = () => {
   };
 
   const handleCreateRecurringPayment = async () => {
-    if (!recurringForm.recipient_ids.length || !recurringForm.amount || !recurringForm.description || !recurringForm.interval_type) {
+    if (!recurringForm.recipient_ids.length || !recurringForm.from_user_id || !recurringForm.amount || !recurringForm.description || !recurringForm.interval_type) {
       toast({
         title: "Error",
-        description: "Please fill in all fields and select at least one recipient",
+        description: "Please fill in all fields, select at least one recipient, and choose a From account",
         variant: "destructive"
       });
       return;
@@ -337,7 +338,8 @@ const VaultAdmin = () => {
             to_user_id: recipientId,
             amount,
             description: recurringForm.description,
-            interval_type: recurringForm.interval_type
+            interval_type: recurringForm.interval_type,
+            from_user_id: recurringForm.from_user_id
           }
         })
       );
@@ -357,6 +359,7 @@ const VaultAdmin = () => {
       setRecurringDialogOpen(false);
       setRecurringForm({ 
         recipient_ids: [], 
+        from_user_id: "",
         amount: "", 
         description: "", 
         interval_type: "",
@@ -592,6 +595,22 @@ const VaultAdmin = () => {
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
+                      <Label htmlFor="bill-from">From Account</Label>
+                      <Select value={billForm.from_user_id} onValueChange={(value) => setBillForm({...billForm, from_user_id: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select account" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {profiles.map((profile) => (
+                            <SelectItem key={profile.user_id} value={profile.user_id}>
+                              {profile.character_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="grid gap-2">
                       <Label>Recipients (Select Multiple)</Label>
                       <div className="border rounded p-3 max-h-32 overflow-y-auto">
                         {profiles.map((profile) => (
@@ -733,6 +752,22 @@ const VaultAdmin = () => {
                     <DialogTitle>Send Payment to Multiple Recipients</DialogTitle>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="payment-from">From Account</Label>
+                      <Select value={paymentForm.from_user_id} onValueChange={(value) => setPaymentForm({...paymentForm, from_user_id: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select account" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {profiles.map((profile) => (
+                            <SelectItem key={profile.user_id} value={profile.user_id}>
+                              {profile.character_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
                     <div className="grid gap-2">
                       <Label>Recipients (Select Multiple)</Label>
                       <div className="border rounded p-3 max-h-32 overflow-y-auto">
@@ -924,6 +959,22 @@ const VaultAdmin = () => {
                       <DialogTitle>Create Recurring Payment</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="recurring-from">From Account</Label>
+                        <Select value={recurringForm.from_user_id} onValueChange={(value) => setRecurringForm({...recurringForm, from_user_id: value})}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select account" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {profiles.map((profile) => (
+                              <SelectItem key={profile.user_id} value={profile.user_id}>
+                                {profile.character_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
                       <div className="grid gap-2">
                         <Label>Recipients (Select Multiple)</Label>
                         <div className="border rounded p-3 max-h-32 overflow-y-auto">

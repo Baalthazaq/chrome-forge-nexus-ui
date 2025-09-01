@@ -58,10 +58,10 @@ serve(async (req) => {
 
     switch (operation) {
       case "send_bill": {
-        const { to_user_id, amount, description, due_date, is_recurring, recurring_interval } = params;
+        const { to_user_id, amount, description, due_date, is_recurring, recurring_interval, from_user_id } = params;
         
         const billData: any = {
-          from_user_id: user.id,
+          from_user_id: from_user_id || user.id,
           to_user_id,
           amount,
           description,
@@ -133,7 +133,7 @@ serve(async (req) => {
       }
 
       case "send_payment": {
-        const { to_user_id, amount, description } = params;
+        const { to_user_id, amount, description, from_user_id } = params;
         
         // Get recipient's profile and update credits
         const { data: recipientProfile, error: recipientError } = await supabase
@@ -160,14 +160,14 @@ serve(async (req) => {
             user_id: to_user_id,
             transaction_type: "credit",
             amount: amount,
-            from_user_id: user.id,
+            from_user_id: from_user_id || user.id,
             description: description || "Admin payment",
             status: "completed"
           });
 
         if (transactionError) throw transactionError;
 
-        logStep("Payment sent successfully", { to_user_id, amount });
+        logStep("Payment sent successfully", { to_user_id, amount, from_user_id: from_user_id || user.id });
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
@@ -196,7 +196,7 @@ serve(async (req) => {
         const { error: recurringError } = await supabase
           .from("recurring_payments")
           .insert({
-            from_user_id: user.id,
+            from_user_id: params.from_user_id || user.id,
             to_user_id,
             amount,
             description,
