@@ -58,13 +58,13 @@ serve(async (req) => {
 
     switch (operation) {
       case "send_bill": {
-        const { to_user_id, amount, description, due_date, is_recurring, recurring_interval, from_user_id } = params;
+        const { to_user_id, amount, description, due_date, is_recurring, recurring_interval, from_user_id, sender_alias } = params;
         
         const billData: any = {
-          from_user_id: from_user_id || user.id,
+          from_user_id: from_user_id || null,
           to_user_id,
           amount,
-          description,
+          description: sender_alias ? `${description} (from: ${sender_alias})` : description,
           due_date,
           is_recurring: is_recurring || false,
           recurring_interval: recurring_interval || null
@@ -133,7 +133,7 @@ serve(async (req) => {
       }
 
       case "send_payment": {
-        const { to_user_id, amount, description, from_user_id } = params;
+        const { to_user_id, amount, description, from_user_id, sender_alias } = params;
         
         // Get recipient's profile and update credits
         const { data: recipientProfile, error: recipientError } = await supabase
@@ -160,8 +160,8 @@ serve(async (req) => {
             user_id: to_user_id,
             transaction_type: "credit",
             amount: amount,
-            from_user_id: from_user_id || user.id,
-            description: description || "Admin payment",
+            from_user_id: from_user_id || null,
+            description: sender_alias ? `${description || "Admin payment"} (from: ${sender_alias})` : (description || "Admin payment"),
             status: "completed"
           });
 
@@ -175,7 +175,7 @@ serve(async (req) => {
       }
 
       case "create_recurring_payment": {
-        const { to_user_id, amount, description, interval_type } = params;
+        const { to_user_id, amount, description, interval_type, from_user_id, sender_alias } = params;
         
         const nextSendDate = new Date();
         switch (interval_type) {
@@ -196,10 +196,10 @@ serve(async (req) => {
         const { error: recurringError } = await supabase
           .from("recurring_payments")
           .insert({
-            from_user_id: params.from_user_id || user.id,
+            from_user_id: from_user_id || null,
             to_user_id,
             amount,
-            description,
+            description: sender_alias ? `${description} (from: ${sender_alias})` : description,
             interval_type,
             next_send_at: nextSendDate.toISOString()
           });

@@ -38,6 +38,7 @@ const VaultAdmin = () => {
   const [billForm, setBillForm] = useState({
     recipient_ids: [] as string[],
     from_user_id: "",
+    sender_alias: "",
     amount: "",
     description: "",
     is_recurring: false,
@@ -48,6 +49,7 @@ const VaultAdmin = () => {
   const [paymentForm, setPaymentForm] = useState({
     recipient_ids: [] as string[],
     from_user_id: "",
+    sender_alias: "",
     amount: "",
     description: ""
   });
@@ -61,6 +63,7 @@ const VaultAdmin = () => {
   const [recurringForm, setRecurringForm] = useState({
     recipient_ids: [] as string[],
     from_user_id: "",
+    sender_alias: "",
     amount: "",
     description: "",
     interval_type: "",
@@ -146,7 +149,8 @@ const VaultAdmin = () => {
             is_recurring: billForm.is_recurring,
             recurring_interval: billForm.is_recurring ? billForm.recurring_interval : null,
             process_immediately: billForm.process_immediately,
-            from_user_id: billForm.from_user_id
+            from_user_id: billForm.from_user_id,
+            sender_alias: billForm.sender_alias
           }
         })
       );
@@ -167,6 +171,7 @@ const VaultAdmin = () => {
       setBillForm({ 
         recipient_ids: [], 
         from_user_id: "",
+        sender_alias: "",
         amount: "", 
         description: "", 
         is_recurring: false, 
@@ -211,7 +216,8 @@ const VaultAdmin = () => {
             to_user_id: recipientId,
             amount,
             description: paymentForm.description,
-            from_user_id: paymentForm.from_user_id
+            from_user_id: paymentForm.from_user_id,
+            sender_alias: paymentForm.sender_alias
           }
         })
       );
@@ -231,7 +237,8 @@ const VaultAdmin = () => {
       setPaymentDialogOpen(false);
       setPaymentForm({ 
         recipient_ids: [], 
-        from_user_id: "", 
+        from_user_id: "",
+        sender_alias: "", 
         amount: "", 
         description: ""
       });
@@ -339,7 +346,8 @@ const VaultAdmin = () => {
             amount,
             description: recurringForm.description,
             interval_type: recurringForm.interval_type,
-            from_user_id: recurringForm.from_user_id
+            from_user_id: recurringForm.from_user_id,
+            sender_alias: recurringForm.sender_alias
           }
         })
       );
@@ -360,6 +368,7 @@ const VaultAdmin = () => {
       setRecurringForm({ 
         recipient_ids: [], 
         from_user_id: "",
+        sender_alias: "",
         amount: "", 
         description: "", 
         interval_type: "",
@@ -591,6 +600,7 @@ const VaultAdmin = () => {
                           <SelectValue placeholder="Select account" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="">System</SelectItem>
                           {profiles.map((profile) => (
                             <SelectItem key={profile.user_id} value={profile.user_id}>
                               {profile.character_name}
@@ -598,6 +608,19 @@ const VaultAdmin = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                    
+                    <div className="grid gap-2">
+                      <Label htmlFor="bill-sender-alias">Sender Name/Alias</Label>
+                      <Input
+                        id="bill-sender-alias"
+                        placeholder="e.g. Landlord, Acme Corp, etc."
+                        value={billForm.sender_alias}
+                        onChange={(e) => setBillForm({...billForm, sender_alias: e.target.value})}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        This is how the bill will appear to recipients
+                      </p>
                     </div>
                     
                     <div className="grid gap-2">
@@ -749,6 +772,7 @@ const VaultAdmin = () => {
                           <SelectValue placeholder="Select account" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="">System</SelectItem>
                           {profiles.map((profile) => (
                             <SelectItem key={profile.user_id} value={profile.user_id}>
                               {profile.character_name}
@@ -756,6 +780,19 @@ const VaultAdmin = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                    
+                    <div className="grid gap-2">
+                      <Label htmlFor="payment-sender-alias">Sender Name/Alias</Label>
+                      <Input
+                        id="payment-sender-alias"
+                        placeholder="e.g. Landlord, Acme Corp, etc."
+                        value={paymentForm.sender_alias}
+                        onChange={(e) => setPaymentForm({...paymentForm, sender_alias: e.target.value})}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        This is how the payment will appear to recipients
+                      </p>
                     </div>
                     
                     <div className="grid gap-2">
@@ -956,6 +993,7 @@ const VaultAdmin = () => {
                             <SelectValue placeholder="Select account" />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="">System</SelectItem>
                             {profiles.map((profile) => (
                               <SelectItem key={profile.user_id} value={profile.user_id}>
                                 {profile.character_name}
@@ -963,6 +1001,19 @@ const VaultAdmin = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                      
+                      <div className="grid gap-2">
+                        <Label htmlFor="recurring-sender-alias">Sender Name/Alias</Label>
+                        <Input
+                          id="recurring-sender-alias"
+                          placeholder="e.g. Landlord, Acme Corp, etc."
+                          value={recurringForm.sender_alias}
+                          onChange={(e) => setRecurringForm({...recurringForm, sender_alias: e.target.value})}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          This is how the recurring payment will appear to recipients
+                        </p>
                       </div>
                       
                       <div className="grid gap-2">
