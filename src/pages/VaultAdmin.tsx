@@ -476,7 +476,6 @@ const VaultAdmin = () => {
   }
 
   const unpaidBills = allBills.filter(bill => bill.status === 'unpaid');
-  const totalCredits = profiles.reduce((sum, profile) => sum + (profile.credits || 0), 0);
 
   const getName = (id?: string | null) => {
     const p = profiles.find((pr) => pr.user_id === id);
@@ -511,7 +510,7 @@ const VaultAdmin = () => {
 
           <TabsContent value="overview" className="space-y-6">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -539,15 +538,6 @@ const VaultAdmin = () => {
                   <div className="text-2xl font-bold">
                     {recurringPayments.filter(p => p.is_active).length}
                   </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Credits</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatHex(totalCredits)}</div>
                 </CardContent>
               </Card>
             </div>
