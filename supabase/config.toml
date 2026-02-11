@@ -1,1 +1,4 @@
 project_id = "csyajgxbptbtluxdiepi"
+
+[functions.seed-shop]
+verify_jwt = false
