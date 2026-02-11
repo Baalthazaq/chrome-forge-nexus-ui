@@ -107,7 +107,7 @@ export function PurchaseDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="bg-gray-950 border-green-500/30 max-w-md">
+      <AlertDialogContent className="bg-gray-900 border-gray-700 max-w-md">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-green-400">
             <ShoppingCart className="w-5 h-5" />
@@ -116,42 +116,42 @@ export function PurchaseDialog({
           <AlertDialogDescription asChild>
             <div className="space-y-4 pt-2">
               {/* Item info */}
-              <div className="bg-gray-900/80 rounded-lg p-3 border border-gray-800">
-                <p className="text-foreground font-medium">{item.name}</p>
+              <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
+                <p className="text-white font-medium">{item.name}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className="text-xs border-green-500/30 text-green-400">
                     {item.type}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">Tier {item.tier}</span>
-                  <span className="text-xs text-muted-foreground">— {item.company}</span>
+                  <span className="text-xs text-gray-400">Tier {item.tier}</span>
+                  <span className="text-xs text-gray-400">— {item.company}</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">{item.description}</p>
+                <p className="text-xs text-gray-400 mt-2">{item.description}</p>
               </div>
 
               {/* Cost breakdown */}
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Upfront Cost</span>
+                  <span className="text-gray-300">Upfront Cost</span>
                   <span className="text-green-400 font-medium">
                     ⏣{totalUpfront} ({formatHexDenomination(totalUpfront)})
                   </span>
                 </div>
                 {item.priceSub > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Daily Subscription</span>
+                    <span className="text-gray-300">Daily Subscription</span>
                     <span className="text-yellow-400 font-medium">
                       ⏣{item.priceSub}/day ({formatHexDenomination(item.priceSub)}/day)
                     </span>
                   </div>
                 )}
-                <div className="border-t border-gray-800 pt-2 flex justify-between">
-                  <span className="text-muted-foreground">Current Balance</span>
+                <div className="border-t border-gray-700 pt-2 flex justify-between">
+                  <span className="text-gray-300">Current Balance</span>
                   <span className={balanceInfo.colorClass}>
                     ⏣{userBalance} ({balanceInfo.breakdown})
                   </span>
                 </div>
                 <div className="flex justify-between font-medium">
-                  <span className="text-muted-foreground">After Purchase</span>
+                  <span className="text-white">After Purchase</span>
                   <span className={newBalanceInfo.colorClass}>
                     ⏣{newBalance} ({newBalanceInfo.breakdown})
                   </span>
