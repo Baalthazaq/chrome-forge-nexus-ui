@@ -1,6 +1,5 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useAdmin } from "@/hooks/useAdmin";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -130,9 +129,7 @@ function sortItems(items: StoreItem[], key: SortKey, dir: SortDir): StoreItem[] 
 
 const Wyrmcart = () => {
   const { user } = useAuth();
-  const { isAdmin } = useAdmin();
   const { toast } = useToast();
-  const [seeding, setSeeding] = useState(false);
   const [search, setSearch] = useState("");
   const [activeType, setActiveType] = useState<string>("All");
   const [activeTier, setActiveTier] = useState<number | null>(null);
@@ -225,35 +222,6 @@ const Wyrmcart = () => {
           )}
           {!user && <div className="w-24" />}
         </div>
-
-        {/* Admin: Seed Store DB */}
-        {isAdmin && (
-          <div className="mb-4">
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-900/20"
-              disabled={seeding}
-              onClick={async () => {
-                setSeeding(true);
-                try {
-                  const { data, error } = await supabase.functions.invoke("seed-shop", {
-                    body: { items: storeItems },
-                  });
-                  if (error) throw error;
-                  if (data?.error) throw new Error(data.error);
-                  toast({ title: "Store Seeded", description: `${data.inserted} items added to database.` });
-                } catch (err: any) {
-                  toast({ title: "Seed Failed", description: err.message, variant: "destructive" });
-                } finally {
-                  setSeeding(false);
-                }
-              }}
-            >
-              {seeding ? "Seeding..." : "⚡ Seed Store to DB"}
-            </Button>
-          </div>
-        )}
 
         {/* Search */}
         <Card className="p-4 bg-gray-900/50 border-green-500/30 mb-6">
