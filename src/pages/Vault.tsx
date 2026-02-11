@@ -449,15 +449,25 @@ const Vault = () => {
               <TrendingUp className="h-4 w-4 text-yellow-400" />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${getHexBreakdown(totalAssets).colorClass}`}>
-                ⏣{totalAssets}
-              </div>
-              <div className={`text-sm ${getHexBreakdown(totalAssets).colorClass} mt-1`}>
-                {getHexBreakdown(totalAssets).breakdown}
-              </div>
-              <p className="text-xs text-gray-400 mt-2">
-                Value of {inventoryItems.length} item{inventoryItems.length !== 1 ? 's' : ''}
-              </p>
+              {(() => {
+                const unpaidTotal = bills.reduce((sum, bill) => sum + bill.amount, 0);
+                const netAssets = (userProfile?.credits || 0) + totalAssets - unpaidTotal;
+                return (
+                  <>
+                    <div className="text-2xl font-bold text-yellow-400">
+                      ⏣{netAssets}
+                    </div>
+                    <div className="text-sm text-yellow-400 mt-1">
+                      {getHexBreakdown(netAssets).breakdown}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-2 space-y-0.5">
+                      <p>Hex Balance: ⏣{userProfile?.credits || 0}</p>
+                      <p>Inventory: ⏣{totalAssets}</p>
+                      <p>Unpaid Bills: -⏣{unpaidTotal}</p>
+                    </div>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>
