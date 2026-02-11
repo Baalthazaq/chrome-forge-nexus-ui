@@ -645,12 +645,12 @@ const Vault = () => {
               <Package className="w-5 h-5 mr-2" />
               Inventory ({inventoryItems.length})
             </h2>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2">
               <Dialog open={addExistingOpen} onOpenChange={setAddExistingOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="border-cyan-600 text-cyan-400 hover:bg-cyan-900/30">
                     <Plus className="w-4 h-4 mr-2" />
-                    Add Existing Item
+                    Add Existing
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[600px] bg-gray-900 border-gray-700 max-h-[80vh] overflow-hidden flex flex-col">
@@ -701,7 +701,7 @@ const Vault = () => {
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="border-yellow-600 text-yellow-400 hover:bg-yellow-900/30">
                     <Plus className="w-4 h-4 mr-2" />
-                    Add Item
+                    Add Custom
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[550px] bg-gray-900 border-gray-700 max-h-[85vh] overflow-y-auto">
@@ -767,26 +767,29 @@ const Vault = () => {
                     </div>
 
                     {/* Weapon-specific fields */}
+                    {/* Weapon-specific fields */}
                     {newItemCategory === "weapon" && (
                       <>
-                        <div className="col-span-4 border-t border-gray-700 pt-2 mt-1">
+                        <div className="border-t border-gray-700 pt-2 mt-1">
                           <p className="text-xs text-red-400 font-semibold mb-2 ml-1">Weapon Stats</p>
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-3">
-                          <Label className="text-right text-gray-300 text-sm">Ability</Label>
-                          <Input value={newItemAbility} onChange={(e) => setNewItemAbility(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="Str, Fin, Agi, etc." />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-3">
-                          <Label className="text-right text-gray-300 text-sm">Hand</Label>
-                          <Input value={newItemHand} onChange={(e) => setNewItemHand(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="Pri, Sec, 2H" />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-3">
-                          <Label className="text-right text-gray-300 text-sm">Range</Label>
-                          <Input value={newItemRange} onChange={(e) => setNewItemRange(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="Melee, Close, Far, etc." />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-3">
-                          <Label className="text-right text-gray-300 text-sm">Damage</Label>
-                          <Input value={newItemDamage} onChange={(e) => setNewItemDamage(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="d8+1 phy" />
+                        <div className="space-y-3">
+                          <div>
+                            <Label className="text-gray-300 text-sm mb-1 block">Ability</Label>
+                            <Input value={newItemAbility} onChange={(e) => setNewItemAbility(e.target.value)} className="bg-gray-800 border-gray-600 text-white" placeholder="Str, Fin, Agi, etc." />
+                          </div>
+                          <div>
+                            <Label className="text-gray-300 text-sm mb-1 block">Hand</Label>
+                            <Input value={newItemHand} onChange={(e) => setNewItemHand(e.target.value)} className="bg-gray-800 border-gray-600 text-white" placeholder="Pri, Sec, 2H" />
+                          </div>
+                          <div>
+                            <Label className="text-gray-300 text-sm mb-1 block">Range</Label>
+                            <Input value={newItemRange} onChange={(e) => setNewItemRange(e.target.value)} className="bg-gray-800 border-gray-600 text-white" placeholder="Melee, Close, Far, etc." />
+                          </div>
+                          <div>
+                            <Label className="text-gray-300 text-sm mb-1 block">Damage</Label>
+                            <Input value={newItemDamage} onChange={(e) => setNewItemDamage(e.target.value)} className="bg-gray-800 border-gray-600 text-white" placeholder="d8+1 phy" />
+                          </div>
                         </div>
                       </>
                     )}
@@ -794,16 +797,18 @@ const Vault = () => {
                     {/* Armor-specific fields */}
                     {newItemCategory === "armor" && (
                       <>
-                        <div className="col-span-4 border-t border-gray-700 pt-2 mt-1">
+                        <div className="border-t border-gray-700 pt-2 mt-1">
                           <p className="text-xs text-blue-400 font-semibold mb-2 ml-1">Armor Stats</p>
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-3">
-                          <Label className="text-right text-gray-300 text-sm">Armor Base</Label>
-                          <Input type="number" value={newItemArmorBase} onChange={(e) => setNewItemArmorBase(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="Base armor value" />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-3">
-                          <Label className="text-right text-gray-300 text-sm">Threshold</Label>
-                          <Input value={newItemArmorThreshold} onChange={(e) => setNewItemArmorThreshold(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="e.g. 5 / 11" />
+                        <div className="space-y-3">
+                          <div>
+                            <Label className="text-gray-300 text-sm mb-1 block">Armor Base</Label>
+                            <Input type="number" value={newItemArmorBase} onChange={(e) => setNewItemArmorBase(e.target.value)} className="bg-gray-800 border-gray-600 text-white" placeholder="Base armor value" />
+                          </div>
+                          <div>
+                            <Label className="text-gray-300 text-sm mb-1 block">Threshold</Label>
+                            <Input value={newItemArmorThreshold} onChange={(e) => setNewItemArmorThreshold(e.target.value)} className="bg-gray-800 border-gray-600 text-white" placeholder="e.g. 5 / 11" />
+                          </div>
                         </div>
                       </>
                     )}
