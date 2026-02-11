@@ -27,6 +27,7 @@ import Roldex from "./pages/Roldex";
 import RoldexAdmin from "./pages/RoldexAdmin";
 import SendingAdmin from "./pages/SendingAdmin";
 import WyrmcartAdmin from "./pages/WyrmcartAdmin";
+import AtunesAdminPage from "./pages/AtunesAdmin";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/sending" element={<SendingAdmin />} />
             <Route path="/admin/wyrmcart" element={<WyrmcartAdmin />} />
+            <Route path="/admin/@tunes" element={<AtunesAdminPage />} />
             <Route path="/admin/app-of-holding" element={<VaultAdmin />} />
             <Route path="/admin/:app" element={<Admin />} />
             <Route path="/charisma" element={<Charisma />} />

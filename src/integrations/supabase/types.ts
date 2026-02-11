@@ -492,6 +492,7 @@ export type Database = {
       }
       recurring_payments: {
         Row: {
+          accumulated_amount: number
           amount: number
           created_at: string
           currency: string
@@ -505,11 +506,13 @@ export type Database = {
           metadata: Json | null
           next_send_at: string
           remaining_cycles: number | null
+          status: string
           to_user_id: string
           total_times_sent: number
           updated_at: string
         }
         Insert: {
+          accumulated_amount?: number
           amount: number
           created_at?: string
           currency?: string
@@ -523,11 +526,13 @@ export type Database = {
           metadata?: Json | null
           next_send_at: string
           remaining_cycles?: number | null
+          status?: string
           to_user_id: string
           total_times_sent?: number
           updated_at?: string
         }
         Update: {
+          accumulated_amount?: number
           amount?: number
           created_at?: string
           currency?: string
@@ -541,6 +546,7 @@ export type Database = {
           metadata?: Json | null
           next_send_at?: string
           remaining_cycles?: number | null
+          status?: string
           to_user_id?: string
           total_times_sent?: number
           updated_at?: string
