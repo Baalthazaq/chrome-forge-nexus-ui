@@ -16,7 +16,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatHex, getHexBreakdown } from "@/lib/currency";
-import { storeItems } from "@/data/storeItems";
+import { storeItems, type StoreItem } from "@/data/storeItems";
 
 interface InventoryItem {
   id: string;
@@ -47,7 +47,7 @@ const tierColors: Record<number, string> = {
   5: "text-orange-400 border-orange-500",
 };
 
-const CATEGORIES = ["weapon", "armor", "cybernetic", "consumable", "tool", "misc"];
+const CATEGORIES = ["weapon", "armor", "cybernetic", "cyberwear", "consumable", "item", "tool", "service", "misc"];
 
 const getItemFinalValue = (item: InventoryItem): number => {
   const meta = item.metadata;
@@ -88,9 +88,26 @@ const Vault = () => {
 
   // Add Item Dialog State
   const [addItemOpen, setAddItemOpen] = useState(false);
+  const [addExistingOpen, setAddExistingOpen] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [newItemCategory, setNewItemCategory] = useState("misc");
   const [newItemNotes, setNewItemNotes] = useState("");
+  const [newItemTier, setNewItemTier] = useState("1");
+  const [newItemCompany, setNewItemCompany] = useState("");
+  const [newItemDescription, setNewItemDescription] = useState("");
+  const [newItemPrice, setNewItemPrice] = useState("");
+  const [newItemSubFee, setNewItemSubFee] = useState("");
+  const [newItemSubInterval, setNewItemSubInterval] = useState("daily");
+  // Weapon fields
+  const [newItemAbility, setNewItemAbility] = useState("");
+  const [newItemHand, setNewItemHand] = useState("");
+  const [newItemRange, setNewItemRange] = useState("");
+  const [newItemDamage, setNewItemDamage] = useState("");
+  // Armor fields
+  const [newItemArmorBase, setNewItemArmorBase] = useState("");
+  const [newItemArmorThreshold, setNewItemArmorThreshold] = useState("");
+  // Store search
+  const [storeSearchQuery, setStoreSearchQuery] = useState("");
 
   // Delete Item Confirm
   const [deleteItemDialogOpen, setDeleteItemDialogOpen] = useState(false);
@@ -222,6 +239,35 @@ const Vault = () => {
     checkOverdraftAndPay([billId]);
   };
 
+  const resetAddItemForm = () => {
+    setNewItemName(""); setNewItemCategory("misc"); setNewItemNotes("");
+    setNewItemTier("1"); setNewItemCompany(""); setNewItemDescription("");
+    setNewItemPrice(""); setNewItemSubFee(""); setNewItemSubInterval("daily");
+    setNewItemAbility(""); setNewItemHand(""); setNewItemRange("");
+    setNewItemDamage(""); setNewItemArmorBase(""); setNewItemArmorThreshold("");
+    setStoreSearchQuery("");
+  };
+
+  const populateFromStoreItem = (si: StoreItem) => {
+    setNewItemName(si.name);
+    setNewItemCategory(si.type.toLowerCase());
+    setNewItemDescription(si.description);
+    setNewItemCompany(si.company);
+    setNewItemTier(String(si.tier));
+    setNewItemPrice(String(si.priceUpfront));
+    setNewItemSubFee(String(si.priceSub));
+    setNewItemSubInterval("daily");
+    setNewItemAbility(si.ability || "");
+    setNewItemHand(si.hand || "");
+    setNewItemRange(si.range || "");
+    setNewItemDamage(si.damage || "");
+    setNewItemArmorBase(si.armorBase !== undefined ? String(si.armorBase) : "");
+    setNewItemArmorThreshold(si.armorThreshold || "");
+    setNewItemNotes("");
+    setAddExistingOpen(false);
+    setAddItemOpen(true);
+  };
+
   const handleAddItem = async () => {
     const activeUserId = impersonatedUser?.user_id || user?.id;
     if (!activeUserId || !newItemName.trim()) {
@@ -229,19 +275,56 @@ const Vault = () => {
       return;
     }
 
+    const tier = parseInt(newItemTier) || 1;
+    const price = parseInt(newItemPrice) || 0;
+    const subFee = parseInt(newItemSubFee) || 0;
+
+    const specs: any = {
+      tier,
+      company: newItemCompany || undefined,
+      description: newItemDescription || undefined,
+      subscription_fee: subFee,
+    };
+
+    if (newItemCategory === "weapon") {
+      if (newItemAbility) specs.ability = newItemAbility;
+      if (newItemHand) specs.hand = newItemHand;
+      if (newItemRange) specs.range = newItemRange;
+      if (newItemDamage) specs.damage = newItemDamage;
+    }
+    if (newItemCategory === "armor") {
+      if (newItemArmorBase) specs.armorBase = parseInt(newItemArmorBase);
+      if (newItemArmorThreshold) specs.armorThreshold = newItemArmorThreshold;
+    }
+
     try {
       const { error } = await supabase.from("user_augmentations").insert({
         user_id: activeUserId,
         name: newItemName.trim(),
         category: newItemCategory,
-        metadata: newItemNotes ? { notes: newItemNotes } : {},
+        metadata: {
+          purchase_price: price,
+          specifications: specs,
+          notes: newItemNotes || undefined,
+        },
       });
       if (error) throw error;
+
+      // Create subscription if subFee > 0
+      if (subFee > 0) {
+        await supabase.from("recurring_payments").insert({
+          to_user_id: activeUserId,
+          amount: subFee,
+          description: `${newItemName.trim()} subscription`,
+          interval_type: newItemSubInterval,
+          next_send_at: new Date(Date.now() + 86400000).toISOString(),
+          metadata: { source: "inventory_add" },
+        });
+      }
+
       toast({ title: "Item Added", description: `${newItemName} added to inventory` });
       setAddItemOpen(false);
-      setNewItemName("");
-      setNewItemCategory("misc");
-      setNewItemNotes("");
+      resetAddItemForm();
       loadData();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -555,70 +638,189 @@ const Vault = () => {
           </div>
         )}
 
-        {/* Inventory Grid */}
+        {/* Inventory Grid - Subcategorized */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-yellow-400 flex items-center">
               <Package className="w-5 h-5 mr-2" />
               Inventory ({inventoryItems.length})
             </h2>
-            <Dialog open={addItemOpen} onOpenChange={setAddItemOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="border-yellow-600 text-yellow-400 hover:bg-yellow-900/30">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Item
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700">
-                <DialogHeader>
-                  <DialogTitle className="text-white">Add Custom Item</DialogTitle>
-                  <DialogDescription className="text-gray-400">
-                    Add a new item to your inventory.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right text-gray-300">Name</Label>
-                    <Input
-                      value={newItemName}
-                      onChange={(e) => setNewItemName(e.target.value)}
-                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
-                      placeholder="Item name"
-                    />
+            <div className="flex gap-2">
+              <Dialog open={addExistingOpen} onOpenChange={setAddExistingOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="border-cyan-600 text-cyan-400 hover:bg-cyan-900/30">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Existing Item
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[600px] bg-gray-900 border-gray-700 max-h-[80vh] overflow-hidden flex flex-col">
+                  <DialogHeader>
+                    <DialogTitle className="text-white">Add Existing Store Item</DialogTitle>
+                    <DialogDescription className="text-gray-400">
+                      Pick an item from the store to prepopulate fields. This does not purchase the item.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <Input
+                    value={storeSearchQuery}
+                    onChange={(e) => setStoreSearchQuery(e.target.value)}
+                    className="bg-gray-800 border-gray-600 text-white"
+                    placeholder="Search store items..."
+                  />
+                  <div className="overflow-y-auto flex-1 max-h-[50vh] space-y-1 pr-1">
+                    {storeItems
+                      .filter(si => si.name.toLowerCase().includes(storeSearchQuery.toLowerCase()) || si.type.toLowerCase().includes(storeSearchQuery.toLowerCase()) || si.company.toLowerCase().includes(storeSearchQuery.toLowerCase()))
+                      .map((si, idx) => {
+                        const tc = tierColors[si.tier] || tierColors[1];
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => populateFromStoreItem(si)}
+                            className="w-full text-left p-3 rounded bg-gray-800/50 hover:bg-gray-700/50 border border-gray-700 transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <span className="text-white font-medium">{si.name}</span>
+                                <div className="flex gap-1 mt-1">
+                                  <Badge variant="outline" className="text-xs capitalize border-gray-600 text-gray-400">{si.type}</Badge>
+                                  <Badge variant="outline" className={`text-xs ${tc}`}>T{si.tier}</Badge>
+                                  <Badge variant="outline" className="text-xs border-gray-600 text-gray-500">{si.company}</Badge>
+                                </div>
+                              </div>
+                              <div className="text-right text-sm">
+                                <div className="text-yellow-400">⏣{si.priceUpfront}</div>
+                                {si.priceSub > 0 && <div className="text-gray-500 text-xs">+⏣{si.priceSub}/day</div>}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right text-gray-300">Category</Label>
-                    <Select value={newItemCategory} onValueChange={setNewItemCategory}>
-                      <SelectTrigger className="col-span-3 bg-gray-800 border-gray-600 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-gray-800 border-gray-600">
-                        {CATEGORIES.map((cat) => (
-                          <SelectItem key={cat} value={cat} className="text-white hover:bg-gray-700 capitalize">
-                            {cat}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-4 items-start gap-4">
-                    <Label className="text-right text-gray-300 mt-2">Notes</Label>
-                    <Textarea
-                      value={newItemNotes}
-                      onChange={(e) => setNewItemNotes(e.target.value)}
-                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
-                      placeholder="Optional notes about this item"
-                      rows={2}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={handleAddItem} className="bg-yellow-600 hover:bg-yellow-700">
+                </DialogContent>
+              </Dialog>
+              <Dialog open={addItemOpen} onOpenChange={(open) => { setAddItemOpen(open); if (!open) resetAddItemForm(); }}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="border-yellow-600 text-yellow-400 hover:bg-yellow-900/30">
+                    <Plus className="w-4 h-4 mr-2" />
                     Add Item
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[550px] bg-gray-900 border-gray-700 max-h-[85vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="text-white">Add Item to Inventory</DialogTitle>
+                    <DialogDescription className="text-gray-400">
+                      Build a full item with all specifications.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-3 py-2">
+                    {/* Core fields */}
+                    <div className="grid grid-cols-4 items-center gap-3">
+                      <Label className="text-right text-gray-300 text-sm">Name</Label>
+                      <Input value={newItemName} onChange={(e) => setNewItemName(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="Item name" />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-3">
+                      <Label className="text-right text-gray-300 text-sm">Category</Label>
+                      <Select value={newItemCategory} onValueChange={setNewItemCategory}>
+                        <SelectTrigger className="col-span-3 bg-gray-800 border-gray-600 text-white"><SelectValue /></SelectTrigger>
+                        <SelectContent className="bg-gray-800 border-gray-600">
+                          {CATEGORIES.map((cat) => (
+                            <SelectItem key={cat} value={cat} className="text-white hover:bg-gray-700 capitalize">{cat}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-3">
+                      <Label className="text-right text-gray-300 text-sm">Tier</Label>
+                      <Select value={newItemTier} onValueChange={setNewItemTier}>
+                        <SelectTrigger className="col-span-3 bg-gray-800 border-gray-600 text-white"><SelectValue /></SelectTrigger>
+                        <SelectContent className="bg-gray-800 border-gray-600">
+                          {[1,2,3,4,5].map((t) => (
+                            <SelectItem key={t} value={String(t)} className="text-white hover:bg-gray-700">Tier {t}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-3">
+                      <Label className="text-right text-gray-300 text-sm">Company</Label>
+                      <Input value={newItemCompany} onChange={(e) => setNewItemCompany(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="Manufacturer" />
+                    </div>
+                    <div className="grid grid-cols-4 items-start gap-3">
+                      <Label className="text-right text-gray-300 text-sm mt-2">Description</Label>
+                      <Textarea value={newItemDescription} onChange={(e) => setNewItemDescription(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="Item description / ability" rows={2} />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-3">
+                      <Label className="text-right text-gray-300 text-sm">Price</Label>
+                      <Input type="number" value={newItemPrice} onChange={(e) => setNewItemPrice(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="Upfront cost in Hex" />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-3">
+                      <Label className="text-right text-gray-300 text-sm">Sub Fee</Label>
+                      <div className="col-span-3 flex gap-2">
+                        <Input type="number" value={newItemSubFee} onChange={(e) => setNewItemSubFee(e.target.value)} className="flex-1 bg-gray-800 border-gray-600 text-white" placeholder="0" />
+                        <Select value={newItemSubInterval} onValueChange={setNewItemSubInterval}>
+                          <SelectTrigger className="w-28 bg-gray-800 border-gray-600 text-white"><SelectValue /></SelectTrigger>
+                          <SelectContent className="bg-gray-800 border-gray-600">
+                            <SelectItem value="daily" className="text-white hover:bg-gray-700">Daily</SelectItem>
+                            <SelectItem value="weekly" className="text-white hover:bg-gray-700">Weekly</SelectItem>
+                            <SelectItem value="monthly" className="text-white hover:bg-gray-700">Monthly</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Weapon-specific fields */}
+                    {newItemCategory === "weapon" && (
+                      <>
+                        <div className="col-span-4 border-t border-gray-700 pt-2 mt-1">
+                          <p className="text-xs text-red-400 font-semibold mb-2 ml-1">Weapon Stats</p>
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-3">
+                          <Label className="text-right text-gray-300 text-sm">Ability</Label>
+                          <Input value={newItemAbility} onChange={(e) => setNewItemAbility(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="Str, Fin, Agi, etc." />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-3">
+                          <Label className="text-right text-gray-300 text-sm">Hand</Label>
+                          <Input value={newItemHand} onChange={(e) => setNewItemHand(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="Pri, Sec, 2H" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-3">
+                          <Label className="text-right text-gray-300 text-sm">Range</Label>
+                          <Input value={newItemRange} onChange={(e) => setNewItemRange(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="Melee, Close, Far, etc." />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-3">
+                          <Label className="text-right text-gray-300 text-sm">Damage</Label>
+                          <Input value={newItemDamage} onChange={(e) => setNewItemDamage(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="d8+1 phy" />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Armor-specific fields */}
+                    {newItemCategory === "armor" && (
+                      <>
+                        <div className="col-span-4 border-t border-gray-700 pt-2 mt-1">
+                          <p className="text-xs text-blue-400 font-semibold mb-2 ml-1">Armor Stats</p>
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-3">
+                          <Label className="text-right text-gray-300 text-sm">Armor Base</Label>
+                          <Input type="number" value={newItemArmorBase} onChange={(e) => setNewItemArmorBase(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="Base armor value" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-3">
+                          <Label className="text-right text-gray-300 text-sm">Threshold</Label>
+                          <Input value={newItemArmorThreshold} onChange={(e) => setNewItemArmorThreshold(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="e.g. 5 / 11" />
+                        </div>
+                      </>
+                    )}
+
+                    <div className="grid grid-cols-4 items-start gap-3">
+                      <Label className="text-right text-gray-300 text-sm mt-2">Notes</Label>
+                      <Textarea value={newItemNotes} onChange={(e) => setNewItemNotes(e.target.value)} className="col-span-3 bg-gray-800 border-gray-600 text-white" placeholder="Optional notes" rows={2} />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={handleAddItem} className="bg-yellow-600 hover:bg-yellow-700">
+                      Add Item
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
 
           {inventoryItems.length === 0 ? (
@@ -629,80 +831,106 @@ const Vault = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {inventoryItems.map((item) => {
-                const colorClass = categoryColors[item.category.toLowerCase()] || categoryColors.misc;
-                const storeDetail = getStoreDetails(item);
-                const specs = item.metadata?.specifications;
-                const tier = specs?.tier;
-                const tierClass = tier ? tierColors[tier] || tierColors[1] : null;
-                const notes = (item.metadata as any)?.notes;
-                const itemValue = getItemFinalValue(item);
-
+            <div className="space-y-6">
+              {CATEGORIES.filter(cat => inventoryItems.some(item => item.category.toLowerCase() === cat)).map(cat => {
+                const catItems = inventoryItems.filter(item => item.category.toLowerCase() === cat);
+                const colorClass = categoryColors[cat] || categoryColors.misc;
                 return (
-                  <Card key={item.id} className={`${colorClass} backdrop-blur-sm group relative`}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-white truncate">{item.name}</h3>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            <Badge variant="outline" className="text-xs capitalize border-gray-600 text-gray-400">
-                              {item.category}
-                            </Badge>
-                            {tierClass && (
-                              <Badge variant="outline" className={`text-xs ${tierClass}`}>
-                                T{tier}
-                              </Badge>
-                            )}
-                            {specs?.company && (
-                              <Badge variant="outline" className="text-xs border-gray-600 text-gray-500">
-                                {specs.company}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/30"
-                          onClick={() => handleDeleteItem(item)}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
+                  <div key={cat}>
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${colorClass.includes('red') ? 'bg-red-500' : colorClass.includes('blue') ? 'bg-blue-500' : colorClass.includes('purple') ? 'bg-purple-500' : colorClass.includes('green') ? 'bg-green-500' : colorClass.includes('yellow') ? 'bg-yellow-500' : colorClass.includes('cyan') ? 'bg-cyan-500' : 'bg-gray-500'}`}></span>
+                      {cat} ({catItems.length})
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {catItems.map((item) => {
+                        const itemColorClass = categoryColors[item.category.toLowerCase()] || categoryColors.misc;
+                        const storeDetail = getStoreDetails(item);
+                        const specs = item.metadata?.specifications;
+                        const tier = specs?.tier;
+                        const tierClass = tier ? tierColors[tier] || tierColors[1] : null;
+                        const notes = (item.metadata as any)?.notes;
+                        const itemValue = getItemFinalValue(item);
 
-                      {/* Store description */}
-                      {(storeDetail?.description || item.metadata?.specifications?.description) && (
-                        <p className="text-xs text-gray-300 mb-2">
-                          {storeDetail?.description || item.metadata?.specifications?.description}
-                        </p>
-                      )}
+                        return (
+                          <Card key={item.id} className={`${itemColorClass} backdrop-blur-sm group relative`}>
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold text-white truncate">{item.name}</h3>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {tierClass && (
+                                      <Badge variant="outline" className={`text-xs ${tierClass}`}>T{tier}</Badge>
+                                    )}
+                                    {specs?.company && (
+                                      <Badge variant="outline" className="text-xs border-gray-600 text-gray-500">{specs.company}</Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="ghost" size="sm"
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/30"
+                                  onClick={() => handleDeleteItem(item)}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
 
-                      {/* Weapon/Armor stats */}
-                      {specs && (specs.damage || specs.armorBase) && (
-                        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs mt-2 bg-black/30 rounded p-2">
-                          {specs.ability && <div className="text-gray-400">Ability: <span className="text-white">{specs.ability}</span></div>}
-                          {specs.hand && <div className="text-gray-400">Hand: <span className="text-white">{specs.hand}</span></div>}
-                          {specs.range && <div className="text-gray-400">Range: <span className="text-white">{specs.range}</span></div>}
-                          {specs.damage && <div className="text-gray-400">Damage: <span className="text-white">{specs.damage}</span></div>}
-                          {specs.armorBase !== undefined && <div className="text-gray-400">Armor: <span className="text-white">{specs.armorBase}</span></div>}
-                          {specs.armorThreshold && <div className="text-gray-400">Threshold: <span className="text-white">{specs.armorThreshold}</span></div>}
-                        </div>
-                      )}
+                              {(storeDetail?.description || specs?.description) && (
+                                <p className="text-xs text-gray-300 mb-2">{storeDetail?.description || specs?.description}</p>
+                              )}
 
-                      {notes && (
-                        <p className="text-xs text-gray-400 mt-2 line-clamp-2 italic">{notes}</p>
-                      )}
+                              {specs && (specs.damage || specs.armorBase) && (
+                                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs mt-2 bg-black/30 rounded p-2">
+                                  {specs.ability && <div className="text-gray-400">Ability: <span className="text-white">{specs.ability}</span></div>}
+                                  {specs.hand && <div className="text-gray-400">Hand: <span className="text-white">{specs.hand}</span></div>}
+                                  {specs.range && <div className="text-gray-400">Range: <span className="text-white">{specs.range}</span></div>}
+                                  {specs.damage && <div className="text-gray-400">Damage: <span className="text-white">{specs.damage}</span></div>}
+                                  {specs.armorBase !== undefined && <div className="text-gray-400">Armor: <span className="text-white">{specs.armorBase}</span></div>}
+                                  {specs.armorThreshold && <div className="text-gray-400">Threshold: <span className="text-white">{specs.armorThreshold}</span></div>}
+                                </div>
+                              )}
 
-                      {itemValue > 0 && (
-                        <div className="text-xs text-yellow-400/70 mt-2 text-right">
-                          Value: ⏣{itemValue}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                              {notes && <p className="text-xs text-gray-400 mt-2 line-clamp-2 italic">{notes}</p>}
+
+                              {itemValue > 0 && (
+                                <div className="text-xs text-yellow-400/70 mt-2 text-right">Value: ⏣{itemValue}</div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
+              {/* Items not matching known categories */}
+              {inventoryItems.filter(item => !CATEGORIES.includes(item.category.toLowerCase())).length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-3">Other</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {inventoryItems.filter(item => !CATEGORIES.includes(item.category.toLowerCase())).map((item) => {
+                      const itemValue = getItemFinalValue(item);
+                      const specs = item.metadata?.specifications;
+                      const notes = (item.metadata as any)?.notes;
+                      return (
+                        <Card key={item.id} className="border-gray-500 bg-gray-800/50 backdrop-blur-sm group relative">
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <h3 className="font-semibold text-white truncate">{item.name}</h3>
+                              <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/30" onClick={() => handleDeleteItem(item)}>
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                            {specs?.description && <p className="text-xs text-gray-300 mb-2">{specs.description}</p>}
+                            {notes && <p className="text-xs text-gray-400 mt-1 italic">{notes}</p>}
+                            {itemValue > 0 && <div className="text-xs text-yellow-400/70 mt-2 text-right">Value: ⏣{itemValue}</div>}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
