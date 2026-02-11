@@ -1098,49 +1098,69 @@ const ToMe = () => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
                   {Array.from({ length: columnCount }, (_, colIndex) => {
-                    const columnNotes = filteredQuickNotes
-                      .filter((note, index) => {
-                        const noteColumn = note.layout_column != null ? note.layout_column : index % 3;
-                        const mappedColumn = Math.min(noteColumn, columnCount - 1);
-                        return mappedColumn === colIndex;
-                      })
-                      .sort((a, b) => (a.layout_position || 0) - (b.layout_position || 0));
+                    // Gather notes that belong to this visual column
+                    // When merged, each visual column holds multiple original columns stacked sequentially
+                    const originalColumnsInThisSlot: number[] = [];
+                    for (let c = 0; c < 3; c++) {
+                      if (Math.min(c, columnCount - 1) === colIndex) {
+                        originalColumnsInThisSlot.push(c);
+                      }
+                    }
+
+                    // Group notes by their original column
+                    const groupedNotes = originalColumnsInThisSlot.map(origCol => {
+                      const notes = filteredQuickNotes
+                        .filter((note, index) => {
+                          const noteColumn = note.layout_column != null ? note.layout_column : index % 3;
+                          return noteColumn === origCol;
+                        })
+                        .sort((a, b) => (a.layout_position || 0) - (b.layout_position || 0));
+                      return { origCol, notes };
+                    });
+
+                    const isMerged = originalColumnsInThisSlot.length > 1;
+                    const totalNotes = groupedNotes.reduce((sum, g) => sum + g.notes.length, 0);
 
                     return (
                       <div key={colIndex} className="space-y-4 min-h-[200px]">
-                        <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider select-none">
-                          <Columns3 className="w-3 h-3" />
-                          <span>Column {colIndex + 1}</span>
-                          <span className="text-muted-foreground/50">({columnNotes.length})</span>
-                        </div>
-                        {columnNotes.length === 0 ? (
+                        {groupedNotes.map(({ origCol, notes }, groupIdx) => (
+                          <div key={origCol} className="space-y-4">
+                            {isMerged && (
+                              <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider select-none border-b border-border/50">
+                                <Columns3 className="w-3 h-3" />
+                                <span>Column {origCol + 1}</span>
+                                <span className="text-muted-foreground/50">({notes.length})</span>
+                              </div>
+                            )}
+                            {notes.map((note) => {
+                              const isOverThis = overId === note.id;
+                              const showIndicator = activeId && isOverThis && activeId !== note.id;
+                              
+                              return (
+                                <SortableQuickNote 
+                                  key={note.id} 
+                                  note={note} 
+                                  onDelete={deleteQuickNote}
+                                  onEdit={(note) => {
+                                    setEditingNote(note.id);
+                                     setNewNote({
+                                       content: note.content,
+                                       color: note.color,
+                                       tags: note.tags?.join(', ') || ''
+                                     });
+                                     setIsNewNoteOpen(true);
+                                  }}
+                                  showIndicator={showIndicator}
+                                  indicatorPosition="above"
+                                />
+                              );
+                            })}
+                          </div>
+                        ))}
+                        {totalNotes === 0 && (
                           <ColumnDropZone columnIndex={colIndex} />
-                        ) : (
-                          columnNotes.map((note) => {
-                            const isOverThis = overId === note.id;
-                            const showIndicator = activeId && isOverThis && activeId !== note.id;
-                            
-                            return (
-                              <SortableQuickNote 
-                                key={note.id} 
-                                note={note} 
-                                onDelete={deleteQuickNote}
-                                onEdit={(note) => {
-                                  setEditingNote(note.id);
-                                   setNewNote({
-                                     content: note.content,
-                                     color: note.color,
-                                     tags: note.tags?.join(', ') || ''
-                                   });
-                                   setIsNewNoteOpen(true);
-                                }}
-                                showIndicator={showIndicator}
-                                indicatorPosition="above"
-                              />
-                            );
-                          })
                         )}
-                        {columnNotes.length > 0 && (
+                        {totalNotes > 0 && (
                           <div className="h-16">
                             <ColumnDropZone columnIndex={colIndex} />
                           </div>
