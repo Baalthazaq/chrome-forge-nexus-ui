@@ -730,7 +730,7 @@ const AdminFinancialPanel = () => {
                         onClick={() => handleProcessRecurring(payment.id)}
                         size="sm"
                         className="bg-purple-600 hover:bg-purple-700"
-                        disabled={!payment.is_active}
+                        disabled={payment.status === "cancelled"}
                       >
                         Process Now
                       </Button>
