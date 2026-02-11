@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, CreditCard, Wallet, Package, Send, RefreshCw, Receipt, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, CreditCard, Wallet, Package, Send, RefreshCw, Receipt, Plus, Trash2, ChevronDown, ChevronUp, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatHex, getHexBreakdown } from "@/lib/currency";
+import { storeItems } from "@/data/storeItems";
 
 interface InventoryItem {
   id: string;
@@ -30,12 +31,32 @@ const categoryColors: Record<string, string> = {
   weapon: "border-red-500 bg-red-900/20",
   armor: "border-blue-500 bg-blue-900/20",
   cybernetic: "border-purple-500 bg-purple-900/20",
+  cyberwear: "border-purple-500 bg-purple-900/20",
   consumable: "border-green-500 bg-green-900/20",
   tool: "border-yellow-500 bg-yellow-900/20",
+  item: "border-yellow-500 bg-yellow-900/20",
+  service: "border-cyan-500 bg-cyan-900/20",
   misc: "border-gray-500 bg-gray-800/50",
 };
 
+const tierColors: Record<number, string> = {
+  1: "text-gray-400 border-gray-500",
+  2: "text-green-400 border-green-500",
+  3: "text-blue-400 border-blue-500",
+  4: "text-purple-400 border-purple-500",
+  5: "text-orange-400 border-orange-500",
+};
+
 const CATEGORIES = ["weapon", "armor", "cybernetic", "consumable", "tool", "misc"];
+
+const getItemFinalValue = (item: InventoryItem): number => {
+  const meta = item.metadata;
+  if (!meta?.purchase_price) return 0;
+  const tier = meta?.specifications?.tier || 1;
+  const subFee = meta?.specifications?.subscription_fee || 0;
+  // Final value = purchase price + (subscription * tier multiplier)
+  return meta.purchase_price + (subFee * tier * 30);
+};
 
 const Vault = () => {
   const { user } = useAuth();
@@ -49,6 +70,8 @@ const Vault = () => {
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedBills, setSelectedBills] = useState<string[]>([]);
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const [showAllRecurring, setShowAllRecurring] = useState(false);
 
   const getName = (id?: string | null) => {
     const p = profiles.find((pr) => pr.user_id === id);
@@ -69,6 +92,10 @@ const Vault = () => {
   const [newItemCategory, setNewItemCategory] = useState("misc");
   const [newItemNotes, setNewItemNotes] = useState("");
 
+  // Delete Item Confirm
+  const [deleteItemDialogOpen, setDeleteItemDialogOpen] = useState(false);
+  const [pendingDeleteItem, setPendingDeleteItem] = useState<InventoryItem | null>(null);
+
   const loadData = async () => {
     const activeUserId = impersonatedUser?.user_id || user?.id;
     if (!activeUserId) return;
@@ -78,7 +105,7 @@ const Vault = () => {
         supabase.from("profiles").select("*").eq("user_id", activeUserId).single(),
         supabase.from("transactions").select("*")
           .or(`user_id.eq.${activeUserId},from_user_id.eq.${activeUserId},to_user_id.eq.${activeUserId}`)
-          .order("created_at", { ascending: false }).limit(10),
+          .order("created_at", { ascending: false }).limit(50),
         supabase.from("bills").select("*").eq("to_user_id", activeUserId).eq("status", "unpaid")
           .order("created_at", { ascending: false }),
         supabase.from("profiles").select("user_id, character_name").neq("user_id", activeUserId),
@@ -104,6 +131,8 @@ const Vault = () => {
   useEffect(() => {
     loadData();
   }, [user, impersonatedUser]);
+
+  const totalAssets = inventoryItems.reduce((sum, item) => sum + getItemFinalValue(item), 0);
 
   const handleSendMoney = async () => {
     if (!sendRecipient || !sendAmount || !sendDescription) {
@@ -220,15 +249,67 @@ const Vault = () => {
   };
 
   const handleDeleteItem = async (item: InventoryItem) => {
+    setPendingDeleteItem(item);
+    setDeleteItemDialogOpen(true);
+  };
+
+  const confirmDeleteItem = async () => {
+    if (!pendingDeleteItem) return;
+    const item = pendingDeleteItem;
+    const activeUserId = impersonatedUser?.user_id || user?.id;
+
     try {
+      // Delete the augmentation
       const { error } = await supabase.from("user_augmentations").delete().eq("id", item.id);
       if (error) throw error;
-      toast({ title: "Item Removed", description: `${item.name} removed from inventory` });
+
+      // Also delete any linked recurring payment (subscription)
+      const shopItemId = item.metadata?.purchase_id;
+      if (shopItemId && activeUserId) {
+        // Find and delete recurring payments linked to this shop item
+        const { data: linkedSubs } = await supabase
+          .from("recurring_payments")
+          .select("id, metadata")
+          .eq("to_user_id", activeUserId);
+
+        if (linkedSubs) {
+          const matchingSubs = linkedSubs.filter(
+            (sub: any) => (sub.metadata as any)?.shop_item_id === shopItemId
+          );
+          for (const sub of matchingSubs) {
+            await supabase.from("recurring_payments").delete().eq("id", sub.id);
+          }
+          if (matchingSubs.length > 0) {
+            toast({ title: "Item Removed", description: `${item.name} and its subscription removed from inventory` });
+          } else {
+            toast({ title: "Item Removed", description: `${item.name} removed from inventory` });
+          }
+        } else {
+          toast({ title: "Item Removed", description: `${item.name} removed from inventory` });
+        }
+      } else {
+        toast({ title: "Item Removed", description: `${item.name} removed from inventory` });
+      }
+
+      setPendingDeleteItem(null);
+      setDeleteItemDialogOpen(false);
       loadData();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
+
+  // Get full store item details for an inventory item
+  const getStoreDetails = (item: InventoryItem) => {
+    const specs = item.metadata?.specifications;
+    if (!specs) return null;
+    // Try to match by name from storeItems for full details
+    const storeItem = storeItems.find(si => si.name === item.name);
+    return storeItem || null;
+  };
+
+  const displayedTransactions = showAllTransactions ? transactions : transactions.slice(0, 5);
+  const displayedRecurring = showAllRecurring ? recurringPayments : recurringPayments.slice(0, 5);
 
   if (isLoading) {
     return (
@@ -364,15 +445,18 @@ const Vault = () => {
           </Card>
           <Card className="bg-gray-900/50 border-gray-700/50 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-300">Inventory</CardTitle>
-              <Wallet className="h-4 w-4 text-yellow-400" />
+              <CardTitle className="text-sm font-medium text-gray-300">Total Assets</CardTitle>
+              <TrendingUp className="h-4 w-4 text-yellow-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-400">
-                {inventoryItems.length}
+              <div className={`text-2xl font-bold ${getHexBreakdown(totalAssets).colorClass}`}>
+                ⏣{totalAssets}
+              </div>
+              <div className={`text-sm ${getHexBreakdown(totalAssets).colorClass} mt-1`}>
+                {getHexBreakdown(totalAssets).breakdown}
               </div>
               <p className="text-xs text-gray-400 mt-2">
-                Items in possession
+                Value of {inventoryItems.length} item{inventoryItems.length !== 1 ? 's' : ''}
               </p>
             </CardContent>
           </Card>
@@ -461,29 +545,6 @@ const Vault = () => {
           </div>
         )}
 
-        {/* Recurring Payments */}
-        {recurringPayments.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-green-400 mb-4">Recurring Payments</h2>
-            <div className="grid gap-4">
-              {recurringPayments.map((rp) => (
-                <Card key={rp.id} className="bg-green-900/20 border-green-700/50 backdrop-blur-sm">
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-green-400">{rp.description}</h3>
-                      <p className="text-sm text-gray-400">Amount: {formatHex(rp.amount)} • Interval: {rp.interval_type}</p>
-                      <p className="text-xs text-gray-500">Last: {rp.last_sent_at ? new Date(rp.last_sent_at).toLocaleDateString() : 'Never'} • Next: {rp.next_send_at ? new Date(rp.next_send_at).toLocaleDateString() : 'Not scheduled'}</p>
-                    </div>
-                    <Badge variant={rp.is_active ? 'default' : 'secondary'}>
-                      {rp.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Inventory Grid */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -558,25 +619,37 @@ const Vault = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {inventoryItems.map((item) => {
-                const colorClass = categoryColors[item.category] || categoryColors.misc;
+                const colorClass = categoryColors[item.category.toLowerCase()] || categoryColors.misc;
+                const storeDetail = getStoreDetails(item);
+                const specs = item.metadata?.specifications;
+                const tier = specs?.tier;
+                const tierClass = tier ? tierColors[tier] || tierColors[1] : null;
                 const notes = (item.metadata as any)?.notes;
+                const itemValue = getItemFinalValue(item);
 
                 return (
                   <Card key={item.id} className={`${colorClass} backdrop-blur-sm group relative`}>
                     <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between mb-2">
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-white text-sm truncate">{item.name}</h3>
-                          <Badge variant="outline" className="text-xs mt-1 capitalize border-gray-600 text-gray-400">
-                            {item.category}
-                          </Badge>
-                          {item.status && item.status !== "active" && (
-                            <Badge variant="secondary" className="text-xs ml-1 mt-1">
-                              {item.status}
+                          <h3 className="font-semibold text-white truncate">{item.name}</h3>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            <Badge variant="outline" className="text-xs capitalize border-gray-600 text-gray-400">
+                              {item.category}
                             </Badge>
-                          )}
+                            {tierClass && (
+                              <Badge variant="outline" className={`text-xs ${tierClass}`}>
+                                T{tier}
+                              </Badge>
+                            )}
+                            {specs?.company && (
+                              <Badge variant="outline" className="text-xs border-gray-600 text-gray-500">
+                                {specs.company}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <Button
                           variant="ghost"
@@ -587,11 +660,34 @@ const Vault = () => {
                           <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
-                      {notes && (
-                        <p className="text-xs text-gray-400 mt-2 line-clamp-2">{notes}</p>
+
+                      {/* Store description */}
+                      {(storeDetail?.description || item.metadata?.specifications?.description) && (
+                        <p className="text-xs text-gray-300 mb-2">
+                          {storeDetail?.description || item.metadata?.specifications?.description}
+                        </p>
                       )}
-                      {item.efficiency_percent != null && item.efficiency_percent !== 100 && (
-                        <p className="text-xs text-gray-500 mt-1">Efficiency: {item.efficiency_percent}%</p>
+
+                      {/* Weapon/Armor stats */}
+                      {specs && (specs.damage || specs.armorBase) && (
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs mt-2 bg-black/30 rounded p-2">
+                          {specs.ability && <div className="text-gray-400">Ability: <span className="text-white">{specs.ability}</span></div>}
+                          {specs.hand && <div className="text-gray-400">Hand: <span className="text-white">{specs.hand}</span></div>}
+                          {specs.range && <div className="text-gray-400">Range: <span className="text-white">{specs.range}</span></div>}
+                          {specs.damage && <div className="text-gray-400">Damage: <span className="text-white">{specs.damage}</span></div>}
+                          {specs.armorBase !== undefined && <div className="text-gray-400">Armor: <span className="text-white">{specs.armorBase}</span></div>}
+                          {specs.armorThreshold && <div className="text-gray-400">Threshold: <span className="text-white">{specs.armorThreshold}</span></div>}
+                        </div>
+                      )}
+
+                      {notes && (
+                        <p className="text-xs text-gray-400 mt-2 line-clamp-2 italic">{notes}</p>
+                      )}
+
+                      {itemValue > 0 && (
+                        <div className="text-xs text-yellow-400/70 mt-2 text-right">
+                          Value: ⏣{itemValue}
+                        </div>
                       )}
                     </CardContent>
                   </Card>
@@ -600,6 +696,46 @@ const Vault = () => {
             </div>
           )}
         </div>
+
+        {/* Recurring Payments - Under Inventory */}
+        {recurringPayments.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-green-400 mb-4 flex items-center">
+              <RefreshCw className="w-5 h-5 mr-2" />
+              Recurring Payments ({recurringPayments.length})
+            </h2>
+            <div className="grid gap-4">
+              {displayedRecurring.map((rp) => (
+                <Card key={rp.id} className="bg-green-900/20 border-green-700/50 backdrop-blur-sm">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-green-400">{rp.description}</h3>
+                      <p className="text-sm text-gray-400">Amount: {formatHex(rp.amount)} • Interval: {rp.interval_type}</p>
+                      <p className="text-xs text-gray-500">Last: {rp.last_sent_at ? new Date(rp.last_sent_at).toLocaleDateString() : 'Never'} • Next: {rp.next_send_at ? new Date(rp.next_send_at).toLocaleDateString() : 'Not scheduled'}</p>
+                    </div>
+                    <Badge variant={rp.is_active ? 'default' : 'secondary'}>
+                      {rp.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            {recurringPayments.length > 5 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAllRecurring(!showAllRecurring)}
+                className="mt-3 w-full text-green-400 hover:text-green-300 hover:bg-green-900/20"
+              >
+                {showAllRecurring ? (
+                  <><ChevronUp className="w-4 h-4 mr-2" /> Show Less</>
+                ) : (
+                  <><ChevronDown className="w-4 h-4 mr-2" /> Show All ({recurringPayments.length})</>
+                )}
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Recent Transactions */}
         <div className="mb-8">
@@ -612,7 +748,7 @@ const Vault = () => {
                     No transactions yet
                   </div>
                 ) : (
-                  transactions.map((transaction) => (
+                  displayedTransactions.map((transaction) => (
                     <div key={transaction.id} className="p-4 flex items-center justify-between hover:bg-gray-800/30 transition-colors">
                       <div className="flex items-center space-x-3">
                         <div className={`w-2 h-2 rounded-full ${
@@ -634,6 +770,22 @@ const Vault = () => {
                   ))
                 )}
               </div>
+              {transactions.length > 5 && (
+                <div className="border-t border-gray-700">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAllTransactions(!showAllTransactions)}
+                    className="w-full text-cyan-400 hover:text-cyan-300 hover:bg-cyan-900/20 py-3"
+                  >
+                    {showAllTransactions ? (
+                      <><ChevronUp className="w-4 h-4 mr-2" /> Show Less</>
+                    ) : (
+                      <><ChevronDown className="w-4 h-4 mr-2" /> Show All ({transactions.length})</>
+                    )}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -663,6 +815,30 @@ const Vault = () => {
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               Proceed with Overdraft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Item Confirmation Dialog */}
+      <AlertDialog open={deleteItemDialogOpen} onOpenChange={setDeleteItemDialogOpen}>
+        <AlertDialogContent className="bg-gray-900 border-red-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-400">Delete Item</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              Are you sure you want to remove <strong>{pendingDeleteItem?.name}</strong> from your inventory?
+              {pendingDeleteItem?.metadata?.purchase_id && (
+                <><br /><br />This will also cancel any linked subscription for this item.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-800 border-gray-600 text-gray-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteItem}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete Item
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
