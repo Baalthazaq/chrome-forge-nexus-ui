@@ -216,19 +216,42 @@ serve(async (req) => {
       case "process_recurring_payment": {
         const { recurring_payment_id } = params;
         
-        // Get recurring payment details
+        // Get recurring payment details (exclude cancelled)
         const { data: recurringPayment, error: rpError } = await supabase
           .from("recurring_payments")
           .select("*")
           .eq("id", recurring_payment_id)
-          .eq("is_active", true)
+          .neq("status", "cancelled")
           .single();
 
         if (rpError || !recurringPayment) {
-          throw new Error("Recurring payment not found or inactive");
+          throw new Error("Recurring payment not found or cancelled");
         }
 
-        // Get recipient's profile and update credits
+        const rpStatus = recurringPayment.status || "active";
+
+        // For paused or manual: accumulate debt only
+        if (rpStatus === "paused" || rpStatus === "manual") {
+          const newAccumulated = (recurringPayment.accumulated_amount || 0) + recurringPayment.amount;
+          const { error: updateRpError } = await supabase
+            .from("recurring_payments")
+            .update({
+              accumulated_amount: newAccumulated,
+              last_sent_at: new Date().toISOString(),
+              total_times_sent: recurringPayment.total_times_sent + 1
+            })
+            .eq("id", recurring_payment_id);
+
+          if (updateRpError) throw updateRpError;
+
+          logStep("Accumulated debt for paused/manual payment", { recurring_payment_id, rpStatus, newAccumulated });
+          return new Response(JSON.stringify({ success: true, accumulated: true }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+
+        // Active: deduct from user's balance
         const { data: recipientProfile, error: recipientError } = await supabase
           .from("profiles")
           .select("credits")
@@ -239,9 +262,11 @@ serve(async (req) => {
           throw new Error("Recipient profile not found");
         }
 
+        const newBalance = recipientProfile.credits - recurringPayment.amount;
+
         const { error: updateError } = await supabase
           .from("profiles")
-          .update({ credits: recipientProfile.credits + recurringPayment.amount })
+          .update({ credits: newBalance })
           .eq("user_id", recurringPayment.to_user_id);
 
         if (updateError) throw updateError;
@@ -279,8 +304,8 @@ serve(async (req) => {
           .from("transactions")
           .insert({
             user_id: recurringPayment.to_user_id,
-            transaction_type: "credit",
-            amount: recurringPayment.amount,
+            transaction_type: "recurring_payment",
+            amount: -recurringPayment.amount,
             from_user_id: recurringPayment.from_user_id,
             reference_id: recurring_payment_id,
             description: `Recurring: ${recurringPayment.description}`,
@@ -297,18 +322,35 @@ serve(async (req) => {
       }
 
       case "process_all_recurring": {
-        // Get all active recurring payments ready to be sent
+        // Get all non-cancelled recurring payments
         const { data: recurringPayments, error: rpError } = await supabase
           .from("recurring_payments")
           .select("*")
-          .eq("is_active", true);
+          .neq("status", "cancelled");
 
         if (rpError) throw rpError;
 
         let processed = 0;
         for (const payment of recurringPayments || []) {
           try {
-            // Process each payment (same logic as single recurring payment)
+            const pStatus = payment.status || "active";
+
+            // Paused/manual: accumulate debt
+            if (pStatus === "paused" || pStatus === "manual") {
+              const newAccumulated = (payment.accumulated_amount || 0) + payment.amount;
+              await supabase
+                .from("recurring_payments")
+                .update({
+                  accumulated_amount: newAccumulated,
+                  last_sent_at: new Date().toISOString(),
+                  total_times_sent: payment.total_times_sent + 1
+                })
+                .eq("id", payment.id);
+              processed++;
+              continue;
+            }
+
+            // Active: deduct from bank
             const { data: recipientProfile, error: recipientError } = await supabase
               .from("profiles")
               .select("credits")
@@ -317,9 +359,11 @@ serve(async (req) => {
 
             if (recipientError || !recipientProfile) continue;
 
+            const newBalance = recipientProfile.credits - payment.amount;
+
             await supabase
               .from("profiles")
-              .update({ credits: recipientProfile.credits + payment.amount })
+              .update({ credits: newBalance })
               .eq("user_id", payment.to_user_id);
 
             const nextSendDate = new Date();
@@ -351,8 +395,8 @@ serve(async (req) => {
               .from("transactions")
               .insert({
                 user_id: payment.to_user_id,
-                transaction_type: "credit",
-                amount: payment.amount,
+                transaction_type: "recurring_payment",
+                amount: -payment.amount,
                 from_user_id: payment.from_user_id,
                 reference_id: payment.id,
                 description: `Recurring: ${payment.description}`,
@@ -395,10 +439,11 @@ serve(async (req) => {
       case "trigger_yearly": {
         const interval = operation.replace("trigger_", "");
         
+        // Get all non-cancelled recurring payments for this interval
         const { data: payments, error: fetchError } = await supabase
           .from("recurring_payments")
           .select("*")
-          .eq("is_active", true)
+          .neq("status", "cancelled")
           .eq("interval_type", interval);
 
         if (fetchError) throw fetchError;
@@ -406,7 +451,40 @@ serve(async (req) => {
         let processed = 0;
         for (const payment of payments) {
           try {
-            // Get user's current credits
+            const status = payment.status || "active";
+
+            // For paused or manual subscriptions, accumulate debt instead of deducting
+            if (status === "paused" || status === "manual") {
+              const newAccumulated = (payment.accumulated_amount || 0) + payment.amount;
+
+              const updates: any = {
+                accumulated_amount: newAccumulated,
+                last_sent_at: new Date().toISOString(),
+                total_times_sent: payment.total_times_sent + 1
+              };
+
+              // Handle finite cycles
+              if (payment.max_cycles && payment.remaining_cycles) {
+                updates.remaining_cycles = payment.remaining_cycles - 1;
+                if (updates.remaining_cycles <= 0) {
+                  updates.is_active = false;
+                  updates.status = "cancelled";
+                }
+              }
+
+              await supabase
+                .from("recurring_payments")
+                .update(updates)
+                .eq("id", payment.id);
+
+              logStep("Accumulated debt for paused/manual payment", { 
+                paymentId: payment.id, status, newAccumulated 
+              });
+              processed++;
+              continue;
+            }
+
+            // Active subscriptions: deduct from bank as before
             const { data: profile, error: profileError } = await supabase
               .from("profiles")
               .select("credits")
@@ -449,6 +527,7 @@ serve(async (req) => {
               updates.remaining_cycles = payment.remaining_cycles - 1;
               if (updates.remaining_cycles <= 0) {
                 updates.is_active = false;
+                updates.status = "cancelled";
               }
             }
 
