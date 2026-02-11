@@ -38,7 +38,17 @@ const emptyForm = {
   subscription_fee: "0",
   subscription_interval: "",
   quantity_available: "",
-  specifications: "{}"
+  tier: "1",
+  company: "",
+  advert: "",
+  // Weapon fields
+  ability: "",
+  hand: "",
+  range: "",
+  damage: "",
+  // Armor fields
+  armorBase: "",
+  armorThreshold: "",
 };
 
 const WyrmcartAdmin = () => {
@@ -104,6 +114,7 @@ const WyrmcartAdmin = () => {
 
   const openEdit = (item: ShopItem) => {
     setEditingItem(item);
+    const specs = item.specifications || {};
     setForm({
       name: item.name,
       description: item.description || "",
@@ -112,14 +123,36 @@ const WyrmcartAdmin = () => {
       subscription_fee: String(item.subscription_fee || 0),
       subscription_interval: item.subscription_interval || "",
       quantity_available: item.quantity_available != null ? String(item.quantity_available) : "",
-      specifications: JSON.stringify(item.specifications || {}, null, 2)
+      tier: String(specs.tier || 1),
+      company: specs.company || "",
+      advert: specs.advert || "",
+      ability: specs.ability || "",
+      hand: specs.hand || "",
+      range: specs.range || "",
+      damage: specs.damage || "",
+      armorBase: specs.armorBase != null ? String(specs.armorBase) : "",
+      armorThreshold: specs.armorThreshold || "",
     });
     setEditDialogOpen(true);
   };
 
   const handleSave = async () => {
-    let specs = {};
-    try { specs = JSON.parse(form.specifications); } catch { /* ignore */ }
+    const specs: any = {
+      tier: parseInt(form.tier) || 1,
+      type: form.category,
+    };
+    if (form.company) specs.company = form.company;
+    if (form.advert) specs.advert = form.advert;
+    if (form.category === "Weapon") {
+      if (form.ability) specs.ability = form.ability;
+      if (form.hand) specs.hand = form.hand;
+      if (form.range) specs.range = form.range;
+      if (form.damage) specs.damage = form.damage;
+    }
+    if (form.category === "Armor") {
+      if (form.armorBase) specs.armorBase = parseInt(form.armorBase);
+      if (form.armorThreshold) specs.armorThreshold = form.armorThreshold;
+    }
 
     const payload: any = {
       name: form.name,
@@ -362,10 +395,73 @@ const WyrmcartAdmin = () => {
                 <Label className="text-gray-300">Quantity Available (blank = unlimited)</Label>
                 <Input type="number" value={form.quantity_available} onChange={(e) => setForm({...form, quantity_available: e.target.value})} className="bg-gray-800 border-gray-700 text-white" />
               </div>
-              <div>
-                <Label className="text-gray-300">Specifications (JSON)</Label>
-                <Textarea value={form.specifications} onChange={(e) => setForm({...form, specifications: e.target.value})} className="bg-gray-800 border-gray-700 text-white font-mono text-xs" rows={4} />
+
+              {/* Always-visible spec fields */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-gray-300">Tier</Label>
+                  <Select value={form.tier} onValueChange={(v) => setForm({...form, tier: v})}>
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1,2,3,4,5].map(t => (
+                        <SelectItem key={t} value={String(t)}>Tier {t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-gray-300">Company</Label>
+                  <Input value={form.company} onChange={(e) => setForm({...form, company: e.target.value})} className="bg-gray-800 border-gray-700 text-white" />
+                </div>
               </div>
+              <div>
+                <Label className="text-gray-300">Advert</Label>
+                <Textarea value={form.advert} onChange={(e) => setForm({...form, advert: e.target.value})} className="bg-gray-800 border-gray-700 text-white" rows={2} placeholder="Company marketing blurb..." />
+              </div>
+
+              {/* Weapon-specific fields */}
+              {form.category === "Weapon" && (
+                <div className="space-y-2">
+                  <Label className="text-green-400 text-xs uppercase tracking-wide">Weapon Stats</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-gray-300">Ability</Label>
+                      <Input value={form.ability} onChange={(e) => setForm({...form, ability: e.target.value})} className="bg-gray-800 border-gray-700 text-white" placeholder="Str, Fin, Agi..." />
+                    </div>
+                    <div>
+                      <Label className="text-gray-300">Hand</Label>
+                      <Input value={form.hand} onChange={(e) => setForm({...form, hand: e.target.value})} className="bg-gray-800 border-gray-700 text-white" placeholder="Pri, Sec, 2H" />
+                    </div>
+                    <div>
+                      <Label className="text-gray-300">Range</Label>
+                      <Input value={form.range} onChange={(e) => setForm({...form, range: e.target.value})} className="bg-gray-800 border-gray-700 text-white" placeholder="Melee, Close, Far..." />
+                    </div>
+                    <div>
+                      <Label className="text-gray-300">Damage</Label>
+                      <Input value={form.damage} onChange={(e) => setForm({...form, damage: e.target.value})} className="bg-gray-800 border-gray-700 text-white" placeholder="d8+1 phy" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Armor-specific fields */}
+              {form.category === "Armor" && (
+                <div className="space-y-2">
+                  <Label className="text-green-400 text-xs uppercase tracking-wide">Armor Stats</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-gray-300">Armor Base</Label>
+                      <Input type="number" value={form.armorBase} onChange={(e) => setForm({...form, armorBase: e.target.value})} className="bg-gray-800 border-gray-700 text-white" />
+                    </div>
+                    <div>
+                      <Label className="text-gray-300">Threshold</Label>
+                      <Input value={form.armorThreshold} onChange={(e) => setForm({...form, armorThreshold: e.target.value})} className="bg-gray-800 border-gray-700 text-white" placeholder="5 / 11" />
+                    </div>
+                  </div>
+                </div>
+              )}
               <Button className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={handleSave}>
                 {editingItem ? "Update Item" : "Create Item"}
               </Button>
