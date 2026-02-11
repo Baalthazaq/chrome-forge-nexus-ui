@@ -196,7 +196,23 @@ const ToMe = () => {
   // Use impersonated user if available, otherwise use authenticated user
   const displayUser = impersonatedUser || user;
 
-  const columnCount = 3;
+  // Responsive column count - matches the CSS grid breakpoints
+  const [columnCount, setColumnCount] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    if (window.innerWidth >= 1024) return 3;
+    if (window.innerWidth >= 768) return 2;
+    return 1;
+  });
+
+  useEffect(() => {
+    const updateColumns = () => {
+      if (window.innerWidth >= 1024) setColumnCount(3);
+      else if (window.innerWidth >= 768) setColumnCount(2);
+      else setColumnCount(1);
+    };
+    window.addEventListener('resize', updateColumns);
+    return () => window.removeEventListener('resize', updateColumns);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
