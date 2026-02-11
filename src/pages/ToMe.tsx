@@ -87,7 +87,8 @@ const SortableQuickNote = ({ note, onDelete, onEdit, showIndicator, indicatorPos
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent page reload
+    // Only prevent default for mouse events, not touch
+    if (e.type === 'mousedown') e.preventDefault();
   };
 
   const formatDate = (dateString: string) => {
@@ -110,14 +111,14 @@ const SortableQuickNote = ({ note, onDelete, onEdit, showIndicator, indicatorPos
       
       <div className="relative p-4 bg-gray-900/80 border border-gray-700/50 hover:border-gray-600 transition-all duration-300">
         {/* Grippable top bar */}
-          {/* Touch-visible drag handle */}
+          {/* Touch-visible drag handle with touch-action:none to enable touch drag */}
           <div 
             {...attributes} 
             {...listeners} 
             onMouseDown={handleMouseDown}
-            className="absolute top-0 left-0 right-0 h-8 cursor-grab active:cursor-grabbing z-10 flex items-center justify-center"
+            className="absolute top-0 left-0 right-0 h-10 cursor-grab active:cursor-grabbing z-10 flex items-center justify-center touch-none"
           >
-            <GripVertical className="w-4 h-4 text-gray-600 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity" />
+            <GripVertical className="w-4 h-4 text-gray-500" />
           </div>
         
         <div className="flex justify-between items-start mb-3">
@@ -195,18 +196,7 @@ const ToMe = () => {
   // Use impersonated user if available, otherwise use authenticated user
   const displayUser = impersonatedUser || user;
 
-  // Track if we're on desktop (shows all columns) vs tablet/mobile (shows one at a time)
-  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
-  const [selectedColumn, setSelectedColumn] = useState(0);
-  const totalColumns = 3; // Always 3 logical columns for note assignment
-
-  useEffect(() => {
-    const updateLayout = () => {
-      setIsDesktop(window.innerWidth >= 1024);
-    };
-    window.addEventListener('resize', updateLayout);
-    return () => window.removeEventListener('resize', updateLayout);
-  }, []);
+  const columnCount = 3;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -1090,83 +1080,53 @@ const ToMe = () => {
                   <p className="text-gray-400">No quick notes found</p>
                 </div>
               ) : (
-                <>
-                  {/* Column switcher for tablet/mobile */}
-                  {!isDesktop && (
-                    <div className="flex items-center justify-center space-x-2 mb-4">
-                      {Array.from({ length: totalColumns }, (_, i) => {
-                        const colNoteCount = filteredQuickNotes.filter((note, idx) => {
-                          const nc = note.layout_column !== undefined ? note.layout_column : idx % totalColumns;
-                          return nc === i;
-                        }).length;
-                        return (
-                          <Button
-                            key={i}
-                            variant={selectedColumn === i ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setSelectedColumn(i)}
-                            className={selectedColumn === i ? "bg-purple-600 hover:bg-purple-700" : "border-gray-600 text-gray-400"}
-                          >
-                            Col {i + 1} ({colNoteCount})
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  )}
-                  <div className={isDesktop ? "grid grid-cols-3 gap-4 items-start" : "space-y-4"}>
-                    {(() => {
-                      const columnsToRender = isDesktop 
-                        ? Array.from({ length: totalColumns }, (_, i) => i) 
-                        : [selectedColumn];
-                      
-                      return columnsToRender.map(colIndex => {
-                        const columnNotes = filteredQuickNotes
-                          .filter((note, index) => {
-                            const noteColumn = note.layout_column !== undefined ? note.layout_column : index % totalColumns;
-                            return noteColumn === colIndex;
-                          })
-                          .sort((a, b) => (a.layout_position || 0) - (b.layout_position || 0));
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+                  {Array.from({ length: columnCount }, (_, colIndex) => {
+                    const columnNotes = filteredQuickNotes
+                      .filter((note, index) => {
+                        const noteColumn = note.layout_column !== undefined ? note.layout_column : index % columnCount;
+                        return noteColumn === colIndex;
+                      })
+                      .sort((a, b) => (a.layout_position || 0) - (b.layout_position || 0));
 
-                        return (
-                          <div key={colIndex} className="space-y-4 min-h-[200px]">
-                            {columnNotes.length === 0 ? (
-                              <ColumnDropZone columnIndex={colIndex} />
-                            ) : (
-                              columnNotes.map((note) => {
-                                const isOverThis = overId === note.id;
-                                const showIndicator = activeId && isOverThis && activeId !== note.id;
-                                
-                                return (
-                                  <SortableQuickNote 
-                                    key={note.id} 
-                                    note={note} 
-                                    onDelete={deleteQuickNote}
-                                    onEdit={(note) => {
-                                      setEditingNote(note.id);
-                                       setNewNote({
-                                         content: note.content,
-                                         color: note.color,
-                                         tags: note.tags?.join(', ') || ''
-                                       });
-                                       setIsNewNoteOpen(true);
-                                    }}
-                                    showIndicator={showIndicator}
-                                    indicatorPosition="above"
-                                  />
-                                );
-                              })
-                            )}
-                            {columnNotes.length > 0 && (
-                              <div className="h-16">
-                                <ColumnDropZone columnIndex={colIndex} />
-                              </div>
-                            )}
+                    return (
+                      <div key={colIndex} className="space-y-4 min-h-[200px]">
+                        {columnNotes.length === 0 ? (
+                          <ColumnDropZone columnIndex={colIndex} />
+                        ) : (
+                          columnNotes.map((note) => {
+                            const isOverThis = overId === note.id;
+                            const showIndicator = activeId && isOverThis && activeId !== note.id;
+                            
+                            return (
+                              <SortableQuickNote 
+                                key={note.id} 
+                                note={note} 
+                                onDelete={deleteQuickNote}
+                                onEdit={(note) => {
+                                  setEditingNote(note.id);
+                                   setNewNote({
+                                     content: note.content,
+                                     color: note.color,
+                                     tags: note.tags?.join(', ') || ''
+                                   });
+                                   setIsNewNoteOpen(true);
+                                }}
+                                showIndicator={showIndicator}
+                                indicatorPosition="above"
+                              />
+                            );
+                          })
+                        )}
+                        {columnNotes.length > 0 && (
+                          <div className="h-16">
+                            <ColumnDropZone columnIndex={colIndex} />
                           </div>
-                        );
-                      });
-                    })()}
-                  </div>
-                </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </SortableContext>
             <DragOverlay>
