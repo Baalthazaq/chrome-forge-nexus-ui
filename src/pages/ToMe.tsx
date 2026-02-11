@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Search, BookOpen, StickyNote, Star, Clock, Edit3, Trash2, Pin, GripVertical, ChevronLeft, ChevronRight, X, FileText, List, Share2 } from "lucide-react";
+import { ArrowLeft, Plus, Search, BookOpen, StickyNote, Star, Clock, Edit3, Trash2, Pin, GripVertical, ChevronLeft, ChevronRight, X, FileText, List, Share2, Columns3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -1100,13 +1100,19 @@ const ToMe = () => {
                   {Array.from({ length: columnCount }, (_, colIndex) => {
                     const columnNotes = filteredQuickNotes
                       .filter((note, index) => {
-                        const noteColumn = note.layout_column != null ? note.layout_column : index % columnCount;
-                        return (noteColumn % columnCount) === colIndex;
+                        const noteColumn = note.layout_column != null ? note.layout_column : index % 3;
+                        const mappedColumn = Math.min(noteColumn, columnCount - 1);
+                        return mappedColumn === colIndex;
                       })
                       .sort((a, b) => (a.layout_position || 0) - (b.layout_position || 0));
 
                     return (
                       <div key={colIndex} className="space-y-4 min-h-[200px]">
+                        <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider select-none">
+                          <Columns3 className="w-3 h-3" />
+                          <span>Column {colIndex + 1}</span>
+                          <span className="text-muted-foreground/50">({columnNotes.length})</span>
+                        </div>
                         {columnNotes.length === 0 ? (
                           <ColumnDropZone columnIndex={colIndex} />
                         ) : (
