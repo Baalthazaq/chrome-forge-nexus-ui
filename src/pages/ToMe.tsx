@@ -1125,13 +1125,11 @@ const ToMe = () => {
                       <div key={colIndex} className="space-y-4 min-h-[200px]">
                         {groupedNotes.map(({ origCol, notes }, groupIdx) => (
                           <div key={origCol} className="space-y-4">
-                            {isMerged && (
-                              <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider select-none border-b border-border/50">
-                                <Columns3 className="w-3 h-3" />
-                                <span>Column {origCol + 1}</span>
-                                <span className="text-muted-foreground/50">({notes.length})</span>
-                              </div>
-                            )}
+                            <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider select-none border-b border-border/50">
+                              <Columns3 className="w-3 h-3" />
+                              <span>Column {origCol + 1}</span>
+                              <span className="text-muted-foreground/50">({notes.length})</span>
+                            </div>
                             {notes.map((note) => {
                               const isOverThis = overId === note.id;
                               const showIndicator = activeId && isOverThis && activeId !== note.id;
