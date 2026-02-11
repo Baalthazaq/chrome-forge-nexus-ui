@@ -91,8 +91,7 @@ const Atunes = () => {
     try {
       const { error } = await supabase.functions.invoke("financial-operations", {
         body: {
-          action: "send_money",
-          from_user_id: user?.id,
+          operation: "send_money",
           to_user_id: sub.from_user_id,
           amount: sub.accumulated_amount,
           description: `Manual payment: ${sub.description}`,
