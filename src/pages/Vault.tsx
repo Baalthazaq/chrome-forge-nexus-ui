@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, CreditCard, Wallet, Package, TrendingUp, TrendingDown, Send, RefreshCw, Receipt } from "lucide-react";
+import { ArrowLeft, CreditCard, Wallet, Package, Send, RefreshCw, Receipt, Plus, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatHex, getHexBreakdown } from "@/lib/currency";
 
+interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  status: string | null;
+  efficiency_percent: number | null;
+  metadata: any;
+}
+
+const categoryColors: Record<string, string> = {
+  weapon: "border-red-500 bg-red-900/20",
+  armor: "border-blue-500 bg-blue-900/20",
+  cybernetic: "border-purple-500 bg-purple-900/20",
+  consumable: "border-green-500 bg-green-900/20",
+  tool: "border-yellow-500 bg-yellow-900/20",
+  misc: "border-gray-500 bg-gray-800/50",
+};
+
+const CATEGORIES = ["weapon", "armor", "cybernetic", "consumable", "tool", "misc"];
+
 const Vault = () => {
   const { user } = useAuth();
   const { isAdmin, impersonatedUser } = useAdmin();
@@ -26,6 +46,7 @@ const Vault = () => {
   const [bills, setBills] = useState<any[]>([]);
   const [recurringPayments, setRecurringPayments] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedBills, setSelectedBills] = useState<string[]>([]);
 
@@ -42,66 +63,37 @@ const Vault = () => {
   const [overdraftDialogOpen, setOverdraftDialogOpen] = useState(false);
   const [pendingBillPayment, setPendingBillPayment] = useState<{ billIds: string[], totalAmount: number } | null>(null);
 
-  // Mock inventory data
-  const inventoryItems = [
-    { id: 1, name: "Neural Interface", quantity: 1, value: 25000, rarity: "legendary" },
-    { id: 2, name: "Data Chips", quantity: 47, value: 2350, rarity: "common" },
-    { id: 3, name: "Quantum Core", quantity: 3, value: 45000, rarity: "epic" },
-    { id: 4, name: "Memory Banks", quantity: 12, value: 8400, rarity: "rare" },
-    { id: 5, name: "Power Cells", quantity: 28, value: 5600, rarity: "common" },
-    { id: 6, name: "Holo Projector", quantity: 2, value: 18000, rarity: "rare" }
-  ];
+  // Add Item Dialog State
+  const [addItemOpen, setAddItemOpen] = useState(false);
+  const [newItemName, setNewItemName] = useState("");
+  const [newItemCategory, setNewItemCategory] = useState("misc");
+  const [newItemNotes, setNewItemNotes] = useState("");
 
   const loadData = async () => {
     const activeUserId = impersonatedUser?.user_id || user?.id;
     if (!activeUserId) return;
     
     try {
-      // Load user profile
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", activeUserId)
-        .single();
-      
-      setUserProfile(profile);
+      const [profileRes, transactionRes, billRes, profilesRes, rpRes, inventoryRes] = await Promise.all([
+        supabase.from("profiles").select("*").eq("user_id", activeUserId).single(),
+        supabase.from("transactions").select("*")
+          .or(`user_id.eq.${activeUserId},from_user_id.eq.${activeUserId},to_user_id.eq.${activeUserId}`)
+          .order("created_at", { ascending: false }).limit(10),
+        supabase.from("bills").select("*").eq("to_user_id", activeUserId).eq("status", "unpaid")
+          .order("created_at", { ascending: false }),
+        supabase.from("profiles").select("user_id, character_name").neq("user_id", activeUserId),
+        supabase.from("recurring_payments").select("*").eq("to_user_id", activeUserId)
+          .order("created_at", { ascending: false }),
+        supabase.from("user_augmentations").select("*").eq("user_id", activeUserId)
+          .order("installed_at", { ascending: false }),
+      ]);
 
-      // Load transactions
-      const { data: transactionData } = await supabase
-        .from("transactions")
-        .select("*")
-        .or(`user_id.eq.${activeUserId},from_user_id.eq.${activeUserId},to_user_id.eq.${activeUserId}`)
-        .order("created_at", { ascending: false })
-        .limit(10);
-      
-      setTransactions(transactionData || []);
-
-      // Load bills
-      const { data: billData } = await supabase
-        .from("bills")
-        .select("*")
-        .eq("to_user_id", activeUserId)
-        .eq("status", "unpaid")
-        .order("created_at", { ascending: false });
-      
-      setBills(billData || []);
-
-      // Load all profiles for send money dropdown
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("user_id, character_name")
-        .neq("user_id", activeUserId);
-      setProfiles(profileData || []);
-      
-      // Load recurring payments for this user
-      const { data: rpData } = await supabase
-        .from("recurring_payments")
-        .select("*")
-        .eq("to_user_id", activeUserId)
-        .order("created_at", { ascending: false });
-      setRecurringPayments(rpData || []);
-
-
+      setUserProfile(profileRes.data);
+      setTransactions(transactionRes.data || []);
+      setBills(billRes.data || []);
+      setProfiles(profilesRes.data || []);
+      setRecurringPayments(rpRes.data || []);
+      setInventoryItems(inventoryRes.data || []);
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
@@ -115,52 +107,29 @@ const Vault = () => {
 
   const handleSendMoney = async () => {
     if (!sendRecipient || !sendAmount || !sendDescription) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Please fill in all fields", variant: "destructive" });
       return;
     }
 
     const amount = parseInt(sendAmount);
     if (isNaN(amount) || amount <= 0) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid amount",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Please enter a valid amount", variant: "destructive" });
       return;
     }
 
     try {
       const { error } = await supabase.functions.invoke('financial-operations', {
-        body: {
-          operation: 'send_money',
-          to_user_id: sendRecipient,
-          amount,
-          description: sendDescription
-        }
+        body: { operation: 'send_money', to_user_id: sendRecipient, amount, description: sendDescription }
       });
-
       if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Money sent successfully"
-      });
-
+      toast({ title: "Success", description: "Money sent successfully" });
       setSendMoneyOpen(false);
       setSendAmount("");
       setSendRecipient("");
       setSendDescription("");
       loadData();
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send money",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: error.message || "Failed to send money", variant: "destructive" });
     }
   };
 
@@ -173,22 +142,16 @@ const Vault = () => {
     const currentCredits = userProfile?.credits || 0;
     const resultingBalance = currentCredits - totalAmount;
 
-    // If sufficient funds, pay immediately
     if (resultingBalance >= 0) {
       processPayment(billIds);
       return;
     }
 
-    // Check if overdraft is within limits (up to 1 bag = 600 hex)
     if (resultingBalance >= -600) {
       setPendingBillPayment({ billIds, totalAmount });
       setOverdraftDialogOpen(true);
     } else {
-      toast({
-        title: "Error",
-        description: "Payment exceeds overdraft limit. Maximum overdraft is 1 Bag (600 Hex).",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Payment exceeds overdraft limit. Maximum overdraft is 1 Bag (600 Hex).", variant: "destructive" });
     }
   };
 
@@ -196,33 +159,17 @@ const Vault = () => {
     try {
       const promises = billIds.map(billId =>
         supabase.functions.invoke('financial-operations', {
-          body: {
-            operation: 'pay_bill',
-            bill_id: billId
-          }
+          body: { operation: 'pay_bill', bill_id: billId }
         })
       );
-
       const results = await Promise.all(promises);
       const errors = results.filter(r => r.error);
-      
-      if (errors.length > 0) {
-        throw new Error(`Failed to pay ${errors.length} bills`);
-      }
-
-      toast({
-        title: "Success",
-        description: `Successfully paid ${billIds.length} bill${billIds.length > 1 ? 's' : ''}`
-      });
-
+      if (errors.length > 0) throw new Error(`Failed to pay ${errors.length} bills`);
+      toast({ title: "Success", description: `Successfully paid ${billIds.length} bill${billIds.length > 1 ? 's' : ''}` });
       setSelectedBills([]);
       loadData();
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to pay bills",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: error.message || "Failed to pay bills", variant: "destructive" });
     }
   };
 
@@ -236,14 +183,9 @@ const Vault = () => {
 
   const handlePaySelectedBills = async () => {
     if (selectedBills.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please select bills to pay",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Please select bills to pay", variant: "destructive" });
       return;
     }
-
     checkOverdraftAndPay(selectedBills);
   };
 
@@ -251,6 +193,42 @@ const Vault = () => {
     checkOverdraftAndPay([billId]);
   };
 
+  const handleAddItem = async () => {
+    const activeUserId = impersonatedUser?.user_id || user?.id;
+    if (!activeUserId || !newItemName.trim()) {
+      toast({ title: "Error", description: "Please enter an item name", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from("user_augmentations").insert({
+        user_id: activeUserId,
+        name: newItemName.trim(),
+        category: newItemCategory,
+        metadata: newItemNotes ? { notes: newItemNotes } : {},
+      });
+      if (error) throw error;
+      toast({ title: "Item Added", description: `${newItemName} added to inventory` });
+      setAddItemOpen(false);
+      setNewItemName("");
+      setNewItemCategory("misc");
+      setNewItemNotes("");
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteItem = async (item: InventoryItem) => {
+    try {
+      const { error } = await supabase.from("user_augmentations").delete().eq("id", item.id);
+      if (error) throw error;
+      toast({ title: "Item Removed", description: `${item.name} removed from inventory` });
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -386,18 +364,15 @@ const Vault = () => {
           </Card>
           <Card className="bg-gray-900/50 border-gray-700/50 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-300">Physical Assets</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-300">Inventory</CardTitle>
               <Wallet className="h-4 w-4 text-yellow-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-yellow-400">
-                ⏣{inventoryItems.reduce((sum, item) => sum + item.value, 0)}
-              </div>
-              <div className="text-sm text-yellow-400 mt-1">
-                {getHexBreakdown(inventoryItems.reduce((sum, item) => sum + item.value, 0)).breakdown}
+                {inventoryItems.length}
               </div>
               <p className="text-xs text-gray-400 mt-2">
-                Estimated inventory value
+                Items in possession
               </p>
             </CardContent>
           </Card>
@@ -419,19 +394,10 @@ const Vault = () => {
                       return sum + (bill?.amount || 0);
                     }, 0))}
                   </span>
-                  <Button
-                    onClick={handlePaySelectedBills}
-                    size="sm"
-                    className="bg-red-600 hover:bg-red-700"
-                  >
+                  <Button onClick={handlePaySelectedBills} size="sm" className="bg-red-600 hover:bg-red-700">
                     Pay Selected ({selectedBills.length})
                   </Button>
-                  <Button
-                    onClick={() => setSelectedBills([])}
-                    size="sm"
-                    variant="outline"
-                    className="border-gray-600 text-gray-400 hover:bg-gray-800"
-                  >
+                  <Button onClick={() => setSelectedBills([])} size="sm" variant="outline" className="border-gray-600 text-gray-400 hover:bg-gray-800">
                     Clear Selection
                   </Button>
                 </div>
@@ -457,26 +423,14 @@ const Vault = () => {
                         />
                         <div>
                           <h3 className="font-semibold text-red-400">{bill.description}</h3>
-                          <p className="text-sm text-gray-400">
-                            From: {getName(bill.from_user_id)}
-                          </p>
-                          <p className="text-sm text-gray-400">
-                            Created: {new Date(bill.created_at).toLocaleDateString()}
-                          </p>
+                          <p className="text-sm text-gray-400">From: {getName(bill.from_user_id)}</p>
+                          <p className="text-sm text-gray-400">Created: {new Date(bill.created_at).toLocaleDateString()}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-xl font-bold text-red-400">
-                          {formatHex(bill.amount)}
-                        </div>
-                        <div className="text-sm text-red-400">
-                          {getHexBreakdown(bill.amount).breakdown}
-                        </div>
-                        <Button
-                          onClick={() => handlePayBill(bill.id)}
-                          size="sm"
-                          className="mt-2 bg-red-600 hover:bg-red-700"
-                        >
+                        <div className="text-xl font-bold text-red-400">{formatHex(bill.amount)}</div>
+                        <div className="text-sm text-red-400">{getHexBreakdown(bill.amount).breakdown}</div>
+                        <Button onClick={() => handlePayBill(bill.id)} size="sm" className="mt-2 bg-red-600 hover:bg-red-700">
                           Pay Bill
                         </Button>
                       </div>
@@ -487,28 +441,17 @@ const Vault = () => {
               
               {/* Quick Actions */}
               <div className="flex items-center justify-between p-4 bg-gray-900/30 border border-gray-700/50 rounded-lg">
-                <div className="text-sm text-gray-400">
-                  Quick Actions:
-                </div>
+                <div className="text-sm text-gray-400">Quick Actions:</div>
                 <div className="flex gap-2">
-                  <Button
-                    onClick={() => setSelectedBills(bills.map(b => b.id))}
-                    size="sm"
-                    variant="outline"
-                    className="border-red-600 text-red-400 hover:bg-red-900/30"
-                  >
+                  <Button onClick={() => setSelectedBills(bills.map(b => b.id))} size="sm" variant="outline" className="border-red-600 text-red-400 hover:bg-red-900/30">
                     Select All
                   </Button>
                   <Button
                     onClick={() => {
-                      const affordableBills = bills.filter(bill => 
-                        userProfile && userProfile.credits >= bill.amount
-                      ).map(b => b.id);
+                      const affordableBills = bills.filter(bill => userProfile && userProfile.credits >= bill.amount).map(b => b.id);
                       setSelectedBills(affordableBills);
                     }}
-                    size="sm"
-                    variant="outline"
-                    className="border-yellow-600 text-yellow-400 hover:bg-yellow-900/30"
+                    size="sm" variant="outline" className="border-yellow-600 text-yellow-400 hover:bg-yellow-900/30"
                   >
                     Select Affordable
                   </Button>
@@ -543,40 +486,119 @@ const Vault = () => {
 
         {/* Inventory Grid */}
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-yellow-400 mb-4 flex items-center">
-            <Package className="w-5 h-5 mr-2" />
-            Inventory
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {inventoryItems.map((item) => {
-              const rarityColors = {
-                common: "border-gray-500 bg-gray-800/50",
-                uncommon: "border-green-500 bg-green-900/20", 
-                rare: "border-blue-500 bg-blue-900/20",
-                epic: "border-purple-500 bg-purple-900/20",
-                legendary: "border-yellow-500 bg-yellow-900/20"
-              };
-
-              return (
-                <Card key={item.id} className={`p-3 ${rarityColors[item.rarity as keyof typeof rarityColors]} backdrop-blur-sm`}>
-                  <div className="text-center">
-                    <h3 className="font-semibold text-white text-sm mb-2">{item.name}</h3>
-                    <div className="space-y-1">
-                       <Badge variant="outline" className="text-xs text-gray-300">
-                         Qty: {item.quantity}
-                       </Badge>
-                       <div className="text-yellow-400 font-mono text-xs">
-                         ⏣{item.value}
-                       </div>
-                       <div className="text-yellow-400 font-mono text-xs">
-                         {getHexBreakdown(item.value).breakdown}
-                       </div>
-                    </div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-yellow-400 flex items-center">
+              <Package className="w-5 h-5 mr-2" />
+              Inventory ({inventoryItems.length})
+            </h2>
+            <Dialog open={addItemOpen} onOpenChange={setAddItemOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="border-yellow-600 text-yellow-400 hover:bg-yellow-900/30">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Item
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Add Custom Item</DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    Add a new item to your inventory.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right text-gray-300">Name</Label>
+                    <Input
+                      value={newItemName}
+                      onChange={(e) => setNewItemName(e.target.value)}
+                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
+                      placeholder="Item name"
+                    />
                   </div>
-                </Card>
-              );
-            })}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right text-gray-300">Category</Label>
+                    <Select value={newItemCategory} onValueChange={setNewItemCategory}>
+                      <SelectTrigger className="col-span-3 bg-gray-800 border-gray-600 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-800 border-gray-600">
+                        {CATEGORIES.map((cat) => (
+                          <SelectItem key={cat} value={cat} className="text-white hover:bg-gray-700 capitalize">
+                            {cat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-4 items-start gap-4">
+                    <Label className="text-right text-gray-300 mt-2">Notes</Label>
+                    <Textarea
+                      value={newItemNotes}
+                      onChange={(e) => setNewItemNotes(e.target.value)}
+                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
+                      placeholder="Optional notes about this item"
+                      rows={2}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={handleAddItem} className="bg-yellow-600 hover:bg-yellow-700">
+                    Add Item
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
+
+          {inventoryItems.length === 0 ? (
+            <Card className="bg-gray-900/50 border-gray-700/50">
+              <CardContent className="p-6 text-center">
+                <Package className="w-8 h-8 mx-auto mb-2 text-gray-600" />
+                <p className="text-gray-400">No items in inventory. Add custom items or purchase from Wyrmcart.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {inventoryItems.map((item) => {
+                const colorClass = categoryColors[item.category] || categoryColors.misc;
+                const notes = (item.metadata as any)?.notes;
+
+                return (
+                  <Card key={item.id} className={`${colorClass} backdrop-blur-sm group relative`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-white text-sm truncate">{item.name}</h3>
+                          <Badge variant="outline" className="text-xs mt-1 capitalize border-gray-600 text-gray-400">
+                            {item.category}
+                          </Badge>
+                          {item.status && item.status !== "active" && (
+                            <Badge variant="secondary" className="text-xs ml-1 mt-1">
+                              {item.status}
+                            </Badge>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/30"
+                          onClick={() => handleDeleteItem(item)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      {notes && (
+                        <p className="text-xs text-gray-400 mt-2 line-clamp-2">{notes}</p>
+                      )}
+                      {item.efficiency_percent != null && item.efficiency_percent !== 100 && (
+                        <p className="text-xs text-gray-500 mt-1">Efficiency: {item.efficiency_percent}%</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Recent Transactions */}
@@ -598,20 +620,12 @@ const Vault = () => {
                         }`}></div>
                         <div>
                           <p className="text-white font-medium">{transaction.description}</p>
-                          <p className="text-xs text-gray-400">
-                            {new Date(transaction.created_at).toLocaleString()}
-                          </p>
-                          <p className="text-xs text-blue-400">
-                            From: {getName(transaction.from_user_id)}
-                          </p>
-                          <p className="text-xs text-blue-400">
-                            To: {getName(transaction.to_user_id)}
-                          </p>
+                          <p className="text-xs text-gray-400">{new Date(transaction.created_at).toLocaleString()}</p>
+                          <p className="text-xs text-blue-400">From: {getName(transaction.from_user_id)}</p>
+                          <p className="text-xs text-blue-400">To: {getName(transaction.to_user_id)}</p>
                         </div>
                       </div>
-                      <div className={`text-right ${
-                        transaction.amount > 0 ? 'text-green-400' : 'text-red-400'
-                      }`}>
+                      <div className={`text-right ${transaction.amount > 0 ? 'text-green-400' : 'text-red-400'}`}>
                        <span className="font-mono font-bold">
                          {transaction.amount > 0 ? '+' : ''}⏣{Math.abs(transaction.amount)}
                        </span>
