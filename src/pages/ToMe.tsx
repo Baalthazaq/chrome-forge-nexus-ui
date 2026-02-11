@@ -20,6 +20,7 @@ import {
   closestCorners,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -121,7 +122,7 @@ const SortableQuickNote = ({ note, onDelete, onEdit, showIndicator, indicatorPos
             {note.is_pinned && <Pin className="w-4 h-4 text-yellow-400" />}
             <span className="text-xs text-gray-400">{formatDate(note.created_at)}</span>
           </div>
-          <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex space-x-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
             <Button 
               variant="ghost" 
               size="sm" 
@@ -191,8 +192,31 @@ const ToMe = () => {
   // Use impersonated user if available, otherwise use authenticated user
   const displayUser = impersonatedUser || user;
 
+  // Responsive column count that matches the CSS grid
+  const [columnCount, setColumnCount] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    if (window.innerWidth >= 1024) return 3;
+    if (window.innerWidth >= 768) return 2;
+    return 1;
+  });
+
+  useEffect(() => {
+    const updateColumns = () => {
+      if (window.innerWidth >= 1024) setColumnCount(3);
+      else if (window.innerWidth >= 768) setColumnCount(2);
+      else setColumnCount(1);
+    };
+    window.addEventListener('resize', updateColumns);
+    return () => window.removeEventListener('resize', updateColumns);
+  }, []);
+
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -1069,12 +1093,13 @@ const ToMe = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
-                  {Array.from({ length: window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1 }, (_, colIndex) => {
+                  {Array.from({ length: columnCount }, (_, colIndex) => {
                     const columnNotes = filteredQuickNotes
                       .filter((note, index) => {
-                        // Assign notes to columns in round-robin fashion if no column is set
-                        const noteColumn = note.layout_column !== undefined ? note.layout_column : index % (window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1);
-                        return noteColumn === colIndex;
+                        // Map notes to visible columns - notes in higher columns get redistributed
+                        const noteColumn = note.layout_column !== undefined ? note.layout_column : index % columnCount;
+                        // If the note's column is beyond visible columns, map it into visible range
+                        return (noteColumn % columnCount) === colIndex;
                       })
                       .sort((a, b) => (a.layout_position || 0) - (b.layout_position || 0));
 
