@@ -289,10 +289,10 @@ const Atunes = () => {
                           <XCircle className="w-3 h-3 mr-1" /> Cancel
                         </Button>
                       )}
-                      {sub.accumulated_amount > 0 && sub.status === "manual" && (
+                      {sub.status === "manual" && (
                         <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white text-xs"
                           onClick={() => setPayDialog(sub)}>
-                          <CreditCard className="w-3 h-3 mr-1" /> Pay {formatHex(sub.accumulated_amount)}
+                          <CreditCard className="w-3 h-3 mr-1" /> Pay {sub.accumulated_amount > 0 ? formatHex(sub.accumulated_amount) : "Now"}
                         </Button>
                       )}
                     </div>
