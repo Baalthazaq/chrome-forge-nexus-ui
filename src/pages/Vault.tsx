@@ -408,86 +408,21 @@ const Vault = () => {
       
       <div className="relative z-10 container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-2">
             <Link to="/">
               <Button variant="ghost" size="sm" className="text-cyan-400 hover:text-cyan-300">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Nexus
               </Button>
             </Link>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
-              App of Holding
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Dialog open={sendMoneyOpen} onOpenChange={setSendMoneyOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="bg-green-900/50 border-green-700 hover:bg-green-800/50 text-green-400">
-                  <Send className="w-4 h-4 mr-2" />
-                  Send Hex
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700">
-                <DialogHeader>
-                  <DialogTitle className="text-white">Send Hex</DialogTitle>
-                  <DialogDescription className="text-gray-400">
-                    Transfer Hex to another character.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="recipient" className="text-right text-gray-300">Recipient</Label>
-                    <Select value={sendRecipient} onValueChange={setSendRecipient}>
-                      <SelectTrigger className="col-span-3 bg-gray-800 border-gray-600 text-white">
-                        <SelectValue placeholder="Select recipient" />
-                      </SelectTrigger>
-                       <SelectContent className="bg-gray-800 border-gray-600">
-                         {profiles.map((profile) => (
-                             <SelectItem key={profile.user_id} value={profile.user_id} className="text-white hover:bg-gray-700">
-                               {profile.character_name}
-                             </SelectItem>
-                         ))}
-                       </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="amount" className="text-right text-gray-300">Amount</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      value={sendAmount}
-                      onChange={(e) => setSendAmount(e.target.value)}
-                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
-                      placeholder="Enter amount in Hex"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-start gap-4">
-                    <Label htmlFor="description" className="text-right text-gray-300 mt-2">Description</Label>
-                    <Textarea
-                      id="description"
-                      value={sendDescription}
-                      onChange={(e) => setSendDescription(e.target.value)}
-                      className="col-span-3 bg-gray-800 border-gray-600 text-white"
-                      placeholder="Enter description"
-                      rows={3}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button 
-                    onClick={handleSendMoney} 
-                    className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
-                  >
-                    Send Hex
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
             <Button variant="ghost" size="sm" onClick={loadData} className="text-gray-400 hover:text-gray-300">
               <RefreshCw className="w-4 h-4" />
             </Button>
           </div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+            App of Holding
+          </h1>
         </div>
 
         {/* Balance Overview */}
@@ -507,6 +442,69 @@ const Vault = () => {
               <p className="text-xs text-gray-400 mt-2">
                 Available for transactions
               </p>
+              <Dialog open={sendMoneyOpen} onOpenChange={setSendMoneyOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="mt-3 w-full bg-green-900/50 border-green-700 hover:bg-green-800/50 text-green-400">
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Hex
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700">
+                  <DialogHeader>
+                    <DialogTitle className="text-white">Send Hex</DialogTitle>
+                    <DialogDescription className="text-gray-400">
+                      Transfer Hex to another character.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="recipient" className="text-right text-gray-300">Recipient</Label>
+                      <Select value={sendRecipient} onValueChange={setSendRecipient}>
+                        <SelectTrigger className="col-span-3 bg-gray-800 border-gray-600 text-white">
+                          <SelectValue placeholder="Select recipient" />
+                        </SelectTrigger>
+                         <SelectContent className="bg-gray-800 border-gray-600">
+                           {profiles.map((profile) => (
+                               <SelectItem key={profile.user_id} value={profile.user_id} className="text-white hover:bg-gray-700">
+                                 {profile.character_name}
+                               </SelectItem>
+                           ))}
+                         </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="amount" className="text-right text-gray-300">Amount</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        value={sendAmount}
+                        onChange={(e) => setSendAmount(e.target.value)}
+                        className="col-span-3 bg-gray-800 border-gray-600 text-white"
+                        placeholder="Enter amount in Hex"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-start gap-4">
+                      <Label htmlFor="description" className="text-right text-gray-300 mt-2">Description</Label>
+                      <Textarea
+                        id="description"
+                        value={sendDescription}
+                        onChange={(e) => setSendDescription(e.target.value)}
+                        className="col-span-3 bg-gray-800 border-gray-600 text-white"
+                        placeholder="Enter description"
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button 
+                      onClick={handleSendMoney} 
+                      className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
+                    >
+                      Send Hex
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
           <Card className="bg-gray-900/50 border-gray-700/50 backdrop-blur-sm">
@@ -524,6 +522,12 @@ const Vault = () => {
               <p className="text-xs text-gray-400 mt-2">
                 Total owed ({bills.length} bill{bills.length !== 1 ? 's' : ''})
               </p>
+              <Link to="/atunes">
+                <Button variant="outline" size="sm" className="mt-3 w-full bg-red-900/50 border-red-700 hover:bg-red-800/50 text-red-400">
+                  <Receipt className="w-4 h-4 mr-2" />
+                  Pay Bills
+                </Button>
+              </Link>
             </CardContent>
           </Card>
           <Card className="bg-gray-900/50 border-gray-700/50 backdrop-blur-sm">
