@@ -1100,8 +1100,8 @@ const ToMe = () => {
                   {Array.from({ length: columnCount }, (_, colIndex) => {
                     const columnNotes = filteredQuickNotes
                       .filter((note, index) => {
-                        const noteColumn = note.layout_column !== undefined ? note.layout_column : index % columnCount;
-                        return noteColumn === colIndex;
+                        const noteColumn = note.layout_column != null ? note.layout_column : index % columnCount;
+                        return (noteColumn % columnCount) === colIndex;
                       })
                       .sort((a, b) => (a.layout_position || 0) - (b.layout_position || 0));
 
