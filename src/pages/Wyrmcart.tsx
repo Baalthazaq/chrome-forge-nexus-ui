@@ -1,9 +1,13 @@
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { PurchaseDialog } from "@/components/PurchaseDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { formatHex, getHexBreakdown } from "@/lib/currency";
 import {
   HoverCard,
   HoverCardContent,
@@ -33,6 +37,7 @@ import {
 import { Link } from "react-router-dom";
 import { formatHexDenomination } from "@/lib/currency";
 import { storeItems, type StoreItem } from "@/data/storeItems";
+import { ShoppingCart } from "lucide-react";
 
 const typeFilters = ["All", "Weapon", "Armor", "Consumable", "Cyberwear", "Item", "Service"] as const;
 
@@ -122,12 +127,29 @@ function sortItems(items: StoreItem[], key: SortKey, dir: SortDir): StoreItem[] 
 }
 
 const Wyrmcart = () => {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [activeType, setActiveType] = useState<string>("All");
   const [activeTier, setActiveTier] = useState<number | null>(null);
   const [selectedItem, setSelectedItem] = useState<StoreItem | null>(null);
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [purchaseItem, setPurchaseItem] = useState<StoreItem | null>(null);
+  const [userBalance, setUserBalance] = useState<number>(0);
+
+  const fetchBalance = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("credits")
+      .eq("user_id", user.id)
+      .single();
+    if (data) setUserBalance(data.credits ?? 0);
+  }, [user]);
+
+  useEffect(() => {
+    fetchBalance();
+  }, [fetchBalance]);
 
   const filtered = useMemo(() => {
     let items = storeItems.filter((item) => {
@@ -188,7 +210,15 @@ const Wyrmcart = () => {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
             Wyrmcart
           </h1>
-          <div className="w-24" />
+          {user && (
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Balance</p>
+              <p className={`text-sm font-medium ${userBalance > 0 ? "text-green-400" : "text-red-400"}`}>
+                ⏣{userBalance}
+              </p>
+            </div>
+          )}
+          {!user && <div className="w-24" />}
         </div>
 
         {/* Search */}
@@ -262,6 +292,7 @@ const Wyrmcart = () => {
                   </>
                 )}
                 <th className="p-2 text-green-400 font-medium cursor-pointer select-none" onClick={() => handleSort("company")}>Company <SortIcon col="company" /></th>
+                {user && <th className="p-2 text-green-400 font-medium w-16" />}
               </tr>
             </thead>
             <tbody>
@@ -315,6 +346,18 @@ const Wyrmcart = () => {
                           </>
                         )}
                         <td className="p-2 text-muted-foreground">{item.company}</td>
+                        {user && (
+                          <td className="p-2">
+                            <Button
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700 text-white h-7 px-2 text-xs"
+                              onClick={(e) => { e.stopPropagation(); setPurchaseItem(item); }}
+                            >
+                              <ShoppingCart className="w-3 h-3 mr-1" />
+                              Buy
+                            </Button>
+                          </td>
+                        )}
                       </tr>
                     </HoverCardTrigger>
                     <HoverCardContent
@@ -379,7 +422,19 @@ const Wyrmcart = () => {
                         <span>Threshold: {item.armorThreshold}</span>
                       </div>
                     )}
-                    <p className="text-xs text-muted-foreground/60 ml-7 mt-1">{item.company}</p>
+                    <div className="flex items-center justify-between ml-7 mt-1">
+                      <p className="text-xs text-muted-foreground/60">{item.company}</p>
+                      {user && (
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white h-7 px-2 text-xs"
+                          onClick={(e) => { e.stopPropagation(); setPurchaseItem(item); }}
+                        >
+                          <ShoppingCart className="w-3 h-3 mr-1" />
+                          Buy
+                        </Button>
+                      )}
+                    </div>
                   </Card>
                 </HoverCardTrigger>
                 <HoverCardContent side="top" className="w-80 bg-gray-900 border-green-500/30 text-foreground">
@@ -439,7 +494,19 @@ const Wyrmcart = () => {
                         <span>Threshold: {item.armorThreshold}</span>
                       </div>
                     )}
-                    <p className="text-xs text-muted-foreground/60 ml-6 mt-1">{item.company}</p>
+                    <div className="flex items-center justify-between ml-6 mt-1">
+                      <p className="text-xs text-muted-foreground/60">{item.company}</p>
+                      {user && (
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white h-7 px-2 text-xs"
+                          onClick={(e) => { e.stopPropagation(); setPurchaseItem(item); }}
+                        >
+                          <ShoppingCart className="w-3 h-3 mr-1" />
+                          Buy
+                        </Button>
+                      )}
+                    </div>
                   </Card>
                 </HoverCardTrigger>
                 <HoverCardContent side="top" className="w-72 bg-gray-900 border-green-500/30 text-foreground">
@@ -459,6 +526,14 @@ const Wyrmcart = () => {
             No items match your search.
           </div>
         )}
+
+        <PurchaseDialog
+          open={!!purchaseItem}
+          onOpenChange={(open) => { if (!open) setPurchaseItem(null); }}
+          item={purchaseItem}
+          userBalance={userBalance}
+          onPurchaseComplete={fetchBalance}
+        />
       </div>
     </div>
   );
