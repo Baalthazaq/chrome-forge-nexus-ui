@@ -142,24 +142,24 @@ const Atunes = () => {
 
       <div className="relative z-10 container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-2">
             <Link to="/">
               <Button variant="ghost" size="sm" className="text-purple-400 hover:text-purple-300">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Nexus
               </Button>
             </Link>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">
-              @tunes
-            </h1>
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Balance</p>
+              <p className={`text-sm font-mono ${userBalance >= 0 ? "text-green-400" : "text-red-400"}`}>
+                {formatHex(userBalance)}
+              </p>
+            </div>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-500">Balance</p>
-            <p className={`text-sm font-mono ${userBalance >= 0 ? "text-green-400" : "text-red-400"}`}>
-              {formatHex(userBalance)}
-            </p>
-          </div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">
+            @tunes
+          </h1>
         </div>
 
         {/* Summary Cards */}
