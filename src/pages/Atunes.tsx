@@ -89,15 +89,26 @@ const Atunes = () => {
   const payAccumulated = async (sub: Subscription) => {
     if (sub.accumulated_amount <= 0) return;
     try {
-      const { error } = await supabase.functions.invoke("financial-operations", {
-        body: {
-          operation: "send_money",
-          to_user_id: sub.from_user_id,
-          amount: sub.accumulated_amount,
-          description: `Manual payment: ${sub.description}`,
-        },
-      });
-      if (error) throw error;
+      if (sub.from_user_id) {
+        // If there's a recipient, send money to them
+        const { error } = await supabase.functions.invoke("financial-operations", {
+          body: {
+            operation: "send_money",
+            to_user_id: sub.from_user_id,
+            amount: sub.accumulated_amount,
+            description: `Manual payment: ${sub.description}`,
+          },
+        });
+        if (error) throw error;
+      } else {
+        // No recipient (system subscription) — just deduct credits directly
+        const newBalance = userBalance - sub.accumulated_amount;
+        const { error } = await supabase
+          .from("profiles")
+          .update({ credits: newBalance })
+          .eq("user_id", user?.id);
+        if (error) throw error;
+      }
 
       await supabase.from("recurring_payments").update({ accumulated_amount: 0 }).eq("id", sub.id);
       toast({ title: "Payment Sent", description: `Paid ${formatHex(sub.accumulated_amount)} for ${sub.description}` });
