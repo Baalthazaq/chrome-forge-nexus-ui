@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
       ["Valor","Bold Presence",2,"Ability",0,"Spend Hope to add Strength to Presence Roll. Once per rest, avoid a condition."],
       ["Splendor","Bolt Beacon",1,"Spell",1,"d8+2 magic damage within Far range. Target becomes Vulnerable and glows."],
       ["Bone","Bone-Touched",7,"Ability",2,"With 4+ Bone cards: +1 Agility, once per rest spend 3 Hope to make attack fail."],
-      ["Codex","Book Of Ava",1,"Grimoire",2,"Power Push, Tava's Armor, Ice Spike spells."],
+      ["Codex","Book Of Ava",1,"Grimoire",2,"Power Push: Make a Spellcast Roll against a target within Melee range. On a success, they're knocked back to Far range and take d10+2 magic damage using your Proficiency.\nTava's Armor: Spend a Hope to give a target you can touch a +1 bonus to their Armor Score until their next rest or you cast Tava's Armor again.\nIce Spike: Make a Spellcast Roll (12) to summon a large ice spike within Far range. If you use it as a weapon, make the Spellcast Roll against the target's Difficulty instead. On a success, deal d6 physical damage using your Proficiency."],
       ["Codex","Book Of Exota",4,"Grimoire",3,"Repudiate and Create Construct spells."],
       ["Codex","Book Of Grynn",4,"Grimoire",2,"Arcane Deflection, Time Lock, Wall of Flame spells."],
       ["Codex","Book Of Homet",7,"Grimoire",0,"Pass Through and Plane Gate spells."],
