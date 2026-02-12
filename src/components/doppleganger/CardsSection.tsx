@@ -130,10 +130,15 @@ export function CardsSection({
     const card = gameCards.find(c => c.id === sc.card_id);
     if (!card) return { title: 'Unknown', content: '', source: '', recallCost: null };
     const meta = card.metadata as any;
+    const source = card.card_type === 'ancestry'
+      ? ''
+      : card.card_type === 'community'
+      ? `Community: ${card.source || ''}`
+      : `${card.source || ''} ${meta?.type || ''} Lv${meta?.level || '?'}`;
     return {
       title: card.name,
       content: card.content || '',
-      source: `${card.source || ''} ${meta?.type || ''} Lv${meta?.level || '?'}`,
+      source,
       recallCost: meta?.recall_cost ?? null,
     };
   };
@@ -196,6 +201,8 @@ export function CardsSection({
                     const meta = c.metadata as any;
                     const label = c.card_type === 'domain'
                       ? `${c.name} (${c.source} Lv${meta?.level}) — ${meta?.type}`
+                      : c.card_type === 'ancestry'
+                      ? c.name
                       : `${c.name} (${c.source || c.card_type})`;
                     return (
                       <SelectItem key={c.id} value={c.id}>{label}</SelectItem>
