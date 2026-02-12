@@ -65,37 +65,31 @@ function AncestryCombobox({ value, onChange, ancestryCards, isEditing }: {
   return (
     <div className="relative">
       <label className="text-gray-300 text-xs mb-1 block">Ancestry</label>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Input
-            ref={inputRef}
-            value={inputValue}
-            onChange={handleInputChange}
-            onFocus={() => setOpen(true)}
-            placeholder="Type or select ancestry..."
-            className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm"
-          />
-        </PopoverTrigger>
-        <PopoverContent
-          className="p-0 w-[var(--radix-popover-trigger-width)] bg-gray-800 border-gray-600 z-50"
-          align="start"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          <div className="max-h-48 overflow-y-auto">
-            {filtered.length > 0 ? filtered.map(name => (
-              <button
-                key={name}
-                onClick={() => handleSelect(name)}
-                className="w-full text-left px-3 py-2 text-sm text-gray-100 hover:bg-gray-700 transition-colors"
-              >
-                {name}
-              </button>
-            )) : (
-              <div className="px-3 py-2 text-sm text-gray-400">No matches — custom value will be used</div>
-            )}
-          </div>
-        </PopoverContent>
-      </Popover>
+      <Input
+        ref={inputRef}
+        value={inputValue}
+        onChange={handleInputChange}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Type or select ancestry..."
+        className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm"
+      />
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-600 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
+          {filtered.length > 0 ? filtered.map(name => (
+            <button
+              key={name}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => handleSelect(name)}
+              className="w-full text-left px-3 py-2 text-sm text-gray-100 hover:bg-gray-700 transition-colors"
+            >
+              {name}
+            </button>
+          )) : (
+            <div className="px-3 py-2 text-sm text-gray-400">No matches — custom value will be used</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
