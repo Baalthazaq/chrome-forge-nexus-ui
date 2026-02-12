@@ -36,7 +36,7 @@ function AncestryCombobox({ value, onChange, ancestryCards, isEditing }: {
 
   useEffect(() => { setInputValue(value); }, [value]);
 
-  const ancestryNames = [...new Set(ancestryCards.map(c => c.name))];
+  const ancestryNames = [...new Set(ancestryCards.map(c => c.source).filter(Boolean))] as string[];
   const filtered = inputValue
     ? ancestryNames.filter(n => n.toLowerCase().includes(inputValue.toLowerCase()))
     : ancestryNames;
