@@ -211,8 +211,24 @@ const Admin = () => {
               NPC Management
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex gap-4 items-center">
             <NPCDialog onSuccess={loadUsers} />
+            <Button
+              variant="outline"
+              onClick={async () => {
+                toast({ title: "Seeding NPCs...", description: "This may take a minute." });
+                const { data, error } = await supabase.functions.invoke('seed-npcs');
+                if (error) {
+                  toast({ title: "Error", description: error.message, variant: "destructive" });
+                } else {
+                  toast({ title: "Seed Complete", description: data?.summary || "Done" });
+                  loadUsers();
+                }
+              }}
+            >
+              <Zap className="h-4 w-4 mr-1" />
+              Seed NPCs (22)
+            </Button>
           </CardContent>
         </Card>
 
