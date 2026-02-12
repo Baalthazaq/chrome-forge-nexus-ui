@@ -135,6 +135,7 @@ const Doppleganger = () => {
           armorBaseValue={getArmorBaseValue()}
           armorThresholds={getArmorThresholds()}
           isEditing={isEditing}
+          level={sheet.level}
         />
 
         <ExperiencesSection
