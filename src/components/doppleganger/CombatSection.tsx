@@ -11,6 +11,7 @@ interface Props {
   armorBaseValue: number;
   armorThresholds: string;
   isEditing: boolean;
+  level: number;
 }
 
 function CheckboxRow({
@@ -62,24 +63,24 @@ function CheckboxRow({
   );
 }
 
-export function CombatSection({ sheet, updateSheet, baseEvasion, baseHP, armorBaseValue, armorThresholds, isEditing }: Props) {
+export function CombatSection({ sheet, updateSheet, baseEvasion, baseHP, armorBaseValue, armorThresholds, isEditing, level }: Props) {
   const totalEvasion = baseEvasion + sheet.evasion_modifier;
   const totalHP = baseHP + sheet.hp_modifier;
 
-  // Parse armor thresholds (e.g. "5 / 11") and add to base thresholds
-  let armorMajorBonus = 0;
-  let armorSevereBonus = 0;
+  // Parse armor thresholds (e.g. "5 / 11")
+  let armorMajorThreshold = 0;
+  let armorSevereThreshold = 0;
   if (armorThresholds) {
     const parts = armorThresholds.split('/').map(s => parseInt(s.trim(), 10));
     if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-      armorMajorBonus = parts[0];
-      armorSevereBonus = parts[1];
+      armorMajorThreshold = parts[0];
+      armorSevereThreshold = parts[1];
     }
   }
 
-  // Thresholds: Major = floor(maxHP/2) + armorMajor, Severe = maxHP + armorSevere
-  const majorBase = Math.floor(totalHP / 2) + armorMajorBonus;
-  const severeBase = totalHP + armorSevereBonus;
+  // Thresholds: armor threshold + level + modifier
+  const majorBase = armorMajorThreshold + level;
+  const severeBase = armorSevereThreshold + level;
   const majorThreshold = majorBase + sheet.major_threshold_modifier;
   const severeThreshold = severeBase + sheet.severe_threshold_modifier;
 
@@ -97,18 +98,7 @@ export function CombatSection({ sheet, updateSheet, baseEvasion, baseHP, armorBa
           <div className="flex items-center justify-between">
             <span className="text-gray-400 text-sm">Evasion</span>
             <div className="flex items-center gap-2">
-              <span className="text-gray-500 text-xs">Base {baseEvasion} +</span>
-              {isEditing ? (
-                <Input
-                  type="number"
-                  value={sheet.evasion_modifier}
-                  onChange={(e) => updateSheet({ evasion_modifier: Number(e.target.value) || 0 })}
-                  className="w-16 h-8 text-center bg-gray-800/50 border-gray-600 text-gray-100 text-sm"
-                />
-              ) : (
-                <span className="text-gray-100 font-medium">{sheet.evasion_modifier}</span>
-              )}
-              <span className="text-white font-bold text-lg">= {totalEvasion}</span>
+              <span className="text-white font-bold text-lg">{totalEvasion}</span>
             </div>
           </div>
 
@@ -122,6 +112,17 @@ export function CombatSection({ sheet, updateSheet, baseEvasion, baseHP, armorBa
             onChange={(val) => updateSheet({ armor_current: val })}
             shape="shield"
           />
+          {isEditing && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-gray-500 text-xs">Evasion Bonus:</span>
+              <Input
+                type="number"
+                value={sheet.evasion_modifier}
+                onChange={(e) => updateSheet({ evasion_modifier: Number(e.target.value) || 0 })}
+                className="w-14 h-7 text-center bg-gray-800/50 border-gray-600 text-gray-100 text-xs"
+              />
+            </div>
+          )}
         </div>
       </Card>
 
@@ -137,18 +138,7 @@ export function CombatSection({ sheet, updateSheet, baseEvasion, baseHP, armorBa
           <div className="flex items-center justify-between mb-1">
             <span className="text-gray-400 text-sm">Hit Points</span>
             <div className="flex items-center gap-2">
-              <span className="text-gray-500 text-xs">Base {baseHP} +</span>
-              {isEditing ? (
-                <Input
-                  type="number"
-                  value={sheet.hp_modifier}
-                  onChange={(e) => updateSheet({ hp_modifier: Number(e.target.value) || 0 })}
-                  className="w-16 h-8 text-center bg-gray-800/50 border-gray-600 text-gray-100 text-sm"
-                />
-              ) : (
-                <span className="text-gray-100 font-medium">{sheet.hp_modifier}</span>
-              )}
-              <span className="text-white font-bold">= {totalHP}</span>
+              <span className="text-white font-bold">{totalHP}</span>
             </div>
           </div>
 
@@ -161,6 +151,17 @@ export function CombatSection({ sheet, updateSheet, baseEvasion, baseHP, armorBa
             onChange={(val) => updateSheet({ hp_current: val })}
             shape="heart"
           />
+          {isEditing && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-gray-500 text-xs">HP Bonus:</span>
+              <Input
+                type="number"
+                value={sheet.hp_modifier}
+                onChange={(e) => updateSheet({ hp_modifier: Number(e.target.value) || 0 })}
+                className="w-14 h-7 text-center bg-gray-800/50 border-gray-600 text-gray-100 text-xs"
+              />
+            </div>
+          )}
 
           {/* Thresholds */}
           <div className="flex gap-4 text-sm">
