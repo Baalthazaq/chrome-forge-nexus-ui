@@ -310,7 +310,7 @@ const Roldex = () => {
                     
                      <div className="text-gray-300 text-sm mb-2 space-y-1">
                       <div>{profile.ancestry || 'Unknown Ancestry'} • {profile.job || 'Unknown Job'}</div>
-                      <div>{profile.company || 'No Company'} • Cha: {profile.charisma_score || 10}</div>
+                      <div>{profile.company || 'No Company'}</div>
                       {profile.alias && <div className="text-blue-300">@{profile.alias}</div>}
                       {getRelationship(profile.user_id) && (
                         <div className="text-cyan-300 italic">
@@ -326,7 +326,7 @@ const Roldex = () => {
                             <Star className="w-3 h-3 text-yellow-400" />
                             <span>{personalRating}/5</span>
                           </div>
-                          <span>Cha Delta: {personalRating - 3 > 0 ? '+' : ''}{personalRating - 3}</span>
+                          <span>Trustworthiness: {personalRating}/5</span>
                         </div>
 
                         {/* Personal Tags */}

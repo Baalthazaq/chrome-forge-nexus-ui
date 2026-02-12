@@ -139,7 +139,7 @@ export const ContactNotesDialog = ({ contact, contactId, relationship: initialRe
         .from('tome_entries')
         .insert({
           user_id: effectiveUser.user_id || effectiveUser.id,
-          title: `Notes on ${contact.name}`,
+          title: `Notes on ${contact.character_name || 'Unknown'}`,
           content: notes,
           tags: [`Contact: ${contact.name}`, ...tags]
         });
@@ -182,7 +182,7 @@ export const ContactNotesDialog = ({ contact, contactId, relationship: initialRe
       <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl text-blue-400">
-            Notes on {contact.name}
+            Notes on {contact.character_name || 'Unknown'}
           </DialogTitle>
         </DialogHeader>
         
