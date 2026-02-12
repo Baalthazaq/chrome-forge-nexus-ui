@@ -1,0 +1,213 @@
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Camera, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import type { CharacterSheet, GameCard } from "@/data/gameCardTypes";
+
+interface Props {
+  profile: any;
+  sheet: CharacterSheet;
+  updateSheet: (updates: Partial<CharacterSheet>) => Promise<void>;
+  classCards: GameCard[];
+  filteredSubclasses: GameCard[];
+  ancestryCards: GameCard[];
+  communityCards: GameCard[];
+  domains: string[];
+  displayUser: any;
+}
+
+export function CharacterHeader({
+  profile, sheet, updateSheet,
+  classCards, filteredSubclasses, ancestryCards, communityCards,
+  domains, displayUser,
+}: Props) {
+  const { toast } = useToast();
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !displayUser) return;
+    setAvatarUploading(true);
+    try {
+      const fileName = `avatar_${Date.now()}.${file.name.split('.').pop()}`;
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { cacheControl: '3600', upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      if (!urlData?.publicUrl) throw new Error('Failed to get public URL');
+      const userId = displayUser.user_id || displayUser.id;
+      await supabase.from('profiles').update({ avatar_url: urlData.publicUrl }).eq('user_id', userId);
+      toast({ title: 'Avatar updated' });
+      window.location.reload();
+    } catch (e: any) {
+      toast({ title: 'Upload failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  // Get unique ancestry sources for grouping
+  const ancestrySources = [...new Set(ancestryCards.map(c => c.source))].filter(Boolean) as string[];
+  const communitySources = [...new Set(communityCards.map(c => c.source))].filter(Boolean) as string[];
+
+  const handleClassChange = (value: string) => {
+    const val = value === '__none__' ? null : value;
+    updateSheet({ class: val, subclass: null });
+  };
+
+  return (
+    <>
+      {/* Nav */}
+      <div className="flex items-center justify-between mb-6">
+        <Link to="/">
+          <Button variant="ghost" className="text-cyan-400 hover:text-cyan-300">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to OS
+          </Button>
+        </Link>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+          Doppleganger
+        </h1>
+        <div className="w-20" />
+      </div>
+
+      {/* Profile Card */}
+      <Card className="p-6 bg-gradient-to-r from-indigo-900/30 to-purple-900/30 border-indigo-500/30 mb-6">
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Avatar */}
+          <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-indigo-500 shrink-0 self-center md:self-start">
+            <img
+              src={profile.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'}
+              alt={profile.character_name || 'Character'}
+              className="w-full h-full object-cover"
+            />
+            <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+              <Camera className="w-6 h-6 text-white" />
+              <input type="file" accept="image/*" onChange={handleAvatarUpload} disabled={avatarUploading} className="hidden" />
+            </label>
+            {avatarUploading && (
+              <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                <div className="text-white text-xs">Uploading...</div>
+              </div>
+            )}
+          </div>
+
+          {/* Identity Selectors */}
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* Name */}
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block">Name</label>
+              <div className="text-2xl font-bold text-white truncate">{profile.character_name || 'Unnamed'}</div>
+            </div>
+
+            {/* Level */}
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block">Level</label>
+              <Select value={String(sheet.level)} onValueChange={(v) => updateSheet({ level: Number(v) })}>
+                <SelectTrigger className="bg-gray-900/50 border-gray-700">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 10 }, (_, i) => (
+                    <SelectItem key={i + 1} value={String(i + 1)}>{i + 1}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Class */}
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block">Class</label>
+              <Select value={sheet.class || '__none__'} onValueChange={handleClassChange}>
+                <SelectTrigger className="bg-gray-900/50 border-gray-700">
+                  <SelectValue placeholder="Select class" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {classCards.map(c => (
+                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Subclass */}
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block">Subclass</label>
+              <Select
+                value={sheet.subclass || '__none__'}
+                onValueChange={(v) => updateSheet({ subclass: v === '__none__' ? null : v })}
+                disabled={!sheet.class}
+              >
+                <SelectTrigger className="bg-gray-900/50 border-gray-700">
+                  <SelectValue placeholder={sheet.class ? "Select subclass" : "Choose class first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {filteredSubclasses.map(c => (
+                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Ancestry */}
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block">Ancestry</label>
+              <Select
+                value={sheet.ancestry || '__none__'}
+                onValueChange={(v) => updateSheet({ ancestry: v === '__none__' ? null : v })}
+              >
+                <SelectTrigger className="bg-gray-900/50 border-gray-700">
+                  <SelectValue placeholder="Select ancestry" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {ancestrySources.map(src => (
+                    <SelectItem key={src} value={src}>{src}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Community */}
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block">Community</label>
+              <Select
+                value={sheet.community || '__none__'}
+                onValueChange={(v) => updateSheet({ community: v === '__none__' ? null : v })}
+              >
+                <SelectTrigger className="bg-gray-900/50 border-gray-700">
+                  <SelectValue placeholder="Select community" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {communitySources.map(src => (
+                    <SelectItem key={src} value={src}>{src}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Domains (read-only, derived from class) */}
+            {domains.length > 0 && (
+              <div className="sm:col-span-2 lg:col-span-3">
+                <label className="text-gray-400 text-xs mb-1 block">Domains</label>
+                <div className="flex gap-2">
+                  {domains.map((d, i) => (
+                    <span key={i} className="px-3 py-1 bg-purple-900/50 border border-purple-500/30 rounded-md text-purple-300 text-sm">
+                      {d}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
+    </>
+  );
+}
