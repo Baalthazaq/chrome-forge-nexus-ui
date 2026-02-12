@@ -9,6 +9,8 @@ interface Props {
   baseEvasion: number;
   baseHP: number;
   armorBaseValue: number;
+  armorThresholds: string;
+  isEditing: boolean;
 }
 
 function CheckboxRow({
@@ -37,8 +39,6 @@ function CheckboxRow({
           const filled = i < current;
           const shapeClass = shape === 'heart'
             ? 'rounded-full'
-            : shape === 'shield'
-            ? 'rounded-sm'
             : 'rounded-sm';
           return (
             <button
@@ -62,13 +62,24 @@ function CheckboxRow({
   );
 }
 
-export function CombatSection({ sheet, updateSheet, baseEvasion, baseHP, armorBaseValue }: Props) {
+export function CombatSection({ sheet, updateSheet, baseEvasion, baseHP, armorBaseValue, armorThresholds, isEditing }: Props) {
   const totalEvasion = baseEvasion + sheet.evasion_modifier;
   const totalHP = baseHP + sheet.hp_modifier;
 
-  // Thresholds: Major = floor(maxHP/2), Severe = maxHP (before modifiers)
-  const majorBase = Math.floor(totalHP / 2);
-  const severeBase = totalHP;
+  // Parse armor thresholds (e.g. "5 / 11") and add to base thresholds
+  let armorMajorBonus = 0;
+  let armorSevereBonus = 0;
+  if (armorThresholds) {
+    const parts = armorThresholds.split('/').map(s => parseInt(s.trim(), 10));
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      armorMajorBonus = parts[0];
+      armorSevereBonus = parts[1];
+    }
+  }
+
+  // Thresholds: Major = floor(maxHP/2) + armorMajor, Severe = maxHP + armorSevere
+  const majorBase = Math.floor(totalHP / 2) + armorMajorBonus;
+  const severeBase = totalHP + armorSevereBonus;
   const majorThreshold = majorBase + sheet.major_threshold_modifier;
   const severeThreshold = severeBase + sheet.severe_threshold_modifier;
 
@@ -87,12 +98,16 @@ export function CombatSection({ sheet, updateSheet, baseEvasion, baseHP, armorBa
             <span className="text-gray-400 text-sm">Evasion</span>
             <div className="flex items-center gap-2">
               <span className="text-gray-500 text-xs">Base {baseEvasion} +</span>
-              <Input
-                type="number"
-                value={sheet.evasion_modifier}
-                onChange={(e) => updateSheet({ evasion_modifier: Number(e.target.value) || 0 })}
-                className="w-16 h-8 text-center bg-gray-800/50 border-gray-600 text-sm"
-              />
+              {isEditing ? (
+                <Input
+                  type="number"
+                  value={sheet.evasion_modifier}
+                  onChange={(e) => updateSheet({ evasion_modifier: Number(e.target.value) || 0 })}
+                  className="w-16 h-8 text-center bg-gray-800/50 border-gray-600 text-gray-100 text-sm"
+                />
+              ) : (
+                <span className="text-gray-100 font-medium">{sheet.evasion_modifier}</span>
+              )}
               <span className="text-white font-bold text-lg">= {totalEvasion}</span>
             </div>
           </div>
@@ -123,12 +138,16 @@ export function CombatSection({ sheet, updateSheet, baseEvasion, baseHP, armorBa
             <span className="text-gray-400 text-sm">Hit Points</span>
             <div className="flex items-center gap-2">
               <span className="text-gray-500 text-xs">Base {baseHP} +</span>
-              <Input
-                type="number"
-                value={sheet.hp_modifier}
-                onChange={(e) => updateSheet({ hp_modifier: Number(e.target.value) || 0 })}
-                className="w-16 h-8 text-center bg-gray-800/50 border-gray-600 text-sm"
-              />
+              {isEditing ? (
+                <Input
+                  type="number"
+                  value={sheet.hp_modifier}
+                  onChange={(e) => updateSheet({ hp_modifier: Number(e.target.value) || 0 })}
+                  className="w-16 h-8 text-center bg-gray-800/50 border-gray-600 text-gray-100 text-sm"
+                />
+              ) : (
+                <span className="text-gray-100 font-medium">{sheet.hp_modifier}</span>
+              )}
               <span className="text-white font-bold">= {totalHP}</span>
             </div>
           </div>
@@ -147,22 +166,30 @@ export function CombatSection({ sheet, updateSheet, baseEvasion, baseHP, armorBa
           <div className="flex gap-4 text-sm">
             <div className="flex items-center gap-1">
               <span className="text-yellow-400">Major:</span>
-              <Input
-                type="number"
-                value={sheet.major_threshold_modifier}
-                onChange={(e) => updateSheet({ major_threshold_modifier: Number(e.target.value) || 0 })}
-                className="w-12 h-7 text-center bg-gray-800/50 border-gray-600 text-xs"
-              />
+              {isEditing ? (
+                <Input
+                  type="number"
+                  value={sheet.major_threshold_modifier}
+                  onChange={(e) => updateSheet({ major_threshold_modifier: Number(e.target.value) || 0 })}
+                  className="w-12 h-7 text-center bg-gray-800/50 border-gray-600 text-gray-100 text-xs"
+                />
+              ) : (
+                <span className="text-gray-100 text-xs">+{sheet.major_threshold_modifier}</span>
+              )}
               <span className="text-yellow-300 font-bold">= {majorThreshold}</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="text-red-400">Severe:</span>
-              <Input
-                type="number"
-                value={sheet.severe_threshold_modifier}
-                onChange={(e) => updateSheet({ severe_threshold_modifier: Number(e.target.value) || 0 })}
-                className="w-12 h-7 text-center bg-gray-800/50 border-gray-600 text-xs"
-              />
+              {isEditing ? (
+                <Input
+                  type="number"
+                  value={sheet.severe_threshold_modifier}
+                  onChange={(e) => updateSheet({ severe_threshold_modifier: Number(e.target.value) || 0 })}
+                  className="w-12 h-7 text-center bg-gray-800/50 border-gray-600 text-gray-100 text-xs"
+                />
+              ) : (
+                <span className="text-gray-100 text-xs">+{sheet.severe_threshold_modifier}</span>
+              )}
               <span className="text-red-300 font-bold">= {severeThreshold}</span>
             </div>
           </div>
@@ -183,15 +210,17 @@ export function CombatSection({ sheet, updateSheet, baseEvasion, baseHP, armorBa
           max={sheet.stress_max}
           onChange={(val) => updateSheet({ stress_current: val })}
         />
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-gray-500 text-xs">Max:</span>
-          <Input
-            type="number"
-            value={sheet.stress_max}
-            onChange={(e) => updateSheet({ stress_max: Number(e.target.value) || 6 })}
-            className="w-14 h-7 text-center bg-gray-800/50 border-gray-600 text-xs"
-          />
-        </div>
+        {isEditing && (
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-gray-500 text-xs">Max:</span>
+            <Input
+              type="number"
+              value={sheet.stress_max}
+              onChange={(e) => updateSheet({ stress_max: Number(e.target.value) || 6 })}
+              className="w-14 h-7 text-center bg-gray-800/50 border-gray-600 text-gray-100 text-xs"
+            />
+          </div>
+        )}
       </Card>
 
       {/* Hope */}
@@ -208,15 +237,17 @@ export function CombatSection({ sheet, updateSheet, baseEvasion, baseHP, armorBa
           max={sheet.hope_max}
           onChange={(val) => updateSheet({ hope_current: val })}
         />
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-gray-500 text-xs">Max:</span>
-          <Input
-            type="number"
-            value={sheet.hope_max}
-            onChange={(e) => updateSheet({ hope_max: Number(e.target.value) || 6 })}
-            className="w-14 h-7 text-center bg-gray-800/50 border-gray-600 text-xs"
-          />
-        </div>
+        {isEditing && (
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-gray-500 text-xs">Max:</span>
+            <Input
+              type="number"
+              value={sheet.hope_max}
+              onChange={(e) => updateSheet({ hope_max: Number(e.target.value) || 6 })}
+              className="w-14 h-7 text-center bg-gray-800/50 border-gray-600 text-gray-100 text-xs"
+            />
+          </div>
+        )}
       </Card>
     </div>
   );

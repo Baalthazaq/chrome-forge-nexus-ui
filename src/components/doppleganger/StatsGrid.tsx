@@ -6,6 +6,7 @@ interface Props {
   profile: any;
   displayUser: any;
   onStatChange: (stat: string, value: number) => void;
+  isEditing: boolean;
 }
 
 const STAT_COLORS: Record<StatName, string> = {
@@ -17,7 +18,7 @@ const STAT_COLORS: Record<StatName, string> = {
   knowledge: 'text-cyan-400 border-cyan-500/30',
 };
 
-export function StatsGrid({ profile, onStatChange }: Props) {
+export function StatsGrid({ profile, onStatChange, isEditing }: Props) {
   const stats = Object.keys(STAT_SKILLS) as StatName[];
 
   return (
@@ -33,12 +34,16 @@ export function StatsGrid({ profile, onStatChange }: Props) {
               <div className={`text-xs uppercase tracking-wider ${colorClass.split(' ')[0]} mb-1`}>
                 {stat}
               </div>
-              <Input
-                type="number"
-                value={value}
-                onChange={(e) => onStatChange(stat, Number(e.target.value) || 0)}
-                className="w-16 h-10 text-center text-xl font-bold bg-gray-800/50 border-gray-600 mx-auto"
-              />
+              {isEditing ? (
+                <Input
+                  type="number"
+                  value={value}
+                  onChange={(e) => onStatChange(stat, Number(e.target.value) || 0)}
+                  className="w-16 h-10 text-center text-xl font-bold bg-gray-800/50 border-gray-600 text-gray-100 mx-auto"
+                />
+              ) : (
+                <div className={`text-2xl font-bold ${colorClass.split(' ')[0]}`}>{value}</div>
+              )}
             </div>
             <div className="space-y-0.5">
               {skills.map((skill) => (
