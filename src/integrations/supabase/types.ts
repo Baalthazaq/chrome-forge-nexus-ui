@@ -145,6 +145,115 @@ export type Database = {
           },
         ]
       }
+      character_sheets: {
+        Row: {
+          ancestry: string | null
+          armor_current: number
+          armor_purchase_id: string | null
+          class: string | null
+          community: string | null
+          created_at: string
+          evasion_modifier: number
+          experiences: Json | null
+          hope_current: number
+          hope_max: number
+          hp_current: number
+          hp_modifier: number
+          id: string
+          level: number
+          major_threshold_modifier: number
+          personality: string | null
+          physical_description: Json | null
+          primary_weapon_purchase_id: string | null
+          secondary_weapon_purchase_id: string | null
+          selected_card_ids: Json | null
+          severe_threshold_modifier: number
+          stress_current: number
+          stress_max: number
+          subclass: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ancestry?: string | null
+          armor_current?: number
+          armor_purchase_id?: string | null
+          class?: string | null
+          community?: string | null
+          created_at?: string
+          evasion_modifier?: number
+          experiences?: Json | null
+          hope_current?: number
+          hope_max?: number
+          hp_current?: number
+          hp_modifier?: number
+          id?: string
+          level?: number
+          major_threshold_modifier?: number
+          personality?: string | null
+          physical_description?: Json | null
+          primary_weapon_purchase_id?: string | null
+          secondary_weapon_purchase_id?: string | null
+          selected_card_ids?: Json | null
+          severe_threshold_modifier?: number
+          stress_current?: number
+          stress_max?: number
+          subclass?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ancestry?: string | null
+          armor_current?: number
+          armor_purchase_id?: string | null
+          class?: string | null
+          community?: string | null
+          created_at?: string
+          evasion_modifier?: number
+          experiences?: Json | null
+          hope_current?: number
+          hope_max?: number
+          hp_current?: number
+          hp_modifier?: number
+          id?: string
+          level?: number
+          major_threshold_modifier?: number
+          personality?: string | null
+          physical_description?: Json | null
+          primary_weapon_purchase_id?: string | null
+          secondary_weapon_purchase_id?: string | null
+          selected_card_ids?: Json | null
+          severe_threshold_modifier?: number
+          stress_current?: number
+          stress_max?: number
+          subclass?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "character_sheets_armor_purchase_id_fkey"
+            columns: ["armor_purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "character_sheets_primary_weapon_purchase_id_fkey"
+            columns: ["primary_weapon_purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "character_sheets_secondary_weapon_purchase_id_fkey"
+            columns: ["secondary_weapon_purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_tags: {
         Row: {
           contact_id: string
@@ -207,6 +316,39 @@ export type Database = {
           relationship?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      game_cards: {
+        Row: {
+          card_type: string
+          content: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          name: string
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          card_type: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          name: string
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          card_type?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          name?: string
+          source?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
