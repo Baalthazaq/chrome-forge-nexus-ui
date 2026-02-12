@@ -83,7 +83,7 @@ export function CharacterHeader({
       </div>
 
       {/* Profile Card */}
-      <Card className="p-6 bg-gradient-to-r from-indigo-900/30 to-purple-900/30 border-indigo-500/30 mb-6">
+      <Card className="p-6 bg-gradient-to-r from-indigo-950/60 to-purple-950/60 border-indigo-500/30 mb-6">
         <div className="flex flex-col md:flex-row gap-6">
           {/* Avatar */}
           <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-indigo-500 shrink-0 self-center md:self-start">
@@ -107,7 +107,7 @@ export function CharacterHeader({
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {/* Name - editable */}
             <div>
-              <label className="text-gray-400 text-xs mb-1 block">Name</label>
+              <label className="text-gray-300 text-xs mb-1 block">Name</label>
               {editingName ? (
                 <div className="flex items-center gap-1">
                   <Input
@@ -132,7 +132,7 @@ export function CharacterHeader({
 
             {/* Level */}
             <div>
-              <label className="text-gray-400 text-xs mb-1 block">Level</label>
+              <label className="text-gray-300 text-xs mb-1 block">Level</label>
               {isEditing ? (
                 <Select value={String(sheet.level)} onValueChange={(v) => updateSheet({ level: Number(v) })}>
                   <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100">
@@ -151,7 +151,7 @@ export function CharacterHeader({
 
             {/* Class */}
             <div>
-              <label className="text-gray-400 text-xs mb-1 block">Class</label>
+              <label className="text-gray-300 text-xs mb-1 block">Class</label>
               {isEditing ? (
                 <Select value={sheet.class || '__none__'} onValueChange={handleClassChange}>
                   <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100">
@@ -171,7 +171,7 @@ export function CharacterHeader({
 
             {/* Subclass */}
             <div>
-              <label className="text-gray-400 text-xs mb-1 block">Subclass</label>
+              <label className="text-gray-300 text-xs mb-1 block">Subclass</label>
               {isEditing ? (
                 <Select
                   value={sheet.subclass || '__none__'}
@@ -195,7 +195,7 @@ export function CharacterHeader({
 
             {/* Ancestry - free text */}
             <div>
-              <label className="text-gray-400 text-xs mb-1 block">Ancestry</label>
+              <label className="text-gray-300 text-xs mb-1 block">Ancestry</label>
               {isEditing ? (
                 <Input
                   value={sheet.ancestry || ''}
@@ -210,7 +210,7 @@ export function CharacterHeader({
 
             {/* Community */}
             <div>
-              <label className="text-gray-400 text-xs mb-1 block">Community</label>
+              <label className="text-gray-300 text-xs mb-1 block">Community</label>
               {isEditing ? (
                 <Select
                   value={sheet.community || '__none__'}
@@ -234,7 +234,7 @@ export function CharacterHeader({
             {/* Domains (read-only, derived from class) */}
             {domains.length > 0 && (
               <div className="sm:col-span-2 lg:col-span-3">
-                <label className="text-gray-400 text-xs mb-1 block">Domains</label>
+                <label className="text-gray-300 text-xs mb-1 block">Domains</label>
                 <div className="flex gap-2">
                   {domains.map((d, i) => (
                     <span key={i} className="px-3 py-1 bg-purple-900/50 border border-purple-500/30 rounded-md text-purple-300 text-sm">
