@@ -351,6 +351,7 @@ const Roldex = () => {
                       <ContactNotesDialog 
                         contact={profile}
                         contactId={contactData.id}
+                        relationship={contactData.relationship}
                         onUpdate={updateContact}
                       />
                     </div>

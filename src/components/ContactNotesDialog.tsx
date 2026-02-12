@@ -13,15 +13,17 @@ import { useAdmin } from "@/hooks/useAdmin";
 interface ContactNotesDialogProps {
   contact: any;
   contactId?: string;
+  relationship?: string;
   onUpdate: () => void;
 }
 
-export const ContactNotesDialog = ({ contact, contactId, onUpdate }: ContactNotesDialogProps) => {
+export const ContactNotesDialog = ({ contact, contactId, relationship: initialRelationship, onUpdate }: ContactNotesDialogProps) => {
   const [notes, setNotes] = useState("");
   const [rating, setRating] = useState(3);
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState("");
   const [open, setOpen] = useState(false);
+  const [relationship, setRelationship] = useState(initialRelationship || "");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -50,6 +52,7 @@ export const ContactNotesDialog = ({ contact, contactId, onUpdate }: ContactNote
       if (contactData) {
         setNotes(contactData.notes || "");
         setRating(contactData.personal_rating || 3);
+        setRelationship(contactData.relationship || "");
       }
 
       // Load tags
@@ -77,6 +80,7 @@ export const ContactNotesDialog = ({ contact, contactId, onUpdate }: ContactNote
         .update({
           notes,
           personal_rating: rating,
+          relationship: relationship || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', contactId);
@@ -183,10 +187,10 @@ export const ContactNotesDialog = ({ contact, contactId, onUpdate }: ContactNote
         </DialogHeader>
         
         <div className="space-y-6">
-          {/* Rating */}
+          {/* Trustworthiness Rating */}
           <div>
             <label className="text-sm font-medium text-gray-300 mb-2 block">
-              Personal Rating
+              Trustworthiness
             </label>
             <div className="flex space-x-1">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -198,10 +202,20 @@ export const ContactNotesDialog = ({ contact, contactId, onUpdate }: ContactNote
                   <Star className="w-6 h-6 fill-current" />
                 </button>
               ))}
-              <span className="ml-2 text-sm text-gray-400">
-                Cha Delta: {rating - 3 > 0 ? '+' : ''}{rating - 3}
-              </span>
             </div>
+          </div>
+
+          {/* Relationship */}
+          <div>
+            <label className="text-sm font-medium text-gray-300 mb-2 block">
+              Relationship
+            </label>
+            <Input
+              value={relationship}
+              onChange={(e) => setRelationship(e.target.value)}
+              placeholder="e.g. Colleague, Friend, Parent, Teacher..."
+              className="bg-gray-800 border-gray-600 text-white"
+            />
           </div>
 
           {/* Tags */}
