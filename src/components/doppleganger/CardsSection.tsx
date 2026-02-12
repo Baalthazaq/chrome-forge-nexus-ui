@@ -126,14 +126,15 @@ export function CardsSection({
   };
 
   const getCardDetails = (sc: SelectedCard) => {
-    if (sc.custom) return { title: sc.title || 'Custom Card', content: sc.content || '', source: 'Custom' };
+    if (sc.custom) return { title: sc.title || 'Custom Card', content: sc.content || '', source: 'Custom', recallCost: null };
     const card = gameCards.find(c => c.id === sc.card_id);
-    if (!card) return { title: 'Unknown', content: '', source: '' };
+    if (!card) return { title: 'Unknown', content: '', source: '', recallCost: null };
     const meta = card.metadata as any;
     return {
       title: card.name,
       content: card.content || '',
       source: `${card.source || ''} ${meta?.type || ''} Lv${meta?.level || '?'}`,
+      recallCost: meta?.recall_cost ?? null,
     };
   };
 
@@ -263,7 +264,10 @@ export function CardsSection({
                 <div key={i} className="p-3 bg-purple-900/20 border border-purple-500/20 rounded-lg">
                   <div className="flex justify-between items-start mb-1">
                     <span className="text-white text-sm font-semibold">{details.title}</span>
-                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      {details.recallCost != null && (
+                        <span className="text-amber-400 text-xs font-medium">Recall: {details.recallCost}</span>
+                      )}
                       <span className="text-gray-500 text-xs">{details.source}</span>
                       {isEditing && (
                         <button onClick={() => removeCard(i)} className="text-gray-500 hover:text-red-400">
