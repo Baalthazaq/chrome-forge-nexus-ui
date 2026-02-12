@@ -5,7 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Camera, ArrowLeft, Pencil, Check, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import type { CharacterSheet, GameCard } from "@/data/gameCardTypes";
 
@@ -21,6 +22,82 @@ interface Props {
   displayUser: any;
   isEditing: boolean;
   onProfileUpdate: (field: string, value: any) => void;
+}
+
+function AncestryCombobox({ value, onChange, ancestryCards, isEditing }: {
+  value: string;
+  onChange: (val: string) => void;
+  ancestryCards: GameCard[];
+  isEditing: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [inputValue, setInputValue] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setInputValue(value); }, [value]);
+
+  const ancestryNames = [...new Set(ancestryCards.map(c => c.name))];
+  const filtered = inputValue
+    ? ancestryNames.filter(n => n.toLowerCase().includes(inputValue.toLowerCase()))
+    : ancestryNames;
+
+  const handleSelect = (name: string) => {
+    setInputValue(name);
+    onChange(name);
+    setOpen(false);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+    onChange(e.target.value);
+    if (!open) setOpen(true);
+  };
+
+  if (!isEditing) {
+    return (
+      <div>
+        <label className="text-gray-300 text-xs mb-1 block">Ancestry</label>
+        <div className="text-lg font-bold text-white">{value || '—'}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <label className="text-gray-300 text-xs mb-1 block">Ancestry</label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Input
+            ref={inputRef}
+            value={inputValue}
+            onChange={handleInputChange}
+            onFocus={() => setOpen(true)}
+            placeholder="Type or select ancestry..."
+            className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm"
+          />
+        </PopoverTrigger>
+        <PopoverContent
+          className="p-0 w-[var(--radix-popover-trigger-width)] bg-gray-800 border-gray-600 z-50"
+          align="start"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.length > 0 ? filtered.map(name => (
+              <button
+                key={name}
+                onClick={() => handleSelect(name)}
+                className="w-full text-left px-3 py-2 text-sm text-gray-100 hover:bg-gray-700 transition-colors"
+              >
+                {name}
+              </button>
+            )) : (
+              <div className="px-3 py-2 text-sm text-gray-400">No matches — custom value will be used</div>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
 }
 
 export function CharacterHeader({
@@ -193,20 +270,13 @@ export function CharacterHeader({
               )}
             </div>
 
-            {/* Ancestry - free text */}
-            <div>
-              <label className="text-gray-300 text-xs mb-1 block">Ancestry</label>
-              {isEditing ? (
-                <Input
-                  value={sheet.ancestry || ''}
-                  onChange={(e) => updateSheet({ ancestry: e.target.value || null })}
-                  placeholder="Enter ancestry (e.g. Elf, Half-Dragon...)"
-                  className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm"
-                />
-              ) : (
-                <div className="text-lg font-bold text-white">{sheet.ancestry || '—'}</div>
-              )}
-            </div>
+            {/* Ancestry - combobox: type or pick */}
+            <AncestryCombobox
+              value={sheet.ancestry || ''}
+              onChange={(val) => updateSheet({ ancestry: val || null })}
+              ancestryCards={ancestryCards}
+              isEditing={isEditing}
+            />
 
             {/* Community */}
             <div>
