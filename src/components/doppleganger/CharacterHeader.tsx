@@ -145,7 +145,7 @@ export function CharacterHeader({
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="text-lg font-semibold text-gray-100">{sheet.level}</div>
+                <div className="text-lg font-bold text-white">{sheet.level}</div>
               )}
             </div>
 
@@ -165,7 +165,7 @@ export function CharacterHeader({
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="text-lg font-semibold text-gray-100">{sheet.class || '—'}</div>
+                <div className="text-lg font-bold text-white">{sheet.class || '—'}</div>
               )}
             </div>
 
@@ -189,7 +189,7 @@ export function CharacterHeader({
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="text-lg font-semibold text-gray-100">{sheet.subclass || '—'}</div>
+                <div className="text-lg font-bold text-white">{sheet.subclass || '—'}</div>
               )}
             </div>
 
@@ -204,7 +204,7 @@ export function CharacterHeader({
                   className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm"
                 />
               ) : (
-                <div className="text-lg font-semibold text-gray-100">{sheet.ancestry || '—'}</div>
+                <div className="text-lg font-bold text-white">{sheet.ancestry || '—'}</div>
               )}
             </div>
 
@@ -227,7 +227,7 @@ export function CharacterHeader({
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="text-lg font-semibold text-gray-100">{sheet.community || '—'}</div>
+                <div className="text-lg font-bold text-white">{sheet.community || '—'}</div>
               )}
             </div>
 
