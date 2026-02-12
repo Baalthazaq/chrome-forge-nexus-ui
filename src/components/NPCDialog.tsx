@@ -37,12 +37,12 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
     notes: '',
     is_searchable: true,
     has_succubus_profile: false,
-    agility: 10,
-    strength: 10,
-    finesse: 10,
-    instinct: 10,
-    presence: 10,
-    knowledge: 10,
+    agility: 1,
+    strength: 1,
+    finesse: 1,
+    instinct: 1,
+    presence: 1,
+    knowledge: 1,
     age: null as number | null,
     bio: '',
     employer: '',
@@ -154,12 +154,12 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
       notes: '',
       is_searchable: Math.random() > 0.3,
       has_succubus_profile: Math.random() > 0.7,
-      agility: Math.floor(Math.random() * 20) + 1,
-      strength: Math.floor(Math.random() * 20) + 1,
-      finesse: Math.floor(Math.random() * 20) + 1,
-      instinct: Math.floor(Math.random() * 20) + 1,
-      presence: Math.floor(Math.random() * 20) + 1,
-      knowledge: Math.floor(Math.random() * 20) + 1,
+      agility: Math.floor(Math.random() * 6) + 1,
+      strength: Math.floor(Math.random() * 6) + 1,
+      finesse: Math.floor(Math.random() * 6) + 1,
+      instinct: Math.floor(Math.random() * 6) + 1,
+      presence: Math.floor(Math.random() * 6) + 1,
+      knowledge: Math.floor(Math.random() * 6) + 1,
       age: Math.floor(Math.random() * 50) + 18,
       bio: `A mysterious figure with connections.`,
       employer: companies[Math.floor(Math.random() * companies.length)],
@@ -285,8 +285,8 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
           character_class: '', subclass: '', community: '',
           level: 1, credit_rating: 100, charisma_score: 10,
           notes: '', is_searchable: true, has_succubus_profile: false,
-          agility: 10, strength: 10, finesse: 10,
-          instinct: 10, presence: 10, knowledge: 10,
+          agility: 1, strength: 1, finesse: 1,
+          instinct: 1, presence: 1, knowledge: 1,
           age: null, bio: '', employer: '', education: '',
           address: '', aliases: [], security_rating: 'C'
         });
@@ -399,18 +399,28 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
 
               <div className="space-y-2">
                 <Label htmlFor="ancestry">Ancestry</Label>
-                <Input
-                  id="ancestry"
-                  value={form.ancestry}
-                  onChange={(e) => setForm(prev => ({ ...prev, ancestry: e.target.value }))}
-                  placeholder="Type or pick ancestry"
-                  list="ancestry-options"
-                />
-                <datalist id="ancestry-options">
-                  {ancestryNames.map(name => (
-                    <option key={name} value={name} />
-                  ))}
-                </datalist>
+                <Select
+                  value={form.ancestry || '__custom__'}
+                  onValueChange={(v) => setForm(prev => ({ ...prev, ancestry: v === '__custom__' ? '' : v }))}
+                >
+                  <SelectTrigger id="ancestry">
+                    <SelectValue placeholder="Select ancestry" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__custom__">Custom...</SelectItem>
+                    {ancestryNames.map(name => (
+                      <SelectItem key={name} value={name}>{name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {(!form.ancestry || !ancestryNames.includes(form.ancestry)) && (
+                  <Input
+                    value={form.ancestry}
+                    onChange={(e) => setForm(prev => ({ ...prev, ancestry: e.target.value }))}
+                    placeholder="Type custom ancestry..."
+                    className="mt-1"
+                  />
+                )}
               </div>
 
               <div className="space-y-2">
@@ -450,25 +460,8 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
                 <Input id="credit_rating" type="number" min="0" value={form.credit_rating} onChange={(e) => setForm(prev => ({ ...prev, credit_rating: parseInt(e.target.value) || 0 }))} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="charisma_score">Charisma Score</Label>
-                <Input id="charisma_score" type="number" min="1" max="20" value={form.charisma_score} onChange={(e) => setForm(prev => ({ ...prev, charisma_score: parseInt(e.target.value) || 10 }))} />
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="age">Age</Label>
                 <Input id="age" type="number" min="1" value={form.age || ''} onChange={(e) => setForm(prev => ({ ...prev, age: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Enter age" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="security_rating">Security Rating</Label>
-                <Select value={form.security_rating} onValueChange={(value) => setForm(prev => ({ ...prev, security_rating: value }))}>
-                  <SelectTrigger><SelectValue placeholder="Select rating" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="D">D - Minimal</SelectItem>
-                    <SelectItem value="C">C - Standard</SelectItem>
-                    <SelectItem value="B">B - Enhanced</SelectItem>
-                    <SelectItem value="A">A - High</SelectItem>
-                    <SelectItem value="S">S - Maximum</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="employer">Employer</Label>
@@ -488,7 +481,7 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
               {(['agility', 'strength', 'finesse', 'instinct', 'presence', 'knowledge'] as const).map(stat => (
                 <div key={stat} className="space-y-2">
                   <Label htmlFor={stat} className="capitalize">{stat}</Label>
-                  <Input id={stat} type="number" value={form[stat]} onChange={(e) => setForm(prev => ({ ...prev, [stat]: parseInt(e.target.value) || 10 }))} />
+                  <Input id={stat} type="number" value={form[stat]} onChange={(e) => setForm(prev => ({ ...prev, [stat]: parseInt(e.target.value) || 1 }))} />
                 </div>
               ))}
             </div>
