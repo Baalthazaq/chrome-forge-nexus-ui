@@ -26,6 +26,8 @@ const Roldex = () => {
   useEffect(() => {
     if (effectiveUser) {
       loadData();
+    } else {
+      setLoading(false);
     }
   }, [effectiveUser]);
 
