@@ -122,9 +122,9 @@ const Admin = () => {
         user.company?.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesLevel = levelFilter === 'all' || 
-        (levelFilter === 'low' && user.level <= 5) ||
-        (levelFilter === 'medium' && user.level > 5 && user.level <= 15) ||
-        (levelFilter === 'high' && user.level > 15);
+        (levelFilter === 'low' && user.level <= 3) ||
+        (levelFilter === 'medium' && user.level >= 4 && user.level <= 7) ||
+        (levelFilter === 'high' && user.level >= 8);
 
       const matchesClass = classFilter === 'all' || 
         user.character_class === classFilter ||
@@ -265,9 +265,9 @@ const Admin = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="low">Low (1-5)</SelectItem>
-                    <SelectItem value="medium">Medium (6-15)</SelectItem>
-                    <SelectItem value="high">High (16+)</SelectItem>
+                    <SelectItem value="low">Low (1-3)</SelectItem>
+                    <SelectItem value="medium">Medium (4-7)</SelectItem>
+                    <SelectItem value="high">High (8+)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
