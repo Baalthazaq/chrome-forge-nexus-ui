@@ -3,6 +3,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useCharacterSheet } from "@/hooks/useCharacterSheet";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Pencil, Eye } from "lucide-react";
 import { CharacterHeader } from "@/components/doppleganger/CharacterHeader";
 import { StatsGrid } from "@/components/doppleganger/StatsGrid";
 import { CombatSection } from "@/components/doppleganger/CombatSection";
@@ -16,6 +18,7 @@ const Doppleganger = () => {
   const { impersonatedUser } = useAdmin();
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
 
   const displayUser = impersonatedUser || user;
   const userId = displayUser ? ((displayUser as any).user_id || (displayUser as any).id) : undefined;
@@ -23,7 +26,7 @@ const Doppleganger = () => {
   const {
     sheet, updateSheet, loading: sheetLoading,
     gameCards, classCards, filteredSubclasses, ancestryCards, communityCards, domainCards,
-    selectedSubclass, baseEvasion, baseHP, domains,
+    selectedClass, selectedSubclass, baseEvasion, baseHP, domains,
     purchases,
   } = useCharacterSheet(userId);
 
@@ -47,12 +50,26 @@ const Doppleganger = () => {
     await supabase.from('profiles').update({ [stat]: value }).eq('user_id', userId);
   };
 
-  // Get armor base value from equipped armor purchase
+  // Profile field update handler
+  const handleProfileUpdate = async (field: string, value: any) => {
+    if (!userId) return;
+    setProfile((prev: any) => ({ ...prev, [field]: value }));
+    await supabase.from('profiles').update({ [field]: value }).eq('user_id', userId);
+  };
+
+  // Get armor base value and thresholds from equipped armor purchase
   const getArmorBaseValue = () => {
     if (!sheet?.armor_purchase_id) return 0;
     const armorPurchase = purchases.find(p => p.id === sheet.armor_purchase_id);
     const specs = armorPurchase?.shop_items?.specifications as any;
     return specs?.armor_score || specs?.base_armor || 0;
+  };
+
+  const getArmorThresholds = () => {
+    if (!sheet?.armor_purchase_id) return '';
+    const armorPurchase = purchases.find(p => p.id === sheet.armor_purchase_id);
+    const specs = armorPurchase?.shop_items?.specifications as any;
+    return specs?.armor_threshold || '';
   };
 
   if (profileLoading || sheetLoading) {
@@ -76,6 +93,19 @@ const Doppleganger = () => {
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 via-black to-purple-900/20" />
 
       <div className="relative z-10 container mx-auto px-4 py-6 max-w-6xl">
+        {/* Edit toggle */}
+        <div className="flex justify-end mb-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditing(!isEditing)}
+            className="border-gray-600 text-gray-300 hover:text-white"
+          >
+            {isEditing ? <Eye className="w-4 h-4 mr-1" /> : <Pencil className="w-4 h-4 mr-1" />}
+            {isEditing ? 'View Mode' : 'Edit Mode'}
+          </Button>
+        </div>
+
         <CharacterHeader
           profile={profile}
           sheet={sheet}
@@ -86,12 +116,15 @@ const Doppleganger = () => {
           communityCards={communityCards}
           domains={domains}
           displayUser={displayUser}
+          isEditing={isEditing}
+          onProfileUpdate={handleProfileUpdate}
         />
 
         <StatsGrid
           profile={profile}
           displayUser={displayUser}
           onStatChange={handleStatChange}
+          isEditing={isEditing}
         />
 
         <CombatSection
@@ -100,17 +133,21 @@ const Doppleganger = () => {
           baseEvasion={baseEvasion}
           baseHP={baseHP}
           armorBaseValue={getArmorBaseValue()}
+          armorThresholds={getArmorThresholds()}
+          isEditing={isEditing}
         />
 
         <ExperiencesSection
           sheet={sheet}
           updateSheet={updateSheet}
+          isEditing={isEditing}
         />
 
         <EquipmentSection
           sheet={sheet}
           updateSheet={updateSheet}
           purchases={purchases}
+          isEditing={isEditing}
         />
 
         <CardsSection
@@ -120,14 +157,17 @@ const Doppleganger = () => {
           ancestryCards={ancestryCards}
           communityCards={communityCards}
           selectedSubclass={selectedSubclass}
+          selectedClass={selectedClass}
           domainCards={domainCards}
           domains={domains}
+          isEditing={isEditing}
         />
 
         <DescriptionSection
           sheet={sheet}
           updateSheet={updateSheet}
           bio={profile.bio || ''}
+          isEditing={isEditing}
         />
       </div>
     </div>

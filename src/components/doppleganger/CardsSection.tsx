@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, X, Layers, BookOpen, PenTool } from "lucide-react";
+import { Plus, X, Layers, BookOpen, PenTool, Globe, Package } from "lucide-react";
 import { useState } from "react";
 import type { CharacterSheet, GameCard, SelectedCard } from "@/data/gameCardTypes";
 
@@ -14,17 +14,19 @@ interface Props {
   ancestryCards: GameCard[];
   communityCards: GameCard[];
   selectedSubclass: GameCard | undefined;
+  selectedClass: GameCard | undefined;
   domainCards: GameCard[];
   domains: string[];
+  isEditing: boolean;
 }
 
 export function CardsSection({
   sheet, updateSheet, gameCards,
-  ancestryCards, communityCards, selectedSubclass,
-  domainCards, domains,
+  ancestryCards, communityCards, selectedSubclass, selectedClass,
+  domainCards, domains, isEditing,
 }: Props) {
   const [showAddCard, setShowAddCard] = useState(false);
-  const [addType, setAddType] = useState<'domain' | 'blank'>('domain');
+  const [addType, setAddType] = useState<'domain' | 'open-domain' | 'other' | 'blank'>('domain');
   const [selectedDomainId, setSelectedDomainId] = useState('');
   const [customTitle, setCustomTitle] = useState('');
   const [customContent, setCustomContent] = useState('');
@@ -34,11 +36,29 @@ export function CardsSection({
   // Auto-included cards
   const autoCards: { title: string; content: string; source: string }[] = [];
 
-  // Ancestry cards
+  // Class Feature (auto-included)
+  if (selectedClass) {
+    const classMeta = selectedClass.metadata as any;
+    if (classMeta?.class_feature) {
+      autoCards.push({ title: `${selectedClass.name} Class Feature`, content: classMeta.class_feature, source: `Class` });
+    }
+    if (classMeta?.hope_feature) {
+      autoCards.push({ title: `${selectedClass.name} Hope Feature`, content: classMeta.hope_feature, source: `Class` });
+    }
+  }
+
+  // Ancestry cards - for custom ancestries, user picks two cards from any ancestry
   if (sheet.ancestry) {
-    ancestryCards
-      .filter(c => c.source === sheet.ancestry)
-      .forEach(c => autoCards.push({ title: c.name, content: c.content || '', source: `Ancestry: ${c.source}` }));
+    // Check if ancestry matches a known ancestry source
+    const knownSources = [...new Set(ancestryCards.map(c => c.source))].filter(Boolean);
+    const isKnownAncestry = knownSources.includes(sheet.ancestry);
+
+    if (isKnownAncestry) {
+      ancestryCards
+        .filter(c => c.source === sheet.ancestry)
+        .forEach(c => autoCards.push({ title: c.name, content: c.content || '', source: `Ancestry: ${c.source}` }));
+    }
+    // For custom ancestries, ancestry cards are picked via selected_card_ids
   }
 
   // Community card
@@ -48,7 +68,7 @@ export function CardsSection({
       .forEach(c => autoCards.push({ title: c.name, content: c.content || '', source: `Community: ${c.source}` }));
   }
 
-  // Subclass foundation
+  // Subclass foundation / specialization / mastery
   if (selectedSubclass) {
     const meta = selectedSubclass.metadata as any;
     if (meta?.foundation) {
@@ -62,15 +82,27 @@ export function CardsSection({
     }
   }
 
-  // Filtered domain cards for adding
+  // Domain cards filtered by class domains and level
   const availableDomains = domainCards.filter(c => {
     const meta = c.metadata as any;
     return domains.includes(meta?.domain || c.source) && (meta?.level || 0) <= sheet.level;
   });
 
+  // Open-domain: all domain cards at or below level
+  const allDomains = domainCards.filter(c => {
+    const meta = c.metadata as any;
+    return (meta?.level || 0) <= sheet.level;
+  });
+
+  // "Other" cards: ancestry cards (for custom race picks) + community cards + any other non-domain game cards
+  const otherCards = gameCards.filter(c =>
+    c.card_type === 'ancestry' || c.card_type === 'community'
+  );
+
   const addCard = () => {
-    if (addType === 'domain' && selectedDomainId) {
-      const card = gameCards.find(c => c.id === selectedDomainId);
+    const cardId = selectedDomainId;
+    if ((addType === 'domain' || addType === 'open-domain' || addType === 'other') && cardId) {
+      const card = gameCards.find(c => c.id === cardId);
       if (card) {
         updateSheet({
           selected_card_ids: [...selectedCards, { card_id: card.id }],
@@ -105,6 +137,20 @@ export function CardsSection({
     };
   };
 
+  const addTypeOptions: { key: typeof addType; label: string; icon: any }[] = [
+    { key: 'domain', label: 'Domain', icon: BookOpen },
+    { key: 'open-domain', label: 'Open-Domain', icon: Globe },
+    { key: 'other', label: 'Other', icon: Package },
+    { key: 'blank', label: 'Blank', icon: PenTool },
+  ];
+
+  const getListForType = () => {
+    if (addType === 'domain') return availableDomains;
+    if (addType === 'open-domain') return allDomains;
+    if (addType === 'other') return otherCards;
+    return [];
+  };
+
   return (
     <Card className="p-4 bg-gray-900/30 border-gray-700/50 mb-6">
       <div className="flex items-center justify-between mb-3">
@@ -112,56 +158,55 @@ export function CardsSection({
           <Layers className="w-5 h-5 text-purple-400" />
           Cards
         </h3>
-        <Button variant="outline" size="sm" onClick={() => setShowAddCard(!showAddCard)} className="border-gray-600 text-gray-300">
-          <Plus className="w-4 h-4 mr-1" />
-          Add Card
-        </Button>
+        {isEditing && (
+          <Button variant="outline" size="sm" onClick={() => setShowAddCard(!showAddCard)} className="border-gray-600 text-gray-300">
+            <Plus className="w-4 h-4 mr-1" />
+            Add Card
+          </Button>
+        )}
       </div>
 
       {/* Add Card Form */}
-      {showAddCard && (
+      {showAddCard && isEditing && (
         <div className="p-3 bg-gray-800/50 rounded-lg mb-3 space-y-2">
-          <div className="flex gap-2">
-            <Button
-              variant={addType === 'domain' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setAddType('domain')}
-              className={addType === 'domain' ? '' : 'border-gray-600 text-gray-400'}
-            >
-              <BookOpen className="w-3 h-3 mr-1" />
-              Domain
-            </Button>
-            <Button
-              variant={addType === 'blank' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setAddType('blank')}
-              className={addType === 'blank' ? '' : 'border-gray-600 text-gray-400'}
-            >
-              <PenTool className="w-3 h-3 mr-1" />
-              Blank
-            </Button>
+          <div className="flex gap-2 flex-wrap">
+            {addTypeOptions.map(({ key, label, icon: Icon }) => (
+              <Button
+                key={key}
+                variant={addType === key ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => { setAddType(key); setSelectedDomainId(''); }}
+                className={addType === key ? '' : 'border-gray-600 text-gray-400'}
+              >
+                <Icon className="w-3 h-3 mr-1" />
+                {label}
+              </Button>
+            ))}
           </div>
 
-          {addType === 'domain' ? (
+          {addType !== 'blank' ? (
             <div>
               <Select value={selectedDomainId} onValueChange={setSelectedDomainId}>
-                <SelectTrigger className="bg-gray-900/50 border-gray-600 text-sm">
-                  <SelectValue placeholder="Select a domain card..." />
+                <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm">
+                  <SelectValue placeholder={`Select a ${addType} card...`} />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableDomains.map(c => {
+                  {getListForType().map(c => {
                     const meta = c.metadata as any;
+                    const label = c.card_type === 'domain'
+                      ? `${c.name} (${c.source} Lv${meta?.level}) — ${meta?.type}`
+                      : `${c.name} (${c.source || c.card_type})`;
                     return (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name} ({c.source} Lv{meta?.level}) — {meta?.type}
-                      </SelectItem>
+                      <SelectItem key={c.id} value={c.id}>{label}</SelectItem>
                     );
                   })}
                 </SelectContent>
               </Select>
-              {availableDomains.length === 0 && (
+              {getListForType().length === 0 && (
                 <div className="text-gray-500 text-xs mt-1">
-                  {domains.length === 0 ? 'Select a class first to see available domain cards.' : 'No matching domain cards for your level.'}
+                  {addType === 'domain' && domains.length === 0
+                    ? 'Select a class first to see available domain cards.'
+                    : 'No matching cards for your level.'}
                 </div>
               )}
             </div>
@@ -171,19 +216,19 @@ export function CardsSection({
                 value={customTitle}
                 onChange={(e) => setCustomTitle(e.target.value)}
                 placeholder="Card title..."
-                className="bg-gray-900/50 border-gray-600 text-sm"
+                className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm"
               />
               <Textarea
                 value={customContent}
                 onChange={(e) => setCustomContent(e.target.value)}
                 placeholder="Card content..."
-                className="bg-gray-900/50 border-gray-600 text-sm"
+                className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm"
                 rows={3}
               />
             </div>
           )}
 
-          <Button size="sm" onClick={addCard} disabled={addType === 'domain' ? !selectedDomainId : !customTitle}>
+          <Button size="sm" onClick={addCard} disabled={addType === 'blank' ? !customTitle : !selectedDomainId}>
             Add
           </Button>
         </div>
@@ -200,7 +245,7 @@ export function CardsSection({
                   <span className="text-white text-sm font-semibold">{card.title}</span>
                   <span className="text-gray-500 text-xs shrink-0 ml-2">{card.source}</span>
                 </div>
-                <div className="text-gray-400 text-xs whitespace-pre-wrap line-clamp-4">{card.content}</div>
+                <div className="text-gray-300 text-xs whitespace-pre-wrap">{card.content}</div>
               </div>
             ))}
           </div>
@@ -220,12 +265,14 @@ export function CardsSection({
                     <span className="text-white text-sm font-semibold">{details.title}</span>
                     <div className="flex items-center gap-1 shrink-0 ml-2">
                       <span className="text-gray-500 text-xs">{details.source}</span>
-                      <button onClick={() => removeCard(i)} className="text-gray-500 hover:text-red-400">
-                        <X className="w-3 h-3" />
-                      </button>
+                      {isEditing && (
+                        <button onClick={() => removeCard(i)} className="text-gray-500 hover:text-red-400">
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div className="text-gray-400 text-xs whitespace-pre-wrap line-clamp-4">{details.content}</div>
+                  <div className="text-gray-300 text-xs whitespace-pre-wrap">{details.content}</div>
                 </div>
               );
             })}

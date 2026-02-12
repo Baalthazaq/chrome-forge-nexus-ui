@@ -1,7 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, ArrowLeft } from "lucide-react";
+import { Camera, ArrowLeft, Pencil, Check, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -18,15 +19,19 @@ interface Props {
   communityCards: GameCard[];
   domains: string[];
   displayUser: any;
+  isEditing: boolean;
+  onProfileUpdate: (field: string, value: any) => void;
 }
 
 export function CharacterHeader({
   profile, sheet, updateSheet,
   classCards, filteredSubclasses, ancestryCards, communityCards,
-  domains, displayUser,
+  domains, displayUser, isEditing, onProfileUpdate,
 }: Props) {
   const { toast } = useToast();
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState(profile.character_name || '');
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -49,8 +54,11 @@ export function CharacterHeader({
     }
   };
 
-  // Get unique ancestry sources for grouping
-  const ancestrySources = [...new Set(ancestryCards.map(c => c.source))].filter(Boolean) as string[];
+  const saveName = async () => {
+    onProfileUpdate('character_name', nameValue);
+    setEditingName(false);
+  };
+
   const communitySources = [...new Set(communityCards.map(c => c.source))].filter(Boolean) as string[];
 
   const handleClassChange = (value: string) => {
@@ -97,99 +105,130 @@ export function CharacterHeader({
 
           {/* Identity Selectors */}
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {/* Name */}
+            {/* Name - editable */}
             <div>
               <label className="text-gray-400 text-xs mb-1 block">Name</label>
-              <div className="text-2xl font-bold text-white truncate">{profile.character_name || 'Unnamed'}</div>
+              {editingName ? (
+                <div className="flex items-center gap-1">
+                  <Input
+                    value={nameValue}
+                    onChange={(e) => setNameValue(e.target.value)}
+                    className="bg-gray-800/50 border-gray-600 text-gray-100 text-lg font-bold"
+                    autoFocus
+                    onKeyDown={(e) => e.key === 'Enter' && saveName()}
+                  />
+                  <button onClick={saveName} className="text-green-400 hover:text-green-300"><Check className="w-4 h-4" /></button>
+                  <button onClick={() => setEditingName(false)} className="text-gray-500 hover:text-gray-300"><X className="w-4 h-4" /></button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="text-2xl font-bold text-white truncate">{profile.character_name || 'Unnamed'}</div>
+                  <button onClick={() => { setNameValue(profile.character_name || ''); setEditingName(true); }} className="text-gray-500 hover:text-gray-300">
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Level */}
             <div>
               <label className="text-gray-400 text-xs mb-1 block">Level</label>
-              <Select value={String(sheet.level)} onValueChange={(v) => updateSheet({ level: Number(v) })}>
-                <SelectTrigger className="bg-gray-900/50 border-gray-700">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 10 }, (_, i) => (
-                    <SelectItem key={i + 1} value={String(i + 1)}>{i + 1}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isEditing ? (
+                <Select value={String(sheet.level)} onValueChange={(v) => updateSheet({ level: Number(v) })}>
+                  <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 10 }, (_, i) => (
+                      <SelectItem key={i + 1} value={String(i + 1)}>{i + 1}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="text-lg font-semibold text-gray-100">{sheet.level}</div>
+              )}
             </div>
 
             {/* Class */}
             <div>
               <label className="text-gray-400 text-xs mb-1 block">Class</label>
-              <Select value={sheet.class || '__none__'} onValueChange={handleClassChange}>
-                <SelectTrigger className="bg-gray-900/50 border-gray-700">
-                  <SelectValue placeholder="Select class" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {classCards.map(c => (
-                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isEditing ? (
+                <Select value={sheet.class || '__none__'} onValueChange={handleClassChange}>
+                  <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100">
+                    <SelectValue placeholder="Select class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {classCards.map(c => (
+                      <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="text-lg font-semibold text-gray-100">{sheet.class || '—'}</div>
+              )}
             </div>
 
             {/* Subclass */}
             <div>
               <label className="text-gray-400 text-xs mb-1 block">Subclass</label>
-              <Select
-                value={sheet.subclass || '__none__'}
-                onValueChange={(v) => updateSheet({ subclass: v === '__none__' ? null : v })}
-                disabled={!sheet.class}
-              >
-                <SelectTrigger className="bg-gray-900/50 border-gray-700">
-                  <SelectValue placeholder={sheet.class ? "Select subclass" : "Choose class first"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {filteredSubclasses.map(c => (
-                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isEditing ? (
+                <Select
+                  value={sheet.subclass || '__none__'}
+                  onValueChange={(v) => updateSheet({ subclass: v === '__none__' ? null : v })}
+                  disabled={!sheet.class}
+                >
+                  <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100">
+                    <SelectValue placeholder={sheet.class ? "Select subclass" : "Choose class first"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {filteredSubclasses.map(c => (
+                      <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="text-lg font-semibold text-gray-100">{sheet.subclass || '—'}</div>
+              )}
             </div>
 
-            {/* Ancestry */}
+            {/* Ancestry - free text */}
             <div>
               <label className="text-gray-400 text-xs mb-1 block">Ancestry</label>
-              <Select
-                value={sheet.ancestry || '__none__'}
-                onValueChange={(v) => updateSheet({ ancestry: v === '__none__' ? null : v })}
-              >
-                <SelectTrigger className="bg-gray-900/50 border-gray-700">
-                  <SelectValue placeholder="Select ancestry" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {ancestrySources.map(src => (
-                    <SelectItem key={src} value={src}>{src}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isEditing ? (
+                <Input
+                  value={sheet.ancestry || ''}
+                  onChange={(e) => updateSheet({ ancestry: e.target.value || null })}
+                  placeholder="Enter ancestry (e.g. Elf, Half-Dragon...)"
+                  className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm"
+                />
+              ) : (
+                <div className="text-lg font-semibold text-gray-100">{sheet.ancestry || '—'}</div>
+              )}
             </div>
 
             {/* Community */}
             <div>
               <label className="text-gray-400 text-xs mb-1 block">Community</label>
-              <Select
-                value={sheet.community || '__none__'}
-                onValueChange={(v) => updateSheet({ community: v === '__none__' ? null : v })}
-              >
-                <SelectTrigger className="bg-gray-900/50 border-gray-700">
-                  <SelectValue placeholder="Select community" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {communitySources.map(src => (
-                    <SelectItem key={src} value={src}>{src}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isEditing ? (
+                <Select
+                  value={sheet.community || '__none__'}
+                  onValueChange={(v) => updateSheet({ community: v === '__none__' ? null : v })}
+                >
+                  <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100">
+                    <SelectValue placeholder="Select community" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {communitySources.map(src => (
+                      <SelectItem key={src} value={src}>{src}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="text-lg font-semibold text-gray-100">{sheet.community || '—'}</div>
+              )}
             </div>
 
             {/* Domains (read-only, derived from class) */}
