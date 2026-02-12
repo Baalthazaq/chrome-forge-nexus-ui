@@ -2,3 +2,6 @@ project_id = "csyajgxbptbtluxdiepi"
 
 [functions.seed-shop]
 verify_jwt = false
+
+[functions.seed-cards]
+verify_jwt = false
