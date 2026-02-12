@@ -13,20 +13,17 @@ serve(async (req) => {
   }
 
   try {
-    // Get the authorization header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       return new Response('Unauthorized', { status: 401, headers: corsHeaders })
     }
 
-    // Create a Supabase client with the anon key for user verification
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     })
 
-    // Verify the user is an admin
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return new Response('Unauthorized', { status: 401, headers: corsHeaders })
@@ -43,10 +40,11 @@ serve(async (req) => {
       return new Response('Forbidden - Admin access required', { status: 403, headers: corsHeaders })
     }
 
-    // Parse the request body with all attributes
     const { 
       character_name, 
       character_class, 
+      subclass,
+      community,
       level = 1, 
       credits = 100,
       credit_rating,
@@ -57,14 +55,12 @@ serve(async (req) => {
       notes,
       is_searchable = true,
       has_succubus_profile = false,
-      // Core stats
       agility = 10,
       strength = 10,
       finesse = 10,
       instinct = 10,
       presence = 10,
       knowledge = 10,
-      // Profile details
       age,
       bio,
       employer,
@@ -78,13 +74,9 @@ serve(async (req) => {
       return new Response('Character name is required', { status: 400, headers: corsHeaders })
     }
 
-    // Create admin client with service role key
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
+      auth: { autoRefreshToken: false, persistSession: false }
     })
 
     // Create the NPC user
@@ -95,10 +87,7 @@ serve(async (req) => {
       email: randomEmail,
       password: randomPassword,
       email_confirm: true,
-      user_metadata: {
-        character_name,
-        is_npc: true
-      }
+      user_metadata: { character_name, is_npc: true }
     })
 
     if (authError) {
@@ -106,7 +95,7 @@ serve(async (req) => {
       return new Response(authError.message, { status: 400, headers: corsHeaders })
     }
 
-    // Update the profile with all attributes
+    // Update the profile
     const { error: profileError } = await adminClient
       .from('profiles')
       .upsert({
@@ -123,14 +112,12 @@ serve(async (req) => {
         notes: notes || null,
         is_searchable: is_searchable ?? true,
         has_succubus_profile: has_succubus_profile || false,
-        // Core stats
         agility: agility || 10,
         strength: strength || 10,
         finesse: finesse || 10,
         instinct: instinct || 10,
         presence: presence || 10,
         knowledge: knowledge || 10,
-        // Profile details
         age: age || null,
         bio: bio || 'NPC Account',
         employer: employer || null,
@@ -138,13 +125,28 @@ serve(async (req) => {
         address: address || null,
         aliases: aliases || [],
         security_rating: security_rating || 'C'
-      }, {
-        onConflict: 'user_id'
-      })
+      }, { onConflict: 'user_id' })
 
     if (profileError) {
       console.error('Profile error:', profileError)
       return new Response(profileError.message, { status: 400, headers: corsHeaders })
+    }
+
+    // Create character_sheet so Doppleganger works for this NPC
+    const { error: sheetError } = await adminClient
+      .from('character_sheets')
+      .upsert({
+        user_id: authData.user.id,
+        class: character_class || null,
+        subclass: subclass || null,
+        community: community || null,
+        ancestry: ancestry || null,
+        level: level || 1,
+      }, { onConflict: 'user_id' })
+
+    if (sheetError) {
+      console.error('Character sheet error:', sheetError)
+      // Non-fatal: profile was created, sheet sync failed
     }
 
     return new Response(JSON.stringify({ 
