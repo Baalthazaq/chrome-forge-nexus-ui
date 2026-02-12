@@ -62,14 +62,14 @@ const Doppleganger = () => {
     if (!sheet?.armor_purchase_id) return 0;
     const armorPurchase = purchases.find(p => p.id === sheet.armor_purchase_id);
     const specs = armorPurchase?.shop_items?.specifications as any;
-    return specs?.armor_score || specs?.base_armor || 0;
+    return specs?.armorBase || specs?.armor_score || specs?.base_armor || 0;
   };
 
   const getArmorThresholds = () => {
     if (!sheet?.armor_purchase_id) return '';
     const armorPurchase = purchases.find(p => p.id === sheet.armor_purchase_id);
     const specs = armorPurchase?.shop_items?.specifications as any;
-    return specs?.armor_threshold || '';
+    return specs?.armorThreshold || specs?.armor_threshold || '';
   };
 
   if (profileLoading || sheetLoading) {

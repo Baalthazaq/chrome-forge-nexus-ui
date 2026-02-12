@@ -41,8 +41,8 @@ function ItemCard({ purchase }: { purchase: any }) {
       )}
       {isArmor && specs && (
         <div className="flex flex-wrap gap-3 text-xs text-orange-300">
-          {(specs.armor_score || specs.base_armor) && <span>Base: {specs.armor_score || specs.base_armor}</span>}
-          {specs.armor_threshold && <span>Threshold: {specs.armor_threshold}</span>}
+          {(specs.armorBase || specs.armor_score) && <span>Base: {specs.armorBase || specs.armor_score}</span>}
+          {(specs.armorThreshold || specs.armor_threshold) && <span>Threshold: {specs.armorThreshold || specs.armor_threshold}</span>}
         </div>
       )}
     </div>
