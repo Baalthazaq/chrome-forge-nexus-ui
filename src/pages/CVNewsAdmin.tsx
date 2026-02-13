@@ -48,12 +48,8 @@ const CVNewsAdmin = () => {
   const [isPublished, setIsPublished] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !isAdmin) {
-      navigate('/');
-      return;
-    }
     if (isAdmin) loadArticles();
-  }, [isAdmin, isLoading]);
+  }, [isAdmin]);
 
   const loadArticles = async () => {
     const { data, error } = await supabase
