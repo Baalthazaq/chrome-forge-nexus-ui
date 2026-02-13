@@ -1,0 +1,1 @@
+ALTER TABLE public.character_sheets ADD COLUMN armor_modifier integer NOT NULL DEFAULT 0;
