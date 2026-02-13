@@ -19,28 +19,12 @@ const apps = [
     color: "from-violet-500 to-purple-600"
   },
   {
-    id: "charisma",
-    name: "Cha",
-    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Cha.gif",
-    description: "Social Credit Score",
-    route: "/charisma",
-    color: "from-pink-500 to-purple-600"
-  },
-  {
     id: "sending",
     name: "Sending Stone",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Sending%20Stone.gif",
     description: "25-Word Messages",
     route: "/sending",
     color: "from-cyan-400 to-blue-500"
-  },
-  {
-    id: "questseek",
-    name: "Questseek",
-    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Questseek.gif",
-    description: "Notice Board",
-    route: "/questseek",
-    color: "from-emerald-400 to-teal-500"
   },
   {
     id: "vault",
@@ -51,18 +35,10 @@ const apps = [
     color: "from-yellow-400 to-orange-500"
   },
   {
-    id: "succubus",
-    name: "Succubus",
-    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Succubus.gif",
-    description: "Social Connections",
-    route: "/succubus",
-    color: "from-red-500 to-pink-500"
-  },
-  {
     id: "atunes",
     name: "@tunes",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Attunes.gif",
-    description: "Attunement & Gear",
+    description: "Attunement & Subs",
     route: "/atunes",
     color: "from-gray-500 to-slate-600"
   },
@@ -83,14 +59,6 @@ const apps = [
     color: "from-green-500 to-emerald-500"
   },
   {
-    id: "beholdr",
-    name: "BeholdR",
-    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/BHoldRC.gif",
-    description: "Video Feed",
-    route: "/beholdr",
-    color: "from-purple-500 to-blue-500"
-  },
-  {
     id: "tome",
     name: "ToMe",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Tome2.gif",
@@ -105,6 +73,42 @@ const apps = [
     description: "Contacts",
     route: "/roldex",
     color: "from-blue-500 to-indigo-500"
+  },
+  {
+    id: "beholdr",
+    name: "BeholdR",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/BHoldRC.gif",
+    description: "Video Feed",
+    route: "/beholdr",
+    color: "from-purple-500 to-blue-500",
+    comingSoon: true
+  },
+  {
+    id: "succubus",
+    name: "Succubus",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Succubus.gif",
+    description: "Social Connections",
+    route: "/succubus",
+    color: "from-red-500 to-pink-500",
+    comingSoon: true
+  },
+  {
+    id: "charisma",
+    name: "Cha",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Cha.gif",
+    description: "Social Credit Score",
+    route: "/charisma",
+    color: "from-pink-500 to-purple-600",
+    comingSoon: true
+  },
+  {
+    id: "questseek",
+    name: "Questseek",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Questseek.gif",
+    description: "Notice Board",
+    route: "/questseek",
+    color: "from-emerald-400 to-teal-500",
+    comingSoon: true
   }
 ];
 
@@ -230,8 +234,8 @@ const Index = () => {
                       <h3 className="text-cyan-300 font-bold text-sm group-hover:text-cyan-100 transition-colors">
                         {app.name}
                       </h3>
-                      <p className="text-muted-foreground text-xs mt-1 font-mono">
-                        {app.description}
+                    <p className="text-muted-foreground text-xs mt-1 font-mono">
+                        {app.comingSoon ? "Coming Soon" : app.description}
                       </p>
                     </div>
                   </div>
