@@ -3,28 +3,39 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Send, Clock, User, MessageCircle, Users, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Send, Clock, User, MessageCircle, Users, Edit, Trash2, Plus, LogOut, UserPlus, Pencil } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+
+interface Participant {
+  user_id: string;
+  joined_at: string;
+  left_at: string | null;
+  character_name?: string;
+}
 
 interface Stone {
   id: string;
-  participant_one_id: string;
-  participant_two_id: string;
+  name: string | null;
+  is_group: boolean;
+  created_by: string | null;
+  participant_one_id: string | null;
+  participant_two_id: string | null;
   updated_at: string;
-  last_cast_at: string;
-  other_participant?: {
-    character_name: string;
-  };
+  last_cast_at: string | null;
+  participants: Participant[];
+  display_name: string;
   latest_cast?: {
     message: string;
     sender_id: string;
     created_at: string;
+    sender_name?: string;
   };
   unread_count?: number;
 }
@@ -41,6 +52,7 @@ interface Cast {
   original_message: string | null;
   is_deleted: boolean;
   is_edited: boolean;
+  sender_name?: string;
 }
 
 interface Profile {
@@ -52,27 +64,35 @@ interface Profile {
 const Sending = () => {
   const { user } = useAuth();
   const { impersonatedUser } = useAdmin();
-  
-  // Use impersonated user if available, otherwise use authenticated user
   const currentUser = impersonatedUser ? { id: impersonatedUser.user_id } : user;
+
   const [message, setMessage] = useState("");
   const [selectedStone, setSelectedStone] = useState<Stone | null>(null);
   const [stones, setStones] = useState<Stone[]>([]);
   const [casts, setCasts] = useState<Cast[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [showNewStone, setShowNewStone] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
   const [newRecipientId, setNewRecipientId] = useState("");
   const [editingCast, setEditingCast] = useState<Cast | null>(null);
   const [editMessage, setEditMessage] = useState("");
-  
+  const [groupName, setGroupName] = useState("");
+  const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([]);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [showRename, setShowRename] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
   const wordCount = message.trim().split(/\s+/).filter(word => word.length > 0).length;
 
   useEffect(() => {
     if (currentUser) {
       loadStones();
       loadProfiles();
+      loadAllProfiles();
     }
   }, [currentUser]);
 
@@ -81,58 +101,112 @@ const Sending = () => {
       loadCasts(selectedStone.id);
       markMessagesAsRead(selectedStone.id);
     }
-  }, [selectedStone]);
+  }, [selectedStone?.id]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [casts]);
+
+  const getProfileName = (userId: string, profilesList: Profile[]) => {
+    return profilesList.find(p => p.user_id === userId)?.character_name || 'Unknown';
+  };
+
+  const loadAllProfiles = async () => {
+    const { data } = await supabase.from('profiles').select('id, user_id, character_name');
+    if (data) setAllProfiles(data as Profile[]);
+  };
 
   const loadStones = async () => {
     try {
-      const { data, error } = await supabase
+      // Get stones where user is a participant (via junction table)
+      const { data: participantRows, error: pError } = await supabase
+        .from('stone_participants')
+        .select('stone_id')
+        .eq('user_id', currentUser?.id);
+
+      if (pError) throw pError;
+
+      const stoneIds = participantRows?.map(r => r.stone_id) || [];
+
+      // Also get legacy 1:1 stones
+      const { data: legacyStones, error: lError } = await supabase
         .from('stones')
-        .select(`
-          *,
-          casts!inner(message, sender_id, created_at)
-        `)
-        .or(`participant_one_id.eq.${currentUser?.id},participant_two_id.eq.${currentUser?.id}`)
+        .select('id')
+        .or(`participant_one_id.eq.${currentUser?.id},participant_two_id.eq.${currentUser?.id}`);
+
+      if (lError) throw lError;
+
+      const allStoneIds = [...new Set([...stoneIds, ...(legacyStones?.map(s => s.id) || [])])];
+
+      if (allStoneIds.length === 0) {
+        setStones([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data: stonesData, error: sError } = await supabase
+        .from('stones')
+        .select('*')
+        .in('id', allStoneIds)
         .order('updated_at', { ascending: false });
 
-      if (error) throw error;
+      if (sError) throw sError;
 
-      // Get latest cast for each stone and other participant info
+      // Load all profiles for name lookups
+      const { data: profs } = await supabase.from('profiles').select('user_id, character_name');
+      const profMap = new Map((profs || []).map(p => [p.user_id, p.character_name || 'Unknown']));
+
       const stonesWithInfo = await Promise.all(
-        data.map(async (stone) => {
-          const otherParticipantId = stone.participant_one_id === currentUser?.id 
-            ? stone.participant_two_id 
-            : stone.participant_one_id;
+        (stonesData || []).map(async (stone) => {
+          // Get participants from junction table
+          const { data: participants } = await supabase
+            .from('stone_participants')
+            .select('user_id, joined_at, left_at')
+            .eq('stone_id', stone.id);
 
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('character_name')
-            .eq('user_id', otherParticipantId)
-            .single();
+          const participantList: Participant[] = (participants || []).map(p => ({
+            ...p,
+            character_name: profMap.get(p.user_id) || 'Unknown',
+          }));
 
+          // Display name
+          let displayName: string;
+          if (stone.is_group && stone.name) {
+            displayName = stone.name;
+          } else {
+            const others = participantList.filter(p => p.user_id !== currentUser?.id && !p.left_at);
+            displayName = others.map(p => p.character_name).join(', ') || 'Empty conversation';
+          }
+
+          // Latest cast
           const { data: latestCast } = await supabase
             .from('casts')
             .select('*')
             .eq('stone_id', stone.id)
-            .eq('is_deleted', false) // Only show non-deleted messages
+            .eq('is_deleted', false)
             .order('created_at', { ascending: false })
             .limit(1)
             .single();
 
-          // Count unread messages (messages from other participant that haven't been read)
+          // Unread count
           const { count: unreadCount } = await supabase
             .from('casts')
             .select('*', { count: 'exact' })
             .eq('stone_id', stone.id)
             .eq('is_deleted', false)
-            .neq('sender_id', currentUser?.id) // Messages from other participant
-            .is('read_at', null); // Not read yet
+            .neq('sender_id', currentUser?.id)
+            .is('read_at', null);
 
           return {
             ...stone,
-            other_participant: profile,
-            latest_cast: latestCast,
-            unread_count: unreadCount || 0
-          };
+            participants: participantList,
+            display_name: displayName,
+            latest_cast: latestCast ? {
+              ...latestCast,
+              sender_name: profMap.get(latestCast.sender_id),
+            } : undefined,
+            unread_count: unreadCount || 0,
+          } as Stone;
         })
       );
 
@@ -147,36 +221,22 @@ const Sending = () => {
 
   const loadProfiles = async () => {
     try {
-      console.log('Current user ID:', currentUser?.id);
-      
-      // Get active contacts first
       const { data: contactsData, error } = await supabase
         .from('contacts')
         .select('contact_user_id')
         .eq('user_id', currentUser?.id)
         .eq('is_active', true);
 
-      console.log('Contacts query result:', contactsData, error);
-
       if (error) throw error;
+      if (!contactsData || contactsData.length === 0) { setProfiles([]); return; }
 
-      if (!contactsData || contactsData.length === 0) {
-        setProfiles([]);
-        return;
-      }
-
-      // Get profiles for all contacts
-      const contactUserIds = contactsData.map(contact => contact.contact_user_id);
-      const { data: profilesData, error: profilesError } = await supabase
+      const contactUserIds = contactsData.map(c => c.contact_user_id);
+      const { data: profilesData } = await supabase
         .from('profiles')
         .select('*')
         .in('user_id', contactUserIds);
 
-      console.log('Profiles query result:', profilesData, profilesError);
-
-      if (profilesError) throw profilesError;
-
-      setProfiles(profilesData || []);
+      setProfiles((profilesData || []) as Profile[]);
     } catch (error) {
       console.error('Error loading profiles:', error);
     }
@@ -188,11 +248,16 @@ const Sending = () => {
         .from('casts')
         .select('*')
         .eq('stone_id', stoneId)
-        .eq('is_deleted', false) // Only show non-deleted messages for users
+        .eq('is_deleted', false)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setCasts(data);
+
+      // Load profile names for senders
+      const { data: profs } = await supabase.from('profiles').select('user_id, character_name');
+      const profMap = new Map((profs || []).map(p => [p.user_id, p.character_name || 'Unknown']));
+
+      setCasts((data || []).map(c => ({ ...c, sender_name: profMap.get(c.sender_id) })));
     } catch (error) {
       console.error('Error loading casts:', error);
       toast.error('Failed to load messages');
@@ -201,16 +266,12 @@ const Sending = () => {
 
   const markMessagesAsRead = async (stoneId: string) => {
     try {
-      const { error } = await supabase
+      await supabase
         .from('casts')
         .update({ read_at: new Date().toISOString() })
         .eq('stone_id', stoneId)
-        .neq('sender_id', currentUser?.id) // Only mark messages from other participant as read
-        .is('read_at', null); // Only update unread messages
-
-      if (error) throw error;
-      
-      // Reload stones to update unread counts
+        .neq('sender_id', currentUser?.id)
+        .is('read_at', null);
       loadStones();
     } catch (error) {
       console.error('Error marking messages as read:', error);
@@ -219,49 +280,212 @@ const Sending = () => {
 
   const createNewStone = async (recipientId: string) => {
     try {
-      // Check if stone already exists
-      const { data: existingStone } = await supabase
-        .from('stones')
-        .select('*')
-        .or(`and(participant_one_id.eq.${currentUser?.id},participant_two_id.eq.${recipientId}),and(participant_one_id.eq.${recipientId},participant_two_id.eq.${currentUser?.id})`)
-        .single();
+      // Check if 1:1 stone already exists via participants
+      const { data: myStones } = await supabase
+        .from('stone_participants')
+        .select('stone_id')
+        .eq('user_id', currentUser?.id);
 
-      if (existingStone) {
-        toast.error('Conversation already exists with this user');
-        return;
+      const { data: theirStones } = await supabase
+        .from('stone_participants')
+        .select('stone_id')
+        .eq('user_id', recipientId);
+
+      const myStoneIds = new Set(myStones?.map(s => s.stone_id) || []);
+      const commonStoneIds = (theirStones || []).filter(s => myStoneIds.has(s.stone_id)).map(s => s.stone_id);
+
+      // Check if any common stone is a non-group 1:1
+      if (commonStoneIds.length > 0) {
+        const { data: commonStones } = await supabase
+          .from('stones')
+          .select('id, is_group')
+          .in('id', commonStoneIds)
+          .eq('is_group', false);
+
+        if (commonStones && commonStones.length > 0) {
+          toast.error('Conversation already exists with this user');
+          return;
+        }
       }
 
       const { data, error } = await supabase
         .from('stones')
         .insert({
           participant_one_id: currentUser?.id,
-          participant_two_id: recipientId
+          participant_two_id: recipientId,
+          is_group: false,
+          created_by: currentUser?.id,
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('character_name')
-        .eq('user_id', recipientId)
-        .single();
+      // Add both participants to junction table
+      await supabase.from('stone_participants').insert([
+        { stone_id: data.id, user_id: currentUser?.id },
+        { stone_id: data.id, user_id: recipientId },
+      ]);
 
-      const newStone = {
-        ...data,
-        other_participant: profile,
-        latest_cast: null
-      };
-
-      setStones(prev => [newStone, ...prev]);
-      setSelectedStone(newStone);
       setShowNewStone(false);
       setNewRecipientId("");
-      toast.success('New conversation started');
+      toast.success('Conversation started');
+      await loadStones();
     } catch (error) {
       console.error('Error creating stone:', error);
       toast.error('Failed to start conversation');
+    }
+  };
+
+  const createGroupStone = async () => {
+    if (!groupName.trim() || selectedGroupMembers.length === 0) {
+      toast.error('Please enter a group name and select at least one member');
+      return;
+    }
+
+    try {
+      const allMembers = [currentUser?.id!, ...selectedGroupMembers].sort();
+
+      // Check for duplicate group with exact same members
+      // We'll check after creation since it's complex to do beforehand with sorted sets
+
+      const { data, error } = await supabase
+        .from('stones')
+        .insert({
+          is_group: true,
+          name: groupName.trim(),
+          created_by: currentUser?.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Add all participants
+      const participantInserts = allMembers.map(userId => ({
+        stone_id: data.id,
+        user_id: userId,
+      }));
+
+      await supabase.from('stone_participants').insert(participantInserts);
+
+      // Auto-create contacts for all members
+      await autoCreateContacts(allMembers, groupName.trim());
+
+      setShowNewGroup(false);
+      setGroupName("");
+      setSelectedGroupMembers([]);
+      toast.success('Group created!');
+      await loadStones();
+    } catch (error) {
+      console.error('Error creating group:', error);
+      toast.error('Failed to create group');
+    }
+  };
+
+  const autoCreateContacts = async (memberIds: string[], chatName: string) => {
+    try {
+      for (const userId of memberIds) {
+        for (const otherUserId of memberIds) {
+          if (userId === otherUserId) continue;
+
+          // Check if contact already exists
+          const { data: existing } = await supabase
+            .from('contacts')
+            .select('id, relationship')
+            .eq('user_id', userId)
+            .eq('contact_user_id', otherUserId)
+            .single();
+
+          if (!existing) {
+            await supabase.from('contacts').insert({
+              user_id: userId,
+              contact_user_id: otherUserId,
+              relationship: `From: ${chatName}`,
+              is_active: true,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error auto-creating contacts:', error);
+    }
+  };
+
+  const addMemberToGroup = async (userId: string) => {
+    if (!selectedStone || !selectedStone.is_group) return;
+
+    try {
+      // Check if already a participant
+      const existing = selectedStone.participants.find(p => p.user_id === userId);
+      if (existing && !existing.left_at) {
+        toast.error('Already a member');
+        return;
+      }
+
+      if (existing && existing.left_at) {
+        // Re-join: clear left_at
+        await supabase
+          .from('stone_participants')
+          .update({ left_at: null, joined_at: new Date().toISOString() })
+          .eq('stone_id', selectedStone.id)
+          .eq('user_id', userId);
+      } else {
+        await supabase.from('stone_participants').insert({
+          stone_id: selectedStone.id,
+          user_id: userId,
+        });
+      }
+
+      // Auto-create contacts
+      const activeMembers = selectedStone.participants
+        .filter(p => !p.left_at)
+        .map(p => p.user_id);
+      await autoCreateContacts([...activeMembers, userId], selectedStone.name || selectedStone.display_name);
+
+      setShowAddMember(false);
+      toast.success('Member added');
+      await loadStones();
+    } catch (error) {
+      console.error('Error adding member:', error);
+      toast.error('Failed to add member');
+    }
+  };
+
+  const leaveGroup = async () => {
+    if (!selectedStone) return;
+
+    try {
+      await supabase
+        .from('stone_participants')
+        .update({ left_at: new Date().toISOString() })
+        .eq('stone_id', selectedStone.id)
+        .eq('user_id', currentUser?.id);
+
+      setSelectedStone(null);
+      toast.success('Left the group');
+      await loadStones();
+    } catch (error) {
+      console.error('Error leaving group:', error);
+      toast.error('Failed to leave group');
+    }
+  };
+
+  const renameGroup = async () => {
+    if (!selectedStone || !renameValue.trim()) return;
+
+    try {
+      await supabase
+        .from('stones')
+        .update({ name: renameValue.trim() })
+        .eq('id', selectedStone.id);
+
+      setShowRename(false);
+      toast.success('Group renamed');
+      await loadStones();
+    } catch (error) {
+      console.error('Error renaming:', error);
+      toast.error('Failed to rename');
     }
   };
 
@@ -282,11 +506,9 @@ const Sending = () => {
 
       if (error) throw error;
 
-      setCasts(prev => [...prev, data]);
+      setCasts(prev => [...prev, { ...data, sender_name: getProfileName(currentUser?.id!, allProfiles) }]);
       setMessage("");
       toast.success('Message sent');
-      
-      // Reload stones to update latest cast
       loadStones();
     } catch (error) {
       console.error('Error sending cast:', error);
@@ -312,22 +534,16 @@ const Sending = () => {
 
       if (error) throw error;
 
-      setCasts(prev => prev.map(cast => 
-        cast.id === editingCast.id 
-          ? { 
-              ...cast, 
-              original_message: cast.message,
-              message: editMessage.trim(),
-              is_edited: true,
-              edited_at: new Date().toISOString()
-            }
+      setCasts(prev => prev.map(cast =>
+        cast.id === editingCast.id
+          ? { ...cast, original_message: cast.message, message: editMessage.trim(), is_edited: true, edited_at: new Date().toISOString() }
           : cast
       ));
-      
+
       setEditingCast(null);
       setEditMessage("");
       toast.success('Message updated');
-      loadStones(); // Refresh stones list
+      loadStones();
     } catch (error) {
       console.error('Error editing cast:', error);
       toast.error('Failed to edit message');
@@ -338,17 +554,14 @@ const Sending = () => {
     try {
       const { error } = await supabase
         .from('casts')
-        .update({
-          is_deleted: true,
-          deleted_at: new Date().toISOString()
-        })
+        .update({ is_deleted: true, deleted_at: new Date().toISOString() })
         .eq('id', castId);
 
       if (error) throw error;
 
       setCasts(prev => prev.filter(cast => cast.id !== castId));
       toast.success('Message deleted');
-      loadStones(); // Refresh stones list
+      loadStones();
     } catch (error) {
       console.error('Error deleting cast:', error);
       toast.error('Failed to delete message');
@@ -369,6 +582,15 @@ const Sending = () => {
     return `${diffDays}d ago`;
   };
 
+  const toggleGroupMember = (userId: string) => {
+    setSelectedGroupMembers(prev =>
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
+
+  // Check if current user has left this stone
+  const hasLeft = selectedStone?.participants.find(p => p.user_id === currentUser?.id)?.left_at;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -380,7 +602,7 @@ const Sending = () => {
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-black to-blue-900/20"></div>
-      
+
       <div className="relative z-10 container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -405,17 +627,29 @@ const Sending = () => {
                   <MessageCircle className="w-5 h-5 mr-2 text-cyan-400" />
                   Stones
                 </h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowNewStone(!showNewStone)}
-                  className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
-                >
-                  <Users className="w-4 h-4 mr-1" />
-                  New
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { setShowNewStone(!showNewStone); setShowNewGroup(false); }}
+                    className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                  >
+                    <User className="w-4 h-4 mr-1" />
+                    DM
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { setShowNewGroup(!showNewGroup); setShowNewStone(false); }}
+                    className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                  >
+                    <Users className="w-4 h-4 mr-1" />
+                    Group
+                  </Button>
+                </div>
               </div>
-              
+
+              {/* New DM */}
               {showNewStone && (
                 <div className="mt-4 space-y-2">
                   <select
@@ -431,30 +665,43 @@ const Sending = () => {
                     ))}
                   </select>
                   <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      onClick={() => createNewStone(newRecipientId)}
-                      disabled={!newRecipientId}
-                      className="bg-cyan-500 hover:bg-cyan-600"
-                    >
-                      Start
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setShowNewStone(false);
-                        setNewRecipientId("");
-                      }}
-                      className="border-gray-600 text-gray-400"
-                    >
-                      Cancel
-                    </Button>
+                    <Button size="sm" onClick={() => createNewStone(newRecipientId)} disabled={!newRecipientId} className="bg-cyan-500 hover:bg-cyan-600">Start</Button>
+                    <Button size="sm" variant="outline" onClick={() => { setShowNewStone(false); setNewRecipientId(""); }} className="border-gray-600 text-gray-400">Cancel</Button>
+                  </div>
+                </div>
+              )}
+
+              {/* New Group */}
+              {showNewGroup && (
+                <div className="mt-4 space-y-2">
+                  <Input
+                    placeholder="Group name..."
+                    value={groupName}
+                    onChange={(e) => setGroupName(e.target.value)}
+                    className="bg-gray-800 border-gray-600 text-white"
+                  />
+                  <p className="text-xs text-gray-400">Select members:</p>
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {profiles.map(profile => (
+                      <label key={profile.id} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-white">
+                        <input
+                          type="checkbox"
+                          checked={selectedGroupMembers.includes(profile.user_id)}
+                          onChange={() => toggleGroupMember(profile.user_id)}
+                          className="rounded"
+                        />
+                        {profile.character_name}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button size="sm" onClick={createGroupStone} disabled={!groupName.trim() || selectedGroupMembers.length === 0} className="bg-cyan-500 hover:bg-cyan-600">Create</Button>
+                    <Button size="sm" variant="outline" onClick={() => { setShowNewGroup(false); setGroupName(""); setSelectedGroupMembers([]); }} className="border-gray-600 text-gray-400">Cancel</Button>
                   </div>
                 </div>
               )}
             </div>
-            
+
             <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
               {stones.length === 0 ? (
                 <div className="text-center text-gray-400 py-8">
@@ -474,9 +721,12 @@ const Sending = () => {
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-semibold text-cyan-400">
-                        {stone.other_participant?.character_name || 'Unknown'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {stone.is_group && <Users className="w-3 h-3 text-cyan-400" />}
+                        <span className="font-semibold text-cyan-400 truncate max-w-[160px]">
+                          {stone.display_name}
+                        </span>
+                      </div>
                       <div className="flex items-center space-x-2">
                         {stone.unread_count && stone.unread_count > 0 && (
                           <span className="bg-cyan-500 text-black text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
@@ -490,7 +740,9 @@ const Sending = () => {
                     </div>
                     {stone.latest_cast && (
                       <p className="text-sm text-gray-300 truncate">
-                        {stone.latest_cast.sender_id === currentUser?.id ? 'You: ' : ''}
+                        {stone.is_group && stone.latest_cast.sender_name
+                          ? `${stone.latest_cast.sender_id === currentUser?.id ? 'You' : stone.latest_cast.sender_name}: `
+                          : stone.latest_cast.sender_id === currentUser?.id ? 'You: ' : ''}
                         {stone.latest_cast.message}
                       </p>
                     )}
@@ -506,9 +758,60 @@ const Sending = () => {
               <div className="h-[600px] flex flex-col">
                 {/* Chat Header */}
                 <div className="p-4 border-b border-gray-700/50">
-                  <h3 className="text-lg font-semibold text-white">
-                    {selectedStone.other_participant?.character_name || 'Unknown'}
-                  </h3>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        {selectedStone.is_group && <Users className="w-5 h-5 text-cyan-400" />}
+                        {selectedStone.display_name}
+                      </h3>
+                      {selectedStone.is_group && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          {selectedStone.participants.filter(p => !p.left_at).map(p => p.character_name).join(', ')}
+                        </p>
+                      )}
+                    </div>
+                    {selectedStone.is_group && !hasLeft && (
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white" onClick={() => { setShowRename(true); setRenameValue(selectedStone.name || ''); }}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white" onClick={() => setShowAddMember(true)}>
+                          <UserPlus className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300" onClick={leaveGroup}>
+                          <LogOut className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Rename dialog */}
+                  {showRename && (
+                    <div className="mt-2 flex gap-2">
+                      <Input value={renameValue} onChange={e => setRenameValue(e.target.value)} className="bg-gray-800 border-gray-600 text-white text-sm" placeholder="New name..." />
+                      <Button size="sm" onClick={renameGroup} className="bg-cyan-500 hover:bg-cyan-600">Save</Button>
+                      <Button size="sm" variant="outline" onClick={() => setShowRename(false)} className="border-gray-600 text-gray-400">Cancel</Button>
+                    </div>
+                  )}
+
+                  {/* Add member */}
+                  {showAddMember && (
+                    <div className="mt-2">
+                      <select
+                        onChange={(e) => { if (e.target.value) addMemberToGroup(e.target.value); }}
+                        className="w-full p-2 bg-gray-800 border border-gray-600 rounded text-white text-sm"
+                        defaultValue=""
+                      >
+                        <option value="">Add a member...</option>
+                        {profiles
+                          .filter(p => !selectedStone.participants.find(sp => sp.user_id === p.user_id && !sp.left_at))
+                          .map(p => (
+                            <option key={p.id} value={p.user_id}>{p.character_name}</option>
+                          ))
+                        }
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 {/* Messages */}
@@ -525,6 +828,9 @@ const Sending = () => {
                             : 'bg-gray-700 text-gray-100 mr-12'
                         }`}
                       >
+                        {selectedStone.is_group && cast.sender_id !== currentUser?.id && (
+                          <p className="text-xs font-semibold mb-1 opacity-80">{cast.sender_name}</p>
+                        )}
                         <p className="text-sm font-mono leading-relaxed">{cast.message}</p>
                         <div className="flex items-center justify-between mt-1">
                           <p className="text-xs opacity-70">
@@ -536,10 +842,7 @@ const Sending = () => {
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <button
-                                    onClick={() => {
-                                      setEditingCast(cast);
-                                      setEditMessage(cast.message);
-                                    }}
+                                    onClick={() => { setEditingCast(cast); setEditMessage(cast.message); }}
                                     className="p-1 hover:bg-white/20 rounded"
                                   >
                                     <Edit className="w-3 h-3" />
@@ -550,27 +853,15 @@ const Sending = () => {
                                     <DialogTitle>Edit Message</DialogTitle>
                                   </DialogHeader>
                                   <div className="space-y-4">
-                                    <Textarea
-                                      value={editMessage}
-                                      onChange={(e) => setEditMessage(e.target.value)}
-                                      className="bg-gray-800/50 border-gray-600 text-white"
-                                      rows={3}
-                                    />
+                                    <Textarea value={editMessage} onChange={(e) => setEditMessage(e.target.value)} className="bg-gray-800/50 border-gray-600 text-white" rows={3} />
                                     <div className="flex justify-end space-x-2">
-                                      <Button variant="outline" onClick={() => setEditingCast(null)}>
-                                        Cancel
-                                      </Button>
-                                      <Button onClick={editCast}>
-                                        Save Changes
-                                      </Button>
+                                      <Button variant="outline" onClick={() => setEditingCast(null)}>Cancel</Button>
+                                      <Button onClick={editCast}>Save Changes</Button>
                                     </div>
                                   </div>
                                 </DialogContent>
                               </Dialog>
-                              <button
-                                onClick={() => deleteCast(cast.id)}
-                                className="p-1 hover:bg-red-500/20 rounded"
-                              >
+                              <button onClick={() => deleteCast(cast.id)} className="p-1 hover:bg-red-500/20 rounded">
                                 <Trash2 className="w-3 h-3" />
                               </button>
                             </div>
@@ -579,35 +870,42 @@ const Sending = () => {
                       </div>
                     </div>
                   ))}
+                  <div ref={messagesEndRef} />
                 </div>
 
                 {/* Message Input */}
-                <div className="p-4 border-t border-gray-700/50">
-                  <div className="space-y-3">
-                    <div className="relative">
-                      <Textarea
-                        placeholder="Cast your message... (25 words max)"
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        className="bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 resize-none"
-                        rows={2}
-                      />
-                      <div className={`absolute right-3 bottom-3 text-xs font-mono ${
-                        wordCount > 25 ? 'text-red-400' : wordCount > 20 ? 'text-yellow-400' : 'text-gray-400'
-                      }`}>
-                        {wordCount}/25
+                {!hasLeft ? (
+                  <div className="p-4 border-t border-gray-700/50">
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <Textarea
+                          placeholder="Cast your message... (25 words max)"
+                          value={message}
+                          onChange={(e) => setMessage(e.target.value)}
+                          className="bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 resize-none"
+                          rows={2}
+                        />
+                        <div className={`absolute right-3 bottom-3 text-xs font-mono ${
+                          wordCount > 25 ? 'text-red-400' : wordCount > 20 ? 'text-yellow-400' : 'text-gray-400'
+                        }`}>
+                          {wordCount}/25
+                        </div>
                       </div>
+                      <Button
+                        onClick={sendCast}
+                        disabled={wordCount === 0 || wordCount > 25 || sending}
+                        className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        {sending ? 'Casting...' : 'Cast Stone'}
+                      </Button>
                     </div>
-                    <Button
-                      onClick={sendCast}
-                      disabled={wordCount === 0 || wordCount > 25 || sending}
-                      className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      {sending ? 'Casting...' : 'Cast Stone'}
-                    </Button>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-4 border-t border-gray-700/50 text-center text-gray-500 text-sm">
+                    You left this group. You can still view the history.
+                  </div>
+                )}
               </div>
             ) : (
               <div className="h-[600px] flex items-center justify-center">
