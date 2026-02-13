@@ -1108,6 +1108,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_active_stone_participant: {
+        Args: { _stone_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_stone_participant: {
+        Args: { _stone_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user"
