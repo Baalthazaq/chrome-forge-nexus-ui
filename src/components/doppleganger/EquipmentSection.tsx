@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Swords, Shield, Crosshair } from "lucide-react";
+import { Swords, Shield, Crosshair, Backpack, Plus, X } from "lucide-react";
 import type { CharacterSheet } from "@/data/gameCardTypes";
 
 interface Props {
@@ -93,7 +95,7 @@ export function EquipmentSection({ sheet, updateSheet, purchases, isEditing }: P
     <Card className="p-4 bg-gray-900/30 border-gray-700/50 mb-6">
       <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
         <Swords className="w-5 h-5 text-red-400" />
-        Equipment (from App of Holding)
+        Equipped
       </h3>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -139,6 +141,103 @@ export function EquipmentSection({ sheet, updateSheet, purchases, isEditing }: P
           No purchases yet. Visit Wyrmcart to buy equipment.
         </div>
       )}
+
+      <BackpackSection
+        sheet={sheet}
+        updateSheet={updateSheet}
+        purchases={purchases}
+        isEditing={isEditing}
+      />
     </Card>
+  );
+}
+
+function BackpackSection({ sheet, updateSheet, purchases, isEditing }: Props) {
+  const [adding, setAdding] = useState(false);
+
+  const backpackIds: string[] = (sheet as any).backpack_ids || [];
+
+  const backpackPurchases = backpackIds
+    .map(id => purchases.find(p => p.id === id))
+    .filter(Boolean);
+
+  // Items not already equipped or in backpack
+  const availableItems = purchases.filter(p => {
+    const id = p.id;
+    if (id === sheet.primary_weapon_purchase_id) return false;
+    if (id === sheet.secondary_weapon_purchase_id) return false;
+    if (id === sheet.armor_purchase_id) return false;
+    if (backpackIds.includes(id)) return false;
+    return true;
+  });
+
+  const addItem = (purchaseId: string) => {
+    updateSheet({ backpack_ids: [...backpackIds, purchaseId] } as any);
+    setAdding(false);
+  };
+
+  const removeItem = (purchaseId: string) => {
+    updateSheet({ backpack_ids: backpackIds.filter(id => id !== purchaseId) } as any);
+  };
+
+  return (
+    <div className="mt-4 pt-4 border-t border-gray-700/50">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-md font-semibold text-white flex items-center gap-2">
+          <Backpack className="w-4 h-4 text-amber-400" />
+          Backpack
+        </h4>
+        {isEditing && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAdding(!adding)}
+            className="border-gray-600 text-gray-300 hover:text-white h-7 text-xs"
+          >
+            <Plus className="w-3 h-3 mr-1" />
+            Add Item
+          </Button>
+        )}
+      </div>
+
+      {adding && (
+        <Select onValueChange={(v) => addItem(v)}>
+          <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm mb-3">
+            <SelectValue placeholder="Select an item..." />
+          </SelectTrigger>
+          <SelectContent>
+            {availableItems.length === 0 ? (
+              <SelectItem value="__none__" disabled>No items available</SelectItem>
+            ) : (
+              availableItems.map(p => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.shop_items?.name || 'Unknown item'}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+      )}
+
+      {backpackPurchases.length === 0 && !adding && (
+        <p className="text-gray-500 text-sm">No items in backpack.</p>
+      )}
+
+      <div className="space-y-1">
+        {backpackPurchases.map((purchase: any) => (
+          <div key={purchase.id} className="relative">
+            <ItemCard purchase={purchase} />
+            {isEditing && (
+              <button
+                onClick={() => removeItem(purchase.id)}
+                className="absolute top-4 right-2 text-gray-500 hover:text-red-400 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
