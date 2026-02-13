@@ -815,29 +815,70 @@ export type Database = {
         }
         Relationships: []
       }
+      stone_participants: {
+        Row: {
+          id: string
+          joined_at: string
+          left_at: string | null
+          stone_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          stone_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          stone_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stone_participants_stone_id_fkey"
+            columns: ["stone_id"]
+            isOneToOne: false
+            referencedRelation: "stones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stones: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
+          is_group: boolean
           last_cast_at: string | null
-          participant_one_id: string
-          participant_two_id: string
+          name: string | null
+          participant_one_id: string | null
+          participant_two_id: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
+          is_group?: boolean
           last_cast_at?: string | null
-          participant_one_id: string
-          participant_two_id: string
+          name?: string | null
+          participant_one_id?: string | null
+          participant_two_id?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
+          is_group?: boolean
           last_cast_at?: string | null
-          participant_one_id?: string
-          participant_two_id?: string
+          name?: string | null
+          participant_one_id?: string | null
+          participant_two_id?: string | null
           updated_at?: string
         }
         Relationships: []
