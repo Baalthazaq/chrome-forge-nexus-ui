@@ -29,6 +29,7 @@ export function useCharacterSheet(userId: string | undefined) {
         ...d,
         experiences: (d.experiences || []) as Experience[],
         selected_card_ids: (d.selected_card_ids || []) as SelectedCard[],
+        backpack_ids: (d.backpack_ids || []) as string[],
         physical_description: (d.physical_description || { clothes: '', eyes: '', body: '', skin: '' }) as PhysicalDescription,
         personality: d.personality || '',
       });
@@ -45,6 +46,7 @@ export function useCharacterSheet(userId: string | undefined) {
           ...d,
           experiences: [] as Experience[],
           selected_card_ids: [] as SelectedCard[],
+          backpack_ids: [] as string[],
           physical_description: { clothes: '', eyes: '', body: '', skin: '' },
           personality: '',
         });

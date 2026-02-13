@@ -31,6 +31,7 @@ export interface CharacterSheet {
   secondary_weapon_purchase_id: string | null;
   armor_purchase_id: string | null;
   selected_card_ids: SelectedCard[];
+  backpack_ids: string[];
   physical_description: PhysicalDescription;
   personality: string;
 }
