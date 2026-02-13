@@ -728,7 +728,7 @@ const Sending = () => {
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        {stone.unread_count && stone.unread_count > 0 && (
+                        {stone.unread_count > 0 && (
                           <span className="bg-cyan-500 text-black text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                             {stone.unread_count}
                           </span>
