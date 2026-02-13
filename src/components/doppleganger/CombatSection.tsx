@@ -66,10 +66,12 @@ function CheckboxRow({
 export function CombatSection({ sheet, updateSheet, baseEvasion, baseHP, armorBaseValue, armorThresholds, isEditing, level }: Props) {
   const totalEvasion = baseEvasion + sheet.evasion_modifier;
   const totalHP = baseHP + sheet.hp_modifier;
+  const totalArmor = armorBaseValue + (sheet.armor_modifier || 0);
 
   // Parse armor thresholds (e.g. "5 / 11")
+  // Default when no armor: 0 / 1 (severe is 1 higher than major)
   let armorMajorThreshold = 0;
-  let armorSevereThreshold = 0;
+  let armorSevereThreshold = 1;
   if (armorThresholds) {
     const parts = armorThresholds.split('/').map(s => parseInt(s.trim(), 10));
     if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
@@ -108,19 +110,30 @@ export function CombatSection({ sheet, updateSheet, baseEvasion, baseHP, armorBa
             icon={Shield}
             iconColor="text-blue-400"
             current={sheet.armor_current}
-            max={armorBaseValue}
+            max={totalArmor}
             onChange={(val) => updateSheet({ armor_current: val })}
             shape="shield"
           />
           {isEditing && (
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-gray-500 text-xs">Evasion Bonus:</span>
-              <Input
-                type="number"
-                value={sheet.evasion_modifier}
-                onChange={(e) => updateSheet({ evasion_modifier: Number(e.target.value) || 0 })}
-                className="w-14 h-7 text-center bg-gray-800/50 border-gray-600 text-gray-100 text-xs"
-              />
+            <div className="flex items-center gap-4 mt-2">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 text-xs">Evasion Bonus:</span>
+                <Input
+                  type="number"
+                  value={sheet.evasion_modifier}
+                  onChange={(e) => updateSheet({ evasion_modifier: Number(e.target.value) || 0 })}
+                  className="w-14 h-7 text-center bg-gray-800/50 border-gray-600 text-gray-100 text-xs"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 text-xs">Armor Bonus:</span>
+                <Input
+                  type="number"
+                  value={sheet.armor_modifier || 0}
+                  onChange={(e) => updateSheet({ armor_modifier: Number(e.target.value) || 0 })}
+                  className="w-14 h-7 text-center bg-gray-800/50 border-gray-600 text-gray-100 text-xs"
+                />
+              </div>
             </div>
           )}
         </div>

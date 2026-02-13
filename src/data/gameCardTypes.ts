@@ -18,6 +18,7 @@ export interface CharacterSheet {
   evasion_modifier: number;
   hp_modifier: number;
   armor_current: number;
+  armor_modifier: number;
   hp_current: number;
   stress_current: number;
   hope_current: number;

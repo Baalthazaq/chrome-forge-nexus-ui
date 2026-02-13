@@ -149,6 +149,7 @@ export type Database = {
         Row: {
           ancestry: string | null
           armor_current: number
+          armor_modifier: number
           armor_purchase_id: string | null
           class: string | null
           community: string | null
@@ -177,6 +178,7 @@ export type Database = {
         Insert: {
           ancestry?: string | null
           armor_current?: number
+          armor_modifier?: number
           armor_purchase_id?: string | null
           class?: string | null
           community?: string | null
@@ -205,6 +207,7 @@ export type Database = {
         Update: {
           ancestry?: string | null
           armor_current?: number
+          armor_modifier?: number
           armor_purchase_id?: string | null
           class?: string | null
           community?: string | null
