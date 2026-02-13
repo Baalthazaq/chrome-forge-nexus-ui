@@ -1,0 +1,1 @@
+ALTER TABLE public.character_sheets ADD COLUMN backpack_ids jsonb DEFAULT '[]'::jsonb;

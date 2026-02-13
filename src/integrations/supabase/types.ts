@@ -151,6 +151,7 @@ export type Database = {
           armor_current: number
           armor_modifier: number
           armor_purchase_id: string | null
+          backpack_ids: Json | null
           class: string | null
           community: string | null
           created_at: string
@@ -180,6 +181,7 @@ export type Database = {
           armor_current?: number
           armor_modifier?: number
           armor_purchase_id?: string | null
+          backpack_ids?: Json | null
           class?: string | null
           community?: string | null
           created_at?: string
@@ -209,6 +211,7 @@ export type Database = {
           armor_current?: number
           armor_modifier?: number
           armor_purchase_id?: string | null
+          backpack_ids?: Json | null
           class?: string | null
           community?: string | null
           created_at?: string
