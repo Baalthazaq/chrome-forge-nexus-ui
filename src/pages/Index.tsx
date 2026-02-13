@@ -235,8 +235,11 @@ const Index = () => {
                         {app.name}
                       </h3>
                     <p className="text-muted-foreground text-xs mt-1 font-mono">
-                        {app.comingSoon ? "Coming Soon" : app.description}
+                        {app.description}
                       </p>
+                      {app.comingSoon && (
+                        <span className="text-[10px] text-yellow-500/70 font-mono mt-1 block">Coming Soon</span>
+                      )}
                     </div>
                   </div>
 
