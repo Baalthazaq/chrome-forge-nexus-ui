@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useAppNotifications } from "@/hooks/useAppNotifications";
 import { Shield, LogOut } from "lucide-react";
 
 
@@ -110,6 +111,7 @@ const apps = [
 const Index = () => {
   const { user, isLoading, signOut } = useAuth();
   const { isAdmin } = useAdmin();
+  const notifications = useAppNotifications();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -203,6 +205,12 @@ const Index = () => {
             return (
               <Link key={app.id} to={app.route} className="group">
                 <Card className="relative p-6 bg-gray-900/30 border-gray-700/50 backdrop-blur-sm hover:bg-gray-800/40 transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg group-hover:shadow-cyan-500/20">
+                  {/* Notification Badge */}
+                  {notifications[app.id] && (
+                    <div className="absolute top-2 right-2 z-20 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-pulse">
+                      !
+                    </div>
+                  )}
                   {/* Glow Effect */}
                   <div className={`absolute inset-0 rounded-lg bg-gradient-to-br ${app.color} opacity-0 group-hover:opacity-20 transition-opacity duration-300`}></div>
                   
