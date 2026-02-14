@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, X, Layers, BookOpen, PenTool, Globe, Package } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Plus, X, Layers, BookOpen, PenTool, Globe, Package, ChevronDown, Pencil } from "lucide-react";
 import { useState } from "react";
 import type { CharacterSheet, GameCard, SelectedCard } from "@/data/gameCardTypes";
 
@@ -30,13 +31,18 @@ export function CardsSection({
   const [selectedDomainId, setSelectedDomainId] = useState('');
   const [customTitle, setCustomTitle] = useState('');
   const [customContent, setCustomContent] = useState('');
+  const [customCategory, setCustomCategory] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [domainSectionOpen, setDomainSectionOpen] = useState(true);
 
   const selectedCards = sheet.selected_card_ids || [];
 
   // Auto-included cards
   const autoCards: { title: string; content: string; source: string }[] = [];
 
-  // Class Feature (auto-included)
   if (selectedClass) {
     const classMeta = selectedClass.metadata as any;
     if (classMeta?.class_feature) {
@@ -47,28 +53,22 @@ export function CardsSection({
     }
   }
 
-  // Ancestry cards - for custom ancestries, user picks two cards from any ancestry
   if (sheet.ancestry) {
-    // Check if ancestry matches a known ancestry source
     const knownSources = [...new Set(ancestryCards.map(c => c.source))].filter(Boolean);
     const isKnownAncestry = knownSources.includes(sheet.ancestry);
-
     if (isKnownAncestry) {
       ancestryCards
         .filter(c => c.source === sheet.ancestry)
         .forEach(c => autoCards.push({ title: c.name, content: c.content || '', source: `Ancestry: ${c.source}` }));
     }
-    // For custom ancestries, ancestry cards are picked via selected_card_ids
   }
 
-  // Community card
   if (sheet.community) {
     communityCards
       .filter(c => c.source === sheet.community)
       .forEach(c => autoCards.push({ title: c.name, content: c.content || '', source: `Community: ${c.source}` }));
   }
 
-  // Subclass foundation / specialization / mastery
   if (selectedSubclass) {
     const meta = selectedSubclass.metadata as any;
     if (meta?.foundation) {
@@ -88,45 +88,38 @@ export function CardsSection({
     return domains.includes(meta?.domain || c.source) && (meta?.level || 0) <= sheet.level;
   });
 
-  // Open-domain: all domain cards at or below level
   const allDomains = domainCards.filter(c => {
     const meta = c.metadata as any;
     return (meta?.level || 0) <= sheet.level;
   });
 
-  // "Other" cards: ancestry cards (for custom race picks) + community cards + any other non-domain game cards
   const otherCards = gameCards.filter(c =>
     c.card_type === 'ancestry' || c.card_type === 'community'
   );
 
-  const addCard = () => {
-    const cardId = selectedDomainId;
-    if ((addType === 'domain' || addType === 'open-domain' || addType === 'other') && cardId) {
-      const card = gameCards.find(c => c.id === cardId);
-      if (card) {
-        updateSheet({
-          selected_card_ids: [...selectedCards, { card_id: card.id }],
-        });
-      }
-    } else if (addType === 'blank' && customTitle) {
-      updateSheet({
-        selected_card_ids: [...selectedCards, { custom: true, title: customTitle, content: customContent }],
-      });
+  // Helpers
+  const isDomainCard = (sc: SelectedCard): boolean => {
+    if (sc.custom) {
+      // Custom cards with a category that matches a domain name or "Domain"/"Open Domain"
+      const cat = (sc as any).category || '';
+      return cat.toLowerCase().includes('domain') || domains.some(d => d.toLowerCase() === cat.toLowerCase());
     }
-    setShowAddCard(false);
-    setSelectedDomainId('');
-    setCustomTitle('');
-    setCustomContent('');
+    const card = gameCards.find(c => c.id === sc.card_id);
+    return card?.card_type === 'domain';
   };
 
-  const removeCard = (index: number) => {
-    updateSheet({
-      selected_card_ids: selectedCards.filter((_, i) => i !== index),
-    });
+  const getCardCategory = (sc: SelectedCard): string => {
+    if (sc.custom) return (sc as any).category || 'Custom';
+    const card = gameCards.find(c => c.id === sc.card_id);
+    if (card?.card_type === 'domain') {
+      const meta = card.metadata as any;
+      return meta?.domain || card.source || 'Domain';
+    }
+    return card?.card_type || 'Other';
   };
 
   const getCardDetails = (sc: SelectedCard) => {
-    if (sc.custom) return { title: sc.title || 'Custom Card', content: sc.content || '', source: 'Custom', recallCost: null };
+    if (sc.custom) return { title: sc.title || 'Custom Card', content: sc.content || '', source: (sc as any).category || 'Custom', recallCost: null };
     const card = gameCards.find(c => c.id === sc.card_id);
     if (!card) return { title: 'Unknown', content: '', source: '', recallCost: null };
     const meta = card.metadata as any;
@@ -143,6 +136,64 @@ export function CardsSection({
     };
   };
 
+  // Split selected cards into domain vs non-domain
+  const domainSelected = selectedCards.map((sc, i) => ({ sc, i })).filter(({ sc }) => isDomainCard(sc));
+  const nonDomainSelected = selectedCards.map((sc, i) => ({ sc, i })).filter(({ sc }) => !isDomainCard(sc));
+
+  // Collect existing categories from custom cards for the category picker
+  const existingCategories = [...new Set(
+    selectedCards
+      .filter(sc => sc.custom && (sc as any).category)
+      .map(sc => (sc as any).category as string)
+  )];
+  // Also add class domains as category options
+  const categoryOptions = [...new Set([...domains.filter(Boolean), ...existingCategories])];
+
+  const addCard = () => {
+    const cardId = selectedDomainId;
+    if ((addType === 'domain' || addType === 'open-domain' || addType === 'other') && cardId) {
+      const card = gameCards.find(c => c.id === cardId);
+      if (card) {
+        updateSheet({
+          selected_card_ids: [...selectedCards, { card_id: card.id }],
+        });
+      }
+    } else if (addType === 'blank' && customTitle) {
+      const resolvedCategory = customCategory === '__new__' ? newCategoryName : customCategory;
+      updateSheet({
+        selected_card_ids: [...selectedCards, { custom: true, title: customTitle, content: customContent, category: resolvedCategory || 'Custom' } as any],
+      });
+    }
+    setShowAddCard(false);
+    setSelectedDomainId('');
+    setCustomTitle('');
+    setCustomContent('');
+    setCustomCategory('');
+    setNewCategoryName('');
+  };
+
+  const removeCard = (index: number) => {
+    updateSheet({
+      selected_card_ids: selectedCards.filter((_, i) => i !== index),
+    });
+  };
+
+  const startEdit = (index: number, sc: SelectedCard) => {
+    setEditingIndex(index);
+    setEditTitle(sc.title || '');
+    setEditContent(sc.content || '');
+  };
+
+  const saveEdit = () => {
+    if (editingIndex === null) return;
+    const updated = [...selectedCards];
+    updated[editingIndex] = { ...updated[editingIndex], title: editTitle, content: editContent };
+    updateSheet({ selected_card_ids: updated });
+    setEditingIndex(null);
+  };
+
+  const cancelEdit = () => setEditingIndex(null);
+
   const addTypeOptions: { key: typeof addType; label: string; icon: any }[] = [
     { key: 'domain', label: 'Domain', icon: BookOpen },
     { key: 'open-domain', label: 'Open-Domain', icon: Globe },
@@ -155,6 +206,58 @@ export function CardsSection({
     if (addType === 'open-domain') return allDomains;
     if (addType === 'other') return otherCards;
     return [];
+  };
+
+  const renderCard = (sc: SelectedCard, globalIndex: number) => {
+    const details = getCardDetails(sc);
+    const isEditingThis = editingIndex === globalIndex;
+
+    if (isEditingThis) {
+      return (
+        <div key={globalIndex} className="p-3 bg-purple-900/20 border border-purple-500/40 rounded-lg space-y-2">
+          <Input
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm"
+          />
+          <Textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm"
+            rows={3}
+          />
+          <div className="flex gap-2">
+            <Button size="sm" onClick={saveEdit}>Save</Button>
+            <Button size="sm" variant="outline" onClick={cancelEdit} className="border-gray-600 text-gray-300">Cancel</Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div key={globalIndex} className="p-3 bg-purple-900/20 border border-purple-500/20 rounded-lg">
+        <div className="flex justify-between items-start mb-1">
+          <span className="text-white text-sm font-semibold">{details.title}</span>
+          <div className="flex items-center gap-2 shrink-0 ml-2">
+            {details.recallCost != null && (
+              <span className="text-amber-400 text-xs font-medium">Recall: {details.recallCost}</span>
+            )}
+            <span className="text-gray-500 text-xs">{details.source}</span>
+            {isEditing && sc.custom && (
+              <button onClick={() => startEdit(globalIndex, sc)} className="text-gray-500 hover:text-blue-400">
+                <Pencil className="w-3 h-3" />
+              </button>
+            )}
+            {isEditing && (
+              <button onClick={() => removeCard(globalIndex)} className="text-gray-500 hover:text-red-400">
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="text-gray-300 text-xs whitespace-pre-wrap">{details.content}</div>
+      </div>
+    );
   };
 
   return (
@@ -233,6 +336,27 @@ export function CardsSection({
                 className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm"
                 rows={3}
               />
+              {/* Category picker */}
+              <Select value={customCategory} onValueChange={setCustomCategory}>
+                <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm">
+                  <SelectValue placeholder="Pick a category..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {categoryOptions.map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                  <SelectItem value="Custom">Custom (no domain)</SelectItem>
+                  <SelectItem value="__new__">+ New Category...</SelectItem>
+                </SelectContent>
+              </Select>
+              {customCategory === '__new__' && (
+                <Input
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="New category name..."
+                  className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm"
+                />
+              )}
             </div>
           )}
 
@@ -260,33 +384,30 @@ export function CardsSection({
         </div>
       )}
 
-      {/* Selected cards */}
-      {selectedCards.length > 0 && (
+      {/* Domain Spells - collapsible */}
+      {domainSelected.length > 0 && (
+        <div className="mb-3">
+          <Collapsible open={domainSectionOpen} onOpenChange={setDomainSectionOpen}>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left mb-2">
+              <BookOpen className="w-3.5 h-3.5 text-blue-400" />
+              <span className="text-xs text-gray-500 uppercase tracking-wider flex-1">Domain Spells</span>
+              <ChevronDown className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 ${domainSectionOpen ? 'rotate-180' : ''}`} />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {domainSelected.map(({ sc, i }) => renderCard(sc, i))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+      )}
+
+      {/* Non-domain selected cards */}
+      {nonDomainSelected.length > 0 && (
         <div>
           <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Selected Cards</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {selectedCards.map((sc, i) => {
-              const details = getCardDetails(sc);
-              return (
-                <div key={i} className="p-3 bg-purple-900/20 border border-purple-500/20 rounded-lg">
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="text-white text-sm font-semibold">{details.title}</span>
-                    <div className="flex items-center gap-2 shrink-0 ml-2">
-                      {details.recallCost != null && (
-                        <span className="text-amber-400 text-xs font-medium">Recall: {details.recallCost}</span>
-                      )}
-                      <span className="text-gray-500 text-xs">{details.source}</span>
-                      {isEditing && (
-                        <button onClick={() => removeCard(i)} className="text-gray-500 hover:text-red-400">
-                          <X className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-gray-300 text-xs whitespace-pre-wrap">{details.content}</div>
-                </div>
-              );
-            })}
+            {nonDomainSelected.map(({ sc, i }) => renderCard(sc, i))}
           </div>
         </div>
       )}
