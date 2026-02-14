@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Send, Clock, User, MessageCircle, Users, Edit, Trash2, Plus, LogOut, UserPlus, Pencil } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -65,7 +65,8 @@ const Sending = () => {
   const { user } = useAuth();
   const { impersonatedUser } = useAdmin();
   const [searchParams, setSearchParams] = useSearchParams();
-  const currentUser = impersonatedUser ? { id: impersonatedUser.user_id } : user;
+  const currentUserId = impersonatedUser ? impersonatedUser.user_id : user?.id;
+  const currentUser = useMemo(() => currentUserId ? { id: currentUserId } : null, [currentUserId]);
 
   const [message, setMessage] = useState("");
   const [selectedStone, setSelectedStone] = useState<Stone | null>(null);
