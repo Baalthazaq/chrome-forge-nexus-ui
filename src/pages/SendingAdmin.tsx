@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, MessageCircle, Users, Eye, Clock } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Users, Eye, Clock, ExternalLink } from 'lucide-react';
 
 interface Cast {
   id: string;
@@ -35,6 +35,7 @@ interface StoneWithParticipants {
   last_cast_at: string | null;
   display_name: string;
   participant_names: string[];
+  participant_ids: { user_id: string; name: string; left: boolean }[];
   cast_count: number;
   latest_cast?: {
     message: string;
@@ -49,7 +50,7 @@ interface StoneWithParticipants {
 const SendingAdmin = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isAdmin, isLoading } = useAdmin();
+  const { isAdmin, isLoading, startImpersonation } = useAdmin();
   const [stones, setStones] = useState<StoneWithParticipants[]>([]);
   const [selectedStone, setSelectedStone] = useState<StoneWithParticipants | null>(null);
   const [conversationCasts, setConversationCasts] = useState<Cast[]>([]);
@@ -87,10 +88,15 @@ const SendingAdmin = () => {
             .select('user_id, left_at')
             .eq('stone_id', stone.id);
 
-          const participantNames = (participants || []).map(p => {
-            const name = pm.get(p.user_id) || 'Unknown';
-            return p.left_at ? `${name} (left)` : name;
-          });
+          const participantDetails = (participants || []).map(p => ({
+            user_id: p.user_id,
+            name: pm.get(p.user_id) || 'Unknown',
+            left: !!p.left_at,
+          }));
+
+          const participantNames = participantDetails.map(p => 
+            p.left ? `${p.name} (left)` : p.name
+          );
 
           let displayName: string;
           if (stone.is_group && stone.name) {
@@ -116,6 +122,7 @@ const SendingAdmin = () => {
             ...stone,
             display_name: displayName,
             participant_names: participantNames,
+            participant_ids: participantDetails,
             cast_count: count || 0,
             latest_cast: latestCast,
           } as StoneWithParticipants;
@@ -279,6 +286,26 @@ const SendingAdmin = () => {
                           <span>Created: {new Date(stone.created_at).toLocaleDateString()}</span>
                           {stone.last_cast_at && <span>Last activity: {formatTime(stone.last_cast_at)}</span>}
                           {stone.is_group && <span>Members: {stone.participant_names.join(', ')}</span>}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="text-sm text-muted-foreground self-center">Reply as:</span>
+                          {stone.participant_ids
+                            .filter(p => !p.left)
+                            .map((p) => (
+                              <Button
+                                key={p.user_id}
+                                size="sm"
+                                variant="outline"
+                                className="gap-1"
+                                onClick={async () => {
+                                  await startImpersonation(p.user_id);
+                                  navigate(`/sending?stone=${stone.id}`);
+                                }}
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                {p.name}
+                              </Button>
+                            ))}
                         </div>
                         <ScrollArea className="h-[400px] border rounded-lg p-4">
                           {loadingCasts ? (

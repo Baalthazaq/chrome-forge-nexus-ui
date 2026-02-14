@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Send, Clock, User, MessageCircle, Users, Edit, Trash2, Plus, LogOut, UserPlus, Pencil } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -64,6 +64,7 @@ interface Profile {
 const Sending = () => {
   const { user } = useAuth();
   const { impersonatedUser } = useAdmin();
+  const [searchParams, setSearchParams] = useSearchParams();
   const currentUser = impersonatedUser ? { id: impersonatedUser.user_id } : user;
 
   const [message, setMessage] = useState("");
@@ -88,13 +89,30 @@ const Sending = () => {
 
   const wordCount = message.trim().split(/\s+/).filter(word => word.length > 0).length;
 
+  const pendingStoneId = useRef<string | null>(searchParams.get('stone'));
+
   useEffect(() => {
     if (currentUser) {
       loadStones();
       loadProfiles();
       loadAllProfiles();
+      // Clear the stone param from URL
+      if (searchParams.get('stone')) {
+        setSearchParams({}, { replace: true });
+      }
     }
   }, [currentUser]);
+
+  // Auto-select stone from query param once stones are loaded
+  useEffect(() => {
+    if (pendingStoneId.current && stones.length > 0) {
+      const target = stones.find(s => s.id === pendingStoneId.current);
+      if (target) {
+        setSelectedStone(target);
+        pendingStoneId.current = null;
+      }
+    }
+  }, [stones]);
 
   useEffect(() => {
     if (selectedStone) {
