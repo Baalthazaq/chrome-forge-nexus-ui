@@ -390,7 +390,7 @@ export function CardsSection({
           <Collapsible open={domainSectionOpen} onOpenChange={setDomainSectionOpen}>
             <CollapsibleTrigger className="flex items-center gap-2 w-full text-left mb-2">
               <BookOpen className="w-3.5 h-3.5 text-blue-400" />
-              <span className="text-xs text-gray-500 uppercase tracking-wider flex-1">Domain Spells</span>
+              <span className="text-xs text-gray-500 uppercase tracking-wider flex-1">Domain Cards</span>
               <ChevronDown className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 ${domainSectionOpen ? 'rotate-180' : ''}`} />
             </CollapsibleTrigger>
             <CollapsibleContent>
