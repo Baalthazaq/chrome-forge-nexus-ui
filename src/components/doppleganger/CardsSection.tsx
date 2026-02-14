@@ -36,7 +36,12 @@ export function CardsSection({
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
-  const [domainSectionOpen, setDomainSectionOpen] = useState(true);
+  const [editCategory, setEditCategory] = useState('');
+  const [editNewCategory, setEditNewCategory] = useState('');
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
+  const isSectionOpen = (key: string) => openSections[key] !== false; // default open
+  const toggleSection = (key: string, open: boolean) => setOpenSections(prev => ({ ...prev, [key]: open }));
 
   const selectedCards = sheet.selected_card_ids || [];
 
@@ -55,8 +60,7 @@ export function CardsSection({
 
   if (sheet.ancestry) {
     const knownSources = [...new Set(ancestryCards.map(c => c.source))].filter(Boolean);
-    const isKnownAncestry = knownSources.includes(sheet.ancestry);
-    if (isKnownAncestry) {
+    if (knownSources.includes(sheet.ancestry)) {
       ancestryCards
         .filter(c => c.source === sheet.ancestry)
         .forEach(c => autoCards.push({ title: c.name, content: c.content || '', source: `Ancestry: ${c.source}` }));
@@ -71,18 +75,11 @@ export function CardsSection({
 
   if (selectedSubclass) {
     const meta = selectedSubclass.metadata as any;
-    if (meta?.foundation) {
-      autoCards.push({ title: `${selectedSubclass.name} Foundation`, content: meta.foundation, source: `Subclass` });
-    }
-    if (sheet.level >= 5 && meta?.specialization) {
-      autoCards.push({ title: `${selectedSubclass.name} Specialization`, content: meta.specialization, source: `Subclass (Lv5)` });
-    }
-    if (sheet.level >= 8 && meta?.mastery) {
-      autoCards.push({ title: `${selectedSubclass.name} Mastery`, content: meta.mastery, source: `Subclass (Lv8)` });
-    }
+    if (meta?.foundation) autoCards.push({ title: `${selectedSubclass.name} Foundation`, content: meta.foundation, source: `Subclass` });
+    if (sheet.level >= 5 && meta?.specialization) autoCards.push({ title: `${selectedSubclass.name} Specialization`, content: meta.specialization, source: `Subclass (Lv5)` });
+    if (sheet.level >= 8 && meta?.mastery) autoCards.push({ title: `${selectedSubclass.name} Mastery`, content: meta.mastery, source: `Subclass (Lv8)` });
   }
 
-  // Domain cards filtered by class domains and level
   const availableDomains = domainCards.filter(c => {
     const meta = c.metadata as any;
     return domains.includes(meta?.domain || c.source) && (meta?.level || 0) <= sheet.level;
@@ -93,29 +90,17 @@ export function CardsSection({
     return (meta?.level || 0) <= sheet.level;
   });
 
-  const otherCards = gameCards.filter(c =>
-    c.card_type === 'ancestry' || c.card_type === 'community'
-  );
+  const otherCards = gameCards.filter(c => c.card_type === 'ancestry' || c.card_type === 'community');
 
-  // Helpers
-  const isDomainCard = (sc: SelectedCard): boolean => {
-    if (sc.custom) {
-      // Custom cards with a category that matches a domain name or "Domain"/"Open Domain"
-      const cat = (sc as any).category || '';
-      return cat.toLowerCase().includes('domain') || domains.some(d => d.toLowerCase() === cat.toLowerCase());
-    }
-    const card = gameCards.find(c => c.id === sc.card_id);
-    return card?.card_type === 'domain';
-  };
-
+  // Determine card's category
   const getCardCategory = (sc: SelectedCard): string => {
     if (sc.custom) return (sc as any).category || 'Custom';
     const card = gameCards.find(c => c.id === sc.card_id);
-    if (card?.card_type === 'domain') {
-      const meta = card.metadata as any;
-      return meta?.domain || card.source || 'Domain';
-    }
-    return card?.card_type || 'Other';
+    if (!card) return 'Other';
+    if (card.card_type === 'domain') return 'Domain Cards';
+    if (card.card_type === 'ancestry') return 'Ancestry';
+    if (card.card_type === 'community') return 'Community';
+    return 'Other';
   };
 
   const getCardDetails = (sc: SelectedCard) => {
@@ -123,40 +108,39 @@ export function CardsSection({
     const card = gameCards.find(c => c.id === sc.card_id);
     if (!card) return { title: 'Unknown', content: '', source: '', recallCost: null };
     const meta = card.metadata as any;
-    const source = card.card_type === 'ancestry'
-      ? ''
-      : card.card_type === 'community'
-      ? `Community: ${card.source || ''}`
+    const source = card.card_type === 'ancestry' ? ''
+      : card.card_type === 'community' ? `Community: ${card.source || ''}`
       : `${card.source || ''} ${meta?.type || ''} Lv${meta?.level || '?'}`;
-    return {
-      title: card.name,
-      content: card.content || '',
-      source,
-      recallCost: meta?.recall_cost ?? null,
-    };
+    return { title: card.name, content: card.content || '', source, recallCost: meta?.recall_cost ?? null };
   };
 
-  // Split selected cards into domain vs non-domain
-  const domainSelected = selectedCards.map((sc, i) => ({ sc, i })).filter(({ sc }) => isDomainCard(sc));
-  const nonDomainSelected = selectedCards.map((sc, i) => ({ sc, i })).filter(({ sc }) => !isDomainCard(sc));
+  // Group selected cards by category
+  const grouped: Record<string, { sc: SelectedCard; i: number }[]> = {};
+  selectedCards.forEach((sc, i) => {
+    const cat = getCardCategory(sc);
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push({ sc, i });
+  });
 
-  // Collect existing categories from custom cards for the category picker
+  // Ensure "Domain Cards" comes first if present
+  const categoryOrder = Object.keys(grouped).sort((a, b) => {
+    if (a === 'Domain Cards') return -1;
+    if (b === 'Domain Cards') return 1;
+    return a.localeCompare(b);
+  });
+
+  // Collect existing custom categories for the picker
   const existingCategories = [...new Set(
-    selectedCards
-      .filter(sc => sc.custom && (sc as any).category)
-      .map(sc => (sc as any).category as string)
+    selectedCards.filter(sc => sc.custom && (sc as any).category).map(sc => (sc as any).category as string)
   )];
-  // Also add class domains as category options
-  const categoryOptions = [...new Set([...domains.filter(Boolean), ...existingCategories])];
+  const categoryOptions = [...new Set([...domains.filter(Boolean), 'Domain Cards', ...existingCategories])];
 
   const addCard = () => {
     const cardId = selectedDomainId;
     if ((addType === 'domain' || addType === 'open-domain' || addType === 'other') && cardId) {
       const card = gameCards.find(c => c.id === cardId);
       if (card) {
-        updateSheet({
-          selected_card_ids: [...selectedCards, { card_id: card.id }],
-        });
+        updateSheet({ selected_card_ids: [...selectedCards, { card_id: card.id }] });
       }
     } else if (addType === 'blank' && customTitle) {
       const resolvedCategory = customCategory === '__new__' ? newCategoryName : customCategory;
@@ -173,21 +157,22 @@ export function CardsSection({
   };
 
   const removeCard = (index: number) => {
-    updateSheet({
-      selected_card_ids: selectedCards.filter((_, i) => i !== index),
-    });
+    updateSheet({ selected_card_ids: selectedCards.filter((_, i) => i !== index) });
   };
 
   const startEdit = (index: number, sc: SelectedCard) => {
     setEditingIndex(index);
     setEditTitle(sc.title || '');
     setEditContent(sc.content || '');
+    setEditCategory((sc as any).category || 'Custom');
+    setEditNewCategory('');
   };
 
   const saveEdit = () => {
     if (editingIndex === null) return;
+    const resolvedCat = editCategory === '__new__' ? editNewCategory : editCategory;
     const updated = [...selectedCards];
-    updated[editingIndex] = { ...updated[editingIndex], title: editTitle, content: editContent };
+    updated[editingIndex] = { ...updated[editingIndex], title: editTitle, content: editContent, category: resolvedCat || 'Custom' } as any;
     updateSheet({ selected_card_ids: updated });
     setEditingIndex(null);
   };
@@ -215,17 +200,23 @@ export function CardsSection({
     if (isEditingThis) {
       return (
         <div key={globalIndex} className="p-3 bg-purple-900/20 border border-purple-500/40 rounded-lg space-y-2">
-          <Input
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm"
-          />
-          <Textarea
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm"
-            rows={3}
-          />
+          <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm" />
+          <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm" rows={3} />
+          <Select value={editCategory} onValueChange={setEditCategory}>
+            <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm">
+              <SelectValue placeholder="Category..." />
+            </SelectTrigger>
+            <SelectContent>
+              {categoryOptions.map(cat => (
+                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+              ))}
+              <SelectItem value="Custom">Custom (no domain)</SelectItem>
+              <SelectItem value="__new__">+ New Category...</SelectItem>
+            </SelectContent>
+          </Select>
+          {editCategory === '__new__' && (
+            <Input value={editNewCategory} onChange={(e) => setEditNewCategory(e.target.value)} placeholder="New category name..." className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm" />
+          )}
           <div className="flex gap-2">
             <Button size="sm" onClick={saveEdit}>Save</Button>
             <Button size="sm" variant="outline" onClick={cancelEdit} className="border-gray-600 text-gray-300">Cancel</Button>
@@ -304,12 +295,9 @@ export function CardsSection({
                     const meta = c.metadata as any;
                     const label = c.card_type === 'domain'
                       ? `${c.name} (${c.source} Lv${meta?.level}) — ${meta?.type}`
-                      : c.card_type === 'ancestry'
-                      ? c.name
+                      : c.card_type === 'ancestry' ? c.name
                       : `${c.name} (${c.source || c.card_type})`;
-                    return (
-                      <SelectItem key={c.id} value={c.id}>{label}</SelectItem>
-                    );
+                    return <SelectItem key={c.id} value={c.id}>{label}</SelectItem>;
                   })}
                 </SelectContent>
               </Select>
@@ -323,20 +311,8 @@ export function CardsSection({
             </div>
           ) : (
             <div className="space-y-2">
-              <Input
-                value={customTitle}
-                onChange={(e) => setCustomTitle(e.target.value)}
-                placeholder="Card title..."
-                className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm"
-              />
-              <Textarea
-                value={customContent}
-                onChange={(e) => setCustomContent(e.target.value)}
-                placeholder="Card content..."
-                className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm"
-                rows={3}
-              />
-              {/* Category picker */}
+              <Input value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} placeholder="Card title..." className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm" />
+              <Textarea value={customContent} onChange={(e) => setCustomContent(e.target.value)} placeholder="Card content..." className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm" rows={3} />
               <Select value={customCategory} onValueChange={setCustomCategory}>
                 <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm">
                   <SelectValue placeholder="Pick a category..." />
@@ -350,12 +326,7 @@ export function CardsSection({
                 </SelectContent>
               </Select>
               {customCategory === '__new__' && (
-                <Input
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="New category name..."
-                  className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm"
-                />
+                <Input value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="New category name..." className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm" />
               )}
             </div>
           )}
@@ -366,51 +337,53 @@ export function CardsSection({
         </div>
       )}
 
-      {/* Auto-included cards */}
+      {/* Auto-included cards - collapsible */}
       {autoCards.length > 0 && (
         <div className="mb-3">
-          <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Auto-included</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {autoCards.map((card, i) => (
-              <div key={i} className="p-3 bg-gray-800/30 border border-gray-700/30 rounded-lg">
-                <div className="flex justify-between items-start mb-1">
-                  <span className="text-white text-sm font-semibold">{card.title}</span>
-                  <span className="text-gray-500 text-xs shrink-0 ml-2">{card.source}</span>
-                </div>
-                <div className="text-gray-300 text-xs whitespace-pre-wrap">{card.content}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Domain Spells - collapsible */}
-      {domainSelected.length > 0 && (
-        <div className="mb-3">
-          <Collapsible open={domainSectionOpen} onOpenChange={setDomainSectionOpen}>
+          <Collapsible open={isSectionOpen('auto')} onOpenChange={(v) => toggleSection('auto', v)}>
             <CollapsibleTrigger className="flex items-center gap-2 w-full text-left mb-2">
-              <BookOpen className="w-3.5 h-3.5 text-blue-400" />
-              <span className="text-xs text-gray-500 uppercase tracking-wider flex-1">Domain Cards</span>
-              <ChevronDown className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 ${domainSectionOpen ? 'rotate-180' : ''}`} />
+              <span className="text-xs text-gray-500 uppercase tracking-wider flex-1">Auto-included</span>
+              <ChevronDown className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 ${isSectionOpen('auto') ? 'rotate-180' : ''}`} />
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {domainSelected.map(({ sc, i }) => renderCard(sc, i))}
+                {autoCards.map((card, i) => (
+                  <div key={i} className="p-3 bg-gray-800/30 border border-gray-700/30 rounded-lg">
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="text-white text-sm font-semibold">{card.title}</span>
+                      <span className="text-gray-500 text-xs shrink-0 ml-2">{card.source}</span>
+                    </div>
+                    <div className="text-gray-300 text-xs whitespace-pre-wrap">{card.content}</div>
+                  </div>
+                ))}
               </div>
             </CollapsibleContent>
           </Collapsible>
         </div>
       )}
 
-      {/* Non-domain selected cards */}
-      {nonDomainSelected.length > 0 && (
-        <div>
-          <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Selected Cards</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {nonDomainSelected.map(({ sc, i }) => renderCard(sc, i))}
+      {/* Selected cards grouped by category - each collapsible */}
+      {categoryOrder.map(cat => {
+        const items = grouped[cat];
+        const sectionKey = `cat-${cat}`;
+        const icon = cat === 'Domain Cards' ? <BookOpen className="w-3.5 h-3.5 text-blue-400" /> : null;
+        return (
+          <div key={cat} className="mb-3">
+            <Collapsible open={isSectionOpen(sectionKey)} onOpenChange={(v) => toggleSection(sectionKey, v)}>
+              <CollapsibleTrigger className="flex items-center gap-2 w-full text-left mb-2">
+                {icon}
+                <span className="text-xs text-gray-500 uppercase tracking-wider flex-1">{cat}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 ${isSectionOpen(sectionKey) ? 'rotate-180' : ''}`} />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {items.map(({ sc, i }) => renderCard(sc, i))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
-        </div>
-      )}
+        );
+      })}
 
       {autoCards.length === 0 && selectedCards.length === 0 && (
         <div className="text-gray-500 text-sm text-center py-4">
