@@ -11,7 +11,24 @@ interface Props {
   sheet: CharacterSheet;
   updateSheet: (updates: Partial<CharacterSheet>) => Promise<void>;
   purchases: any[];
+  customItems?: any[];
   isEditing: boolean;
+}
+
+// Normalize a custom item (user_augmentation) to look like a purchase with shop_items
+function normalizeCustomItem(aug: any) {
+  const meta = aug.metadata || {};
+  const specs = meta.specifications || {};
+  return {
+    id: `custom_${aug.id}`,
+    _isCustom: true,
+    shop_items: {
+      name: aug.name,
+      category: aug.category,
+      description: specs.description || meta.notes || null,
+      specifications: specs,
+    },
+  };
 }
 
 function ItemCard({ purchase }: { purchase: any }) {
@@ -52,9 +69,13 @@ function ItemCard({ purchase }: { purchase: any }) {
   );
 }
 
-export function EquipmentSection({ sheet, updateSheet, purchases, isEditing }: Props) {
+export function EquipmentSection({ sheet, updateSheet, purchases, customItems = [], isEditing }: Props) {
   const [equippedOpen, setEquippedOpen] = useState(true);
   const [backpackOpen, setBackpackOpen] = useState(true);
+
+  // Normalize custom items and merge with purchases for backpack use
+  const normalizedCustom = customItems.map(normalizeCustomItem);
+  const allItems = [...purchases, ...normalizedCustom];
 
   const weapons = purchases.filter(p => {
     const cat = p.shop_items?.category?.toLowerCase() || '';
@@ -136,7 +157,7 @@ export function EquipmentSection({ sheet, updateSheet, purchases, isEditing }: P
         <BackpackInner
           sheet={sheet}
           updateSheet={updateSheet}
-          purchases={purchases}
+          purchases={allItems}
           isEditing={isEditing}
           open={backpackOpen}
           onOpenChange={setBackpackOpen}

@@ -27,7 +27,7 @@ const Doppleganger = () => {
     sheet, updateSheet, loading: sheetLoading,
     gameCards, classCards, filteredSubclasses, ancestryCards, communityCards, domainCards,
     selectedClass, selectedSubclass, baseEvasion, baseHP, domains,
-    purchases,
+    purchases, customItems,
   } = useCharacterSheet(userId);
 
   // Fetch profile
@@ -148,6 +148,7 @@ const Doppleganger = () => {
           sheet={sheet}
           updateSheet={updateSheet}
           purchases={purchases}
+          customItems={customItems}
           isEditing={isEditing}
         />
 

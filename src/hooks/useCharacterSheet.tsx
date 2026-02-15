@@ -8,20 +8,23 @@ export function useCharacterSheet(userId: string | undefined) {
   const [sheet, setSheet] = useState<CharacterSheet | null>(null);
   const [gameCards, setGameCards] = useState<GameCard[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);
+  const [customItems, setCustomItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     if (!userId) { setLoading(false); return; }
     setLoading(true);
 
-    const [cardsRes, sheetRes, purchasesRes] = await Promise.all([
+    const [cardsRes, sheetRes, purchasesRes, augRes] = await Promise.all([
       supabase.from('game_cards').select('*'),
       supabase.from('character_sheets').select('*').eq('user_id', userId).maybeSingle(),
       supabase.from('purchases').select('*, shop_items(*)').eq('user_id', userId),
+      supabase.from('user_augmentations').select('*').eq('user_id', userId),
     ]);
 
     if (cardsRes.data) setGameCards(cardsRes.data as unknown as GameCard[]);
     if (purchasesRes.data) setPurchases(purchasesRes.data);
+    if (augRes.data) setCustomItems(augRes.data);
 
     if (sheetRes.data) {
       const d = sheetRes.data as any;
@@ -97,6 +100,6 @@ export function useCharacterSheet(userId: string | undefined) {
     gameCards, classCards, subclassCards, communityCards, ancestryCards, domainCards,
     selectedClass, selectedSubclass, filteredSubclasses,
     classMeta, baseEvasion, baseHP, domains,
-    purchases, refetch: fetchData,
+    purchases, customItems, refetch: fetchData,
   };
 }
