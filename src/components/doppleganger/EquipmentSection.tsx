@@ -77,12 +77,12 @@ export function EquipmentSection({ sheet, updateSheet, purchases, customItems = 
   const normalizedCustom = customItems.map(normalizeCustomItem);
   const allItems = [...purchases, ...normalizedCustom];
 
-  const weapons = purchases.filter(p => {
+  const weapons = allItems.filter(p => {
     const cat = p.shop_items?.category?.toLowerCase() || '';
     return cat.includes('weapon') || cat.includes('melee') || cat.includes('ranged');
   });
 
-  const armors = purchases.filter(p => {
+  const armors = allItems.filter(p => {
     const cat = p.shop_items?.category?.toLowerCase() || '';
     return cat.includes('armor') || cat.includes('shield');
   });
