@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { PurchaseDialog } from "@/components/PurchaseDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { formatHex, getHexBreakdown } from "@/lib/currency";
 import {
   HoverCard,
@@ -129,6 +130,7 @@ function sortItems(items: StoreItem[], key: SortKey, dir: SortDir): StoreItem[] 
 
 const Wyrmcart = () => {
   const { user } = useAuth();
+  const { isAdmin, impersonatedUser } = useAdmin();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [activeType, setActiveType] = useState<string>("All");
@@ -139,15 +141,17 @@ const Wyrmcart = () => {
   const [purchaseItem, setPurchaseItem] = useState<StoreItem | null>(null);
   const [userBalance, setUserBalance] = useState<number>(0);
 
+  const activeUserId = impersonatedUser?.user_id || user?.id;
+
   const fetchBalance = useCallback(async () => {
-    if (!user) return;
+    if (!activeUserId) return;
     const { data } = await supabase
       .from("profiles")
       .select("credits")
-      .eq("user_id", user.id)
+      .eq("user_id", activeUserId)
       .single();
     if (data) setUserBalance(data.credits ?? 0);
-  }, [user]);
+  }, [activeUserId]);
 
   useEffect(() => {
     fetchBalance();
@@ -535,6 +539,7 @@ const Wyrmcart = () => {
           item={purchaseItem}
           userBalance={userBalance}
           onPurchaseComplete={fetchBalance}
+          targetUserId={impersonatedUser?.user_id}
         />
       </div>
     </div>

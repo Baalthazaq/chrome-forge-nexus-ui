@@ -164,8 +164,9 @@ const Vault = () => {
     }
 
     try {
+      const activeUserId = impersonatedUser?.user_id || user?.id;
       const { error } = await supabase.functions.invoke('financial-operations', {
-        body: { operation: 'send_money', to_user_id: sendRecipient, amount, description: sendDescription }
+        body: { operation: 'send_money', to_user_id: sendRecipient, amount, description: sendDescription, ...(impersonatedUser ? { targetUserId: impersonatedUser.user_id } : {}) }
       });
       if (error) throw error;
       toast({ title: "Success", description: "Money sent successfully" });
@@ -205,7 +206,7 @@ const Vault = () => {
     try {
       const promises = billIds.map(billId =>
         supabase.functions.invoke('financial-operations', {
-          body: { operation: 'pay_bill', bill_id: billId }
+          body: { operation: 'pay_bill', bill_id: billId, ...(impersonatedUser ? { targetUserId: impersonatedUser.user_id } : {}) }
         })
       );
       const results = await Promise.all(promises);

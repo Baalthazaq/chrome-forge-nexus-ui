@@ -29,6 +29,7 @@ interface PurchaseDialogProps {
   } | null;
   userBalance: number;
   onPurchaseComplete: () => void;
+  targetUserId?: string;
 }
 
 export function PurchaseDialog({
@@ -37,6 +38,7 @@ export function PurchaseDialog({
   item,
   userBalance,
   onPurchaseComplete,
+  targetUserId,
 }: PurchaseDialogProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -81,6 +83,7 @@ export function PurchaseDialog({
           operation: "purchase_item",
           itemId: shopItem.id,
           quantity: 1,
+          ...(targetUserId ? { targetUserId } : {}),
         },
       });
 
