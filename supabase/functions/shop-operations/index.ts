@@ -6,15 +6,29 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
+async function resolveUserId(authUserId: string, targetUserId?: string): Promise<string> {
+  if (!targetUserId || targetUserId === authUserId) return authUserId;
+  
+  // Verify caller is admin
+  const { data: role } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', authUserId)
+    .eq('role', 'admin')
+    .single();
+  
+  if (!role) throw new Error('Only admins can act on behalf of other users');
+  return targetUserId;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const { operation, ...params } = await req.json()
+    const { operation, targetUserId, ...params } = await req.json()
     
-    // Get authenticated user
     const authHeader = req.headers.get('Authorization')!
     const token = authHeader.replace('Bearer ', '')
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
@@ -26,11 +40,13 @@ Deno.serve(async (req) => {
       })
     }
 
+    const effectiveUserId = await resolveUserId(user.id, targetUserId);
+
     switch (operation) {
       case 'purchase_item':
-        return await purchaseItem(user.id, params)
+        return await purchaseItem(effectiveUserId, params)
       case 'get_user_gear':
-        return await getUserGear(user.id)
+        return await getUserGear(effectiveUserId)
       default:
         return new Response(JSON.stringify({ error: 'Invalid operation' }), {
           status: 400,
@@ -47,7 +63,6 @@ Deno.serve(async (req) => {
 })
 
 async function purchaseItem(userId: string, { itemId, quantity = 1 }: { itemId: string, quantity?: number }) {
-  // Get item details
   const { data: item, error: itemError } = await supabase
     .from('shop_items')
     .select('*')
@@ -62,7 +77,6 @@ async function purchaseItem(userId: string, { itemId, quantity = 1 }: { itemId: 
     })
   }
 
-  // Check quantity availability
   if (item.quantity_available && item.quantity_available < quantity) {
     return new Response(JSON.stringify({ error: 'Insufficient quantity available' }), {
       status: 400,
@@ -72,7 +86,6 @@ async function purchaseItem(userId: string, { itemId, quantity = 1 }: { itemId: 
 
   const totalCost = item.price * quantity
 
-  // Get user's current credits
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('credits')
@@ -86,7 +99,6 @@ async function purchaseItem(userId: string, { itemId, quantity = 1 }: { itemId: 
     })
   }
 
-  // Check if user has enough credits (including negative limit of -6000)
   const newBalance = profile.credits - totalCost
   if (newBalance < -6000) {
     return new Response(JSON.stringify({ error: 'Insufficient funds. Would exceed credit limit.' }), {
@@ -95,11 +107,7 @@ async function purchaseItem(userId: string, { itemId, quantity = 1 }: { itemId: 
     })
   }
 
-  // Begin transaction
-  const { error: updateError } = await supabase.rpc('begin_transaction')
-  
   try {
-    // Update user credits
     const { error: creditError } = await supabase
       .from('profiles')
       .update({ credits: newBalance })
@@ -107,7 +115,6 @@ async function purchaseItem(userId: string, { itemId, quantity = 1 }: { itemId: 
 
     if (creditError) throw creditError
 
-    // Update item quantity if limited
     if (item.quantity_available) {
       const { error: quantityError } = await supabase
         .from('shop_items')
@@ -117,7 +124,6 @@ async function purchaseItem(userId: string, { itemId, quantity = 1 }: { itemId: 
       if (quantityError) throw quantityError
     }
 
-    // Create purchase record
     const { error: purchaseError } = await supabase
       .from('purchases')
       .insert({
@@ -129,7 +135,6 @@ async function purchaseItem(userId: string, { itemId, quantity = 1 }: { itemId: 
 
     if (purchaseError) throw purchaseError
 
-    // Add to user augmentations (for @tunes tracking)
     const { error: augError } = await supabase
       .from('user_augmentations')
       .insert({
@@ -146,11 +151,10 @@ async function purchaseItem(userId: string, { itemId, quantity = 1 }: { itemId: 
 
     if (augError) throw augError
 
-    // Create subscription if item has recurring fee
     let subscriptionCreated = false
     if (item.subscription_fee && item.subscription_interval) {
       const nextDate = new Date()
-      nextDate.setDate(nextDate.getDate() + 1) // Start tomorrow
+      nextDate.setDate(nextDate.getDate() + 1)
 
       const { error: subError } = await supabase
         .from('recurring_payments')
@@ -170,7 +174,6 @@ async function purchaseItem(userId: string, { itemId, quantity = 1 }: { itemId: 
       subscriptionCreated = true
     }
 
-    // Create transaction record
     await supabase
       .from('transactions')
       .insert({
@@ -185,8 +188,6 @@ async function purchaseItem(userId: string, { itemId, quantity = 1 }: { itemId: 
         }
       })
 
-    await supabase.rpc('commit_transaction')
-
     return new Response(JSON.stringify({ 
       success: true, 
       newBalance,
@@ -196,7 +197,6 @@ async function purchaseItem(userId: string, { itemId, quantity = 1 }: { itemId: 
     })
 
   } catch (error) {
-    await supabase.rpc('rollback_transaction')
     throw error
   }
 }

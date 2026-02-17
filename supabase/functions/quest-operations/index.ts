@@ -6,15 +6,28 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
+async function resolveUserId(authUserId: string, targetUserId?: string): Promise<string> {
+  if (!targetUserId || targetUserId === authUserId) return authUserId;
+  
+  const { data: role } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', authUserId)
+    .eq('role', 'admin')
+    .single();
+  
+  if (!role) throw new Error('Only admins can act on behalf of other users');
+  return targetUserId;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const { operation, ...params } = await req.json()
+    const { operation, targetUserId, ...params } = await req.json()
     
-    // Get authenticated user
     const authHeader = req.headers.get('Authorization')!
     const token = authHeader.replace('Bearer ', '')
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
@@ -26,13 +39,15 @@ Deno.serve(async (req) => {
       })
     }
 
+    const effectiveUserId = await resolveUserId(user.id, targetUserId);
+
     switch (operation) {
       case 'accept_quest':
-        return await acceptQuest(user.id, params)
+        return await acceptQuest(effectiveUserId, params)
       case 'submit_quest':
-        return await submitQuest(user.id, params)
+        return await submitQuest(effectiveUserId, params)
       case 'get_user_quests':
-        return await getUserQuests(user.id)
+        return await getUserQuests(effectiveUserId)
       default:
         return new Response(JSON.stringify({ error: 'Invalid operation' }), {
           status: 400,
@@ -49,7 +64,6 @@ Deno.serve(async (req) => {
 })
 
 async function acceptQuest(userId: string, { questId }: { questId: string }) {
-  // Check if quest exists and is active
   const { data: quest, error: questError } = await supabase
     .from('quests')
     .select('*')
@@ -64,7 +78,6 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
     })
   }
 
-  // Check if user already accepted this quest
   const { data: existing } = await supabase
     .from('quest_acceptances')
     .select('id')
@@ -79,7 +92,6 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
     })
   }
 
-  // Accept the quest
   const { error: acceptError } = await supabase
     .from('quest_acceptances')
     .insert({
@@ -101,7 +113,6 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
 }
 
 async function submitQuest(userId: string, { questId, notes }: { questId: string, notes?: string }) {
-  // Update quest acceptance to submitted
   const { error: updateError } = await supabase
     .from('quest_acceptances')
     .update({

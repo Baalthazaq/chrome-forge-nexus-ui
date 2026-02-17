@@ -11,6 +11,20 @@ const logStep = (step: string, details?: any) => {
   console.log(`[FINANCIAL-OPS] ${step}${detailsStr}`);
 };
 
+async function resolveUserId(supabase: any, authUserId: string, targetUserId?: string): Promise<string> {
+  if (!targetUserId || targetUserId === authUserId) return authUserId;
+  
+  const { data: role } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', authUserId)
+    .eq('role', 'admin')
+    .single();
+  
+  if (!role) throw new Error('Only admins can act on behalf of other users');
+  return targetUserId;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -41,39 +55,40 @@ serve(async (req) => {
     if (!user) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
-    const { operation, ...params } = await req.json();
-    logStep("Operation requested", { operation, params });
+    const { operation, targetUserId, ...params } = await req.json();
+    logStep("Operation requested", { operation, params, targetUserId });
+
+    const effectiveUserId = await resolveUserId(supabase, user.id, targetUserId);
+    if (effectiveUserId !== user.id) {
+      logStep("Admin impersonation active", { adminId: user.id, targetId: effectiveUserId });
+    }
 
     switch (operation) {
       case "send_money": {
         const { to_user_id, amount, description } = params;
         
-        // Get sender's profile
         const { data: senderProfile, error: senderError } = await supabase
           .from("profiles")
           .select("credits")
-          .eq("user_id", user.id)
+          .eq("user_id", effectiveUserId)
           .single();
 
         if (senderError || !senderProfile) {
           throw new Error("Sender profile not found");
         }
 
-        // Check if sender has enough credits (including negative limit of -6000)
         const newSenderBalance = senderProfile.credits - amount;
         if (newSenderBalance < -6000) {
           throw new Error("Insufficient funds. Would exceed credit limit.");
         }
 
-        // Update sender's credits
         const { error: updateSenderError } = await supabase
           .from("profiles")
           .update({ credits: newSenderBalance })
-          .eq("user_id", user.id);
+          .eq("user_id", effectiveUserId);
 
         if (updateSenderError) throw updateSenderError;
 
-        // Get recipient's profile and update credits
         const { data: recipientProfile, error: recipientError } = await supabase
           .from("profiles")
           .select("credits")
@@ -91,10 +106,9 @@ serve(async (req) => {
 
         if (updateRecipientError) throw updateRecipientError;
 
-        // Create transaction records
         const transactions = [
           {
-            user_id: user.id,
+            user_id: effectiveUserId,
             transaction_type: "debit",
             amount: -amount,
             to_user_id,
@@ -105,7 +119,7 @@ serve(async (req) => {
             user_id: to_user_id,
             transaction_type: "credit",
             amount: amount,
-            from_user_id: user.id,
+            from_user_id: effectiveUserId,
             description,
             status: "completed"
           }
@@ -117,7 +131,7 @@ serve(async (req) => {
 
         if (transactionError) throw transactionError;
 
-        logStep("Money sent successfully", { amount, to_user_id });
+        logStep("Money sent successfully", { amount, to_user_id, from: effectiveUserId });
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
@@ -127,12 +141,11 @@ serve(async (req) => {
       case "pay_bill": {
         const { bill_id } = params;
         
-        // Get bill details
         const { data: bill, error: billError } = await supabase
           .from("bills")
           .select("*")
           .eq("id", bill_id)
-          .eq("to_user_id", user.id)
+          .eq("to_user_id", effectiveUserId)
           .eq("status", "unpaid")
           .single();
 
@@ -140,32 +153,28 @@ serve(async (req) => {
           throw new Error("Bill not found or already paid");
         }
 
-        // Get user's profile
         const { data: userProfile, error: profileError } = await supabase
           .from("profiles")
           .select("credits")
-          .eq("user_id", user.id)
+          .eq("user_id", effectiveUserId)
           .single();
 
         if (profileError || !userProfile) {
           throw new Error("User profile not found");
         }
 
-        // Check if user has enough credits (including negative limit of -6000)
         const newUserBalance = userProfile.credits - bill.amount;
         if (newUserBalance < -6000) {
           throw new Error("Insufficient funds. Would exceed credit limit.");
         }
 
-        // Update user's credits
         const { error: updateUserError } = await supabase
           .from("profiles")
           .update({ credits: newUserBalance })
-          .eq("user_id", user.id);
+          .eq("user_id", effectiveUserId);
 
         if (updateUserError) throw updateUserError;
 
-        // Mark bill as paid
         const { error: updateBillError } = await supabase
           .from("bills")
           .update({ status: "paid" })
@@ -173,11 +182,10 @@ serve(async (req) => {
 
         if (updateBillError) throw updateBillError;
 
-        // Create transaction record
         const { error: transactionError } = await supabase
           .from("transactions")
           .insert({
-            user_id: user.id,
+            user_id: effectiveUserId,
             transaction_type: "bill_payment",
             amount: -bill.amount,
             reference_id: bill_id,
