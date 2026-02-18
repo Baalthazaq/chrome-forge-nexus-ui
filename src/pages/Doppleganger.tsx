@@ -57,19 +57,36 @@ const Doppleganger = () => {
     await supabase.from('profiles').update({ [field]: value }).eq('user_id', userId);
   };
 
-  // Get armor base value and thresholds from equipped armor purchase
+  // Get armor base value and thresholds from equipped armor (purchase or custom item)
   const getArmorBaseValue = () => {
     if (!sheet?.armor_purchase_id) return 0;
     const armorPurchase = purchases.find(p => p.id === sheet.armor_purchase_id);
-    const specs = armorPurchase?.shop_items?.specifications as any;
-    return specs?.armorBase || specs?.armor_score || specs?.base_armor || 0;
+    if (armorPurchase) {
+      const specs = armorPurchase?.shop_items?.specifications as any;
+      return specs?.armorBase || specs?.armor_score || specs?.base_armor || 0;
+    }
+    // Check custom items
+    const customArmor = customItems.find(c => c.id === sheet.armor_purchase_id);
+    if (customArmor) {
+      const specs = customArmor?.metadata?.specifications || {};
+      return specs?.armorBase || specs?.armor_score || specs?.base_armor || 0;
+    }
+    return 0;
   };
 
   const getArmorThresholds = () => {
     if (!sheet?.armor_purchase_id) return '';
     const armorPurchase = purchases.find(p => p.id === sheet.armor_purchase_id);
-    const specs = armorPurchase?.shop_items?.specifications as any;
-    return specs?.armorThreshold || specs?.armor_threshold || '';
+    if (armorPurchase) {
+      const specs = armorPurchase?.shop_items?.specifications as any;
+      return specs?.armorThreshold || specs?.armor_threshold || '';
+    }
+    const customArmor = customItems.find(c => c.id === sheet.armor_purchase_id);
+    if (customArmor) {
+      const specs = customArmor?.metadata?.specifications || {};
+      return specs?.armorThreshold || specs?.armor_threshold || '';
+    }
+    return '';
   };
 
   if (profileLoading || sheetLoading) {

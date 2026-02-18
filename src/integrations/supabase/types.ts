@@ -236,29 +236,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "character_sheets_armor_purchase_id_fkey"
-            columns: ["armor_purchase_id"]
-            isOneToOne: false
-            referencedRelation: "purchases"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "character_sheets_primary_weapon_purchase_id_fkey"
-            columns: ["primary_weapon_purchase_id"]
-            isOneToOne: false
-            referencedRelation: "purchases"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "character_sheets_secondary_weapon_purchase_id_fkey"
-            columns: ["secondary_weapon_purchase_id"]
-            isOneToOne: false
-            referencedRelation: "purchases"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       contact_tags: {
         Row: {

@@ -20,7 +20,7 @@ function normalizeCustomItem(aug: any) {
   const meta = aug.metadata || {};
   const specs = meta.specifications || {};
   return {
-    id: `custom_${aug.id}`,
+    id: aug.id,
     _isCustom: true,
     shop_items: {
       name: aug.name,
@@ -77,20 +77,19 @@ export function EquipmentSection({ sheet, updateSheet, purchases, customItems = 
   const normalizedCustom = customItems.map(normalizeCustomItem);
   const allItems = [...purchases, ...normalizedCustom];
 
-  // Only real purchases (not custom items) can go in equipment slots (FK to purchases table)
-  const weapons = purchases.filter(p => {
+  const weapons = allItems.filter(p => {
     const cat = p.shop_items?.category?.toLowerCase() || '';
     return cat.includes('weapon') || cat.includes('melee') || cat.includes('ranged');
   });
 
-  const armors = purchases.filter(p => {
+  const armors = allItems.filter(p => {
     const cat = p.shop_items?.category?.toLowerCase() || '';
     return cat.includes('armor') || cat.includes('shield');
   });
 
   const getEquippedPurchase = (purchaseId: string | null) => {
     if (!purchaseId) return null;
-    return purchases.find(pu => pu.id === purchaseId) || null;
+    return allItems.find(pu => pu.id === purchaseId) || null;
   };
 
   const slots = [
