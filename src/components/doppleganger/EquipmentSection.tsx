@@ -73,9 +73,11 @@ export function EquipmentSection({ sheet, updateSheet, purchases, customItems = 
   const [equippedOpen, setEquippedOpen] = useState(true);
   const [backpackOpen, setBackpackOpen] = useState(true);
 
-  // Normalize custom items and merge with purchases for backpack use
+  // Normalize custom items and merge with purchases, deduplicating by name
   const normalizedCustom = customItems.map(normalizeCustomItem);
-  const allItems = [...purchases, ...normalizedCustom];
+  const purchaseNames = new Set(purchases.map(p => p.shop_items?.name?.toLowerCase()).filter(Boolean));
+  const dedupedCustom = normalizedCustom.filter(c => !purchaseNames.has(c.shop_items?.name?.toLowerCase()));
+  const allItems = [...purchases, ...dedupedCustom];
 
   const weapons = allItems.filter(p => {
     const cat = p.shop_items?.category?.toLowerCase() || '';
