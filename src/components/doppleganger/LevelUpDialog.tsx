@@ -83,30 +83,45 @@ export function LevelUpDialog({
   const isUpgradeAvailable = (type: UpgradeType): boolean => {
     const limit = UPGRADE_LIMITS[type];
     if (limit.minTier && tier < limit.minTier) return false;
-    if (tierCounts[type] >= limit.max) return false;
+    // For perLevel upgrades, count only current selections (not tier-wide)
+    const currentCount = selectedUpgrades.filter(u => u.type === type).length;
+    if (limit.perLevel) {
+      if (currentCount >= limit.max) return false;
+    } else {
+      if (tierCounts[type] + currentCount >= limit.max) return false;
+    }
     if (hasMutualExclusionConflict(type, tier, choices, selectedUpgrades)) return false;
     if (type === 'subclass_upgrade' && !nextSubTier) return false;
-    if (totalPoints + limit.cost > 2 && !selectedUpgrades.some(u => u.type === type)) return false;
+    if (totalPoints + limit.cost > 2) return false;
     return true;
   };
 
+  const addUpgrade = (type: UpgradeType) => {
+    if (!isUpgradeAvailable(type)) return;
+    setSelectedUpgrades(prev => [...prev, { type }]);
+  };
+
+  const removeUpgrade = (type: UpgradeType) => {
+    const idx = selectedUpgrades.findIndex(u => u.type === type);
+    if (idx === -1) return;
+    setSelectedUpgrades(prev => prev.filter((_, i) => i !== idx));
+    if (type === 'stat_increase') setStatPicks([]);
+    if (type === 'experience_boost') setExpPicks([]);
+    if (type === 'domain_card') setDomainCardPick('');
+    if (type === 'multiclass') { setMcClass(''); setMcDomain(''); setMcSubclass(''); }
+  };
+
   const toggleUpgrade = (type: UpgradeType) => {
-    const existing = selectedUpgrades.find(u => u.type === type);
-    if (existing) {
-      setSelectedUpgrades(prev => prev.filter(u => u.type !== type));
-      if (type === 'stat_increase') setStatPicks([]);
-      if (type === 'experience_boost') setExpPicks([]);
-      if (type === 'domain_card') setDomainCardPick('');
-      if (type === 'multiclass') { setMcClass(''); setMcDomain(''); setMcSubclass(''); }
+    const count = selectedUpgrades.filter(u => u.type === type).length;
+    if (count > 0) {
+      removeUpgrade(type);
     } else {
-      if (!isUpgradeAvailable(type)) return;
-      const cost = UPGRADE_LIMITS[type].cost;
-      if (totalPoints + cost > 2) return;
-      setSelectedUpgrades(prev => [...prev, { type }]);
+      addUpgrade(type);
     }
   };
 
-  const isSelected = (type: UpgradeType) => selectedUpgrades.some(u => u.type === type);
+  const upgradeCount = (type: UpgradeType) => selectedUpgrades.filter(u => u.type === type).length;
+  const isSelected = (type: UpgradeType) => upgradeCount(type) > 0;
 
   // Validation
   const autoValid = !isStart || (autoExpName.trim() !== '' && autoDomainCardId !== '');
@@ -254,7 +269,7 @@ export function LevelUpDialog({
                 <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
                   <SelectValue placeholder="Select a domain card..." />
                 </SelectTrigger>
-                <SelectContent className="z-[9999] bg-gray-800 border-gray-600">
+                <SelectContent className="z-[9999] bg-gray-800 border-gray-600 text-white">
                   {availableDomainCards.map(c => {
                     const meta = c.metadata as any;
                     return (
@@ -281,6 +296,7 @@ export function LevelUpDialog({
           {(Object.keys(UPGRADE_LIMITS) as UpgradeType[]).map(type => {
             const limit = UPGRADE_LIMITS[type];
             const used = tierCounts[type];
+            const count = upgradeCount(type);
             const available = isUpgradeAvailable(type);
             const selected = isSelected(type);
             const disabled = !available && !selected;
@@ -305,12 +321,21 @@ export function LevelUpDialog({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-white">{limit.label}</span>
+                      {count > 1 && <Badge className="bg-indigo-600 text-xs">×{count}</Badge>}
                       {limit.cost > 1 && <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">{limit.cost} pts</Badge>}
+                      {selected && available && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); addUpgrade(type); }}
+                          className="text-xs text-indigo-400 hover:text-indigo-300 ml-1"
+                        >
+                          [+1 more]
+                        </button>
+                      )}
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">{limit.description}</p>
                     {conflict && <p className="text-xs text-red-400 mt-0.5">Mutually exclusive with {type === 'subclass_upgrade' ? 'Multiclass' : 'Subclass Upgrade'} this tier.</p>}
                   </div>
-                  <span className="text-xs text-gray-500 shrink-0">{used}/{limit.max}</span>
+                  <span className="text-xs text-gray-500 shrink-0">{limit.perLevel ? `${count}` : `${used}/${limit.max}`}</span>
                 </div>
 
                 {/* Sub-options */}
@@ -377,7 +402,7 @@ export function LevelUpDialog({
                       <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
                         <SelectValue placeholder="Select domain card..." />
                       </SelectTrigger>
-                      <SelectContent className="z-[9999] bg-gray-800 border-gray-600">
+                      <SelectContent className="z-[9999] bg-gray-800 border-gray-600 text-white">
                         {availableDomainCards.map(c => {
                           const meta = c.metadata as any;
                           return <SelectItem key={c.id} value={c.id}>{c.name} ({c.source} Lv{meta?.level})</SelectItem>;
@@ -399,7 +424,7 @@ export function LevelUpDialog({
                       <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
                         <SelectValue placeholder="Select class..." />
                       </SelectTrigger>
-                        <SelectContent className="z-[9999] bg-gray-800 border-gray-600">
+                        <SelectContent className="z-[9999] bg-gray-800 border-gray-600 text-white">
                         {mcAvailableClasses.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -408,7 +433,7 @@ export function LevelUpDialog({
                         <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
                           <SelectValue placeholder="Pick one domain..." />
                         </SelectTrigger>
-                          <SelectContent className="z-[9999] bg-gray-800 border-gray-600">
+                          <SelectContent className="z-[9999] bg-gray-800 border-gray-600 text-white">
                           {mcDomains.map((d: string) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                         </SelectContent>
                       </Select>
@@ -418,7 +443,7 @@ export function LevelUpDialog({
                         <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
                           <SelectValue placeholder="Pick subclass..." />
                         </SelectTrigger>
-                        <SelectContent className="z-[9999] bg-gray-800 border-gray-600">
+                        <SelectContent className="z-[9999] bg-gray-800 border-gray-600 text-white">
                           {mcSubclasses.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
