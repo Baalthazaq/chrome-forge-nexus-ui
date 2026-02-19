@@ -1,3 +1,4 @@
+import React from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -314,18 +315,76 @@ export function CharacterHeader({
             </div>
 
             {/* Multiclass */}
-            {multiclasses.length > 0 && multiclasses.map((mc, i) => (
-              <div key={`mc-header-${i}`} className="sm:col-span-2 lg:col-span-3 flex flex-wrap gap-3 items-center border-t border-indigo-500/20 pt-2 mt-1">
-                <div>
-                  <label className="text-cyan-400 text-xs mb-0.5 block">Multiclass {multiclasses.length > 1 ? i + 1 : ''}</label>
-                  <span className="text-white font-bold">{mc.class}</span>
-                </div>
-                <div>
-                  <label className="text-cyan-400 text-xs mb-0.5 block">MC Subclass</label>
-                  <span className="text-white font-bold">{mc.subclass}</span>
-                </div>
-              </div>
-            ))}
+            {multiclasses.length > 0 && multiclasses.map((mc, mcIndex) => {
+              const mcLabel = multiclasses.length > 1 ? ` ${mcIndex + 1}` : '';
+              const mcFilteredSubclasses = subclassCards.filter(s => s.source === mc.class);
+
+              const updateMulticlassField = (field: 'class' | 'subclass', value: string) => {
+                const updatedChoices = { ...choices };
+                let mcCount = 0;
+                for (const [lvl, data] of Object.entries(updatedChoices)) {
+                  if (!data.upgrades) continue;
+                  for (const u of data.upgrades) {
+                    if (u.type === 'multiclass' && u.multiclass_data) {
+                      if (mcCount === mcIndex) {
+                        u.multiclass_data[field] = value;
+                        if (field === 'class') u.multiclass_data.subclass = '';
+                        updateSheet({ level_up_choices: updatedChoices as any });
+                        return;
+                      }
+                      mcCount++;
+                    }
+                  }
+                }
+              };
+
+              return (
+                <React.Fragment key={`mc-header-${mcIndex}`}>
+                  {/* MC Class */}
+                  <div>
+                    <label className="text-cyan-400 text-xs mb-1 block">Multiclass{mcLabel}</label>
+                    {isEditing ? (
+                      <Select value={mc.class || '__none__'} onValueChange={(v) => updateMulticlassField('class', v === '__none__' ? '' : v)}>
+                        <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100">
+                          <SelectValue placeholder="Select class" />
+                        </SelectTrigger>
+                        <SelectContent className="z-[9999] bg-gray-800 border-gray-600 text-white">
+                          <SelectItem value="__none__">None</SelectItem>
+                          {classCards.map(c => (
+                            <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="text-lg font-bold text-white">{mc.class || '—'}</div>
+                    )}
+                  </div>
+                  {/* MC Subclass */}
+                  <div>
+                    <label className="text-cyan-400 text-xs mb-1 block">MC Subclass{mcLabel}</label>
+                    {isEditing ? (
+                      <Select
+                        value={mc.subclass || '__none__'}
+                        onValueChange={(v) => updateMulticlassField('subclass', v === '__none__' ? '' : v)}
+                        disabled={!mc.class}
+                      >
+                        <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100">
+                          <SelectValue placeholder={mc.class ? "Select subclass" : "Choose class first"} />
+                        </SelectTrigger>
+                        <SelectContent className="z-[9999] bg-gray-800 border-gray-600 text-white">
+                          <SelectItem value="__none__">None</SelectItem>
+                          {mcFilteredSubclasses.map(c => (
+                            <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="text-lg font-bold text-white">{mc.subclass || '—'}</div>
+                    )}
+                  </div>
+                </React.Fragment>
+              );
+            })}
 
             {/* Domains */}
             {allDomains.length > 0 && (
