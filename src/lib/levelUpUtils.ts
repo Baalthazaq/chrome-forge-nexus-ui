@@ -92,7 +92,7 @@ export const UPGRADE_LIMITS: Record<UpgradeType, { max: number; cost: number; mi
   evasion_increase: { max: 1, cost: 1, label: 'Add +1 Evasion', description: '+1 to Evasion.' },
   subclass_upgrade: { max: 1, cost: 1, label: 'Upgrade Subclass', description: 'Take the next card for your subclass (Specialization or Mastery).' },
   proficiency_increase: { max: 1, cost: 2, label: 'Increase Proficiency', description: '+1 Proficiency. Costs 2 upgrade slots.' },
-  multiclass: { max: 1, cost: 2, minTier: 3, label: 'Multiclass', description: 'Take a second class. Gain one domain, a subclass foundation, class feature, and hope feature. Costs 2 upgrade slots.', perLevel: true },
+  multiclass: { max: 1, cost: 2, minTier: 3, label: 'Multiclass', description: 'Take a second class. Gain one domain, a subclass foundation, and class feature. Costs 2 upgrade slots.', perLevel: true },
 };
 
 export function getUnlockedSubclassTiers(choices: LevelUpChoices): number {

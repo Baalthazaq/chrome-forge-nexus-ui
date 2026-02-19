@@ -93,7 +93,6 @@ export function CardsSection({
     if (mcClass) {
       const classMeta = mcClass.metadata as any;
       if (classMeta?.class_feature) autoCards.push({ title: `${mc.class} Class Feature`, content: classMeta.class_feature, source: 'Multiclass' });
-      if (classMeta?.hope_feature) autoCards.push({ title: `${mc.class} Hope Feature`, content: classMeta.hope_feature, source: 'Multiclass' });
     }
     const mcSub = gameCards.find(c => c.card_type === 'subclass' && c.name === mc.subclass && c.source === mc.class);
     if (mcSub) {
