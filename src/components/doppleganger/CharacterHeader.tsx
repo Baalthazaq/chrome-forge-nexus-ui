@@ -246,7 +246,7 @@ export function CharacterHeader({
                   <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100">
                     <SelectValue placeholder="Select class" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[9999] bg-gray-800 border-gray-600 text-white">
                     <SelectItem value="__none__">None</SelectItem>
                     {classCards.map(c => (
                       <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
@@ -270,7 +270,7 @@ export function CharacterHeader({
                   <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100">
                     <SelectValue placeholder={sheet.class ? "Select subclass" : "Choose class first"} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[9999] bg-gray-800 border-gray-600 text-white">
                     <SelectItem value="__none__">None</SelectItem>
                     {filteredSubclasses.map(c => (
                       <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
@@ -301,7 +301,7 @@ export function CharacterHeader({
                   <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100">
                     <SelectValue placeholder="Select community" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[9999] bg-gray-800 border-gray-600 text-white">
                     <SelectItem value="__none__">None</SelectItem>
                     {communitySources.map(src => (
                       <SelectItem key={src} value={src}>{src}</SelectItem>
@@ -312,6 +312,24 @@ export function CharacterHeader({
                 <div className="text-lg font-bold text-white">{sheet.community || '—'}</div>
               )}
             </div>
+
+            {/* Multiclass */}
+            {multiclasses.length > 0 && multiclasses.map((mc, i) => (
+              <div key={`mc-header-${i}`} className="sm:col-span-2 lg:col-span-3 flex flex-wrap gap-3 items-center border-t border-indigo-500/20 pt-2 mt-1">
+                <div>
+                  <label className="text-cyan-400 text-xs mb-0.5 block">Multiclass {multiclasses.length > 1 ? i + 1 : ''}</label>
+                  <span className="text-white font-bold">{mc.class}</span>
+                </div>
+                <div>
+                  <label className="text-cyan-400 text-xs mb-0.5 block">MC Subclass</label>
+                  <span className="text-white font-bold">{mc.subclass}</span>
+                </div>
+                <div>
+                  <label className="text-cyan-400 text-xs mb-0.5 block">MC Domain</label>
+                  <span className="px-3 py-1 bg-cyan-900/50 border border-cyan-500/30 rounded-md text-cyan-300 text-sm">{mc.domain}</span>
+                </div>
+              </div>
+            ))}
 
             {/* Domains */}
             {allDomains.length > 0 && (
