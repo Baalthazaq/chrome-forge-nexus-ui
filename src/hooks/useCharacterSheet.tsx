@@ -35,6 +35,8 @@ export function useCharacterSheet(userId: string | undefined) {
         backpack_ids: (d.backpack_ids || []) as string[],
         physical_description: (d.physical_description || { clothes: '', eyes: '', body: '', skin: '' }) as PhysicalDescription,
         personality: d.personality || '',
+        level_up_choices: (d.level_up_choices || {}) as Record<string, any>,
+        domain_vault_ids: (d.domain_vault_ids || []) as string[],
       });
     } else {
       // Create a new sheet
@@ -52,6 +54,8 @@ export function useCharacterSheet(userId: string | undefined) {
           backpack_ids: [] as string[],
           physical_description: { clothes: '', eyes: '', body: '', skin: '' },
           personality: '',
+          level_up_choices: {},
+          domain_vault_ids: [],
         });
       }
       if (error) console.error('Failed to create character sheet:', error);

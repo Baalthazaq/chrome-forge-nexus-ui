@@ -2,13 +2,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, ArrowLeft, Pencil, Check, X } from "lucide-react";
+import { Camera, ArrowLeft, Pencil, Check, X, Plus, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useRef, useEffect } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import type { CharacterSheet, GameCard } from "@/data/gameCardTypes";
+import { LevelUpDialog } from "./LevelUpDialog";
+import { getProficiency, getMulticlassInfo, type LevelUpChoices } from "@/lib/levelUpUtils";
 
 interface Props {
   profile: any;
@@ -22,6 +23,11 @@ interface Props {
   displayUser: any;
   isEditing: boolean;
   onProfileUpdate: (field: string, value: any) => void;
+  onStatChange: (stat: string, value: number) => void;
+  gameCards: GameCard[];
+  subclassCards: GameCard[];
+  domainCards: GameCard[];
+  selectedSubclass: GameCard | undefined;
 }
 
 function AncestryCombobox({ value, onChange, ancestryCards, isEditing }: {
@@ -97,12 +103,20 @@ function AncestryCombobox({ value, onChange, ancestryCards, isEditing }: {
 export function CharacterHeader({
   profile, sheet, updateSheet,
   classCards, filteredSubclasses, ancestryCards, communityCards,
-  domains, displayUser, isEditing, onProfileUpdate,
+  domains, displayUser, isEditing, onProfileUpdate, onStatChange,
+  gameCards, subclassCards, domainCards, selectedSubclass,
 }: Props) {
   const { toast } = useToast();
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(profile.character_name || '');
+  const [levelUpOpen, setLevelUpOpen] = useState(false);
+
+  const choices = (sheet.level_up_choices || {}) as LevelUpChoices;
+  const proficiency = getProficiency(sheet.level, choices);
+  const multiclasses = getMulticlassInfo(choices);
+  const multiclassDomains = multiclasses.map(mc => mc.domain);
+  const allDomains = [...domains, ...multiclassDomains];
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -176,7 +190,7 @@ export function CharacterHeader({
 
           {/* Identity Selectors */}
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {/* Name - editable */}
+            {/* Name */}
             <div>
               <label className="text-gray-300 text-xs mb-1 block">Name</label>
               {editingName ? (
@@ -201,23 +215,27 @@ export function CharacterHeader({
               )}
             </div>
 
-            {/* Level */}
+            {/* Level + Proficiency */}
             <div>
               <label className="text-gray-300 text-xs mb-1 block">Level</label>
-              {isEditing ? (
-                <Select value={String(sheet.level)} onValueChange={(v) => updateSheet({ level: Number(v) })}>
-                  <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 10 }, (_, i) => (
-                      <SelectItem key={i + 1} value={String(i + 1)}>{i + 1}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
+              <div className="flex items-center gap-2">
                 <div className="text-lg font-bold text-white">{sheet.level}</div>
-              )}
+                {sheet.level < 10 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLevelUpOpen(true)}
+                    className="border-indigo-500/50 text-indigo-300 hover:text-indigo-200 hover:bg-indigo-900/30 h-7 text-xs"
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    Level Up
+                  </Button>
+                )}
+              </div>
+              <div className="flex items-center gap-1 mt-1">
+                <Zap className="w-3 h-3 text-purple-400" />
+                <span className="text-xs text-purple-300">Proficiency: {proficiency}</span>
+              </div>
             </div>
 
             {/* Class */}
@@ -264,7 +282,7 @@ export function CharacterHeader({
               )}
             </div>
 
-            {/* Ancestry - combobox: type or pick */}
+            {/* Ancestry */}
             <AncestryCombobox
               value={sheet.ancestry || ''}
               onChange={(val) => updateSheet({ ancestry: val || null })}
@@ -295,14 +313,19 @@ export function CharacterHeader({
               )}
             </div>
 
-            {/* Domains (read-only, derived from class) */}
-            {domains.length > 0 && (
+            {/* Domains */}
+            {allDomains.length > 0 && (
               <div className="sm:col-span-2 lg:col-span-3">
                 <label className="text-gray-300 text-xs mb-1 block">Domains</label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {domains.map((d, i) => (
-                    <span key={i} className="px-3 py-1 bg-purple-900/50 border border-purple-500/30 rounded-md text-purple-300 text-sm">
+                    <span key={`main-${i}`} className="px-3 py-1 bg-purple-900/50 border border-purple-500/30 rounded-md text-purple-300 text-sm">
                       {d}
+                    </span>
+                  ))}
+                  {multiclassDomains.map((d, i) => (
+                    <span key={`mc-${i}`} className="px-3 py-1 bg-cyan-900/50 border border-cyan-500/30 rounded-md text-cyan-300 text-sm">
+                      {d} <span className="text-xs opacity-60">(MC)</span>
                     </span>
                   ))}
                 </div>
@@ -311,6 +334,21 @@ export function CharacterHeader({
           </div>
         </div>
       </Card>
+
+      <LevelUpDialog
+        open={levelUpOpen}
+        onOpenChange={setLevelUpOpen}
+        sheet={sheet}
+        updateSheet={updateSheet}
+        profile={profile}
+        onStatChange={onStatChange}
+        gameCards={gameCards}
+        classCards={classCards}
+        subclassCards={subclassCards}
+        domainCards={domainCards}
+        domains={allDomains}
+        selectedSubclass={selectedSubclass}
+      />
     </>
   );
 }

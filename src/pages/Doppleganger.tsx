@@ -12,6 +12,7 @@ import { ExperiencesSection } from "@/components/doppleganger/ExperiencesSection
 import { EquipmentSection } from "@/components/doppleganger/EquipmentSection";
 import { CardsSection } from "@/components/doppleganger/CardsSection";
 import { DescriptionSection } from "@/components/doppleganger/DescriptionSection";
+import { getProficiency, getMulticlassInfo, type LevelUpChoices } from "@/lib/levelUpUtils";
 
 const Doppleganger = () => {
   const { user } = useAuth();
@@ -25,10 +26,16 @@ const Doppleganger = () => {
 
   const {
     sheet, updateSheet, loading: sheetLoading,
-    gameCards, classCards, filteredSubclasses, ancestryCards, communityCards, domainCards,
+    gameCards, classCards, subclassCards, filteredSubclasses, ancestryCards, communityCards, domainCards,
     selectedClass, selectedSubclass, baseEvasion, baseHP, domains,
     purchases, customItems,
   } = useCharacterSheet(userId);
+
+  // Compute proficiency and multiclass domains
+  const choices = (sheet?.level_up_choices || {}) as LevelUpChoices;
+  const proficiency = sheet ? getProficiency(sheet.level, choices) : 1;
+  const multiclasses = getMulticlassInfo(choices);
+  const allDomains = [...domains, ...multiclasses.map(mc => mc.domain)];
 
   // Fetch profile
   useEffect(() => {
@@ -135,6 +142,11 @@ const Doppleganger = () => {
           displayUser={displayUser}
           isEditing={isEditing}
           onProfileUpdate={handleProfileUpdate}
+          onStatChange={handleStatChange}
+          gameCards={gameCards}
+          subclassCards={subclassCards}
+          domainCards={domainCards}
+          selectedSubclass={selectedSubclass}
         />
 
         <StatsGrid
@@ -167,6 +179,7 @@ const Doppleganger = () => {
           purchases={purchases}
           customItems={customItems}
           isEditing={isEditing}
+          proficiency={proficiency}
         />
 
         <CardsSection
@@ -178,8 +191,9 @@ const Doppleganger = () => {
           selectedSubclass={selectedSubclass}
           selectedClass={selectedClass}
           domainCards={domainCards}
-          domains={domains}
+          domains={allDomains}
           isEditing={isEditing}
+          classCards={classCards}
         />
 
         <DescriptionSection

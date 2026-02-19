@@ -13,6 +13,7 @@ interface Props {
   purchases: any[];
   customItems?: any[];
   isEditing: boolean;
+  proficiency?: number;
 }
 
 // Normalize a custom item (user_augmentation) to look like a purchase with shop_items
@@ -31,7 +32,7 @@ function normalizeCustomItem(aug: any) {
   };
 }
 
-function ItemCard({ purchase }: { purchase: any }) {
+function ItemCard({ purchase, proficiency }: { purchase: any; proficiency?: number }) {
   const item = purchase?.shop_items;
   if (!item) return null;
 
@@ -56,7 +57,7 @@ function ItemCard({ purchase }: { purchase: any }) {
           {specs.ability && <span>Ability: {specs.ability}</span>}
           {specs.hand && <span>Hand: {specs.hand}</span>}
           {specs.range && <span>Range: {specs.range}</span>}
-          {specs.damage && <span>Damage: {specs.damage}</span>}
+          {specs.damage && <span>Damage: {proficiency || 1}{specs.damage}</span>}
         </div>
       )}
       {isArmor && specs && (
@@ -69,7 +70,7 @@ function ItemCard({ purchase }: { purchase: any }) {
   );
 }
 
-export function EquipmentSection({ sheet, updateSheet, purchases, customItems = [], isEditing }: Props) {
+export function EquipmentSection({ sheet, updateSheet, purchases, customItems = [], isEditing, proficiency }: Props) {
   const [equippedOpen, setEquippedOpen] = useState(true);
   const [backpackOpen, setBackpackOpen] = useState(true);
 
@@ -141,7 +142,7 @@ export function EquipmentSection({ sheet, updateSheet, purchases, customItems = 
                       {equippedPurchase?.shop_items?.name || 'None'}
                     </div>
                   )}
-                  {equippedPurchase && <ItemCard purchase={equippedPurchase} />}
+                  {equippedPurchase && <ItemCard purchase={equippedPurchase} proficiency={proficiency} />}
                 </div>
               );
             })}
