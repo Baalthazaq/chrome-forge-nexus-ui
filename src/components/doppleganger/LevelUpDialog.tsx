@@ -254,7 +254,7 @@ export function LevelUpDialog({
                 <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
                   <SelectValue placeholder="Select a domain card..." />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999] bg-gray-800 border-gray-600">
                   {availableDomainCards.map(c => {
                     const meta = c.metadata as any;
                     return (
@@ -374,7 +374,7 @@ export function LevelUpDialog({
                       <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
                         <SelectValue placeholder="Select domain card..." />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[9999] bg-gray-800 border-gray-600">
                         {availableDomainCards.map(c => {
                           const meta = c.metadata as any;
                           return <SelectItem key={c.id} value={c.id}>{c.name} ({c.source} Lv{meta?.level})</SelectItem>;
@@ -396,7 +396,7 @@ export function LevelUpDialog({
                       <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
                         <SelectValue placeholder="Select class..." />
                       </SelectTrigger>
-                      <SelectContent>
+                        <SelectContent className="z-[9999] bg-gray-800 border-gray-600">
                         {mcAvailableClasses.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -405,7 +405,7 @@ export function LevelUpDialog({
                         <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
                           <SelectValue placeholder="Pick one domain..." />
                         </SelectTrigger>
-                        <SelectContent>
+                          <SelectContent className="z-[9999] bg-gray-800 border-gray-600">
                           {mcDomains.map((d: string) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                         </SelectContent>
                       </Select>
@@ -415,7 +415,7 @@ export function LevelUpDialog({
                         <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
                           <SelectValue placeholder="Pick subclass..." />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-[9999] bg-gray-800 border-gray-600">
                           {mcSubclasses.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
