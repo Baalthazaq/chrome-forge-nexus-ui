@@ -16,7 +16,7 @@ import { extractYouTubeId, getYouTubeThumbnail } from "@/lib/youtube";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
-const BeholdRAdmin = () => {
+const BHoldRAdmin = () => {
   const { isAdmin, getAllUsers } = useAdmin();
   const { user } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
@@ -141,7 +141,7 @@ const BeholdRAdmin = () => {
             </Button>
           </Link>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-            BeholdR Admin
+            BHoldR Admin
           </h1>
           <div className="w-20" />
         </div>
@@ -324,4 +324,4 @@ const BeholdRAdmin = () => {
   );
 };
 
-export default BeholdRAdmin;
+export default BHoldRAdmin;

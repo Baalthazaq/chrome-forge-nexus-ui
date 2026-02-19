@@ -75,11 +75,11 @@ const apps = [
     color: "from-blue-500 to-indigo-500"
   },
   {
-    id: "beholdr",
-    name: "BeholdR",
+    id: "bholdr",
+    name: "BHoldR",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/BHoldRC.gif",
     description: "Video Feed",
-    route: "/beholdr",
+    route: "/bholdr",
     color: "from-purple-500 to-blue-500",
     comingSoon: true
   },
