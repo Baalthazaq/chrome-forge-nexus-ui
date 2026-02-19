@@ -1,72 +1,90 @@
-# Recommended Implementation Order
 
-## 1. Fix ToMe Tablet Issues (Quick Win - Bug Fix)
 
-**Why first:** This is a bug affecting usability right now. Fixing it first is a quick win that improves the experience immediately.
+# BeholdR: In-World YouTube Platform
 
-**What needs to happen:**
+## Overview
+Transform BeholdR from a static mock page into a functional in-world video sharing platform where players can create channels, post YouTube video links that embed directly, and interact with ratings and comments.
 
-- Make the multi-column layout responsive on tablets -- currently only the first column is visible with no way to scroll or navigate to others
-- Add horizontal scrolling or a column switcher for tablet viewports
-- Replace or supplement the drag-and-drop (PointerSensor) with touch-friendly alternatives so notes can be rearranged on tablets
-- Ensure all buttons and interactions are tappable at tablet sizes
+## Database Tables
 
----
+### `beholdr_channels`
+- `id` (uuid, PK)
+- `user_id` (uuid, references profiles)
+- `channel_name` (text, not null)
+- `created_at`, `updated_at` (timestamps)
 
-## 2. WyrmCart Store Overhaul (Foundation)
+One channel per user. Players name their own channel.
 
-**Why second:** WyrmCart is currently a static mockup with hardcoded items. Building it out with real database integration creates the foundation that @tunes subscriptions depend on.
+### `beholdr_videos`
+- `id` (uuid, PK)
+- `channel_id` (uuid, FK to beholdr_channels)
+- `user_id` (uuid) -- the uploader
+- `title` (text, not null)
+- `youtube_url` (text, not null)
+- `description` (text, nullable)
+- `tags` (text[], nullable)
+- `created_at`, `updated_at` (timestamps)
 
-**What needs to happen:**
+### `beholdr_ratings`
+- `id` (uuid, PK)
+- `video_id` (uuid, FK to beholdr_videos)
+- `user_id` (uuid)
+- `rating` (integer) -- e.g. 1 = thumbs up, -1 = thumbs down
+- unique constraint on (video_id, user_id)
+- `created_at`
 
-- Connect WyrmCart to the existing `shop_items` table (replacing hardcoded items)
-- Build a real purchase flow using the existing `shop-operations` edge function
-- Add cart functionality (browse, add to cart, checkout)
-- Integrate with the Vault (App of Holding) so purchases deduct Hex and show in transaction history
-- Support the overdraft limit (1 bag / 600 Hex) already implemented in Vault
-- Handle item categories, quantities, and subscription-bearing items
+### `beholdr_comments`
+- `id` (uuid, PK)
+- `video_id` (uuid, FK to beholdr_videos)
+- `user_id` (uuid)
+- `content` (text, not null)
+- `created_at`, `updated_at`
 
----
+### RLS Policies
+- All authenticated users can view all channels, videos, ratings, and comments (it's a public-facing in-world platform)
+- Users can create/update/delete their own channels, videos, and comments
+- Users can create/update their own ratings (one per video)
+- Admins get full access to everything
 
-## 3. @tunes Subscription Management (Depends on WyrmCart)
+## Frontend: Player-Facing (`/beholdr`)
 
-**Why third:** Once WyrmCart purchases are working and creating subscriptions in the `recurring_payments` table, @tunes can properly display and manage them.
+### Main Feed
+- Shows all videos from all channels, sorted by newest first
+- Each video card shows: YouTube thumbnail (extracted from URL), title, channel name, time ago, rating summary (thumbs up/down counts)
+- Clicking a video opens an expanded view with the embedded YouTube player
 
-**What needs to happen:**
+### Video Detail View
+- Embedded YouTube iframe using the standard `https://www.youtube.com/embed/{videoId}` format
+- Title, channel name, description, tags
+- Thumbs up / Thumbs down buttons with counts -- clicking toggles your rating
+- Comments section below: list of comments with character name and timestamp, plus an input to add a new comment
 
-- Fix the current non-functional state of @tunes
-- Ensure all subscription-bearing items purchased in WyrmCart automatically appear in @tunes
-- Display active subscriptions with their billing intervals, amounts, and next charge dates
-- Add ability to view subscription details and history
-- Connect subscription payments to the Vault transaction history
+### "My Channel" Section
+- Set/edit channel name
+- List of your uploaded videos with edit/delete options
+- "Upload Video" form: title, YouTube URL, description, tags
 
----
+## Frontend: Admin (`/admin/beholdr`)
 
-## 4. Doppleganger Profile Card System (Independent)
+### Admin Panel
+- Dropdown to select any character
+- Create/edit channels for any character, assign channel names
+- Add videos to any character's channel (title, URL, description, tags)
+- Manage all videos: edit/delete any video
+- Moderate comments: delete any comment
 
-**Why last:** This is the most architecturally complex change -- pulling data from multiple tables into "cards" on the profile. It doesn't block or depend on the other features, so it can be done last without holding anything up.
+## Technical Details
 
-**What needs to happen:**
+### YouTube URL Parsing
+Extract video ID from various YouTube URL formats (`youtube.com/watch?v=`, `youtu.be/`, etc.) and convert to embed URL. Thumbnail extraction: `https://img.youtube.com/vi/{videoId}/mqdefault.jpg`.
 
-- Identify which existing profile elements to keep as core (character name, avatar, stats, etc.)
-- Design a card system that pulls from multiple tables (augmentations, reputation tags, quest history, gear, etc.)
-- Build reusable card components that render different data types
-- Integrate cards into the Doppleganger profile layout
-- Determine which cards are visible to others vs. private
+### File Changes
+1. **New migration**: Create the 4 tables with RLS policies
+2. **`src/pages/BeholdR.tsx`**: Complete rewrite -- replace static mock with real data, video feed, video detail view, channel management
+3. **`src/pages/BeholdRAdmin.tsx`**: New admin page for managing channels/videos/comments across all users
+4. **`src/App.tsx`**: Add routes for `/admin/beholdr` and import the admin page
 
----
+### Routing
+- `/beholdr` -- main feed + video viewing
+- `/admin/beholdr` -- admin management panel
 
-## Summary
-
-```text
-Order  |  Feature              |  Reason
--------+-----------------------+----------------------------------
-  1    |  ToMe tablet fix      |  Bug fix, quick win
-  2    |  WyrmCart overhaul     |  Foundation for store + payments
-  3    |  @tunes subscriptions  |  Depends on WyrmCart purchases
-  4    |  Doppleganger cards    |  Independent, most complex design
-```
-
-This order minimizes rework: the tablet fix is isolated, WyrmCart builds the data pipeline that @tunes needs, and Doppleganger can be tackled independently at the end.  
-  
-Let's start with 1 before moving on to 2, because I (the user) have further constraints and some files to upload for the next 3. 
