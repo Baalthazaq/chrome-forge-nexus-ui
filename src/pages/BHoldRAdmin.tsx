@@ -166,9 +166,9 @@ const BHoldRAdmin = () => {
                 <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
                   <SelectValue placeholder="Choose a character..." />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-800 border-gray-700">
+                <SelectContent className="bg-gray-800 border-gray-700 z-50">
                   {users.map(u => (
-                    <SelectItem key={u.user_id} value={u.user_id}>{u.character_name || "Unnamed"}</SelectItem>
+                    <SelectItem key={u.user_id} value={u.user_id} className="text-white hover:bg-gray-700 focus:bg-gray-700 focus:text-white">{u.character_name || "Unnamed"}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
