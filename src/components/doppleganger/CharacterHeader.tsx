@@ -220,7 +220,7 @@ export function CharacterHeader({
               <label className="text-gray-300 text-xs mb-1 block">Level</label>
               <div className="flex items-center gap-2">
                 <div className="text-lg font-bold text-white">{sheet.level}</div>
-                {sheet.level < 10 && (
+                {isEditing && sheet.level < 10 && (
                   <Button
                     variant="outline"
                     size="sm"
