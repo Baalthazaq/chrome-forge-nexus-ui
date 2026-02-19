@@ -292,12 +292,15 @@ export function LevelUpDialog({
                 disabled ? 'bg-gray-900/20 border-gray-800/50 opacity-50' :
                 'bg-gray-800/30 border-gray-700/30 hover:border-gray-600'
               }`}>
-                <div className="flex items-center gap-3">
+                <div
+                  className={`flex items-center gap-3 ${!disabled ? 'cursor-pointer' : ''}`}
+                  onClick={() => !disabled && toggleUpgrade(type)}
+                >
                   <Checkbox
                     checked={selected}
                     onCheckedChange={() => !disabled && toggleUpgrade(type)}
                     disabled={disabled}
-                    className="shrink-0"
+                    className="shrink-0 pointer-events-none"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
