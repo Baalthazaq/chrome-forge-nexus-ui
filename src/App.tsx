@@ -17,7 +17,7 @@ import Vault from "./pages/Vault";
 import Questseek from "./pages/Questseek";
 import Succubus from "./pages/Succubus";
 import Doppleganger from "./pages/Doppleganger";
-import BeholdR from "./pages/BeholdR";
+import BHoldR from "./pages/BHoldR";
 import Atunes from "./pages/Atunes";
 import NexusWire from "./pages/NexusWire";
 import Brittlewisp from "./pages/Brittlewisp";
@@ -29,7 +29,7 @@ import SendingAdmin from "./pages/SendingAdmin";
 import WyrmcartAdmin from "./pages/WyrmcartAdmin";
 import AtunesAdminPage from "./pages/AtunesAdmin";
 import CVNewsAdmin from "./pages/CVNewsAdmin";
-import BeholdRAdmin from "./pages/BeholdRAdmin";
+import BHoldRAdmin from "./pages/BHoldRAdmin";
 
 const queryClient = new QueryClient();
 
@@ -49,7 +49,7 @@ const App = () => (
             <Route path="/admin/wyrmcart" element={<WyrmcartAdmin />} />
             <Route path="/admin/@tunes" element={<AtunesAdminPage />} />
             <Route path="/admin/cvnews" element={<CVNewsAdmin />} />
-            <Route path="/admin/beholdr" element={<BeholdRAdmin />} />
+            <Route path="/admin/bholdr" element={<BHoldRAdmin />} />
             <Route path="/admin/app-of-holding" element={<VaultAdmin />} />
             <Route path="/admin/:app" element={<Admin />} />
             <Route path="/charisma" element={<Charisma />} />
@@ -59,7 +59,7 @@ const App = () => (
             <Route path="/questseek" element={<Questseek />} />
             <Route path="/succubus" element={<Succubus />} />
             <Route path="/doppleganger" element={<Doppleganger />} />
-            <Route path="/beholdr" element={<BeholdR />} />
+            <Route path="/bholdr" element={<BHoldR />} />
             <Route path="/atunes" element={<Atunes />} />
             <Route path="/nexuswire" element={<NexusWire />} />
             <Route path="/brittlewisp" element={<Brittlewisp />} />

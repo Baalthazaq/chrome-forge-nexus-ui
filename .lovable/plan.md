@@ -1,9 +1,9 @@
 
 
-# BeholdR: In-World YouTube Platform
+# BHoldR: In-World YouTube Platform
 
 ## Overview
-Transform BeholdR from a static mock page into a functional in-world video sharing platform where players can create channels, post YouTube video links that embed directly, and interact with ratings and comments.
+Transform BHoldR from a static mock page into a functional in-world video sharing platform where players can create channels, post YouTube video links that embed directly, and interact with ratings and comments.
 
 ## Database Tables
 

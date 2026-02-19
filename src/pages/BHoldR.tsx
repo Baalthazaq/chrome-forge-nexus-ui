@@ -38,7 +38,7 @@ interface Video {
   comment_count: number;
 }
 
-const BeholdR = () => {
+const BHoldR = () => {
   const { user } = useAuth();
   const [videos, setVideos] = useState<Video[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
@@ -214,7 +214,7 @@ const BeholdR = () => {
 
   const shareToSending = (video: Video) => {
     const videoId = extractYouTubeId(video.youtube_url);
-    const shareText = `Check out "${video.title}" on BeholdR! 🎬\n/beholdr?v=${video.id}`;
+    const shareText = `Check out "${video.title}" on BHoldR! 🎬\n/bholdr?v=${video.id}`;
     // Navigate to Sending with a pre-filled message
     window.open(`/sending?share=${encodeURIComponent(shareText)}`, "_blank");
   };
@@ -241,7 +241,7 @@ const BeholdR = () => {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <Card className="p-8 bg-gray-900/50 border-purple-500/30 text-center">
-          <h2 className="text-xl text-purple-400 mb-4">Sign in to access BeholdR</h2>
+          <h2 className="text-xl text-purple-400 mb-4">Sign in to access BHoldR</h2>
           <Link to="/auth"><Button className="bg-purple-600 hover:bg-purple-700">Sign In</Button></Link>
         </Card>
       </div>
@@ -262,7 +262,7 @@ const BeholdR = () => {
             </Button>
           </Link>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-            BeholdR
+            BHoldR
           </h1>
           <div className="flex gap-2">
             <Button
@@ -556,4 +556,4 @@ const BeholdR = () => {
   );
 };
 
-export default BeholdR;
+export default BHoldR;
