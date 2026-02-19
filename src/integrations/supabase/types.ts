@@ -155,6 +155,7 @@ export type Database = {
           class: string | null
           community: string | null
           created_at: string
+          domain_vault_ids: Json | null
           evasion_modifier: number
           experiences: Json | null
           hope_current: number
@@ -163,6 +164,7 @@ export type Database = {
           hp_modifier: number
           id: string
           level: number
+          level_up_choices: Json | null
           major_threshold_modifier: number
           personality: string | null
           physical_description: Json | null
@@ -185,6 +187,7 @@ export type Database = {
           class?: string | null
           community?: string | null
           created_at?: string
+          domain_vault_ids?: Json | null
           evasion_modifier?: number
           experiences?: Json | null
           hope_current?: number
@@ -193,6 +196,7 @@ export type Database = {
           hp_modifier?: number
           id?: string
           level?: number
+          level_up_choices?: Json | null
           major_threshold_modifier?: number
           personality?: string | null
           physical_description?: Json | null
@@ -215,6 +219,7 @@ export type Database = {
           class?: string | null
           community?: string | null
           created_at?: string
+          domain_vault_ids?: Json | null
           evasion_modifier?: number
           experiences?: Json | null
           hope_current?: number
@@ -223,6 +228,7 @@ export type Database = {
           hp_modifier?: number
           id?: string
           level?: number
+          level_up_choices?: Json | null
           major_threshold_modifier?: number
           personality?: string | null
           physical_description?: Json | null

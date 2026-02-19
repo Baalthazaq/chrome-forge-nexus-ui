@@ -34,6 +34,8 @@ export interface CharacterSheet {
   backpack_ids: string[];
   physical_description: PhysicalDescription;
   personality: string;
+  level_up_choices: Record<string, any>;
+  domain_vault_ids: string[];
 }
 
 export interface Experience {
