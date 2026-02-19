@@ -27,12 +27,14 @@ interface Props {
   subclassCards: GameCard[];
   domainCards: GameCard[];
   domains: string[];
+  multiclassDomains: string[];
   selectedSubclass: GameCard | undefined;
 }
 
 export function LevelUpDialog({
   open, onOpenChange, sheet, updateSheet,
   profile, onStatChange, gameCards, classCards, subclassCards, domainCards, domains,
+  multiclassDomains,
   selectedSubclass,
 }: Props) {
   const newLevel = sheet.level + 1;
@@ -60,12 +62,34 @@ export function LevelUpDialog({
 
   const totalPoints = selectedUpgrades.reduce((sum, u) => sum + (UPGRADE_LIMITS[u.type]?.cost || 1), 0);
 
+  // Determine which domains are from multiclass
+  const mainDomains = domains.filter(d => !multiclassDomains.includes(d));
+  const mcLevelCap = Math.floor(newLevel / 2);
+
   const availableDomainCards = useMemo(() => {
-    return domainCards.filter(c => {
-      const meta = c.metadata as any;
-      return domains.includes(meta?.domain || c.source) && (meta?.level || 0) <= newLevel;
-    });
-  }, [domainCards, domains, newLevel]);
+    return domainCards
+      .filter(c => {
+        const meta = c.metadata as any;
+        const domain = meta?.domain || c.source;
+        const cardLevel = meta?.level || 0;
+        if (mainDomains.includes(domain)) return cardLevel <= newLevel;
+        if (multiclassDomains.includes(domain)) return cardLevel <= mcLevelCap;
+        return false;
+      })
+      .sort((a, b) => {
+        const metaA = a.metadata as any;
+        const metaB = b.metadata as any;
+        const domA = metaA?.domain || a.source;
+        const domB = metaB?.domain || b.source;
+        const aIsMain = mainDomains.includes(domA);
+        const bIsMain = mainDomains.includes(domB);
+        // Main domains first, then MC domains
+        if (aIsMain !== bIsMain) return aIsMain ? -1 : 1;
+        // Within same group, sort by domain name then level
+        if (domA !== domB) return domA.localeCompare(domB);
+        return (metaA?.level || 0) - (metaB?.level || 0);
+      });
+  }, [domainCards, mainDomains, multiclassDomains, newLevel, mcLevelCap]);
 
   const allStats = Object.keys(STAT_SKILLS) as StatName[];
   const currentExperiences: Experience[] = sheet.experiences || [];
@@ -128,7 +152,7 @@ export function LevelUpDialog({
   const allStatPicks = statPicksPerInstance.flat();
 
   // Validation
-  const autoValid = !isStart || (autoExpName.trim() !== '' && autoDomainCardId !== '');
+  const autoValid = (!isStart || autoExpName.trim() !== '') && autoDomainCardId !== '';
   const upgradesValid = totalPoints === 2;
   const subOptionsValid = (() => {
     const statCount = upgradeCount('stat_increase');
@@ -146,13 +170,12 @@ export function LevelUpDialog({
     const newCards = [...(sheet.selected_card_ids || [])];
 
     // Automatics
-    if (isStart) {
-      if (autoExpName.trim()) {
-        newExperiences.push({ text: autoExpName.trim(), value: 2 });
-      }
-      if (autoDomainCardId) {
-        newCards.push({ card_id: autoDomainCardId });
-      }
+    if (isStart && autoExpName.trim()) {
+      newExperiences.push({ text: autoExpName.trim(), value: 2 });
+    }
+    // Domain card is automatic every level
+    if (autoDomainCardId) {
+      newCards.push({ card_id: autoDomainCardId });
     }
 
     // Build upgrade data with sub-options
@@ -205,7 +228,8 @@ export function LevelUpDialog({
     const updatedChoices = { ...choices };
     updatedChoices[String(newLevel)] = {
       completed: true,
-      ...(isStart && { auto_experience: autoExpName.trim(), auto_domain_card_id: autoDomainCardId }),
+      ...(isStart && { auto_experience: autoExpName.trim() }),
+      auto_domain_card_id: autoDomainCardId,
       upgrades: upgradeData,
     };
     sheetUpdates.level_up_choices = updatedChoices as any;
@@ -249,12 +273,49 @@ export function LevelUpDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Automatics */}
+        {/* Automatic Domain Card (every level) */}
+        <div className="space-y-3 p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
+          <h4 className="text-emerald-400 font-semibold flex items-center gap-2">
+            <BookOpen className="w-4 h-4" />
+            Domain Card (Automatic)
+          </h4>
+          <Select value={autoDomainCardId} onValueChange={setAutoDomainCardId}>
+            <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
+              <SelectValue placeholder="Select a domain card..." />
+            </SelectTrigger>
+            <SelectContent className="z-[9999] bg-gray-800 border-gray-600 text-white">
+              {(() => {
+                let lastDomain = '';
+                return availableDomainCards.map(c => {
+                  const meta = c.metadata as any;
+                  const domain = meta?.domain || c.source;
+                  const isMC = multiclassDomains.includes(domain);
+                  const showHeader = domain !== lastDomain;
+                  lastDomain = domain;
+                  return (
+                    <div key={c.id}>
+                      {showHeader && (
+                        <div className="px-3 py-1 text-xs font-semibold text-gray-400 bg-gray-900/50 border-t border-gray-700 mt-1">
+                          {domain}{isMC ? ' (MC)' : ''}
+                        </div>
+                      )}
+                      <SelectItem value={c.id}>
+                        {c.name} (Lv{meta?.level}) — {meta?.type}
+                      </SelectItem>
+                    </div>
+                  );
+                });
+              })()}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Tier-start Automatics */}
         {isStart && (
           <div className="space-y-3 p-3 bg-amber-900/20 border border-amber-500/30 rounded-lg">
             <h4 className="text-amber-400 font-semibold flex items-center gap-2">
               <Star className="w-4 h-4" />
-              Automatic Gains
+              Tier {tier} Automatic Gains
             </h4>
 
             <div className="text-sm text-gray-300 flex items-center gap-2">
@@ -270,25 +331,6 @@ export function LevelUpDialog({
                 placeholder="Name your new experience..."
                 className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm"
               />
-            </div>
-
-            <div>
-              <label className="text-gray-400 text-xs block mb-1">Gain Domain Card</label>
-              <Select value={autoDomainCardId} onValueChange={setAutoDomainCardId}>
-                <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
-                  <SelectValue placeholder="Select a domain card..." />
-                </SelectTrigger>
-                <SelectContent className="z-[9999] bg-gray-800 border-gray-600 text-white">
-                  {availableDomainCards.map(c => {
-                    const meta = c.metadata as any;
-                    return (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name} ({c.source} Lv{meta?.level}) — {meta?.type}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
             </div>
           </div>
         )}
@@ -423,12 +465,30 @@ export function LevelUpDialog({
                       <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
                         <SelectValue placeholder="Select domain card..." />
                       </SelectTrigger>
-                      <SelectContent className="z-[9999] bg-gray-800 border-gray-600 text-white">
-                        {availableDomainCards.map(c => {
-                          const meta = c.metadata as any;
-                          return <SelectItem key={c.id} value={c.id}>{c.name} ({c.source} Lv{meta?.level})</SelectItem>;
-                        })}
-                      </SelectContent>
+                        <SelectContent className="z-[9999] bg-gray-800 border-gray-600 text-white">
+                          {(() => {
+                            let lastDomain = '';
+                            return availableDomainCards.map(c => {
+                              const meta = c.metadata as any;
+                              const domain = meta?.domain || c.source;
+                              const isMC = multiclassDomains.includes(domain);
+                              const showHeader = domain !== lastDomain;
+                              lastDomain = domain;
+                              return (
+                                <div key={c.id}>
+                                  {showHeader && (
+                                    <div className="px-3 py-1 text-xs font-semibold text-gray-400 bg-gray-900/50 border-t border-gray-700 mt-1">
+                                      {domain}{isMC ? ' (MC)' : ''}
+                                    </div>
+                                  )}
+                                  <SelectItem value={c.id}>
+                                    {c.name} (Lv{meta?.level}) — {meta?.type}
+                                  </SelectItem>
+                                </div>
+                              );
+                            });
+                          })()}
+                        </SelectContent>
                     </Select>
                   </div>
                 )}

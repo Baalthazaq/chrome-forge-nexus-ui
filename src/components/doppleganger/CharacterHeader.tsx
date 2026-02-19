@@ -420,6 +420,7 @@ export function CharacterHeader({
         subclassCards={subclassCards}
         domainCards={domainCards}
         domains={allDomains}
+        multiclassDomains={multiclassDomains}
         selectedSubclass={selectedSubclass}
       />
     </>
