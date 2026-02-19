@@ -51,11 +51,11 @@ export function LevelUpDialog({
   const [selectedUpgrades, setSelectedUpgrades] = useState<LevelUpgrade[]>([]);
 
   // Sub-option state
-  const [statPicks, setStatPicks] = useState<string[]>([]);
+  // Each stat_increase instance gets its own picks array
+  const [statPicksPerInstance, setStatPicksPerInstance] = useState<string[][]>([]);
   const [expPicks, setExpPicks] = useState<number[]>([]);
   const [domainCardPick, setDomainCardPick] = useState('');
   const [mcClass, setMcClass] = useState('');
-  const [mcDomain, setMcDomain] = useState('');
   const [mcSubclass, setMcSubclass] = useState('');
 
   const totalPoints = selectedUpgrades.reduce((sum, u) => sum + (UPGRADE_LIMITS[u.type]?.cost || 1), 0);
@@ -72,9 +72,6 @@ export function LevelUpDialog({
 
   // Multiclass: available classes (exclude current)
   const mcAvailableClasses = classCards.filter(c => c.name !== sheet.class);
-  const mcSelectedClass = classCards.find(c => c.name === mcClass);
-  const mcClassMeta = mcSelectedClass?.metadata as any;
-  const mcDomains = mcClassMeta ? [mcClassMeta.domain1, mcClassMeta.domain2].filter(Boolean) : [];
   const mcSubclasses = subclassCards.filter(c => c.source === mcClass);
 
   // Check which next subclass tier is available
@@ -99,22 +96,28 @@ export function LevelUpDialog({
   const addUpgrade = (type: UpgradeType) => {
     if (!isUpgradeAvailable(type)) return;
     setSelectedUpgrades(prev => [...prev, { type }]);
+    if (type === 'stat_increase') setStatPicksPerInstance(prev => [...prev, []]);
   };
 
   const removeUpgrade = (type: UpgradeType) => {
     const idx = selectedUpgrades.findIndex(u => u.type === type);
     if (idx === -1) return;
     setSelectedUpgrades(prev => prev.filter((_, i) => i !== idx));
-    if (type === 'stat_increase') setStatPicks([]);
+    if (type === 'stat_increase') setStatPicksPerInstance(prev => prev.slice(0, -1));
     if (type === 'experience_boost') setExpPicks([]);
     if (type === 'domain_card') setDomainCardPick('');
-    if (type === 'multiclass') { setMcClass(''); setMcDomain(''); setMcSubclass(''); }
+    if (type === 'multiclass') { setMcClass(''); setMcSubclass(''); }
   };
 
   const toggleUpgrade = (type: UpgradeType) => {
     const count = selectedUpgrades.filter(u => u.type === type).length;
     if (count > 0) {
-      removeUpgrade(type);
+      // Remove all instances
+      setSelectedUpgrades(prev => prev.filter(u => u.type !== type));
+      if (type === 'stat_increase') setStatPicksPerInstance([]);
+      if (type === 'experience_boost') setExpPicks([]);
+      if (type === 'domain_card') setDomainCardPick('');
+      if (type === 'multiclass') { setMcClass(''); setMcSubclass(''); }
     } else {
       addUpgrade(type);
     }
@@ -122,17 +125,19 @@ export function LevelUpDialog({
 
   const upgradeCount = (type: UpgradeType) => selectedUpgrades.filter(u => u.type === type).length;
   const isSelected = (type: UpgradeType) => upgradeCount(type) > 0;
+  const allStatPicks = statPicksPerInstance.flat();
 
   // Validation
   const autoValid = !isStart || (autoExpName.trim() !== '' && autoDomainCardId !== '');
   const upgradesValid = totalPoints === 2;
-  const subOptionsValid = selectedUpgrades.every(u => {
-    if (u.type === 'stat_increase') return statPicks.length === 2;
-    if (u.type === 'experience_boost') return expPicks.length === 2;
-    if (u.type === 'domain_card') return domainCardPick !== '';
-    if (u.type === 'multiclass') return mcClass && mcDomain && mcSubclass;
-    return true;
-  });
+  const subOptionsValid = (() => {
+    const statCount = upgradeCount('stat_increase');
+    const statValid = statCount === 0 || statPicksPerInstance.length === statCount && statPicksPerInstance.every(p => p.length === 2);
+    const expValid = !isSelected('experience_boost') || expPicks.length === 2;
+    const domainValid = !isSelected('domain_card') || domainCardPick !== '';
+    const mcValid = !isSelected('multiclass') || (mcClass && mcSubclass);
+    return statValid && expValid && domainValid && mcValid;
+  })();
   const canConfirm = autoValid && upgradesValid && subOptionsValid;
 
   const handleConfirm = async () => {
@@ -151,12 +156,16 @@ export function LevelUpDialog({
     }
 
     // Build upgrade data with sub-options
+    let statInstanceIdx = 0;
     const upgradeData: LevelUpgrade[] = selectedUpgrades.map(u => {
       const upgrade: LevelUpgrade = { type: u.type };
-      if (u.type === 'stat_increase') upgrade.stats = [...statPicks];
+      if (u.type === 'stat_increase') {
+        upgrade.stats = [...(statPicksPerInstance[statInstanceIdx] || [])];
+        statInstanceIdx++;
+      }
       if (u.type === 'experience_boost') upgrade.experience_indices = [...expPicks];
       if (u.type === 'domain_card') upgrade.domain_card_id = domainCardPick;
-      if (u.type === 'multiclass') upgrade.multiclass_data = { class: mcClass, domain: mcDomain, subclass: mcSubclass };
+      if (u.type === 'multiclass') upgrade.multiclass_data = { class: mcClass, domain: '', subclass: mcSubclass };
       return upgrade;
     });
 
@@ -212,17 +221,17 @@ export function LevelUpDialog({
     setAutoExpName('');
     setAutoDomainCardId('');
     setSelectedUpgrades([]);
-    setStatPicks([]);
+    setStatPicksPerInstance([]);
     setExpPicks([]);
     setDomainCardPick('');
-    setMcClass(''); setMcDomain(''); setMcSubclass('');
+    setMcClass(''); setMcSubclass('');
     onOpenChange(false);
   };
 
   // Combine boosted stats from saved choices AND current selections
   const allBoostedStats = new Set(boostedStats);
   if (isSelected('stat_increase')) {
-    statPicks.forEach(s => allBoostedStats.add(s));
+    allStatPicks.forEach(s => allBoostedStats.add(s));
   }
 
   const newProficiency = getProficiency(newLevel, choices);
@@ -335,37 +344,49 @@ export function LevelUpDialog({
                     <p className="text-xs text-gray-400 mt-0.5">{limit.description}</p>
                     {conflict && <p className="text-xs text-red-400 mt-0.5">Mutually exclusive with {type === 'subclass_upgrade' ? 'Multiclass' : 'Subclass Upgrade'} this tier.</p>}
                   </div>
-                  <span className="text-xs text-gray-500 shrink-0">{limit.perLevel ? `${count}` : `${used}/${limit.max}`}</span>
+                  <span className="text-xs text-gray-500 shrink-0">{used + count}/{limit.max}</span>
                 </div>
 
                 {/* Sub-options */}
                 {selected && type === 'stat_increase' && (
-                  <div className="mt-2 ml-7">
-                    <p className="text-xs text-gray-400 mb-1">Pick 2 traits ({statPicks.length}/2):</p>
-                    <div className="flex flex-wrap gap-2">
-                      {allStats.map(stat => {
-                        const picked = statPicks.includes(stat);
-                        const blocked = boostedStats.has(stat) && !picked;
-                        const full = statPicks.length >= 2 && !picked;
-                        return (
-                          <button
-                            key={stat}
-                            onClick={() => {
-                              if (picked) setStatPicks(prev => prev.filter(s => s !== stat));
-                              else if (!blocked && !full) setStatPicks(prev => [...prev, stat]);
-                            }}
-                            disabled={blocked || (full && !picked)}
-                            className={`px-2 py-1 rounded text-xs capitalize transition-colors ${
-                              picked ? 'bg-indigo-600 text-white' :
-                              blocked ? 'bg-gray-800 text-gray-600 line-through' :
-                              'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                            }`}
-                          >
-                            {stat} {blocked && '(used)'}
-                          </button>
-                        );
-                      })}
-                    </div>
+                  <div className="mt-2 ml-7 space-y-3">
+                    {statPicksPerInstance.map((picks, instIdx) => {
+                      const otherPicks = statPicksPerInstance.filter((_, i) => i !== instIdx).flat();
+                      const allUsed = new Set([...boostedStats, ...otherPicks]);
+                      return (
+                        <div key={instIdx}>
+                          <p className="text-xs text-gray-400 mb-1">Set {instIdx + 1}: Pick 2 traits ({picks.length}/2):</p>
+                          <div className="flex flex-wrap gap-2">
+                            {allStats.map(stat => {
+                              const picked = picks.includes(stat);
+                              const blocked = allUsed.has(stat) && !picked;
+                              const full = picks.length >= 2 && !picked;
+                              return (
+                                <button
+                                  key={stat}
+                                  onClick={() => {
+                                    setStatPicksPerInstance(prev => {
+                                      const updated = [...prev];
+                                      if (picked) updated[instIdx] = updated[instIdx].filter(s => s !== stat);
+                                      else if (!blocked && !full) updated[instIdx] = [...updated[instIdx], stat];
+                                      return updated;
+                                    });
+                                  }}
+                                  disabled={blocked || (full && !picked)}
+                                  className={`px-2 py-1 rounded text-xs capitalize transition-colors ${
+                                    picked ? 'bg-indigo-600 text-white' :
+                                    blocked ? 'bg-gray-800 text-gray-600 line-through' :
+                                    'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                  }`}
+                                >
+                                  {stat} {blocked && '(used)'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -420,7 +441,7 @@ export function LevelUpDialog({
 
                 {selected && type === 'multiclass' && (
                   <div className="mt-2 ml-7 space-y-2">
-                    <Select value={mcClass} onValueChange={(v) => { setMcClass(v); setMcDomain(''); setMcSubclass(''); }}>
+                    <Select value={mcClass} onValueChange={(v) => { setMcClass(v); setMcSubclass(''); }}>
                       <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
                         <SelectValue placeholder="Select class..." />
                       </SelectTrigger>
@@ -428,16 +449,6 @@ export function LevelUpDialog({
                         {mcAvailableClasses.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    {mcClass && (
-                      <Select value={mcDomain} onValueChange={setMcDomain}>
-                        <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
-                          <SelectValue placeholder="Pick one domain..." />
-                        </SelectTrigger>
-                          <SelectContent className="z-[9999] bg-gray-800 border-gray-600 text-white">
-                          {mcDomains.map((d: string) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    )}
                     {mcClass && (
                       <Select value={mcSubclass} onValueChange={setMcSubclass}>
                         <SelectTrigger className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm">
