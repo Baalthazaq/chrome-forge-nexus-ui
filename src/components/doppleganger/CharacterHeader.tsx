@@ -115,7 +115,7 @@ export function CharacterHeader({
   const choices = (sheet.level_up_choices || {}) as LevelUpChoices;
   const proficiency = getProficiency(sheet.level, choices);
   const multiclasses = getMulticlassInfo(choices);
-  const multiclassDomains = multiclasses.map(mc => mc.domain);
+  const multiclassDomains = multiclasses.map(mc => mc.domain).filter(Boolean);
   const allDomains = [...domains, ...multiclassDomains];
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -323,10 +323,6 @@ export function CharacterHeader({
                 <div>
                   <label className="text-cyan-400 text-xs mb-0.5 block">MC Subclass</label>
                   <span className="text-white font-bold">{mc.subclass}</span>
-                </div>
-                <div>
-                  <label className="text-cyan-400 text-xs mb-0.5 block">MC Domain</label>
-                  <span className="px-3 py-1 bg-cyan-900/50 border border-cyan-500/30 rounded-md text-cyan-300 text-sm">{mc.domain}</span>
                 </div>
               </div>
             ))}
