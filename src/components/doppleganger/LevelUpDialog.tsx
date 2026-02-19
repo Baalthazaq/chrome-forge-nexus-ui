@@ -11,7 +11,7 @@ import { STAT_SKILLS, type StatName } from "@/data/gameCardTypes";
 import {
   getTier, isTierStart, getLevelsInTier, getProficiency,
   getTierUpgradeCounts, UPGRADE_LIMITS, getBoostedStatsInTier,
-  hasMutualExclusionConflict, getUnlockedSubclassTiers,
+  hasMutualExclusionConflict, getUnlockedSubclassTiers, getMulticlassInfo,
   type UpgradeType, type LevelUpgrade, type LevelUpChoices,
 } from "@/lib/levelUpUtils";
 
@@ -59,16 +59,23 @@ export function LevelUpDialog({
   const [domainCardPick, setDomainCardPick] = useState('');
   const [mcClass, setMcClass] = useState('');
   const [mcSubclass, setMcSubclass] = useState('');
+  const [subclassUpgradeTarget, setSubclassUpgradeTarget] = useState<'primary' | 'multiclass'>('primary');
 
   const totalPoints = selectedUpgrades.reduce((sum, u) => sum + (UPGRADE_LIMITS[u.type]?.cost || 1), 0);
 
   // Determine which domains are from multiclass
   const mainDomains = domains.filter(d => !multiclassDomains.includes(d));
-  const mcLevelCap = Math.floor(newLevel / 2);
+  const mcLevelCap = Math.ceil(newLevel / 2);
+
+  // IDs of domain cards already on the sheet
+  const alreadySelectedCardIds = useMemo(() => {
+    return new Set((sheet.selected_card_ids || []).map(sc => sc.card_id).filter(Boolean));
+  }, [sheet.selected_card_ids]);
 
   const availableDomainCards = useMemo(() => {
     return domainCards
       .filter(c => {
+        if (alreadySelectedCardIds.has(c.id)) return false;
         const meta = c.metadata as any;
         const domain = meta?.domain || c.source;
         const cardLevel = meta?.level || 0;
@@ -83,13 +90,11 @@ export function LevelUpDialog({
         const domB = metaB?.domain || b.source;
         const aIsMain = mainDomains.includes(domA);
         const bIsMain = mainDomains.includes(domB);
-        // Main domains first, then MC domains
         if (aIsMain !== bIsMain) return aIsMain ? -1 : 1;
-        // Within same group, sort by domain name then level
         if (domA !== domB) return domA.localeCompare(domB);
         return (metaA?.level || 0) - (metaB?.level || 0);
       });
-  }, [domainCards, mainDomains, multiclassDomains, newLevel, mcLevelCap]);
+  }, [domainCards, mainDomains, multiclassDomains, newLevel, mcLevelCap, alreadySelectedCardIds]);
 
   const allStats = Object.keys(STAT_SKILLS) as StatName[];
   const currentExperiences: Experience[] = sheet.experiences || [];
@@ -97,6 +102,10 @@ export function LevelUpDialog({
   // Multiclass: available classes (exclude current)
   const mcAvailableClasses = classCards.filter(c => c.name !== sheet.class);
   const mcSubclasses = subclassCards.filter(c => c.source === mcClass);
+
+  // Get existing multiclass info for subclass upgrade choice
+  const existingMulticlasses = getMulticlassInfo(choices);
+  const hasMulticlass = existingMulticlasses.length > 0;
 
   // Check which next subclass tier is available
   const nextSubTier = unlockedSubTiers === 0 ? 'Specialization' : unlockedSubTiers === 1 ? 'Mastery' : null;
@@ -494,8 +503,38 @@ export function LevelUpDialog({
                 )}
 
                 {selected && type === 'subclass_upgrade' && nextSubTier && (
-                  <div className="mt-2 ml-7">
-                    <p className="text-xs text-green-400">Will unlock: {selectedSubclass?.name} {nextSubTier}</p>
+                  <div className="mt-2 ml-7 space-y-2">
+                    {hasMulticlass ? (
+                      <>
+                        <p className="text-xs text-gray-400 mb-1">Which subclass to upgrade?</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setSubclassUpgradeTarget('primary')}
+                            className={`px-3 py-1.5 rounded text-xs transition-colors ${
+                              subclassUpgradeTarget === 'primary' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            }`}
+                          >
+                            {selectedSubclass?.name || sheet.subclass} (Primary)
+                          </button>
+                          {existingMulticlasses.map((mc, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setSubclassUpgradeTarget('multiclass')}
+                              className={`px-3 py-1.5 rounded text-xs transition-colors ${
+                                subclassUpgradeTarget === 'multiclass' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                              }`}
+                            >
+                              {mc.subclass} (MC)
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-xs text-green-400">
+                          Will unlock: {subclassUpgradeTarget === 'primary' ? selectedSubclass?.name : existingMulticlasses[0]?.subclass} {nextSubTier}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-green-400">Will unlock: {selectedSubclass?.name} {nextSubTier}</p>
+                    )}
                   </div>
                 )}
 
