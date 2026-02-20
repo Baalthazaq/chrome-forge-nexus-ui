@@ -53,6 +53,8 @@ const RoldexAdmin = () => {
   const { isAdmin } = useAdmin();
   const { toast } = useToast();
 
+  const STORAGE_KEY = 'roldex-admin-node-positions';
+
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
@@ -134,12 +136,26 @@ const RoldexAdmin = () => {
 
     const finalProfiles = filteredProfiles.filter(p => relevantUserIds.has(p.user_id));
 
+    // Load saved positions from localStorage
+    let savedPositions: Record<string, { x: number; y: number }> = {};
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) savedPositions = JSON.parse(stored);
+    } catch {}
+
+    // Grid layout: arrange nodes in a grid with generous spacing
+    const COLS = Math.ceil(Math.sqrt(finalProfiles.length));
+    const NODE_W = 180;
+    const NODE_H = 160;
+
     // Create nodes
     const nodes: Node[] = finalProfiles.map((profile, index) => {
-      const angle = (index / finalProfiles.length) * 2 * Math.PI;
-      const radius = selectedNode ? (profile.user_id === selectedNode ? 0 : 300) : 200 + Math.random() * 100;
-      const x = selectedNode && profile.user_id === selectedNode ? 0 : radius * Math.cos(angle);
-      const y = selectedNode && profile.user_id === selectedNode ? 0 : radius * Math.sin(angle);
+      // Use saved position if available, otherwise grid layout
+      const saved = savedPositions[profile.user_id];
+      const col = index % COLS;
+      const row = Math.floor(index / COLS);
+      const x = saved ? saved.x : col * NODE_W;
+      const y = saved ? saved.y : row * NODE_H;
 
       return {
         id: profile.user_id,
@@ -224,6 +240,15 @@ const RoldexAdmin = () => {
     setNodes(networkNodes);
     setEdges(networkEdges);
   }, [networkNodes, networkEdges, setNodes, setEdges]);
+
+  const handleNodeDragStop = useCallback((event: any, node: Node) => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      const positions = stored ? JSON.parse(stored) : {};
+      positions[node.id] = { x: node.position.x, y: node.position.y };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(positions));
+    } catch {}
+  }, []);
 
   const handleNodeClick = useCallback((event: any, node: Node) => {
     setSelectedNode(selectedNode === node.id ? null : node.id);
@@ -357,6 +382,7 @@ const RoldexAdmin = () => {
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onNodeClick={handleNodeClick}
+              onNodeDragStop={handleNodeDragStop}
               fitView
               attributionPosition="bottom-left"
               style={{ background: '#000000' }}
