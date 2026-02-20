@@ -12,6 +12,11 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { z } from 'zod';
+
+const groupNameSchema = z.string().trim().min(1, 'Group name is required').max(100, 'Group name too long (max 100 chars)');
+const messageSchema = z.string().trim().min(1).max(500, 'Message too long');
+const renameSchema = z.string().trim().min(1, 'Name is required').max(100, 'Name too long (max 100 chars)');
 
 interface Participant {
   user_id: string;
@@ -357,8 +362,9 @@ const Sending = () => {
   };
 
   const createGroupStone = async () => {
-    if (!groupName.trim() || selectedGroupMembers.length === 0) {
-      toast.error('Please enter a group name and select at least one member');
+    const nameResult = groupNameSchema.safeParse(groupName);
+    if (!nameResult.success || selectedGroupMembers.length === 0) {
+      toast.error(nameResult.error?.errors[0]?.message || 'Please enter a group name and select at least one member');
       return;
     }
 
@@ -372,7 +378,7 @@ const Sending = () => {
         .from('stones')
         .insert({
           is_group: true,
-          name: groupName.trim(),
+          name: nameResult.data,
           created_by: currentUser?.id,
         })
         .select()
@@ -491,12 +497,16 @@ const Sending = () => {
   };
 
   const renameGroup = async () => {
-    if (!selectedStone || !renameValue.trim()) return;
+    const renameResult = renameSchema.safeParse(renameValue);
+    if (!selectedStone || !renameResult.success) {
+      toast.error(renameResult?.error?.errors[0]?.message || 'Invalid name');
+      return;
+    }
 
     try {
       await supabase
         .from('stones')
-        .update({ name: renameValue.trim() })
+        .update({ name: renameResult.data })
         .eq('id', selectedStone.id);
 
       setShowRename(false);
@@ -509,7 +519,8 @@ const Sending = () => {
   };
 
   const sendCast = async () => {
-    if (!selectedStone || !message.trim() || wordCount > 25) return;
+    const msgResult = messageSchema.safeParse(message);
+    if (!selectedStone || !msgResult.success || wordCount > 25) return;
 
     setSending(true);
     try {
