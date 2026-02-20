@@ -40,6 +40,22 @@ import { CSS } from '@dnd-kit/utilities';
 import { useDroppable } from '@dnd-kit/core';
 import { TomeShareDialog } from '@/components/TomeShareDialog';
 import { TomeShareNotifications } from '@/components/TomeShareNotifications';
+import { z } from 'zod';
+
+const tomeEntrySchema = z.object({
+  title: z.string().trim().min(1, 'Title is required').max(200, 'Title too long (max 200 chars)'),
+  tags: z.array(z.string().max(50)).max(30),
+  chapters: z.array(z.object({
+    title: z.string().max(200),
+    content: z.string().max(100000),
+  })).min(1).max(100),
+});
+
+const quickNoteSchema = z.object({
+  content: z.string().trim().min(1, 'Note content is required').max(10000, 'Note too long (max 10000 chars)'),
+  color: z.string().max(100),
+  tags: z.array(z.string().max(50)).max(20),
+});
 
 // Drop Zone Component for empty columns
 const ColumnDropZone = ({ columnIndex }: { columnIndex: number }) => {
@@ -434,10 +450,19 @@ const ToMe = () => {
   };
 
   const createTomeEntry = async () => {
-    if (!displayUser || !newEntry.title.trim()) return;
+    if (!displayUser) return;
     
     try {
       const tagsArray = newEntry.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      const parsed = tomeEntrySchema.safeParse({
+        title: newEntry.title,
+        tags: tagsArray,
+        chapters: newEntry.chapters,
+      });
+      if (!parsed.success) {
+        toast({ title: "Validation Error", description: parsed.error.errors[0]?.message || "Invalid input", variant: "destructive" });
+        return;
+      }
       const allContent = newEntry.chapters.map(chapter => chapter.content).join('\n\n');
       const pages = calculatePages(allContent);
       
@@ -445,9 +470,9 @@ const ToMe = () => {
         .from('tome_entries')
         .insert({
           user_id: displayUser.user_id || displayUser.id,
-          title: newEntry.title,
-          content: JSON.stringify(newEntry.chapters), // Store chapters as JSON
-          tags: tagsArray,
+          title: parsed.data.title,
+          content: JSON.stringify(parsed.data.chapters),
+          tags: parsed.data.tags,
           pages: pages,
         });
 
@@ -511,7 +536,13 @@ const ToMe = () => {
   };
 
   const createQuickNote = async () => {
-    if (!displayUser || !newNote.content.trim()) return;
+    if (!displayUser) return;
+    const tagsArray = newNote.tags ? newNote.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [];
+    const noteResult = quickNoteSchema.safeParse({ content: newNote.content, color: newNote.color, tags: tagsArray });
+    if (!noteResult.success) {
+      toast({ title: "Validation Error", description: noteResult.error.errors[0]?.message || "Invalid input", variant: "destructive" });
+      return;
+    }
     
     try {
       // Find the shortest column (with leftmost preference in case of ties)

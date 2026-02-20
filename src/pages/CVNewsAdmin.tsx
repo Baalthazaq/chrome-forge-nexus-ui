@@ -14,6 +14,18 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ArrowLeft, Plus, Edit, Trash2, Newspaper, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { z } from 'zod';
+
+const articleSchema = z.object({
+  headline: z.string().trim().min(1, 'Headline is required').max(300, 'Headline too long (max 300 chars)'),
+  summary: z.string().trim().max(1000, 'Summary too long (max 1000 chars)').nullable(),
+  content: z.string().trim().max(50000, 'Content too long (max 50000 chars)').nullable(),
+  image_url: z.string().trim().max(2000).nullable(),
+  tags: z.array(z.string().max(50)).max(20),
+  is_breaking: z.boolean(),
+  publish_date: z.string().nullable(),
+  is_published: z.boolean(),
+});
 
 interface NewsArticle {
   id: string;
@@ -92,7 +104,7 @@ const CVNewsAdmin = () => {
     }
 
     const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
-    const articleData = {
+    const rawData = {
       headline: headline.trim(),
       summary: summary.trim() || null,
       content: content.trim() || null,
@@ -101,6 +113,22 @@ const CVNewsAdmin = () => {
       is_breaking: isBreaking,
       publish_date: publishDate ? new Date(publishDate).toISOString() : null,
       is_published: isPublished,
+    };
+
+    const parsed = articleSchema.safeParse(rawData);
+    if (!parsed.success) {
+      toast({ title: "Validation Error", description: parsed.error.errors[0]?.message || "Invalid input", variant: "destructive" });
+      return;
+    }
+    const articleData = parsed.data as {
+      headline: string;
+      summary: string | null;
+      content: string | null;
+      image_url: string | null;
+      tags: string[];
+      is_breaking: boolean;
+      publish_date: string | null;
+      is_published: boolean;
     };
 
     // If marking as breaking, unmark all others first
