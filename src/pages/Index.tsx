@@ -86,7 +86,7 @@ const apps = [
   {
     id: "maze",
     name: "Maze",
-    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Gmaps.gif",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/GMaps.gif",
     description: "Navigation",
     route: "/maze",
     color: "from-teal-500 to-green-600",

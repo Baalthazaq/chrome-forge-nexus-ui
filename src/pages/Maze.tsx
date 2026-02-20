@@ -39,7 +39,7 @@ const Maze = () => {
           </h1>
           <p className="text-gray-500 text-xs font-mono tracking-widest">by Ariadne Technologies</p>
           <p className="text-gray-400 text-sm mt-3 font-mono">
-            Navigate the sprawl. Find your way.
+            Find your way.
           </p>
         </div>
 
