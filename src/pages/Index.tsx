@@ -84,6 +84,15 @@ const apps = [
     comingSoon: true
   },
   {
+    id: "maze",
+    name: "Maze",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Gmaps.gif",
+    description: "Navigation",
+    route: "/maze",
+    color: "from-teal-500 to-green-600",
+    comingSoon: true
+  },
+  {
     id: "succubus",
     name: "Succubus",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Succubus.gif",
