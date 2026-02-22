@@ -1,90 +1,141 @@
+## Timestop: In-Game Calendar System
+
+This plan builds Timestop into a fully functional in-game calendar with a custom 364+1 day year, personal events, admin-managed universal events, and subscription billing integration tied to game ticks.
+
+---
+
+### The Calendar System
+
+**Year structure:**
+
+- 13 months of 28 days each (364 days), plus 1 special standalone day called the "Day of Frippery" (always a Sunday)
+- Each month starts on Sunday and ends on Saturday (28 days = exactly 4 weeks, so every month has the same layout)
+- Day of Frippery sits between the months Trade and Light. It is the middle day of the year. 
+
+**Seasons and Months (in order):**
 
 
-# BHoldR: In-World YouTube Platform
+| #   | Season | Month       | Key Holidays                                        |
+| --- | ------ | ----------- | --------------------------------------------------- |
+| 1   | Shield | Oath        | Day of First Promise (1st)                          |
+| 2   | Shield | Stern       | Days of Confession (All month)                      |
+| 3   | Shield | Engineer    | Day of the Mind (28th)                              |
+| 4   | Shield | Miner       | Day of the Body (1st)                               |
+| 5   | Shield | Retribution | Day of No Mask (11th), Day of Shield and Axe (28th) |
+| 6   | Axe    | Shackles    | Day of Shame (21st)                                 |
+| 7   | Axe    | Trade       | Day of Therin (25th)                                |
+| 8   | -      | Frippery    | Lie Day (standalone day)                            |
+| 9   | Axe    | Light       | Truth Day (1st)                                     |
+| 10  | Axe    | Navigator   | Finder's Day (any)                                  |
+| 11  | Hammer | Tryst       | Baubledays (unofficial, any)                        |
+| 12  | Hammer | Destiny     | Days of Ease (All month)                            |
+| 13  | Hammer | Groveling   | Grovellerday (4th)                                  |
+| 14  | Hammer | Negotiation | Therin's Reckondays (25th-28th)                     |
 
-## Overview
-Transform BHoldR from a static mock page into a functional in-world video sharing platform where players can create channels, post YouTube video links that embed directly, and interact with ratings and comments.
 
-## Database Tables
+**Day of Frippery** is displayed as a 14th month, but with 27 out of 28 days blank, so effectively Sunday occurs twice in a row, but it does not distrub the layout. 
 
-### `beholdr_channels`
+---
+
+### Database Changes
+
+**New table: `game_calendar**` (single-row config, stores the current in-game date)
+
 - `id` (uuid, PK)
-- `user_id` (uuid, references profiles)
-- `channel_name` (text, not null)
-- `created_at`, `updated_at` (timestamps)
+- `current_day` (integer, 1-28) -- day within the current month
+- `current_month` (integer, 0-13) -- 0 = Day of Frippery, 1-13 = months
+- `current_year` (integer, default 1)
+- `updated_at` (timestamp)
 
-One channel per user. Players name their own channel.
+RLS: everyone can SELECT, admin-only for UPDATE.
 
-### `beholdr_videos`
+**New table: `calendar_events**`
+
 - `id` (uuid, PK)
-- `channel_id` (uuid, FK to beholdr_channels)
-- `user_id` (uuid) -- the uploader
-- `title` (text, not null)
-- `youtube_url` (text, not null)
+- `user_id` (uuid, nullable) -- null = universal/admin event, set = personal event
+- `title` (text)
 - `description` (text, nullable)
-- `tags` (text[], nullable)
-- `created_at`, `updated_at` (timestamps)
+- `event_day` (integer) -- 1-28 within a month, or 1 for Frippery
+- `event_month` (integer) -- 0-14
+- `event_year` (integer, nullable) -- null = recurring every year
+- `is_holiday` (boolean, default false) -- for built-in holidays
+- `is_recurring` (boolean, default false)
+- `created_at` (timestamp)
 
-### `beholdr_ratings`
-- `id` (uuid, PK)
-- `video_id` (uuid, FK to beholdr_videos)
-- `user_id` (uuid)
-- `rating` (integer) -- e.g. 1 = thumbs up, -1 = thumbs down
-- unique constraint on (video_id, user_id)
-- `created_at`
+RLS: Users can CRUD their own events. Admin can CRUD all events. All authenticated users can SELECT universal events (where `user_id IS NULL`).
 
-### `beholdr_comments`
-- `id` (uuid, PK)
-- `video_id` (uuid, FK to beholdr_videos)
-- `user_id` (uuid)
-- `content` (text, not null)
-- `created_at`, `updated_at`
+A migration will seed the holidays from the spreadsheet as `calendar_events` rows with `user_id = NULL`, `is_holiday = true`, and `is_recurring = true`.
 
-### RLS Policies
-- All authenticated users can view all channels, videos, ratings, and comments (it's a public-facing in-world platform)
-- Users can create/update/delete their own channels, videos, and comments
-- Users can create/update their own ratings (one per video)
-- Admins get full access to everything
+---
 
-## Frontend: Player-Facing (`/beholdr`)
+### Subscription Billing Integration
 
-### Main Feed
-- Shows all videos from all channels, sorted by newest first
-- Each video card shows: YouTube thumbnail (extracted from URL), title, channel name, time ago, rating summary (thumbs up/down counts)
-- Clicking a video opens an expanded view with the embedded YouTube player
+When admin clicks "Advance Day" in Timestop Admin, the system:
 
-### Video Detail View
-- Embedded YouTube iframe using the standard `https://www.youtube.com/embed/{videoId}` format
-- Title, channel name, description, tags
-- Thumbs up / Thumbs down buttons with counts -- clicking toggles your rating
-- Comments section below: list of comments with character name and timestamp, plus an input to add a new comment
+1. Increments the in-game date by 1 day (wrapping months/years, handling Frippery)
+2. After advancing, checks if billing should trigger based on the NEW date:
+  - **Daily**: triggers every tick (calls `trigger_daily` on the existing `admin-financial` edge function)
+  - **Weekly**: triggers on the 2nd, 9th, 16th, and 24th of each month (skips Frippery)
+  - **Monthly**: triggers on the 14th of each month (skips Frippery)
+  - **Yearly**: triggers on the 1st of month 1 (Oath 1st -- New Year)
+3. Returns a summary of what was processed
 
-### "My Channel" Section
-- Set/edit channel name
-- List of your uploaded videos with edit/delete options
-- "Upload Video" form: title, YouTube URL, description, tags
+This reuses the existing `admin-financial` edge function's `trigger_daily`, `trigger_weekly`, `trigger_monthly`, and `trigger_yearly` operations, so no billing logic needs to be rewritten.
 
-## Frontend: Admin (`/admin/beholdr`)
+**New edge function: `advance-day**`
 
-### Admin Panel
-- Dropdown to select any character
-- Create/edit channels for any character, assign channel names
-- Add videos to any character's channel (title, URL, description, tags)
-- Manage all videos: edit/delete any video
-- Moderate comments: delete any comment
+- Admin-only
+- Reads current date from `game_calendar`, increments it
+- Determines which billing cycles to fire
+- Calls the existing `admin-financial` function for each applicable cycle
+- Returns: new date + billing summary
 
-## Technical Details
+---
 
-### YouTube URL Parsing
-Extract video ID from various YouTube URL formats (`youtube.com/watch?v=`, `youtu.be/`, etc.) and convert to embed URL. Thumbnail extraction: `https://img.youtube.com/vi/{videoId}/mqdefault.jpg`.
+### Player-Facing UI (`/timestop`)
 
-### File Changes
-1. **New migration**: Create the 4 tables with RLS policies
-2. **`src/pages/BeholdR.tsx`**: Complete rewrite -- replace static mock with real data, video feed, video detail view, channel management
-3. **`src/pages/BeholdRAdmin.tsx`**: New admin page for managing channels/videos/comments across all users
-4. **`src/App.tsx`**: Add routes for `/admin/beholdr` and import the admin page
+Replace the current placeholder with a real in-game calendar:
 
-### Routing
-- `/beholdr` -- main feed + video viewing
-- `/admin/beholdr` -- admin management panel
+- **Header**: "TIMESTOP" branding, current date display (e.g. "12th of Trade, Year 1 -- Season of the Axe")
+- **Month navigation**: Previous/Next month arrows to browse through the calendar
+- **Calendar grid**: 7 columns (Su-Sa), 4 rows of 7 = 28 days. Current game day highlighted
+- **Day of Frippery**: When navigating to it, shows as a special single-day display instead of a month grid
+- **Event dots**: Days with events show small colored dots (amber for holidays, cyan for personal events)
+- **Day click**: Clicking a day opens a panel showing events for that day, with ability to add/edit/delete personal events
+- **Holiday info**: Clicking a holiday shows its name and description from the reference data
 
+---
+
+### Admin UI (`/admin/timestop`)
+
+New admin page with:
+
+- **Current date display** and "Advance Day" button (with confirmation showing which billing cycles will fire)
+- **Multi-advance**: Option to advance multiple days at once (e.g. "Advance 7 days") with billing processing for each
+- **Shared calendar view**: A calendar that shows ALL events from ALL users, color-coded by user. Clicking a day shows everyone's events for that day
+- **Universal event management**: Create/edit/delete events visible to all players. Toggle recurring (yearly) vs one-time
+- **Holiday management**: View seeded holidays (pre-populated from the spreadsheet data)
+
+---
+
+### Technical Details
+
+**Files to create:**
+
+- `src/lib/gameCalendar.ts` -- calendar logic: month names, season names, day calculations, date formatting, holiday seed data, billing trigger checks
+- `src/pages/TimestopAdmin.tsx` -- admin calendar view
+- `supabase/functions/advance-day/index.ts` -- edge function for advancing game time + triggering billing
+
+**Files to modify:**
+
+- `src/pages/Timestop.tsx` -- replace placeholder with real calendar
+- `src/App.tsx` -- add route for `/admin/timestop`
+
+**Database migration:**
+
+- Create `game_calendar` table with initial row (Day 1, Month 1, Year 1)
+- Create `calendar_events` table
+- Seed holiday events from the spreadsheet data
+- RLS policies for both tables
+
+**NPC stuff**: Remains scoped for Doppleganger admin as requested -- not part of this implementation.
