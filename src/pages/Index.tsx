@@ -86,7 +86,7 @@ const apps = [
   {
     id: "maze",
     name: "Maze",
-    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/GMaps.gif",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/GMaps.gif?v=2",
     description: "Navigation",
     route: "/maze",
     color: "from-teal-500 to-green-600",
@@ -95,7 +95,7 @@ const apps = [
   {
     id: "timestop",
     name: "Timestop",
-    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/TimestopS.gif",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/TimestopS.gif?v=2",
     description: "Calendar",
     route: "/timestop",
     color: "from-amber-400 to-yellow-500",
