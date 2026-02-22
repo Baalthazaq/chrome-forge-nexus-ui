@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, Search, ChevronDown, ChevronUp, Calendar, List } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,6 +30,8 @@ const Timestop = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [viewMonth, setViewMonth] = useState(1);
+  const [viewYear, setViewYear] = useState(2626);
+  const [viewMode, setViewMode] = useState<"monthly" | "annual">("monthly");
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventDesc, setNewEventDesc] = useState("");
@@ -48,7 +50,10 @@ const Timestop = () => {
   });
 
   useEffect(() => {
-    if (gameDate) setViewMonth(gameDate.current_month);
+    if (gameDate) {
+      setViewMonth(gameDate.current_month);
+      setViewYear(gameDate.current_year);
+    }
   }, [gameDate]);
 
   const currentDate: GameDate = gameDate
@@ -64,6 +69,19 @@ const Timestop = () => {
         (e) => e.event_year === null || e.event_year === currentDate.year
       );
     },
+  });
+
+  // All events for annual view
+  const { data: allEvents = [] } = useQuery({
+    queryKey: ["calendar-events-all", currentDate.year],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("calendar_events").select("*");
+      if (error) throw error;
+      return (data as CalendarEvent[]).filter(
+        (e) => e.event_year === null || e.event_year === currentDate.year
+      );
+    },
+    enabled: viewMode === "annual",
   });
 
   // Search across all months
@@ -130,9 +148,15 @@ const Timestop = () => {
   // Check if a day has a holiday
   const dayHasHoliday = (day: number) => specificDayEvents.some((e) => e.event_day === day && e.is_holiday);
 
-  const prevMonth = () => setViewMonth((m) => (m <= 1 ? 14 : m - 1));
-  const nextMonth = () => setViewMonth((m) => (m >= 14 ? 1 : m + 1));
-  const isCurrentDay = (day: number) => viewMonth === currentDate.month && day === currentDate.day;
+  const prevMonth = () => setViewMonth((m) => {
+    if (m <= 1) { setViewYear((y) => y - 1); return 14; }
+    return m - 1;
+  });
+  const nextMonth = () => setViewMonth((m) => {
+    if (m >= 14) { setViewYear((y) => y + 1); return 1; }
+    return m + 1;
+  });
+  const isCurrentDay = (day: number) => viewMonth === currentDate.month && viewYear === currentDate.year && day === currentDate.day;
 
   const toggleHolidayExpand = (id: string) => {
     setExpandedHolidays((prev) => {
@@ -255,150 +279,206 @@ const Timestop = () => {
           </h1>
           <p className="text-gray-500 text-xs font-mono tracking-widest mb-3">by Chronomancy Co.</p>
           <p className="text-amber-300/80 font-mono text-sm">{formatGameDate(currentDate)}</p>
+          {/* View mode toggle */}
+          <div className="flex justify-center gap-2 mt-3">
+            <Button size="sm" variant={viewMode === "monthly" ? "default" : "ghost"} onClick={() => setViewMode("monthly")} className={viewMode === "monthly" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
+              <Calendar className="w-3 h-3 mr-1" /> Monthly
+            </Button>
+            <Button size="sm" variant={viewMode === "annual" ? "default" : "ghost"} onClick={() => setViewMode("annual")} className={viewMode === "annual" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
+              <List className="w-3 h-3 mr-1" /> Annual
+            </Button>
+          </div>
         </div>
 
-        {/* Calendar */}
-        <Card className="bg-gray-900/40 border-gray-700/50 p-5 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <button onClick={prevMonth} className="text-gray-400 hover:text-amber-300 transition-colors">
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <div className="text-center">
-              <span className="text-amber-300/80 font-mono text-sm">{monthInfo?.name || "Unknown"}</span>
-              {monthInfo && monthInfo.season !== "-" && (
-                <span className="text-gray-500 font-mono text-xs ml-2">({monthInfo.season})</span>
-              )}
-            </div>
-            <button onClick={nextMonth} className="text-gray-400 hover:text-amber-300 transition-colors">
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-
-          {frippery ? (
-            <div className="text-center py-8">
-              <div
-                onClick={() => setSelectedDay(1)}
-                className={`inline-block px-8 py-4 rounded-lg cursor-pointer transition-all ${
-                  isCurrentDay(1)
-                    ? "bg-amber-500/20 border-2 border-amber-500/60 text-amber-300"
-                    : "bg-gray-800/50 border border-gray-700/50 text-gray-300 hover:border-amber-500/30"
-                }`}
-              >
-                <Star className="w-6 h-6 mx-auto mb-2 text-amber-400" />
-                <p className="font-mono text-sm">Day of Frippery</p>
-                <p className="text-xs text-gray-500 mt-1">Lie Day</p>
+        {viewMode === "monthly" ? (
+          <>
+            {/* Monthly Calendar */}
+            <Card className="bg-gray-900/40 border-gray-700/50 p-5 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <button onClick={prevMonth} className="text-gray-400 hover:text-amber-300 transition-colors">
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <div className="text-center">
+                  <span className="text-amber-300/80 font-mono text-sm">{monthInfo?.name || "Unknown"}</span>
+                  {monthInfo && monthInfo.season !== "-" && (
+                    <span className="text-gray-500 font-mono text-xs ml-2">({monthInfo.season})</span>
+                  )}
+                  <p className="text-gray-500 font-mono text-xs mt-0.5">Year {viewYear}</p>
+                </div>
+                <button onClick={nextMonth} className="text-gray-400 hover:text-amber-300 transition-colors">
+                  <ChevronRight className="w-5 h-5" />
+                </button>
               </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-7 gap-1 text-center">
-              {DAY_NAMES.map((d) => (
-                <div key={d} className="text-gray-500 text-xs font-mono py-1">{d}</div>
-              ))}
-              {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => {
-                const dayEvents = eventsForDay(day);
-                const current = isCurrentDay(day);
-                const selected = selectedDay === day;
-                const holiday = dayHasHoliday(day);
-                return (
+
+              {frippery ? (
+                <div className="text-center py-8">
                   <div
-                    key={day}
-                    onClick={() => setSelectedDay(day)}
-                    className={`py-2 text-xs font-mono rounded cursor-pointer transition-all relative ${
-                      current
-                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                        : holiday
-                        ? "bg-amber-500/10 text-amber-400/80 border border-amber-500/20"
-                        : selected
-                        ? "bg-gray-700/50 text-white border border-gray-500/50"
-                        : "text-gray-500 hover:bg-gray-800/50 hover:text-gray-300"
+                    onClick={() => setSelectedDay(1)}
+                    className={`inline-block px-8 py-4 rounded-lg cursor-pointer transition-all ${
+                      isCurrentDay(1)
+                        ? "bg-amber-500/20 border-2 border-amber-500/60 text-amber-300"
+                        : "bg-gray-800/50 border border-gray-700/50 text-gray-300 hover:border-amber-500/30"
                     }`}
                   >
-                    {day}
-                    {dayEvents.length > 0 && (
-                      <div className="flex justify-center gap-0.5 mt-0.5">
-                        {dayEvents.slice(0, 3).map((e) => (
-                          <div
-                            key={e.id}
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              e.is_holiday ? "bg-amber-400" : e.user_id ? "bg-cyan-400" : "bg-emerald-400"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    )}
+                    <Star className="w-6 h-6 mx-auto mb-2 text-amber-400" />
+                    <p className="font-mono text-sm">Day of Frippery</p>
+                    <p className="text-xs text-gray-500 mt-1">Lie Day</p>
                   </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* All/Any month holidays shown at bottom */}
-          {allMonthEvents.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-gray-700/30 space-y-1.5">
-              {allMonthEvents.map((event) => (
-                <div key={event.id} className="p-2 rounded bg-amber-500/5 border border-amber-500/20">
-                  <div
-                    className="flex items-center gap-2 cursor-pointer"
-                    onClick={() => toggleHolidayExpand(event.id)}
-                  >
-                    <Star className="w-3 h-3 text-amber-400" />
-                    <p className="text-xs font-medium text-amber-300 flex-1">{event.title}</p>
-                    <span className="text-xs text-amber-500/50">All month</span>
-                    {event.description && (
-                      expandedHolidays.has(event.id)
-                        ? <ChevronUp className="w-3 h-3 text-amber-500/60" />
-                        : <ChevronDown className="w-3 h-3 text-amber-500/60" />
-                    )}
-                  </div>
-                  {expandedHolidays.has(event.id) && event.description && (
-                    <p className="text-gray-500 text-xs mt-1 ml-5">{event.description}</p>
-                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </Card>
+              ) : (
+                <div className="grid grid-cols-7 gap-1 text-center">
+                  {DAY_NAMES.map((d) => (
+                    <div key={d} className="text-gray-500 text-xs font-mono py-1">{d}</div>
+                  ))}
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => {
+                    const dayEvents = eventsForDay(day);
+                    const current = isCurrentDay(day);
+                    const selected = selectedDay === day;
+                    const holiday = dayHasHoliday(day);
+                    return (
+                      <div
+                        key={day}
+                        onClick={() => setSelectedDay(day)}
+                        className={`py-2 text-xs font-mono rounded cursor-pointer transition-all relative ${
+                          current
+                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                            : holiday
+                            ? "bg-amber-500/10 text-amber-400/80 border border-amber-500/20"
+                            : selected
+                            ? "bg-gray-700/50 text-white border border-gray-500/50"
+                            : "text-gray-500 hover:bg-gray-800/50 hover:text-gray-300"
+                        }`}
+                      >
+                        {day}
+                        {dayEvents.length > 0 && (
+                          <div className="flex justify-center gap-0.5 mt-0.5">
+                            {dayEvents.slice(0, 3).map((e) => (
+                              <div
+                                key={e.id}
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  e.is_holiday ? "bg-amber-400" : e.user_id ? "bg-cyan-400" : "bg-emerald-400"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
-        {/* Selected day events */}
-        {selectedDay !== null && (
-          <Card className="bg-gray-900/40 border-gray-700/50 p-4 mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-amber-300/80 font-mono text-sm">
-                {frippery ? "Day of Frippery" : `${selectedDay} of ${monthInfo?.name}`}
-              </h3>
-              <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" variant="ghost" className="text-cyan-400 hover:text-cyan-300">
-                    <Plus className="w-4 h-4 mr-1" /> Add Event
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-gray-900 border-gray-700">
-                  <DialogHeader>
-                    <DialogTitle className="text-amber-300">Add Personal Event</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-3">
-                    <Input placeholder="Event title" value={newEventTitle} onChange={(e) => setNewEventTitle(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
-                    <Textarea placeholder="Description (optional)" value={newEventDesc} onChange={(e) => setNewEventDesc(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
+              {/* All/Any month holidays shown at bottom */}
+              {allMonthEvents.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-gray-700/30 space-y-1.5">
+                  {allMonthEvents.map((event) => (
+                    <div key={event.id} className="p-2 rounded bg-amber-500/5 border border-amber-500/20">
+                      <div
+                        className="flex items-center gap-2 cursor-pointer"
+                        onClick={() => toggleHolidayExpand(event.id)}
+                      >
+                        <Star className="w-3 h-3 text-amber-400" />
+                        <p className="text-xs font-medium text-amber-300 flex-1">{event.title}</p>
+                        <span className="text-xs text-amber-500/50">All month</span>
+                        {event.description && (
+                          expandedHolidays.has(event.id)
+                            ? <ChevronUp className="w-3 h-3 text-amber-500/60" />
+                            : <ChevronDown className="w-3 h-3 text-amber-500/60" />
+                        )}
+                      </div>
+                      {expandedHolidays.has(event.id) && event.description && (
+                        <p className="text-gray-500 text-xs mt-1 ml-5">{event.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {/* Selected day events */}
+            {selectedDay !== null && (
+              <Card className="bg-gray-900/40 border-gray-700/50 p-4 mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-amber-300/80 font-mono text-sm">
+                    {frippery ? "Day of Frippery" : `${selectedDay} of ${monthInfo?.name}`}
+                  </h3>
+                  <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="ghost" className="text-cyan-400 hover:text-cyan-300">
+                        <Plus className="w-4 h-4 mr-1" /> Add Event
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-gray-900 border-gray-700">
+                      <DialogHeader>
+                        <DialogTitle className="text-amber-300">Add Personal Event</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-3">
+                        <Input placeholder="Event title" value={newEventTitle} onChange={(e) => setNewEventTitle(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
+                        <Textarea placeholder="Description (optional)" value={newEventDesc} onChange={(e) => setNewEventDesc(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
+                      </div>
+                      <DialogFooter>
+                        <Button onClick={() => addEvent.mutate()} disabled={!newEventTitle.trim() || addEvent.isPending} className="bg-amber-600 hover:bg-amber-700">Add</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                {eventsForDay(selectedDay).length === 0 ? (
+                  <p className="text-gray-600 text-xs font-mono">No events this day.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {eventsForDay(selectedDay).map(renderEvent)}
                   </div>
-                  <DialogFooter>
-                    <Button onClick={() => addEvent.mutate()} disabled={!newEventTitle.trim() || addEvent.isPending} className="bg-amber-600 hover:bg-amber-700">Add</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            {eventsForDay(selectedDay).length === 0 ? (
-              <p className="text-gray-600 text-xs font-mono">No events this day.</p>
-            ) : (
-              <div className="space-y-2">
-                {eventsForDay(selectedDay).map(renderEvent)}
-              </div>
+                )}
+              </Card>
             )}
-          </Card>
+          </>
+        ) : (
+          /* Annual View */
+          <div className="space-y-4">
+            <p className="text-center text-gray-500 font-mono text-xs mb-2">Year {currentDate.year} — All Holidays & Events</p>
+            {MONTHS.map((month) => {
+              const monthEvents = allEvents.filter((e) => e.event_month === month.number);
+              if (monthEvents.length === 0) return null;
+              const isCurrent = month.number === currentDate.month;
+              return (
+                <Card key={month.number} className={`bg-gray-900/40 border-gray-700/50 p-4 ${isCurrent ? "border-amber-500/30" : ""}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className={`font-mono text-sm font-medium ${isCurrent ? "text-amber-300" : "text-gray-300"}`}>{month.name}</h3>
+                    {month.season !== "-" && <span className="text-gray-600 font-mono text-xs">({month.season})</span>}
+                    {isCurrent && <span className="text-amber-500/60 text-xs font-mono">← current</span>}
+                  </div>
+                  <div className="space-y-1.5">
+                    {monthEvents.map((event) => (
+                      <div key={event.id} className={`p-2 rounded ${event.is_holiday ? "bg-amber-500/5 border border-amber-500/20" : event.user_id ? "bg-cyan-500/5 border border-cyan-500/20" : "bg-emerald-500/5 border border-emerald-500/20"}`}>
+                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleHolidayExpand(event.id)}>
+                          {event.is_holiday && <Star className="w-3 h-3 text-amber-400" />}
+                          <p className={`text-xs font-medium flex-1 ${event.is_holiday ? "text-amber-300" : event.user_id ? "text-cyan-300" : "text-emerald-300"}`}>
+                            {event.title}
+                          </p>
+                          <span className="text-gray-600 text-xs font-mono">
+                            {event.event_day > 0 ? `Day ${event.event_day}` : "All month"}
+                          </span>
+                          {event.description && (
+                            expandedHolidays.has(event.id)
+                              ? <ChevronUp className="w-3 h-3 text-gray-500" />
+                              : <ChevronDown className="w-3 h-3 text-gray-500" />
+                          )}
+                        </div>
+                        {expandedHolidays.has(event.id) && event.description && (
+                          <p className="text-gray-500 text-xs mt-1 ml-5">{event.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
         )}
 
         {/* Legend */}
-        <div className="flex justify-center gap-6 text-xs font-mono text-gray-600">
+        <div className="flex justify-center gap-6 text-xs font-mono text-gray-600 mt-6">
           <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-400" /> Holiday</div>
           <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-cyan-400" /> Personal</div>
           <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-400" /> Universal</div>
