@@ -24,6 +24,7 @@ import Brittlewisp from "./pages/Brittlewisp";
 import Wyrmcart from "./pages/Wyrmcart";
 import ToMe from "./pages/ToMe";
 import Maze from "./pages/Maze";
+import Timestop from "./pages/Timestop";
 import Roldex from "./pages/Roldex";
 import RoldexAdmin from "./pages/RoldexAdmin";
 import SendingAdmin from "./pages/SendingAdmin";
@@ -69,6 +70,7 @@ const App = () => (
             <Route path="/roldex" element={<Roldex />} />
             <Route path="/roldex-admin" element={<RoldexAdmin />} />
             <Route path="/maze" element={<Maze />} />
+            <Route path="/timestop" element={<Timestop />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
