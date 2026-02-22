@@ -39,9 +39,6 @@ const Timestop = () => {
             TIMESTOP
           </h1>
           <p className="text-gray-500 text-xs font-mono tracking-widest">by Chronomancy Co.</p>
-          <p className="text-gray-400 text-sm mt-3 font-mono">
-            Seize the moment.
-          </p>
         </div>
 
         {/* Mock calendar */}
