@@ -99,7 +99,7 @@ const apps = [
     description: "Calendar",
     route: "/timestop",
     color: "from-amber-400 to-yellow-500",
-    comingSoon: true
+    comingSoon: false
   },
   {
     id: "succubus",
