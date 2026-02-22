@@ -67,10 +67,10 @@ serve(async (req) => {
       .single();
     if (!userRole || userRole.role !== "admin") throw new Error("Admin only");
 
-    const { days = 1 } = await req.json().catch(() => ({ days: 1 }));
-    const advanceCount = Math.min(Math.max(1, days), 365);
+    const body = await req.json().catch(() => ({}));
+    const { operation } = body;
 
-    // Get current date
+    // Get current calendar
     const { data: cal, error: calError } = await supabase
       .from("game_calendar")
       .select("*")
@@ -78,13 +78,47 @@ serve(async (req) => {
       .single();
     if (calError || !cal) throw new Error("Could not read game calendar");
 
+    // SET DATE operation - no billing
+    if (operation === "set_date") {
+      const { day, month, year } = body;
+      if (!day || !month || !year) throw new Error("day, month, year required");
+      
+      const monthDays = getMonthDays(month);
+      const clampedDay = Math.min(Math.max(1, day), monthDays);
+      const clampedMonth = Math.min(Math.max(1, month), 14);
+
+      const { error: updateError } = await supabase
+        .from("game_calendar")
+        .update({
+          current_day: clampedDay,
+          current_month: clampedMonth,
+          current_year: year,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", cal.id);
+
+      if (updateError) throw updateError;
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          newDate: { day: clampedDay, month: clampedMonth, year },
+          operation: "set_date",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ADVANCE operation (default)
+    const { days = 1 } = body;
+    const advanceCount = Math.min(Math.max(1, days), 365);
+
     let currentDay = cal.current_day;
     let currentMonth = cal.current_month;
     let currentYear = cal.current_year;
     const billingSummary: string[] = [];
 
     for (let i = 0; i < advanceCount; i++) {
-      // Advance
       currentDay++;
       if (currentDay > getMonthDays(currentMonth)) {
         currentDay = 1;
@@ -95,12 +129,10 @@ serve(async (req) => {
         }
       }
 
-      // Check billing triggers
       const triggers = getBillingTriggers(currentDay, currentMonth);
 
       for (const [interval, shouldTrigger] of Object.entries(triggers)) {
         if (!shouldTrigger) continue;
-
         try {
           const response = await fetch(`${supabaseUrl}/functions/v1/admin-financial`, {
             method: "POST",
@@ -111,18 +143,14 @@ serve(async (req) => {
             },
             body: JSON.stringify({ operation: `trigger_${interval}` }),
           });
-
           const result = await response.json();
-          billingSummary.push(
-            `${interval}: ${result.processed || 0} processed`
-          );
+          billingSummary.push(`${interval}: ${result.processed || 0} processed`);
         } catch (e) {
           billingSummary.push(`${interval}: error - ${e.message}`);
         }
       }
     }
 
-    // Update calendar
     const { error: updateError } = await supabase
       .from("game_calendar")
       .update({
