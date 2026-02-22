@@ -95,7 +95,7 @@ const apps = [
   {
     id: "timestop",
     name: "Timestop",
-    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Timestop.gif",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/TimestopS.gif",
     description: "Calendar",
     route: "/timestop",
     color: "from-amber-400 to-yellow-500",
