@@ -73,12 +73,12 @@ const Timestop = () => {
 
   // All events for annual view
   const { data: allEvents = [] } = useQuery({
-    queryKey: ["calendar-events-all", currentDate.year],
+    queryKey: ["calendar-events-all", viewYear],
     queryFn: async () => {
       const { data, error } = await supabase.from("calendar_events").select("*");
       if (error) throw error;
       return (data as CalendarEvent[]).filter(
-        (e) => e.event_year === null || e.event_year === currentDate.year
+        (e) => e.event_year === null || e.event_year === viewYear
       );
     },
     enabled: viewMode === "annual",
@@ -436,7 +436,15 @@ const Timestop = () => {
         ) : (
           /* Annual View */
           <div className="space-y-4">
-            <p className="text-center text-gray-500 font-mono text-xs mb-2">Year {currentDate.year} — All Holidays & Events</p>
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <button onClick={() => setViewYear((y) => y - 1)} className="text-gray-400 hover:text-amber-300 transition-colors">
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <p className="text-gray-500 font-mono text-xs">Year {viewYear} — All Holidays & Events</p>
+              <button onClick={() => setViewYear((y) => y + 1)} className="text-gray-400 hover:text-amber-300 transition-colors">
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
             {MONTHS.map((month) => {
               const monthEvents = allEvents.filter((e) => e.event_month === month.number);
               if (monthEvents.length === 0) return null;
