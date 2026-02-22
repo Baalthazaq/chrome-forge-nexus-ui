@@ -93,6 +93,15 @@ const apps = [
     comingSoon: true
   },
   {
+    id: "timestop",
+    name: "Timestop",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Timestop.gif",
+    description: "Calendar",
+    route: "/timestop",
+    color: "from-amber-400 to-yellow-500",
+    comingSoon: true
+  },
+  {
     id: "succubus",
     name: "Succubus",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Succubus.gif",
