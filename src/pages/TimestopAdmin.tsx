@@ -31,6 +31,7 @@ const TimestopAdmin = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [viewMonth, setViewMonth] = useState(1);
+  const [viewYear, setViewYear] = useState(2626);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [advanceDays, setAdvanceDays] = useState(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -143,16 +144,18 @@ const TimestopAdmin = () => {
     },
   });
 
+  const [newEventDay, setNewEventDay] = useState<number | null>(null); // null = use selectedDay
+
   const addUniversalEvent = useMutation({
     mutationFn: async () => {
-      if (!selectedDay) return;
+      const eventDay = newEventDay !== null ? newEventDay : (selectedDay || 0);
       const { error } = await supabase.from("calendar_events").insert({
         user_id: null,
         title: newTitle,
         description: newDesc || null,
-        event_day: selectedDay,
+        event_day: eventDay,
         event_month: viewMonth,
-        event_year: newIsRecurring ? null : currentDate.year,
+        event_year: newIsRecurring || newEventType === "holiday" ? null : currentDate.year,
         is_holiday: newEventType === "holiday",
         is_recurring: newIsRecurring || newEventType === "holiday",
       });
@@ -164,6 +167,7 @@ const TimestopAdmin = () => {
       setNewDesc("");
       setNewIsRecurring(false);
       setNewEventType("universal");
+      setNewEventDay(null);
       setAddEventOpen(false);
       toast({ title: newEventType === "holiday" ? "Holiday added" : "Universal event added" });
     },
@@ -233,9 +237,15 @@ const TimestopAdmin = () => {
   const eventsForDay = (day: number) => specificDayEvents.filter((e) => e.event_day === day);
   const dayHasHoliday = (day: number) => specificDayEvents.some((e) => e.event_day === day && e.is_holiday);
 
-  const prevMonth = () => setViewMonth((m) => (m <= 1 ? 14 : m - 1));
-  const nextMonth = () => setViewMonth((m) => (m >= 14 ? 1 : m + 1));
-  const isCurrentDay = (day: number) => viewMonth === currentDate.month && day === currentDate.day;
+  const prevMonth = () => setViewMonth((m) => {
+    if (m <= 1) { setViewYear((y) => y - 1); return 14; }
+    return m - 1;
+  });
+  const nextMonth = () => setViewMonth((m) => {
+    if (m >= 14) { setViewYear((y) => y + 1); return 1; }
+    return m + 1;
+  });
+  const isCurrentDay = (day: number) => viewMonth === currentDate.month && viewYear === currentDate.year && day === currentDate.day;
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
@@ -370,6 +380,7 @@ const TimestopAdmin = () => {
             <div className="text-center">
               <span className="text-amber-300/80 font-mono text-sm">{monthInfo?.name}</span>
               {monthInfo && monthInfo.season !== "-" && <span className="text-gray-500 font-mono text-xs ml-2">({monthInfo.season})</span>}
+              <p className="text-gray-500 font-mono text-xs mt-0.5">Year {viewYear}</p>
             </div>
             <button onClick={nextMonth} className="text-gray-400 hover:text-amber-300 transition-colors"><ChevronRight className="w-5 h-5" /></button>
           </div>
@@ -437,47 +448,59 @@ const TimestopAdmin = () => {
         </Card>
 
         {/* Selected day events */}
+        {/* Add Event (standalone, doesn't require selected day) */}
+        <div className="flex justify-end mb-4">
+          <Dialog open={addEventOpen} onOpenChange={setAddEventOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="bg-emerald-700 hover:bg-emerald-800 text-white">
+                <Plus className="w-4 h-4 mr-1" /> Add Event
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-gray-900 border-gray-700">
+              <DialogHeader><DialogTitle className="text-emerald-300">Add Event to {monthInfo?.name}</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-gray-400 text-xs mb-1 block">Type</label>
+                  <Select value={newEventType} onValueChange={(v) => setNewEventType(v as "universal" | "holiday")}>
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700 z-50">
+                      <SelectItem value="universal" className="text-white hover:bg-gray-700">Universal Note</SelectItem>
+                      <SelectItem value="holiday" className="text-white hover:bg-gray-700">Holiday</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-gray-400 text-xs mb-1 block">Day (0 = Any/All month)</label>
+                  <Input type="number" min={0} max={28} value={newEventDay !== null ? newEventDay : (selectedDay || 0)} onChange={(e) => setNewEventDay(parseInt(e.target.value) || 0)} className="bg-gray-800 border-gray-700 text-white" />
+                </div>
+                <Input placeholder="Event title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
+                <Textarea placeholder="Description (optional)" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
+                {newEventType === "holiday" && (
+                  <p className="text-amber-400/60 text-xs">Holidays automatically recur every year.</p>
+                )}
+                {newEventType === "universal" && (
+                  <label className="flex items-center gap-2 text-gray-400 text-sm">
+                    <input type="checkbox" checked={newIsRecurring} onChange={(e) => setNewIsRecurring(e.target.checked)} className="rounded" />
+                    Recurring yearly
+                  </label>
+                )}
+              </div>
+              <DialogFooter>
+                <Button onClick={() => addUniversalEvent.mutate()} disabled={!newTitle.trim() || addUniversalEvent.isPending} className={newEventType === "holiday" ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"}>Add</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Selected day events */}
         {selectedDay !== null && (
           <Card className="bg-gray-900/40 border-gray-700/50 p-4 mb-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-amber-300/80 font-mono text-sm">
                 {frippery ? "Day of Frippery" : `${selectedDay} of ${monthInfo?.name}`} — All Events
               </h3>
-              <Dialog open={addEventOpen} onOpenChange={setAddEventOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" variant="ghost" className="text-emerald-400 hover:text-emerald-300">
-                    <Plus className="w-4 h-4 mr-1" /> Add Event
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-gray-900 border-gray-700">
-                  <DialogHeader><DialogTitle className="text-emerald-300">Add Event</DialogTitle></DialogHeader>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-gray-400 text-xs mb-1 block">Type</label>
-                      <Select value={newEventType} onValueChange={(v) => setNewEventType(v as "universal" | "holiday")}>
-                        <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-800 border-gray-700 z-50">
-                          <SelectItem value="universal" className="text-white hover:bg-gray-700">Universal Note</SelectItem>
-                          <SelectItem value="holiday" className="text-white hover:bg-gray-700">Holiday</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Input placeholder="Event title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
-                    <Textarea placeholder="Description (optional)" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
-                    {newEventType === "universal" && (
-                      <label className="flex items-center gap-2 text-gray-400 text-sm">
-                        <input type="checkbox" checked={newIsRecurring} onChange={(e) => setNewIsRecurring(e.target.checked)} className="rounded" />
-                        Recurring yearly
-                      </label>
-                    )}
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={() => addUniversalEvent.mutate()} disabled={!newTitle.trim() || addUniversalEvent.isPending} className={newEventType === "holiday" ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"}>Add</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
             </div>
 
             {eventsForDay(selectedDay).length === 0 ? (
