@@ -230,6 +230,45 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_day: number
+          event_month: number
+          event_year: number | null
+          id: string
+          is_holiday: boolean
+          is_recurring: boolean
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_day: number
+          event_month: number
+          event_year?: number | null
+          id?: string
+          is_holiday?: boolean
+          is_recurring?: boolean
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_day?: number
+          event_month?: number
+          event_year?: number | null
+          id?: string
+          is_holiday?: boolean
+          is_recurring?: boolean
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       casts: {
         Row: {
           created_at: string
@@ -441,6 +480,30 @@ export type Database = {
           relationship?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      game_calendar: {
+        Row: {
+          current_day: number
+          current_month: number
+          current_year: number
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          current_day?: number
+          current_month?: number
+          current_year?: number
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          current_day?: number
+          current_month?: number
+          current_year?: number
+          id?: string
+          updated_at?: string
         }
         Relationships: []
       }
