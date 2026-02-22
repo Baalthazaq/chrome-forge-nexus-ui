@@ -75,6 +75,14 @@ const apps = [
     color: "from-blue-500 to-indigo-500"
   },
   {
+    id: "timestop",
+    name: "Timestop",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/TimestopS.gif?v=2",
+    description: "Calendar",
+    route: "/timestop",
+    color: "from-amber-400 to-yellow-500"
+  },
+  {
     id: "bholdr",
     name: "BHoldR",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/BHoldRC.gif",
@@ -91,15 +99,6 @@ const apps = [
     route: "/maze",
     color: "from-teal-500 to-green-600",
     comingSoon: true
-  },
-  {
-    id: "timestop",
-    name: "Timestop",
-    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/TimestopS.gif?v=2",
-    description: "Calendar",
-    route: "/timestop",
-    color: "from-amber-400 to-yellow-500",
-    comingSoon: false
   },
   {
     id: "succubus",
