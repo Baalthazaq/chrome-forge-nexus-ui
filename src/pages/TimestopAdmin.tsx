@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, FastForward, Loader2, Calendar, ChevronDown, ChevronUp, Search } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, FastForward, Loader2, Calendar, ChevronDown, ChevronUp, Search, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,6 +42,15 @@ const TimestopAdmin = () => {
   const [expandedHolidays, setExpandedHolidays] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Edit holiday state
+  const [editEventOpen, setEditEventOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editDay, setEditDay] = useState(1);
+  const [editMonth, setEditMonth] = useState(1);
+  const [editIsRecurring, setEditIsRecurring] = useState(false);
 
   // Set date state
   const [setDateOpen, setSetDateOpen] = useState(false);
@@ -170,6 +179,36 @@ const TimestopAdmin = () => {
       toast({ title: "Event deleted" });
     },
   });
+
+  const updateEvent = useMutation({
+    mutationFn: async () => {
+      if (!editingEvent) return;
+      const { error } = await supabase.from("calendar_events").update({
+        title: editTitle,
+        description: editDesc || null,
+        event_day: editDay,
+        event_month: editMonth,
+        is_recurring: editIsRecurring || editingEvent.is_holiday,
+      }).eq("id", editingEvent.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
+      setEditEventOpen(false);
+      setEditingEvent(null);
+      toast({ title: "Event updated" });
+    },
+  });
+
+  const startEditing = (event: CalendarEvent) => {
+    setEditingEvent(event);
+    setEditTitle(event.title);
+    setEditDesc(event.description || "");
+    setEditDay(event.event_day);
+    setEditMonth(event.event_month);
+    setEditIsRecurring(event.is_recurring);
+    setEditEventOpen(true);
+  };
 
   const toggleHolidayExpand = (id: string) => {
     setExpandedHolidays((prev) => {
@@ -376,11 +415,19 @@ const TimestopAdmin = () => {
             <div className="mt-4 pt-3 border-t border-gray-700/30 space-y-1.5">
               {allMonthEvents.map((event) => (
                 <div key={event.id} className="p-2 rounded bg-amber-500/5 border border-amber-500/20">
-                  <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleHolidayExpand(event.id)}>
-                    <Star className="w-3 h-3 text-amber-400" />
-                    <p className="text-xs font-medium text-amber-300 flex-1">{event.title}</p>
-                    <span className="text-xs text-amber-500/50">All month</span>
-                    {event.description && (expandedHolidays.has(event.id) ? <ChevronUp className="w-3 h-3 text-amber-500/60" /> : <ChevronDown className="w-3 h-3 text-amber-500/60" />)}
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 cursor-pointer flex-1" onClick={() => toggleHolidayExpand(event.id)}>
+                      <Star className="w-3 h-3 text-amber-400" />
+                      <p className="text-xs font-medium text-amber-300 flex-1">{event.title}</p>
+                      <span className="text-xs text-amber-500/50">All month</span>
+                      {event.description && (expandedHolidays.has(event.id) ? <ChevronUp className="w-3 h-3 text-amber-500/60" /> : <ChevronDown className="w-3 h-3 text-amber-500/60" />)}
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => startEditing(event)} className="text-gray-400 hover:text-white h-5 w-5 p-0">
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => deleteEvent.mutate(event.id)} className="text-red-400 hover:text-red-300 h-5 w-5 p-0">
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
                   </div>
                   {expandedHolidays.has(event.id) && event.description && <p className="text-gray-500 text-xs mt-1 ml-5">{event.description}</p>}
                 </div>
@@ -451,11 +498,14 @@ const TimestopAdmin = () => {
                         {event.is_holiday && expandedHolidays.has(event.id) && event.description && <p className="text-gray-500 text-xs mt-1">{event.description}</p>}
                         {!event.is_holiday && event.description && <p className="text-gray-500 text-xs mt-1">{event.description}</p>}
                       </div>
-                      {!event.is_holiday && (
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => startEditing(event)} className="text-gray-400 hover:text-white h-6 w-6 p-0">
+                          <Pencil className="w-3 h-3" />
+                        </Button>
                         <Button size="sm" variant="ghost" onClick={() => deleteEvent.mutate(event.id)} className="text-red-400 hover:text-red-300 h-6 w-6 p-0">
                           <Trash2 className="w-3 h-3" />
                         </Button>
-                      )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -463,6 +513,50 @@ const TimestopAdmin = () => {
             )}
           </Card>
         )}
+
+        {/* Edit Event Dialog */}
+        <Dialog open={editEventOpen} onOpenChange={setEditEventOpen}>
+          <DialogContent className="bg-gray-900 border-gray-700">
+            <DialogHeader><DialogTitle className="text-amber-300">Edit Event</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <Input placeholder="Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
+              <Textarea placeholder="Description" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-gray-400 text-xs mb-1 block">Day (0 = all month)</label>
+                  <Input type="number" min={0} max={28} value={editDay} onChange={(e) => setEditDay(parseInt(e.target.value) || 0)} className="bg-gray-800 border-gray-700 text-white" />
+                </div>
+                <div>
+                  <label className="text-gray-400 text-xs mb-1 block">Month</label>
+                  <Select value={String(editMonth)} onValueChange={(v) => setEditMonth(parseInt(v))}>
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700 z-50">
+                      {MONTHS.map((m) => (
+                        <SelectItem key={m.number} value={String(m.number)} className="text-white hover:bg-gray-700">
+                          {m.number}. {m.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {!editingEvent?.is_holiday && (
+                <label className="flex items-center gap-2 text-gray-400 text-sm">
+                  <input type="checkbox" checked={editIsRecurring} onChange={(e) => setEditIsRecurring(e.target.checked)} className="rounded" />
+                  Recurring yearly
+                </label>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setEditEventOpen(false)} className="text-gray-400">Cancel</Button>
+              <Button onClick={() => updateEvent.mutate()} disabled={!editTitle.trim() || updateEvent.isPending} className="bg-amber-600 hover:bg-amber-700">
+                {updateEvent.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
