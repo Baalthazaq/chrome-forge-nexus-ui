@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.seed-cards]
 verify_jwt = false
+
+[functions.advance-day]
+verify_jwt = false
