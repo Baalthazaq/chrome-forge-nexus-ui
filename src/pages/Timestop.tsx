@@ -9,6 +9,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, Search, Chevr
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MONTHS, DAY_NAMES, formatGameDate, isFrippery, getMonth, type GameDate } from "@/lib/gameCalendar";
 import { toast } from "@/hooks/use-toast";
@@ -30,6 +31,8 @@ interface CalendarEvent {
 const Timestop = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isAdmin, impersonatedUser } = useAdmin();
+  const effectiveUserId = impersonatedUser?.user_id || user?.id;
   const queryClient = useQueryClient();
   const [viewMonth, setViewMonth] = useState(1);
   const [viewYear, setViewYear] = useState(2626);
@@ -68,36 +71,65 @@ const Timestop = () => {
   const prevMonthNum = viewMonth <= 1 ? 14 : viewMonth - 1;
   const prevMonthYear = viewMonth <= 1 ? viewYear - 1 : viewYear;
 
+  // When impersonating, fetch shared event IDs for the impersonated user
+  const { data: sharedEventIds = [] } = useQuery({
+    queryKey: ["calendar-shared-ids", effectiveUserId],
+    queryFn: async () => {
+      if (!effectiveUserId) return [];
+      const { data, error } = await supabase
+        .from("calendar_event_shares")
+        .select("event_id")
+        .eq("shared_with", effectiveUserId);
+      if (error) throw error;
+      return (data || []).map((s) => s.event_id);
+    },
+    enabled: !!impersonatedUser,
+  });
+
+  const filterForUser = (events: CalendarEvent[]) => {
+    if (!impersonatedUser) return events; // normal user: RLS handles it
+    // Admin impersonating: filter to show user's own events, universal, holidays, and shared
+    return events.filter(
+      (e) => e.user_id === null || e.user_id === effectiveUserId || sharedEventIds.includes(e.id)
+    );
+  };
+
   const { data: events = [] } = useQuery({
-    queryKey: ["calendar-events", viewMonth, currentDate.year],
+    queryKey: ["calendar-events", viewMonth, currentDate.year, effectiveUserId],
     queryFn: async () => {
       const { data, error } = await supabase.from("calendar_events").select("*").eq("event_month", viewMonth);
       if (error) throw error;
-      return (data as CalendarEvent[]).filter(
-        (e) => e.event_year === null || e.event_year === currentDate.year
+      return filterForUser(
+        (data as CalendarEvent[]).filter(
+          (e) => e.event_year === null || e.event_year === currentDate.year
+        )
       );
     },
   });
 
   // Fetch previous month's events to check for spillover
   const { data: prevMonthEvents = [] } = useQuery({
-    queryKey: ["calendar-events-prev", prevMonthNum, prevMonthYear],
+    queryKey: ["calendar-events-prev", prevMonthNum, prevMonthYear, effectiveUserId],
     queryFn: async () => {
       const { data, error } = await supabase.from("calendar_events").select("*").eq("event_month", prevMonthNum);
       if (error) throw error;
-      return (data as CalendarEvent[]).filter(
-        (e) => (e.event_year === null || e.event_year === prevMonthYear) && e.event_day_end && e.event_day_end > 28
+      return filterForUser(
+        (data as CalendarEvent[]).filter(
+          (e) => (e.event_year === null || e.event_year === prevMonthYear) && e.event_day_end && e.event_day_end > 28
+        )
       );
     },
   });
 
   const { data: allEvents = [] } = useQuery({
-    queryKey: ["calendar-events-all", viewYear],
+    queryKey: ["calendar-events-all", viewYear, effectiveUserId],
     queryFn: async () => {
       const { data, error } = await supabase.from("calendar_events").select("*");
       if (error) throw error;
-      return (data as CalendarEvent[]).filter(
-        (e) => e.event_year === null || e.event_year === viewYear
+      return filterForUser(
+        (data as CalendarEvent[]).filter(
+          (e) => e.event_year === null || e.event_year === viewYear
+        )
       );
     },
     enabled: viewMode === "annual",
@@ -122,11 +154,11 @@ const Timestop = () => {
 
   const addEvent = useMutation({
     mutationFn: async () => {
-      if (!user || !selectedDay) return;
+      if (!effectiveUserId || !selectedDay) return;
       const duration = parseInt(newEventDuration) || 1;
       const endDay = duration > 1 ? selectedDay + duration - 1 : null;
       const { error } = await supabase.from("calendar_events").insert({
-        user_id: user.id,
+        user_id: effectiveUserId,
         title: newEventTitle,
         description: newEventDesc || null,
         event_day: selectedDay,
@@ -162,12 +194,12 @@ const Timestop = () => {
   // Remove a shared event from your view (unshare yourself)
   const unshareFromMe = useMutation({
     mutationFn: async (eventId: string) => {
-      if (!user) return;
+      if (!effectiveUserId) return;
       const { error } = await supabase
         .from("calendar_event_shares")
         .delete()
         .eq("event_id", eventId)
-        .eq("shared_with", user.id);
+        .eq("shared_with", effectiveUserId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -290,7 +322,7 @@ const Timestop = () => {
           )}
         </div>
         <div className="flex items-center gap-1">
-          {event.user_id === user?.id && !event.is_holiday && (
+          {event.user_id === effectiveUserId && !event.is_holiday && (
             <>
               <Button
                 size="sm"
@@ -313,7 +345,7 @@ const Timestop = () => {
               </Button>
             </>
           )}
-          {event.user_id !== user?.id && event.user_id !== null && !event.is_holiday && (
+          {event.user_id !== effectiveUserId && event.user_id !== null && !event.is_holiday && (
             <Button
               size="sm"
               variant="ghost"
@@ -394,6 +426,11 @@ const Timestop = () => {
           </h1>
           <p className="text-gray-500 text-xs font-mono tracking-widest mb-3">by Chronomancy Co.</p>
           <p className="text-amber-300/80 font-mono text-sm">{formatGameDate(currentDate)}</p>
+          {impersonatedUser && (
+            <p className="text-cyan-400 text-xs font-mono mt-1">
+              👁 Viewing as: {impersonatedUser.character_name}
+            </p>
+          )}
           <div className="flex justify-center gap-2 mt-3">
             <Button size="sm" variant={viewMode === "monthly" ? "default" : "ghost"} onClick={() => setViewMode("monthly")} className={viewMode === "monthly" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
               <Calendar className="w-3 h-3 mr-1" /> Monthly
