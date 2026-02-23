@@ -173,11 +173,22 @@ export function CharacterHeader({
         <div className="flex flex-col md:flex-row gap-6">
           {/* Avatar */}
           <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-indigo-500 shrink-0 self-center md:self-start">
-            <img
-              src={profile.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'}
-              alt={profile.character_name || 'Character'}
-              className="w-full h-full object-cover"
-            />
+            {profile.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={profile.character_name || 'Character'}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-indigo-950/80 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-indigo-400">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </div>
+            )}
             <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
               <Camera className="w-6 h-6 text-white" />
               <input type="file" accept="image/*" onChange={handleAvatarUpload} disabled={avatarUploading} className="hidden" />
