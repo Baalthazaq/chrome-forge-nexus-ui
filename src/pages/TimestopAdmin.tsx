@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, FastForward, Loader2, Calendar, ChevronDown, ChevronUp, Search, Pencil } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, FastForward, Loader2, Calendar, ChevronDown, ChevronUp, Search, Pencil, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +20,7 @@ interface CalendarEvent {
   title: string;
   description: string | null;
   event_day: number;
+  event_day_end: number | null;
   event_month: number;
   event_year: number | null;
   is_holiday: boolean;
@@ -43,6 +44,8 @@ const TimestopAdmin = () => {
   const [expandedHolidays, setExpandedHolidays] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [newEventDayEnd, setNewEventDayEnd] = useState<number | null>(null);
+  const [editDayEnd, setEditDayEnd] = useState<number | null>(null);
 
   // Edit holiday state
   const [editEventOpen, setEditEventOpen] = useState(false);
@@ -154,6 +157,7 @@ const TimestopAdmin = () => {
         title: newTitle,
         description: newDesc || null,
         event_day: eventDay,
+        event_day_end: newEventDayEnd && newEventDayEnd > eventDay ? newEventDayEnd : null,
         event_month: viewMonth,
         event_year: newIsRecurring || newEventType === "holiday" ? null : currentDate.year,
         is_holiday: newEventType === "holiday",
@@ -168,6 +172,7 @@ const TimestopAdmin = () => {
       setNewIsRecurring(false);
       setNewEventType("universal");
       setNewEventDay(null);
+      setNewEventDayEnd(null);
       setAddEventOpen(false);
       toast({ title: newEventType === "holiday" ? "Holiday added" : "Universal event added" });
     },
@@ -191,6 +196,7 @@ const TimestopAdmin = () => {
         title: editTitle,
         description: editDesc || null,
         event_day: editDay,
+        event_day_end: editDayEnd && editDayEnd > editDay ? editDayEnd : null,
         event_month: editMonth,
         is_recurring: editIsRecurring || editingEvent.is_holiday,
       }).eq("id", editingEvent.id);
@@ -209,6 +215,7 @@ const TimestopAdmin = () => {
     setEditTitle(event.title);
     setEditDesc(event.description || "");
     setEditDay(event.event_day);
+    setEditDayEnd(event.event_day_end || null);
     setEditMonth(event.event_month);
     setEditIsRecurring(event.is_recurring);
     setEditEventOpen(true);
@@ -234,8 +241,19 @@ const TimestopAdmin = () => {
   const frippery = isFrippery(viewMonth);
   const specificDayEvents = events.filter((e) => e.event_day > 0);
   const allMonthEvents = events.filter((e) => e.event_day === 0);
-  const eventsForDay = (day: number) => specificDayEvents.filter((e) => e.event_day === day);
-  const dayHasHoliday = (day: number) => specificDayEvents.some((e) => e.event_day === day && e.is_holiday);
+  const eventsForDay = (day: number) => specificDayEvents.filter((e) => {
+    if (e.event_day_end && e.event_day_end > e.event_day) {
+      return day >= e.event_day && day <= e.event_day_end;
+    }
+    return e.event_day === day;
+  });
+  const dayHasHoliday = (day: number) => eventsForDay(day).some((e) => e.is_holiday);
+
+  const goToToday = () => {
+    setViewMonth(currentDate.month);
+    setViewYear(currentDate.year);
+    setSelectedDay(currentDate.day);
+  };
 
   const prevMonth = () => setViewMonth((m) => {
     if (m <= 1) { setViewYear((y) => y - 1); return 14; }
@@ -256,9 +274,14 @@ const TimestopAdmin = () => {
           <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} className="text-gray-400 hover:text-white hover:bg-gray-800/50">
             <ArrowLeft className="w-4 h-4 mr-2" /> Admin
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setSearchOpen(!searchOpen)} className="text-gray-400 hover:text-white hover:bg-gray-800/50">
-            <Search className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={goToToday} className="text-amber-400 hover:text-amber-300 hover:bg-gray-800/50">
+              <Home className="w-4 h-4 mr-1" /> Today
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSearchOpen(!searchOpen)} className="text-gray-400 hover:text-white hover:bg-gray-800/50">
+              <Search className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
@@ -471,9 +494,15 @@ const TimestopAdmin = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <label className="text-gray-400 text-xs mb-1 block">Day (0 = Any/All month)</label>
-                  <Input type="number" min={0} max={28} value={newEventDay !== null ? newEventDay : (selectedDay || 0)} onChange={(e) => setNewEventDay(parseInt(e.target.value) || 0)} className="bg-gray-800 border-gray-700 text-white" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-gray-400 text-xs mb-1 block">Start Day (0 = Any/All month)</label>
+                    <Input type="number" min={0} max={28} value={newEventDay !== null ? newEventDay : (selectedDay || 0)} onChange={(e) => setNewEventDay(parseInt(e.target.value) || 0)} className="bg-gray-800 border-gray-700 text-white" />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-xs mb-1 block">End Day (optional)</label>
+                    <Input type="number" min={1} max={28} placeholder="—" value={newEventDayEnd || ""} onChange={(e) => setNewEventDayEnd(e.target.value ? parseInt(e.target.value) : null)} className="bg-gray-800 border-gray-700 text-white" />
+                  </div>
                 </div>
                 <Input placeholder="Event title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
                 <Textarea placeholder="Description (optional)" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
@@ -515,6 +544,9 @@ const TimestopAdmin = () => {
                           <p className={`text-sm font-medium ${event.is_holiday ? "text-amber-300" : event.user_id ? "text-cyan-300" : "text-emerald-300"}`}>
                             {event.title}
                             <span className="ml-2 text-xs text-gray-500">{event.is_holiday ? "Holiday" : getCharName(event.user_id)}</span>
+                            {event.event_day_end && event.event_day_end > event.event_day && (
+                              <span className="ml-2 text-xs text-gray-500">Days {event.event_day}–{event.event_day_end}</span>
+                            )}
                           </p>
                           {event.is_holiday && event.description && (expandedHolidays.has(event.id) ? <ChevronUp className="w-3 h-3 text-amber-500/60" /> : <ChevronDown className="w-3 h-3 text-amber-500/60" />)}
                         </div>
@@ -544,10 +576,14 @@ const TimestopAdmin = () => {
             <div className="space-y-3">
               <Input placeholder="Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
               <Textarea placeholder="Description" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="text-gray-400 text-xs mb-1 block">Day (0 = all month)</label>
+                  <label className="text-gray-400 text-xs mb-1 block">Start Day (0 = all month)</label>
                   <Input type="number" min={0} max={28} value={editDay} onChange={(e) => setEditDay(parseInt(e.target.value) || 0)} className="bg-gray-800 border-gray-700 text-white" />
+                </div>
+                <div>
+                  <label className="text-gray-400 text-xs mb-1 block">End Day</label>
+                  <Input type="number" min={1} max={28} placeholder="—" value={editDayEnd || ""} onChange={(e) => setEditDayEnd(e.target.value ? parseInt(e.target.value) : null)} className="bg-gray-800 border-gray-700 text-white" />
                 </div>
                 <div>
                   <label className="text-gray-400 text-xs mb-1 block">Month</label>

@@ -5,13 +5,14 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, Search, ChevronDown, ChevronUp, Calendar, List } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, Search, ChevronDown, ChevronUp, Calendar, List, Home, Share2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MONTHS, DAY_NAMES, formatGameDate, isFrippery, getMonth, type GameDate } from "@/lib/gameCalendar";
 import { toast } from "@/hooks/use-toast";
+import ShareEventDialog from "@/components/ShareEventDialog";
 
 interface CalendarEvent {
   id: string;
@@ -19,6 +20,7 @@ interface CalendarEvent {
   title: string;
   description: string | null;
   event_day: number;
+  event_day_end: number | null;
   event_month: number;
   event_year: number | null;
   is_holiday: boolean;
@@ -35,10 +37,13 @@ const Timestop = () => {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventDesc, setNewEventDesc] = useState("");
+  const [newEventDayEnd, setNewEventDayEnd] = useState<number | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [expandedHolidays, setExpandedHolidays] = useState<Set<string>>(new Set());
+  const [shareEventId, setShareEventId] = useState<string | null>(null);
+  const [shareEventTitle, setShareEventTitle] = useState("");
 
   const { data: gameDate } = useQuery({
     queryKey: ["game-calendar"],
@@ -71,7 +76,6 @@ const Timestop = () => {
     },
   });
 
-  // All events for annual view
   const { data: allEvents = [] } = useQuery({
     queryKey: ["calendar-events-all", viewYear],
     queryFn: async () => {
@@ -84,7 +88,6 @@ const Timestop = () => {
     enabled: viewMode === "annual",
   });
 
-  // Search across all months
   const { data: searchResults = [] } = useQuery({
     queryKey: ["calendar-search", searchQuery],
     queryFn: async () => {
@@ -109,6 +112,7 @@ const Timestop = () => {
         title: newEventTitle,
         description: newEventDesc || null,
         event_day: selectedDay,
+        event_day_end: newEventDayEnd && newEventDayEnd > selectedDay ? newEventDayEnd : null,
         event_month: viewMonth,
         event_year: currentDate.year,
         is_holiday: false,
@@ -120,6 +124,7 @@ const Timestop = () => {
       queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
       setNewEventTitle("");
       setNewEventDesc("");
+      setNewEventDayEnd(null);
       setAddDialogOpen(false);
       toast({ title: "Event added" });
     },
@@ -139,14 +144,18 @@ const Timestop = () => {
   const monthInfo = getMonth(viewMonth);
   const frippery = isFrippery(viewMonth);
 
-  // Separate specific-day events from "all/any" month events (event_day === 0)
   const specificDayEvents = events.filter((e) => e.event_day > 0);
   const allMonthEvents = events.filter((e) => e.event_day === 0);
 
-  const eventsForDay = (day: number) => specificDayEvents.filter((e) => e.event_day === day);
+  // Check if a day falls within an event's range
+  const eventsForDay = (day: number) => specificDayEvents.filter((e) => {
+    if (e.event_day_end && e.event_day_end > e.event_day) {
+      return day >= e.event_day && day <= e.event_day_end;
+    }
+    return e.event_day === day;
+  });
 
-  // Check if a day has a holiday
-  const dayHasHoliday = (day: number) => specificDayEvents.some((e) => e.event_day === day && e.is_holiday);
+  const dayHasHoliday = (day: number) => eventsForDay(day).some((e) => e.is_holiday);
 
   const prevMonth = () => setViewMonth((m) => {
     if (m <= 1) { setViewYear((y) => y - 1); return 14; }
@@ -158,6 +167,12 @@ const Timestop = () => {
   });
   const isCurrentDay = (day: number) => viewMonth === currentDate.month && viewYear === currentDate.year && day === currentDate.day;
 
+  const goToToday = () => {
+    setViewMonth(currentDate.month);
+    setViewYear(currentDate.year);
+    setSelectedDay(currentDate.day);
+  };
+
   const toggleHolidayExpand = (id: string) => {
     setExpandedHolidays((prev) => {
       const next = new Set(prev);
@@ -165,6 +180,13 @@ const Timestop = () => {
       else next.add(id);
       return next;
     });
+  };
+
+  const formatDayRange = (event: CalendarEvent) => {
+    if (event.event_day_end && event.event_day_end > event.event_day) {
+      return `Days ${event.event_day}–${event.event_day_end}`;
+    }
+    return event.event_day > 0 ? `Day ${event.event_day}` : "All month";
   };
 
   const renderEvent = (event: CalendarEvent) => (
@@ -191,6 +213,9 @@ const Timestop = () => {
               {event.is_holiday && (
                 <span className="ml-2 text-xs text-amber-500/60">Holiday</span>
               )}
+              {event.event_day_end && event.event_day_end > event.event_day && (
+                <span className="ml-2 text-xs text-gray-500">Days {event.event_day}–{event.event_day_end}</span>
+              )}
             </p>
             {event.is_holiday && event.description && (
               expandedHolidays.has(event.id) 
@@ -205,16 +230,31 @@ const Timestop = () => {
             <p className="text-gray-500 text-xs mt-1">{event.description}</p>
           )}
         </div>
-        {event.user_id === user?.id && !event.is_holiday && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => deleteEvent.mutate(event.id)}
-            className="text-red-400 hover:text-red-300 h-6 w-6 p-0"
-          >
-            <Trash2 className="w-3 h-3" />
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {event.user_id === user?.id && !event.is_holiday && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setShareEventId(event.id);
+                  setShareEventTitle(event.title);
+                }}
+                className="text-cyan-400 hover:text-cyan-300 h-6 w-6 p-0"
+              >
+                <Share2 className="w-3 h-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => deleteEvent.mutate(event.id)}
+                className="text-red-400 hover:text-red-300 h-6 w-6 p-0"
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -229,9 +269,14 @@ const Timestop = () => {
           <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="text-gray-400 hover:text-white hover:bg-gray-800/50">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setSearchOpen(!searchOpen)} className="text-gray-400 hover:text-white hover:bg-gray-800/50">
-            <Search className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={goToToday} className="text-amber-400 hover:text-amber-300 hover:bg-gray-800/50">
+              <Home className="w-4 h-4 mr-1" /> Today
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSearchOpen(!searchOpen)} className="text-gray-400 hover:text-white hover:bg-gray-800/50">
+              <Search className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
@@ -279,7 +324,6 @@ const Timestop = () => {
           </h1>
           <p className="text-gray-500 text-xs font-mono tracking-widest mb-3">by Chronomancy Co.</p>
           <p className="text-amber-300/80 font-mono text-sm">{formatGameDate(currentDate)}</p>
-          {/* View mode toggle */}
           <div className="flex justify-center gap-2 mt-3">
             <Button size="sm" variant={viewMode === "monthly" ? "default" : "ghost"} onClick={() => setViewMode("monthly")} className={viewMode === "monthly" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
               <Calendar className="w-3 h-3 mr-1" /> Monthly
@@ -292,7 +336,6 @@ const Timestop = () => {
 
         {viewMode === "monthly" ? (
           <>
-            {/* Monthly Calendar */}
             <Card className="bg-gray-900/40 border-gray-700/50 p-5 mb-6">
               <div className="flex items-center justify-between mb-4">
                 <button onClick={prevMonth} className="text-gray-400 hover:text-amber-300 transition-colors">
@@ -368,7 +411,6 @@ const Timestop = () => {
                 </div>
               )}
 
-              {/* All/Any month holidays shown at bottom */}
               {allMonthEvents.length > 0 && (
                 <div className="mt-4 pt-3 border-t border-gray-700/30 space-y-1.5">
                   {allMonthEvents.map((event) => (
@@ -395,7 +437,6 @@ const Timestop = () => {
               )}
             </Card>
 
-            {/* Selected day events */}
             {selectedDay !== null && (
               <Card className="bg-gray-900/40 border-gray-700/50 p-4 mb-6">
                 <div className="flex items-center justify-between mb-3">
@@ -415,6 +456,20 @@ const Timestop = () => {
                       <div className="space-y-3">
                         <Input placeholder="Event title" value={newEventTitle} onChange={(e) => setNewEventTitle(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
                         <Textarea placeholder="Description (optional)" value={newEventDesc} onChange={(e) => setNewEventDesc(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
+                        <div>
+                          <label className="text-gray-400 text-xs mb-1 block">
+                            End day (leave empty for single day, or set to span multiple days)
+                          </label>
+                          <Input
+                            type="number"
+                            min={selectedDay + 1}
+                            max={28}
+                            placeholder="Single day"
+                            value={newEventDayEnd || ""}
+                            onChange={(e) => setNewEventDayEnd(e.target.value ? parseInt(e.target.value) : null)}
+                            className="bg-gray-800 border-gray-700 text-white"
+                          />
+                        </div>
                       </div>
                       <DialogFooter>
                         <Button onClick={() => addEvent.mutate()} disabled={!newEventTitle.trim() || addEvent.isPending} className="bg-amber-600 hover:bg-amber-700">Add</Button>
@@ -448,7 +503,7 @@ const Timestop = () => {
             {MONTHS.map((month) => {
               const monthEvents = allEvents.filter((e) => e.event_month === month.number);
               if (monthEvents.length === 0) return null;
-              const isCurrent = month.number === currentDate.month;
+              const isCurrent = month.number === currentDate.month && viewYear === currentDate.year;
               return (
                 <Card key={month.number} className={`bg-gray-900/40 border-gray-700/50 p-4 ${isCurrent ? "border-amber-500/30" : ""}`}>
                   <div className="flex items-center gap-2 mb-2">
@@ -465,7 +520,7 @@ const Timestop = () => {
                             {event.title}
                           </p>
                           <span className="text-gray-600 text-xs font-mono">
-                            {event.event_day > 0 ? `Day ${event.event_day}` : "All month"}
+                            {formatDayRange(event)}
                           </span>
                           {event.description && (
                             expandedHolidays.has(event.id)
@@ -496,6 +551,16 @@ const Timestop = () => {
           <p>Timestop™ • Chronomancy Co. • "Every second counts"</p>
         </div>
       </div>
+
+      {/* Share Event Dialog */}
+      {shareEventId && (
+        <ShareEventDialog
+          open={!!shareEventId}
+          onOpenChange={(open) => { if (!open) setShareEventId(null); }}
+          eventId={shareEventId}
+          eventTitle={shareEventTitle}
+        />
+      )}
     </div>
   );
 };
