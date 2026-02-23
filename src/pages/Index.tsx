@@ -7,6 +7,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAppNotifications } from "@/hooks/useAppNotifications";
 import { Shield, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { formatGameDate } from "@/lib/gameCalendar";
 
 
 const apps = [
@@ -135,6 +138,15 @@ const Index = () => {
   const notifications = useAppNotifications();
   const navigate = useNavigate();
 
+  const { data: gameDate } = useQuery({
+    queryKey: ["game-calendar"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("game_calendar").select("*").limit(1).single();
+      if (error) throw error;
+      return data as { current_day: number; current_month: number; current_year: number };
+    },
+  });
+
   useEffect(() => {
     if (!isLoading && !user) {
       navigate('/auth');
@@ -210,13 +222,7 @@ const Index = () => {
             <div>SIGNAL: 98%</div>
           </div>
           <div className="text-sm text-gray-400 font-mono">
-            {new Date().toLocaleString('en-US', { 
-              month: '2-digit', 
-              day: '2-digit', 
-              year: '2-digit',
-              hour: '2-digit', 
-              minute: '2-digit'
-            })}
+            {gameDate ? formatGameDate({ day: gameDate.current_day, month: gameDate.current_month, year: gameDate.current_year }) : '...'}
           </div>
         </div>
 
@@ -275,7 +281,7 @@ const Index = () => {
             <span>SYSTEM NOMINAL</span>
             <div className="w-1 h-1 bg-cyan-400 rounded-full animate-pulse"></div>
           </div>
-          <p>Brittlewisp Industries © 2087 • All rights reserved</p>
+          <p>Brittlewisp Industries © {gameDate?.current_year || 2626} • All rights reserved</p>
         </div>
       </div>
     </div>
