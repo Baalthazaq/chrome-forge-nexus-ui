@@ -525,13 +525,31 @@ const TimestopAdmin = () => {
                     <Input type="number" min={0} max={28} value={newEventDay !== null ? newEventDay : (selectedDay || 0)} onChange={(e) => setNewEventDay(parseInt(e.target.value) || 0)} className="bg-gray-800 border-gray-700 text-white" />
                   </div>
                   <div>
-                    <label className="text-gray-400 text-xs mb-1 block">End Day (optional)</label>
-                    <Input type="number" min={1} placeholder="—" value={newEventDayEnd || ""} onChange={(e) => setNewEventDayEnd(e.target.value ? parseInt(e.target.value) : null)} className="bg-gray-800 border-gray-700 text-white" />
+                    <label className="text-gray-400 text-xs mb-1 block">Duration (days)</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="1"
+                      value={(() => {
+                        const startDay = newEventDay !== null ? newEventDay : (selectedDay || 0);
+                        return newEventDayEnd && startDay > 0 && newEventDayEnd > startDay ? newEventDayEnd - startDay + 1 : "";
+                      })()}
+                      onChange={(e) => {
+                        const dur = parseInt(e.target.value);
+                        const startDay = newEventDay !== null ? newEventDay : (selectedDay || 0);
+                        if (dur && dur > 1 && startDay > 0) {
+                          setNewEventDayEnd(startDay + dur - 1);
+                        } else {
+                          setNewEventDayEnd(null);
+                        }
+                      }}
+                      className="bg-gray-800 border-gray-700 text-white"
+                    />
                   </div>
                 </div>
-                {newEventDayEnd && (() => {
+                {(() => {
                   const startDay = newEventDay !== null ? newEventDay : (selectedDay || 0);
-                  if (startDay > 0 && newEventDayEnd > startDay) {
+                  if (startDay > 0 && newEventDayEnd && newEventDayEnd > startDay) {
                     const spills = newEventDayEnd > 28;
                     const nextMonthInfo = getMonth(viewMonth >= 14 ? 1 : viewMonth + 1);
                     const endFormatted = spills
@@ -586,9 +604,15 @@ const TimestopAdmin = () => {
                           <p className={`text-sm font-medium ${event.is_holiday ? "text-amber-300" : event.user_id ? "text-cyan-300" : "text-emerald-300"}`}>
                             {event.title}
                             <span className="ml-2 text-xs text-gray-500">{event.is_holiday ? "Holiday" : getCharName(event.user_id)}</span>
-                            {event.event_day_end && event.event_day_end > event.event_day && (
-                              <span className="ml-2 text-xs text-gray-500">Days {event.event_day}–{event.event_day_end}</span>
-                            )}
+                            {event.event_day_end && event.event_day_end > event.event_day && (() => {
+                              const evtMonth = getMonth(event.event_month);
+                              if (event.event_day_end > 28) {
+                                const nextMNum = event.event_month >= 14 ? 1 : event.event_month + 1;
+                                const nextM = getMonth(nextMNum);
+                                return <span className="ml-2 text-xs text-gray-500">{event.event_day} of {evtMonth?.name} → {event.event_day_end - 28} of {nextM?.name}</span>;
+                              }
+                              return <span className="ml-2 text-xs text-gray-500">Days {event.event_day}–{event.event_day_end}</span>;
+                            })()}
                           </p>
                           {event.is_holiday && event.description && (expandedHolidays.has(event.id) ? <ChevronUp className="w-3 h-3 text-amber-500/60" /> : <ChevronDown className="w-3 h-3 text-amber-500/60" />)}
                         </div>
@@ -618,14 +642,10 @@ const TimestopAdmin = () => {
             <div className="space-y-3">
               <Input placeholder="Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
               <Textarea placeholder="Description" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-gray-400 text-xs mb-1 block">Start Day (0 = all month)</label>
                   <Input type="number" min={0} max={28} value={editDay} onChange={(e) => setEditDay(parseInt(e.target.value) || 0)} className="bg-gray-800 border-gray-700 text-white" />
-                </div>
-                <div>
-                  <label className="text-gray-400 text-xs mb-1 block">End Day</label>
-                  <Input type="number" min={1} max={28} placeholder="—" value={editDayEnd || ""} onChange={(e) => setEditDayEnd(e.target.value ? parseInt(e.target.value) : null)} className="bg-gray-800 border-gray-700 text-white" />
                 </div>
                 <div>
                   <label className="text-gray-400 text-xs mb-1 block">Month</label>
@@ -642,6 +662,39 @@ const TimestopAdmin = () => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs mb-1 block">Duration (days)</label>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder="1"
+                  value={editDayEnd && editDay > 0 && editDayEnd > editDay ? editDayEnd - editDay + 1 : ""}
+                  onChange={(e) => {
+                    const dur = parseInt(e.target.value);
+                    if (dur && dur > 1 && editDay > 0) {
+                      setEditDayEnd(editDay + dur - 1);
+                    } else {
+                      setEditDayEnd(null);
+                    }
+                  }}
+                  className="bg-gray-800 border-gray-700 text-white"
+                />
+                {editDay > 0 && editDayEnd && editDayEnd > editDay && (() => {
+                  const editMonthInfo = getMonth(editMonth);
+                  const spills = editDayEnd > 28;
+                  const nextMNum = editMonth >= 14 ? 1 : editMonth + 1;
+                  const nextM = getMonth(nextMNum);
+                  const endFormatted = spills
+                    ? `${editDayEnd - 28} of ${nextM?.name || 'next month'}`
+                    : `${editDayEnd} of ${editMonthInfo?.name}`;
+                  return (
+                    <p className="text-amber-400/60 text-xs mt-1">
+                      {editDay} of {editMonthInfo?.name} → {endFormatted}
+                      {spills && <span className="text-gray-500"> (spans into next month)</span>}
+                    </p>
+                  );
+                })()}
               </div>
               {!editingEvent?.is_holiday && (
                 <label className="flex items-center gap-2 text-gray-400 text-sm">
