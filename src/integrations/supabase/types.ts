@@ -230,11 +230,44 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_event_shares: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          shared_by: string
+          shared_with: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          shared_by: string
+          shared_with: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          shared_by?: string
+          shared_with?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_event_shares_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_events: {
         Row: {
           created_at: string
           description: string | null
           event_day: number
+          event_day_end: number | null
           event_month: number
           event_year: number | null
           id: string
@@ -247,6 +280,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           event_day: number
+          event_day_end?: number | null
           event_month: number
           event_year?: number | null
           id?: string
@@ -259,6 +293,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           event_day?: number
+          event_day_end?: number | null
           event_month?: number
           event_year?: number | null
           id?: string
