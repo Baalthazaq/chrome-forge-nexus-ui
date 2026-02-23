@@ -501,9 +501,26 @@ const TimestopAdmin = () => {
                   </div>
                   <div>
                     <label className="text-gray-400 text-xs mb-1 block">End Day (optional)</label>
-                    <Input type="number" min={1} max={28} placeholder="—" value={newEventDayEnd || ""} onChange={(e) => setNewEventDayEnd(e.target.value ? parseInt(e.target.value) : null)} className="bg-gray-800 border-gray-700 text-white" />
+                    <Input type="number" min={1} placeholder="—" value={newEventDayEnd || ""} onChange={(e) => setNewEventDayEnd(e.target.value ? parseInt(e.target.value) : null)} className="bg-gray-800 border-gray-700 text-white" />
                   </div>
                 </div>
+                {newEventDayEnd && (() => {
+                  const startDay = newEventDay !== null ? newEventDay : (selectedDay || 0);
+                  if (startDay > 0 && newEventDayEnd > startDay) {
+                    const spills = newEventDayEnd > 28;
+                    const nextMonthInfo = getMonth(viewMonth >= 14 ? 1 : viewMonth + 1);
+                    const endFormatted = spills
+                      ? `${newEventDayEnd - 28} of ${nextMonthInfo?.name || 'next month'}`
+                      : `${newEventDayEnd} of ${monthInfo?.name}`;
+                    return (
+                      <p className="text-amber-400/60 text-xs mt-1">
+                        {startDay} of {monthInfo?.name} → {endFormatted}
+                        {spills && <span className="text-gray-500"> (spans into next month)</span>}
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
                 <Input placeholder="Event title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
                 <Textarea placeholder="Description (optional)" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
                 {newEventType === "holiday" && (

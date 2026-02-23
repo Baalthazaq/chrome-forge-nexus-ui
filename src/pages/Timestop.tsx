@@ -231,7 +231,13 @@ const Timestop = () => {
 
   const formatDayRange = (event: CalendarEvent) => {
     if (event.event_day_end && event.event_day_end > event.event_day) {
-      return `Days ${event.event_day}–${event.event_day_end}`;
+      const evtMonth = getMonth(event.event_month);
+      if (event.event_day_end > 28) {
+        const nextMNum = event.event_month >= 14 ? 1 : event.event_month + 1;
+        const nextM = getMonth(nextMNum);
+        return `${event.event_day} of ${evtMonth?.name} → ${event.event_day_end - 28} of ${nextM?.name}`;
+      }
+      return `${event.event_day}–${event.event_day_end} of ${evtMonth?.name}`;
     }
     return event.event_day > 0 ? `Day ${event.event_day}` : "All month";
   };
@@ -260,9 +266,15 @@ const Timestop = () => {
               {event.is_holiday && (
                 <span className="ml-2 text-xs text-amber-500/60">Holiday</span>
               )}
-              {event.event_day_end && event.event_day_end > event.event_day && (
-                <span className="ml-2 text-xs text-gray-500">Days {event.event_day}–{event.event_day_end}</span>
-              )}
+              {event.event_day_end && event.event_day_end > event.event_day && (() => {
+                const evtMonth = getMonth(event.event_month);
+                if (event.event_day_end > 28) {
+                  const nextMNum = event.event_month >= 14 ? 1 : event.event_month + 1;
+                  const nextM = getMonth(nextMNum);
+                  return <span className="ml-2 text-xs text-gray-500">{event.event_day} of {evtMonth?.name} → {event.event_day_end - 28} of {nextM?.name}</span>;
+                }
+                return <span className="ml-2 text-xs text-gray-500">Days {event.event_day}–{event.event_day_end}</span>;
+              })()}
             </p>
             {event.is_holiday && event.description && (
               expandedHolidays.has(event.id) 
@@ -526,14 +538,21 @@ const Timestop = () => {
                             onChange={(e) => setNewEventDuration(e.target.value)}
                             className="bg-gray-800 border-gray-700 text-white"
                           />
-                          {(parseInt(newEventDuration) || 1) > 1 && selectedDay && (
-                            <p className="text-amber-400/60 text-xs mt-1">
-                              Days {selectedDay}–{selectedDay + (parseInt(newEventDuration) || 1) - 1}
-                              {selectedDay + (parseInt(newEventDuration) || 1) - 1 > 28 && (
-                                <span className="text-gray-500"> (spans into next month)</span>
-                              )}
-                            </p>
-                          )}
+                          {(parseInt(newEventDuration) || 1) > 1 && selectedDay && (() => {
+                            const dur = parseInt(newEventDuration) || 1;
+                            const endRaw = selectedDay + dur - 1;
+                            const spills = endRaw > 28;
+                            const nextMonthInfo = getMonth(viewMonth >= 14 ? 1 : viewMonth + 1);
+                            const endFormatted = spills
+                              ? `${endRaw - 28} of ${nextMonthInfo?.name || 'next month'}`
+                              : `${endRaw} of ${monthInfo?.name}`;
+                            return (
+                              <p className="text-amber-400/60 text-xs mt-1">
+                                {selectedDay} of {monthInfo?.name} → {endFormatted}
+                                {spills && <span className="text-gray-500"> (spans into next month)</span>}
+                              </p>
+                            );
+                          })()}
                         </div>
                       </div>
                       <DialogFooter>
