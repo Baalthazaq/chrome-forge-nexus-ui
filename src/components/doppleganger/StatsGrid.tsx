@@ -37,7 +37,8 @@ export function StatsGrid({ profile, onStatChange, isEditing }: Props) {
               {isEditing ? (
                 <Input
                   type="number"
-                  value={value}
+                  value={value === 0 ? "" : value}
+                  placeholder="0"
                   onChange={(e) => onStatChange(stat, Number(e.target.value) || 0)}
                   className="w-16 h-10 text-center text-xl font-bold bg-gray-800/50 border-gray-600 text-gray-100 mx-auto"
                 />
