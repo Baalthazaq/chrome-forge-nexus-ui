@@ -75,12 +75,27 @@ const TimestopAdmin = () => {
     ? { day: gameDate.current_day, month: gameDate.current_month, year: gameDate.current_year }
     : { day: 1, month: 1, year: 1 };
 
+  const prevMonthNum = viewMonth <= 1 ? 14 : viewMonth - 1;
+  const prevMonthYear = viewMonth <= 1 ? viewYear - 1 : viewYear;
+
   const { data: events = [] } = useQuery({
     queryKey: ["calendar-events-admin", viewMonth],
     queryFn: async () => {
       const { data, error } = await supabase.from("calendar_events").select("*").eq("event_month", viewMonth);
       if (error) throw error;
       return data as CalendarEvent[];
+    },
+  });
+
+  // Fetch previous month's events to check for spillover
+  const { data: prevMonthEvents = [] } = useQuery({
+    queryKey: ["calendar-events-admin-prev", prevMonthNum, prevMonthYear],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("calendar_events").select("*").eq("event_month", prevMonthNum);
+      if (error) throw error;
+      return (data as CalendarEvent[]).filter(
+        (e) => (e.event_year === null || e.event_year === prevMonthYear) && e.event_day_end && e.event_day_end > 28
+      );
     },
   });
 
@@ -241,12 +256,22 @@ const TimestopAdmin = () => {
   const frippery = isFrippery(viewMonth);
   const specificDayEvents = events.filter((e) => e.event_day > 0);
   const allMonthEvents = events.filter((e) => e.event_day === 0);
-  const eventsForDay = (day: number) => specificDayEvents.filter((e) => {
-    if (e.event_day_end && e.event_day_end > e.event_day) {
-      return day >= e.event_day && day <= e.event_day_end;
-    }
-    return e.event_day === day;
-  });
+  const eventsForDay = (day: number) => {
+    const thisMonthMatches = specificDayEvents.filter((e) => {
+      if (e.event_day_end && e.event_day_end > e.event_day) {
+        return day >= e.event_day && day <= Math.min(e.event_day_end, 28);
+      }
+      return e.event_day === day;
+    });
+    const spilloverMatches = prevMonthEvents.filter((e) => {
+      if (e.event_day_end && e.event_day_end > 28) {
+        const spillDay = day + 28;
+        return spillDay >= e.event_day && spillDay <= e.event_day_end;
+      }
+      return false;
+    });
+    return [...thisMonthMatches, ...spilloverMatches];
+  };
   const dayHasHoliday = (day: number) => eventsForDay(day).some((e) => e.is_holiday);
 
   const goToToday = () => {
