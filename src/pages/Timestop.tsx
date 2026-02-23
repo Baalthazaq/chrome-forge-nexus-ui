@@ -95,13 +95,13 @@ const Timestop = () => {
   };
 
   const { data: events = [] } = useQuery({
-    queryKey: ["calendar-events", viewMonth, currentDate.year, effectiveUserId],
+    queryKey: ["calendar-events", viewMonth, viewYear, effectiveUserId],
     queryFn: async () => {
       const { data, error } = await supabase.from("calendar_events").select("*").eq("event_month", viewMonth);
       if (error) throw error;
       return filterForUser(
         (data as CalendarEvent[]).filter(
-          (e) => e.event_year === null || e.event_year === currentDate.year
+          (e) => e.event_year === null || e.event_year === viewYear
         )
       );
     },
