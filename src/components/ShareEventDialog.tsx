@@ -2,11 +2,12 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, Search } from "lucide-react";
 
 interface ShareEventDialogProps {
   open: boolean;
@@ -19,6 +20,7 @@ const ShareEventDialog = ({ open, onOpenChange, eventId, eventTitle }: ShareEven
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [filterText, setFilterText] = useState("");
 
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-all"],
@@ -84,6 +86,9 @@ const ShareEventDialog = ({ open, onOpenChange, eventId, eventTitle }: ShareEven
   });
 
   const otherProfiles = profiles.filter((p) => p.user_id !== user?.id);
+  const filteredAvailable = otherProfiles
+    .filter((p) => !existingShares.includes(p.user_id))
+    .filter((p) => !filterText.trim() || (p.character_name || "").toLowerCase().includes(filterText.toLowerCase()));
 
   const toggleUser = (uid: string) => {
     setSelectedUsers((prev) =>
@@ -119,10 +124,20 @@ const ShareEventDialog = ({ open, onOpenChange, eventId, eventTitle }: ShareEven
         {/* Select users to share with */}
         <div className="space-y-1">
           <p className="text-gray-400 text-xs font-mono">Share with:</p>
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
+            <Input
+              placeholder="Filter characters..."
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              className="bg-gray-800 border-gray-700 text-white text-xs pl-7 h-8"
+            />
+          </div>
           <div className="max-h-48 overflow-y-auto space-y-1">
-            {otherProfiles
-              .filter((p) => !existingShares.includes(p.user_id))
-              .map((p) => (
+            {filteredAvailable.length === 0 ? (
+              <p className="text-gray-600 text-xs p-2">No characters found</p>
+            ) : (
+              filteredAvailable.map((p) => (
                 <div
                   key={p.user_id}
                   onClick={() => toggleUser(p.user_id)}
@@ -134,7 +149,8 @@ const ShareEventDialog = ({ open, onOpenChange, eventId, eventTitle }: ShareEven
                 >
                   {p.character_name || "Unknown"}
                 </div>
-              ))}
+              ))
+            )}
           </div>
         </div>
 
