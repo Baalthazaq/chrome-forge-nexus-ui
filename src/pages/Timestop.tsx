@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, Search, ChevronDown, ChevronUp, Calendar, List, Home, Share2 } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, Search, ChevronDown, ChevronUp, Calendar, List, Home, Share2, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,7 +37,7 @@ const Timestop = () => {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventDesc, setNewEventDesc] = useState("");
-  const [newEventDayEnd, setNewEventDayEnd] = useState<number | null>(null);
+  const [newEventDuration, setNewEventDuration] = useState<number>(1);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -104,15 +104,17 @@ const Timestop = () => {
     enabled: searchQuery.trim().length > 0,
   });
 
+
   const addEvent = useMutation({
     mutationFn: async () => {
       if (!user || !selectedDay) return;
+      const endDay = newEventDuration > 1 ? Math.min(selectedDay + newEventDuration - 1, 28) : null;
       const { error } = await supabase.from("calendar_events").insert({
         user_id: user.id,
         title: newEventTitle,
         description: newEventDesc || null,
         event_day: selectedDay,
-        event_day_end: newEventDayEnd && newEventDayEnd > selectedDay ? newEventDayEnd : null,
+        event_day_end: endDay,
         event_month: viewMonth,
         event_year: currentDate.year,
         is_holiday: false,
@@ -124,7 +126,7 @@ const Timestop = () => {
       queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
       setNewEventTitle("");
       setNewEventDesc("");
-      setNewEventDayEnd(null);
+      setNewEventDuration(1);
       setAddDialogOpen(false);
       toast({ title: "Event added" });
     },
@@ -138,6 +140,23 @@ const Timestop = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
       toast({ title: "Event removed" });
+    },
+  });
+
+  // Remove a shared event from your view (unshare yourself)
+  const unshareFromMe = useMutation({
+    mutationFn: async (eventId: string) => {
+      if (!user) return;
+      const { error } = await supabase
+        .from("calendar_event_shares")
+        .delete()
+        .eq("event_id", eventId)
+        .eq("shared_with", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
+      toast({ title: "Event removed from your calendar" });
     },
   });
 
@@ -253,6 +272,17 @@ const Timestop = () => {
                 <Trash2 className="w-3 h-3" />
               </Button>
             </>
+          )}
+          {event.user_id !== user?.id && event.user_id !== null && !event.is_holiday && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => unshareFromMe.mutate(event.id)}
+              className="text-gray-400 hover:text-red-300 h-6 w-6 p-0"
+              title="Remove from my calendar"
+            >
+              <X className="w-3 h-3" />
+            </Button>
           )}
         </div>
       </div>
@@ -458,17 +488,21 @@ const Timestop = () => {
                         <Textarea placeholder="Description (optional)" value={newEventDesc} onChange={(e) => setNewEventDesc(e.target.value)} className="bg-gray-800 border-gray-700 text-white" />
                         <div>
                           <label className="text-gray-400 text-xs mb-1 block">
-                            End day (leave empty for single day, or set to span multiple days)
+                            Duration (days)
                           </label>
                           <Input
                             type="number"
-                            min={selectedDay + 1}
-                            max={28}
-                            placeholder="Single day"
-                            value={newEventDayEnd || ""}
-                            onChange={(e) => setNewEventDayEnd(e.target.value ? parseInt(e.target.value) : null)}
+                            min={1}
+                            max={28 - (selectedDay || 1) + 1}
+                            value={newEventDuration}
+                            onChange={(e) => setNewEventDuration(Math.max(1, parseInt(e.target.value) || 1))}
                             className="bg-gray-800 border-gray-700 text-white"
                           />
+                          {newEventDuration > 1 && selectedDay && (
+                            <p className="text-amber-400/60 text-xs mt-1">
+                              Days {selectedDay}–{Math.min(selectedDay + newEventDuration - 1, 28)}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <DialogFooter>
