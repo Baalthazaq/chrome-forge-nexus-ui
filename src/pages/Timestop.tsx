@@ -37,7 +37,7 @@ const Timestop = () => {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventDesc, setNewEventDesc] = useState("");
-  const [newEventDuration, setNewEventDuration] = useState<number>(1);
+  const [newEventDuration, setNewEventDuration] = useState<string>("");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -65,6 +65,9 @@ const Timestop = () => {
     ? { day: gameDate.current_day, month: gameDate.current_month, year: gameDate.current_year }
     : { day: 1, month: 1, year: 1 };
 
+  const prevMonthNum = viewMonth <= 1 ? 14 : viewMonth - 1;
+  const prevMonthYear = viewMonth <= 1 ? viewYear - 1 : viewYear;
+
   const { data: events = [] } = useQuery({
     queryKey: ["calendar-events", viewMonth, currentDate.year],
     queryFn: async () => {
@@ -72,6 +75,18 @@ const Timestop = () => {
       if (error) throw error;
       return (data as CalendarEvent[]).filter(
         (e) => e.event_year === null || e.event_year === currentDate.year
+      );
+    },
+  });
+
+  // Fetch previous month's events to check for spillover
+  const { data: prevMonthEvents = [] } = useQuery({
+    queryKey: ["calendar-events-prev", prevMonthNum, prevMonthYear],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("calendar_events").select("*").eq("event_month", prevMonthNum);
+      if (error) throw error;
+      return (data as CalendarEvent[]).filter(
+        (e) => (e.event_year === null || e.event_year === prevMonthYear) && e.event_day_end && e.event_day_end > 28
       );
     },
   });
@@ -108,7 +123,8 @@ const Timestop = () => {
   const addEvent = useMutation({
     mutationFn: async () => {
       if (!user || !selectedDay) return;
-      const endDay = newEventDuration > 1 ? Math.min(selectedDay + newEventDuration - 1, 28) : null;
+      const duration = parseInt(newEventDuration) || 1;
+      const endDay = duration > 1 ? selectedDay + duration - 1 : null;
       const { error } = await supabase.from("calendar_events").insert({
         user_id: user.id,
         title: newEventTitle,
@@ -126,7 +142,7 @@ const Timestop = () => {
       queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
       setNewEventTitle("");
       setNewEventDesc("");
-      setNewEventDuration(1);
+      setNewEventDuration("");
       setAddDialogOpen(false);
       toast({ title: "Event added" });
     },
@@ -166,13 +182,25 @@ const Timestop = () => {
   const specificDayEvents = events.filter((e) => e.event_day > 0);
   const allMonthEvents = events.filter((e) => e.event_day === 0);
 
-  // Check if a day falls within an event's range
-  const eventsForDay = (day: number) => specificDayEvents.filter((e) => {
-    if (e.event_day_end && e.event_day_end > e.event_day) {
-      return day >= e.event_day && day <= e.event_day_end;
-    }
-    return e.event_day === day;
-  });
+  // Check if a day falls within an event's range (including spillover from previous month)
+  const eventsForDay = (day: number) => {
+    // Events from this month
+    const thisMonthMatches = specificDayEvents.filter((e) => {
+      if (e.event_day_end && e.event_day_end > e.event_day) {
+        return day >= e.event_day && day <= Math.min(e.event_day_end, 28);
+      }
+      return e.event_day === day;
+    });
+    // Events from previous month that spill into this month
+    const spilloverMatches = prevMonthEvents.filter((e) => {
+      if (e.event_day_end && e.event_day_end > 28) {
+        const spillDay = day + 28; // day 1 of this month = day 29 relative to prev month
+        return spillDay >= e.event_day && spillDay <= e.event_day_end;
+      }
+      return false;
+    });
+    return [...thisMonthMatches, ...spilloverMatches];
+  };
 
   const dayHasHoliday = (day: number) => eventsForDay(day).some((e) => e.is_holiday);
 
@@ -493,14 +521,17 @@ const Timestop = () => {
                           <Input
                             type="number"
                             min={1}
-                            max={28 - (selectedDay || 1) + 1}
+                            placeholder="1"
                             value={newEventDuration}
-                            onChange={(e) => setNewEventDuration(Math.max(1, parseInt(e.target.value) || 1))}
+                            onChange={(e) => setNewEventDuration(e.target.value)}
                             className="bg-gray-800 border-gray-700 text-white"
                           />
-                          {newEventDuration > 1 && selectedDay && (
+                          {(parseInt(newEventDuration) || 1) > 1 && selectedDay && (
                             <p className="text-amber-400/60 text-xs mt-1">
-                              Days {selectedDay}–{Math.min(selectedDay + newEventDuration - 1, 28)}
+                              Days {selectedDay}–{selectedDay + (parseInt(newEventDuration) || 1) - 1}
+                              {selectedDay + (parseInt(newEventDuration) || 1) - 1 > 28 && (
+                                <span className="text-gray-500"> (spans into next month)</span>
+                              )}
                             </p>
                           )}
                         </div>
