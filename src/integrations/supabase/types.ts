@@ -1103,6 +1103,45 @@ export type Database = {
         }
         Relationships: []
       }
+      suggestions: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          description: string
+          id: string
+          related_app: string | null
+          screenshot_url: string | null
+          status: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          related_app?: string | null
+          screenshot_url?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          related_app?: string | null
+          screenshot_url?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tome_entries: {
         Row: {
           content: string | null

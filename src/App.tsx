@@ -34,6 +34,8 @@ import AtunesAdminPage from "./pages/AtunesAdmin";
 import CVNewsAdmin from "./pages/CVNewsAdmin";
 import BHoldRAdmin from "./pages/BHoldRAdmin";
 import DopplegangerAdmin from "./pages/DopplegangerAdmin";
+import Suggestion from "./pages/Suggestion";
+import SuggestionAdmin from "./pages/SuggestionAdmin";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +77,8 @@ const App = () => (
             <Route path="/maze" element={<Maze />} />
             <Route path="/timestop" element={<Timestop />} />
             <Route path="/admin/timestop" element={<TimestopAdmin />} />
+            <Route path="/suggestion" element={<Suggestion />} />
+            <Route path="/admin/suggestion" element={<SuggestionAdmin />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
