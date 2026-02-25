@@ -1,0 +1,1 @@
+UPDATE profiles SET level = 10, ancestry = 'Gnome', character_class = 'Wizard' WHERE user_id = 'ad47d676-ff66-4109-80e5-b0c9620bad29';
