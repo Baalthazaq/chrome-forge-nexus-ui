@@ -9,74 +9,55 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { User, Shield, Eye, Settings, Trash2, Edit, Search, DollarSign } from 'lucide-react';
+import { User, Shield, Eye, Settings, Search } from 'lucide-react';
 import { NPCDialog } from '@/components/NPCDialog';
-import AdminFinancialPanel from '@/components/AdminFinancialPanel';
 
 const Admin = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isAdmin, isLoading, impersonatedUser, startImpersonation, stopImpersonation, getAllUsers } = useAdmin();
   const [users, setUsers] = useState<any[]>([]);
-  const [isDeletingUser, setIsDeletingUser] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const [classFilter, setClassFilter] = useState<string>('all');
-  const { toast } = useToast();
+
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => {
+      const matchesSearch = !searchTerm || 
+        u.character_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.character_class?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.ancestry?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.job?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.company?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesLevel = levelFilter === 'all' || 
+        (levelFilter === 'low' && u.level <= 3) ||
+        (levelFilter === 'medium' && u.level >= 4 && u.level <= 7) ||
+        (levelFilter === 'high' && u.level >= 8);
+      const matchesClass = classFilter === 'all' || 
+        u.character_class === classFilter ||
+        (classFilter === 'none' && !u.character_class);
+      return matchesSearch && matchesLevel && matchesClass;
+    });
+  }, [users, searchTerm, levelFilter, classFilter]);
+
+  const characterClasses = useMemo(() => {
+    return users
+      .map(u => u.character_class)
+      .filter((cn, i, arr) => cn && arr.indexOf(cn) === i)
+      .sort();
+  }, [users]);
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
       navigate('/');
       return;
     }
-
-    if (isAdmin) {
-      loadUsers();
-    }
+    if (isAdmin) loadUsers();
   }, [isAdmin, isLoading, navigate]);
 
   const loadUsers = async () => {
-    console.log('Admin: Loading users...');
     const usersList = await getAllUsers();
-    console.log('Admin: Loaded users:', usersList);
     setUsers(usersList);
-  };
-
-
-  const deleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) {
-      return;
-    }
-
-    setIsDeletingUser(userId);
-    try {
-      const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: { user_id: userId }
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      toast({
-        title: "User Deleted",
-        description: data.message,
-      });
-
-      // Reload users
-      loadUsers();
-
-    } catch (error: any) {
-      console.error('User deletion error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete user",
-        variant: "destructive"
-      });
-    } finally {
-      setIsDeletingUser(null);
-    }
   };
 
   if (isLoading) {
@@ -110,38 +91,6 @@ const Admin = () => {
     'doppleganger', 'bholdr', '@tunes', 'cvnews',
     'brittlewisp', 'wyrmcart', 'tome', 'timestop', 'maze'
   ];
-
-  // Filter users based on search and filter criteria
-  const filteredUsers = useMemo(() => {
-    return users.filter(user => {
-      const matchesSearch = !searchTerm || 
-        user.character_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.character_class?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.ancestry?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.job?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.company?.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesLevel = levelFilter === 'all' || 
-        (levelFilter === 'low' && user.level <= 3) ||
-        (levelFilter === 'medium' && user.level >= 4 && user.level <= 7) ||
-        (levelFilter === 'high' && user.level >= 8);
-
-      const matchesClass = classFilter === 'all' || 
-        user.character_class === classFilter ||
-        (classFilter === 'none' && !user.character_class);
-
-      return matchesSearch && matchesLevel && matchesClass;
-    });
-  }, [users, searchTerm, levelFilter, classFilter]);
-
-  // Get unique character classes for filter
-  const characterClasses = useMemo(() => {
-    const classes = users
-      .map(user => user.character_class)
-      .filter((className, index, arr) => className && arr.indexOf(className) === index)
-      .sort();
-    return classes;
-  }, [users]);
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -286,9 +235,11 @@ const Admin = () => {
                     <NPCDialog 
                       npc={userProfile} 
                       onSuccess={loadUsers}
+                      showDelete={true}
+                      currentUserId={user?.id}
                       trigger={
                         <Button size="sm" variant="outline">
-                          <Edit className="h-4 w-4 mr-1" />
+                          <Settings className="h-4 w-4 mr-1" />
                           Edit
                         </Button>
                       }
@@ -301,15 +252,6 @@ const Admin = () => {
                     >
                       <Eye className="h-4 w-4 mr-1" />
                       {impersonatedUser?.user_id === userProfile.user_id ? 'Current View' : 'View As'}
-                    </Button>
-                    <Button
-                      onClick={() => deleteUser(userProfile.user_id, userProfile.character_name || 'Unknown User')}
-                      disabled={isDeletingUser === userProfile.user_id || userProfile.user_id === user?.id}
-                      size="sm"
-                      variant="destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      {isDeletingUser === userProfile.user_id ? 'Deleting...' : 'Delete'}
                     </Button>
                   </div>
                 </div>

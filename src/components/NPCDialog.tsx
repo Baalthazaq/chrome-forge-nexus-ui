@@ -1,24 +1,29 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { UserPlus, Edit, Zap } from 'lucide-react';
+import { UserPlus, Edit, Zap, Trash2, Skull } from 'lucide-react';
 
 interface NPCDialogProps {
   trigger?: React.ReactNode;
   npc?: any;
   onSuccess?: () => void;
+  showDelete?: boolean;
+  currentUserId?: string;
 }
 
-export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
+export const NPCDialog = ({ trigger, npc, onSuccess, showDelete = false, currentUserId }: NPCDialogProps) => {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [classCards, setClassCards] = useState<any[]>([]);
   const [subclassCards, setSubclassCards] = useState<any[]>([]);
   const [ancestryCards, setAncestryCards] = useState<any[]>([]);
@@ -37,6 +42,7 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
     notes: '',
     is_searchable: true,
     has_succubus_profile: false,
+    is_dead: false,
     agility: 1,
     strength: 1,
     finesse: 1,
@@ -49,7 +55,7 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
     education: '',
     address: '',
     aliases: [] as string[],
-    security_rating: 'C'
+    security_rating: 'C',
   });
   const { toast } = useToast();
 
@@ -87,6 +93,7 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
         notes: npc.notes || '',
         is_searchable: npc.is_searchable ?? true,
         has_succubus_profile: npc.has_succubus_profile || false,
+        is_dead: npc.is_dead || false,
         agility: npc.agility || 10,
         strength: npc.strength || 10,
         finesse: npc.finesse || 10,
@@ -166,7 +173,8 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
       education: 'Street University',
       address: 'Night City',
       aliases: [],
-      security_rating: ['D', 'C', 'B', 'A', 'S'][Math.floor(Math.random() * 5)]
+      security_rating: ['D', 'C', 'B', 'A', 'S'][Math.floor(Math.random() * 5)],
+      is_dead: false,
     });
   };
 
@@ -226,6 +234,7 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
             address: form.address,
             aliases: form.aliases,
             security_rating: form.security_rating,
+            is_dead: form.is_dead,
             updated_at: new Date().toISOString()
           })
           .eq('user_id', npc.user_id);
@@ -285,10 +294,11 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
           character_class: '', subclass: '', community: '',
           level: 1, credit_rating: 100, charisma_score: 10,
           notes: '', is_searchable: true, has_succubus_profile: false,
+          is_dead: false,
           agility: 1, strength: 1, finesse: 1,
           instinct: 1, presence: 1, knowledge: 1,
           age: null, bio: '', employer: '', education: '',
-          address: '', aliases: [], security_rating: 'C'
+          address: '', aliases: [], security_rating: 'C',
         });
       }
 
@@ -513,6 +523,15 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
               <Checkbox id="has_succubus_profile" checked={form.has_succubus_profile} onCheckedChange={(checked) => setForm(prev => ({ ...prev, has_succubus_profile: !!checked }))} />
               <Label htmlFor="has_succubus_profile">Create default Succubus profile</Label>
             </div>
+            {npc && (
+              <div className="flex items-center space-x-2">
+                <Switch id="is_dead" checked={form.is_dead} onCheckedChange={(checked) => setForm(prev => ({ ...prev, is_dead: checked }))} />
+                <Label htmlFor="is_dead" className="flex items-center gap-1">
+                  <Skull className="h-4 w-4" />
+                  {form.is_dead ? 'Dead' : 'Alive'}
+                </Label>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 pt-4">
@@ -520,6 +539,48 @@ export const NPCDialog = ({ trigger, npc, onSuccess }: NPCDialogProps) => {
               {isSubmitting ? 'Saving...' : (npc ? 'Update Character' : 'Create NPC')}
             </Button>
             <Button onClick={() => setOpen(false)} variant="outline">Cancel</Button>
+            {npc && showDelete && npc.user_id !== currentUserId && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" disabled={isDeleting}>
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    {isDeleting ? 'Deleting...' : 'Delete'}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Character</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you wish to delete "{form.character_name}"? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={async () => {
+                        setIsDeleting(true);
+                        try {
+                          const { data, error } = await supabase.functions.invoke('delete-user', {
+                            body: { user_id: npc.user_id }
+                          });
+                          if (error) throw error;
+                          toast({ title: "Character Deleted", description: data.message });
+                          setOpen(false);
+                          onSuccess?.();
+                        } catch (err: any) {
+                          toast({ title: "Error", description: err.message || "Failed to delete", variant: "destructive" });
+                        } finally {
+                          setIsDeleting(false);
+                        }
+                      }}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
       </DialogContent>
