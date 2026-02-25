@@ -45,6 +45,26 @@ const Roldex = () => {
 
       if (profilesError) throw profilesError;
 
+      // Load character sheets to get authoritative class/ancestry/level
+      const { data: sheetsData } = await supabase
+        .from('character_sheets')
+        .select('user_id, class, subclass, ancestry, community, level');
+
+      const sheetsMap: Record<string, any> = {};
+      (sheetsData || []).forEach(s => { sheetsMap[s.user_id] = s; });
+
+      // Enrich profiles with character_sheet data (prefer sheet over profile)
+      const enrichedProfiles = (profilesData || []).map(p => {
+        const sheet = sheetsMap[p.user_id];
+        if (!sheet) return p;
+        return {
+          ...p,
+          character_class: sheet.class || p.character_class,
+          ancestry: sheet.ancestry || p.ancestry,
+          level: sheet.level || p.level,
+        };
+      });
+
       // Load effective user's active contacts with their personal data
       const { data: contactsData, error: contactsError } = await supabase
         .from('contacts')
@@ -57,7 +77,7 @@ const Roldex = () => {
 
       if (contactsError) throw contactsError;
 
-      setProfiles(profilesData || []);
+      setProfiles(enrichedProfiles);
       setContacts(contactsData || []);
     } catch (error) {
       console.error('Error loading data:', error);

@@ -201,6 +201,7 @@ const Doppleganger = () => {
           updateSheet={updateSheet}
           bio={profile.bio || ''}
           isEditing={isEditing}
+          onBioUpdate={(newBio) => handleProfileUpdate('bio', newBio)}
         />
       </div>
     </div>

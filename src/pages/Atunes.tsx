@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { formatHex } from "@/lib/currency";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +44,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: any; bg
 
 const Atunes = () => {
   const { user } = useAuth();
+  const { impersonatedUser } = useAdmin();
   const { toast } = useToast();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,16 +52,19 @@ const Atunes = () => {
   const [payDialog, setPayDialog] = useState<Subscription | null>(null);
   const [userBalance, setUserBalance] = useState(0);
 
+  const effectiveUserId = impersonatedUser?.user_id || user?.id;
+
   useEffect(() => {
-    if (user) loadData();
-  }, [user]);
+    if (effectiveUserId) loadData();
+  }, [effectiveUserId]);
 
   const loadData = async () => {
+    if (!effectiveUserId) return;
     setIsLoading(true);
     try {
       const [subsResult, profileResult] = await Promise.all([
-        supabase.from("recurring_payments").select("*").eq("to_user_id", user?.id).order("created_at", { ascending: false }),
-        supabase.from("profiles").select("credits").eq("user_id", user?.id!).single(),
+        supabase.from("recurring_payments").select("*").eq("to_user_id", effectiveUserId).order("created_at", { ascending: false }),
+        supabase.from("profiles").select("credits").eq("user_id", effectiveUserId).single(),
       ]);
       if (subsResult.error) throw subsResult.error;
       setSubscriptions(subsResult.data || []);
@@ -97,6 +102,7 @@ const Atunes = () => {
             to_user_id: sub.from_user_id,
             amount: sub.accumulated_amount,
             description: `Manual payment: ${sub.description}`,
+            targetUserId: effectiveUserId,
           },
         });
         if (error) throw error;
@@ -106,7 +112,7 @@ const Atunes = () => {
         const { error } = await supabase
           .from("profiles")
           .update({ credits: newBalance })
-          .eq("user_id", user?.id);
+          .eq("user_id", effectiveUserId);
         if (error) throw error;
       }
 
@@ -143,7 +149,7 @@ const Atunes = () => {
       <div className="relative z-10 container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-2">
             <Link to="/">
               <Button variant="ghost" size="sm" className="text-purple-400 hover:text-purple-300">
                 <ArrowLeft className="w-4 h-4 mr-2" />
@@ -160,6 +166,11 @@ const Atunes = () => {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">
             @tunes
           </h1>
+          {impersonatedUser && (
+            <p className="text-cyan-400 text-xs font-mono mt-1">
+              👁 Viewing as: {impersonatedUser.character_name}
+            </p>
+          )}
         </div>
 
         {/* Summary Cards */}

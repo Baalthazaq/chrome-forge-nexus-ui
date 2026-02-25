@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, Shield, Eye, Settings, UserPlus, Zap, Trash2, Edit, Search, DollarSign } from 'lucide-react';
+import { User, Shield, Eye, Settings, Trash2, Edit, Search, DollarSign } from 'lucide-react';
 import { NPCDialog } from '@/components/NPCDialog';
 import AdminFinancialPanel from '@/components/AdminFinancialPanel';
 
@@ -203,18 +203,6 @@ const Admin = () => {
           </CardContent>
         </Card>
 
-        {/* NPC Management */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5" />
-              NPC Management
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex gap-4 items-center">
-          <NPCDialog onSuccess={loadUsers} />
-          </CardContent>
-        </Card>
 
         {/* User Management */}
         <Card>
