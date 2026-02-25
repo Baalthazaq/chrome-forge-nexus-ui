@@ -49,6 +49,14 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
 
       if (error) throw error;
 
+      // Load character sheets for authoritative class/ancestry/level
+      const { data: sheetsData } = await supabase
+        .from('character_sheets')
+        .select('user_id, class, subclass, ancestry, community, level');
+
+      const sheetsMap: Record<string, any> = {};
+      (sheetsData || []).forEach(s => { sheetsMap[s.user_id] = s; });
+
       // Get all contacts (both active and inactive) to filter properly
       const { data: allContacts } = await supabase
         .from('contacts')
@@ -62,7 +70,16 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
       
       const available = (profilesData || []).filter(profile => 
         !activeContactUserIds.includes(profile.user_id)
-      );
+      ).map(p => {
+        const sheet = sheetsMap[p.user_id];
+        if (!sheet) return p;
+        return {
+          ...p,
+          character_class: sheet.class || p.character_class,
+          ancestry: sheet.ancestry || p.ancestry,
+          level: sheet.level || p.level,
+        };
+      });
 
       setAvailableProfiles(available);
     } catch (error) {
@@ -283,7 +300,7 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
                         {profile.character_class || 'Unknown Class'} • Level {profile.level || 1}
                       </p>
                       {profile.bio && (
-                        <p className="text-xs text-gray-500 truncate max-w-xs">
+                        <p className="text-xs text-gray-500 max-w-xs whitespace-pre-wrap">
                           {profile.bio}
                         </p>
                       )}

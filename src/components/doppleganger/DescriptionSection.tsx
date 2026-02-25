@@ -10,13 +10,15 @@ interface Props {
   updateSheet: (updates: Partial<CharacterSheet>) => Promise<void>;
   bio: string;
   isEditing: boolean;
+  onBioUpdate?: (bio: string) => void;
 }
 
-export function DescriptionSection({ sheet, updateSheet, bio, isEditing }: Props) {
+export function DescriptionSection({ sheet, updateSheet, bio, isEditing, onBioUpdate }: Props) {
   const pd = sheet.physical_description || { clothes: '', eyes: '', body: '', skin: '' };
 
   const [localPd, setLocalPd] = useState(pd);
   const [localPersonality, setLocalPersonality] = useState(sheet.personality || '');
+  const [localBio, setLocalBio] = useState(bio);
 
   const savePd = useCallback((field: keyof PhysicalDescription, value: string) => {
     const updated = { ...localPd, [field]: value };
@@ -27,6 +29,10 @@ export function DescriptionSection({ sheet, updateSheet, bio, isEditing }: Props
   const savePersonality = useCallback(() => {
     updateSheet({ personality: localPersonality });
   }, [localPersonality, updateSheet]);
+
+  const saveBio = useCallback(() => {
+    onBioUpdate?.(localBio);
+  }, [localBio, onBioUpdate]);
 
   const fields: { key: keyof PhysicalDescription; label: string }[] = [
     { key: 'clothes', label: 'Clothes' },
@@ -86,10 +92,21 @@ export function DescriptionSection({ sheet, updateSheet, bio, isEditing }: Props
             )}
           </div>
           <div>
-            <label className="text-gray-400 text-xs mb-1 block">Bio (from profile)</label>
-            <div className="text-gray-300 text-sm p-2 bg-gray-800/30 rounded min-h-[60px]">
-              {bio || 'No bio set. Edit in your profile settings.'}
-            </div>
+            <label className="text-gray-400 text-xs mb-1 block">Bio</label>
+            {isEditing ? (
+              <Textarea
+                value={localBio}
+                onChange={(e) => setLocalBio(e.target.value)}
+                onBlur={saveBio}
+                placeholder="Write a bio..."
+                className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm"
+                rows={3}
+              />
+            ) : (
+              <div className="text-gray-300 text-sm p-2 bg-gray-800/30 rounded min-h-[60px] whitespace-pre-wrap">
+                {localBio || '—'}
+              </div>
+            )}
           </div>
         </div>
       </Card>

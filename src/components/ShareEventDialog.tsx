@@ -22,6 +22,21 @@ const ShareEventDialog = ({ open, onOpenChange, eventId, eventTitle }: ShareEven
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [filterText, setFilterText] = useState("");
 
+  // Get contacts from Roldex to populate share list
+  const { data: contacts = [] } = useQuery({
+    queryKey: ["roldex-contacts-for-share", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("contacts")
+        .select("contact_user_id")
+        .eq("user_id", user.id)
+        .eq("is_active", true);
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-all"],
     queryFn: async () => {
@@ -30,6 +45,8 @@ const ShareEventDialog = ({ open, onOpenChange, eventId, eventTitle }: ShareEven
       return data;
     },
   });
+
+  const contactUserIds = contacts.map((c) => c.contact_user_id);
 
   const { data: existingShares = [] } = useQuery({
     queryKey: ["event-shares", eventId],
@@ -85,8 +102,9 @@ const ShareEventDialog = ({ open, onOpenChange, eventId, eventTitle }: ShareEven
     },
   });
 
-  const otherProfiles = profiles.filter((p) => p.user_id !== user?.id);
-  const filteredAvailable = otherProfiles
+  // Only show contacts from Roldex
+  const contactProfiles = profiles.filter((p) => p.user_id !== user?.id && contactUserIds.includes(p.user_id));
+  const filteredAvailable = contactProfiles
     .filter((p) => !existingShares.includes(p.user_id))
     .filter((p) => !filterText.trim() || (p.character_name || "").toLowerCase().includes(filterText.toLowerCase()));
 
