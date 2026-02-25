@@ -297,7 +297,7 @@ const Roldex = () => {
                   {/* Avatar */}
                   <div className="relative">
                     <img 
-                      src={profile.avatar_url || `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face`}
+                      src={profile.avatar_url || "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif"}
                       alt={profile.character_name || 'Character'}
                       className="w-16 h-16 rounded-full object-cover border-2 border-gray-600"
                     />

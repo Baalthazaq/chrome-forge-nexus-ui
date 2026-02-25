@@ -222,7 +222,7 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
               <div className="space-y-4">
                 <div className="flex items-center space-x-3 p-4 bg-gray-800/50 border border-blue-500/30 rounded-lg">
                   <img
-                    src={selectedProfile.avatar_url || `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face`}
+                    src={selectedProfile.avatar_url || "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif"}
                     alt={selectedProfile.character_name || 'Character'}
                     className="w-12 h-12 rounded-full object-cover border-2 border-gray-600"
                   />
@@ -288,7 +288,7 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
                 >
                   <div className="flex items-center space-x-3">
                     <img
-                      src={profile.avatar_url || `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face`}
+                      src={profile.avatar_url || "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif"}
                       alt={profile.character_name || 'Character'}
                       className="w-12 h-12 rounded-full object-cover border-2 border-gray-600"
                     />
