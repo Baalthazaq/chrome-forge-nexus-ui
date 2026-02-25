@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,10 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { NPCDialog } from "@/components/NPCDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
+import * as XLSX from "xlsx";
 const DopplegangerAdmin = () => {
   const navigate = useNavigate();
   const { isAdmin, isLoading, startImpersonation, impersonatedUser } = useAdmin();
+  const { user } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [levelFilter, setLevelFilter] = useState("all");
@@ -83,14 +85,11 @@ const DopplegangerAdmin = () => {
       }
       return obj;
     });
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `npcs-export-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({ title: "Exported", description: `${data.length} characters exported.` });
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Characters");
+    XLSX.writeFile(wb, `npcs-export-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast({ title: "Exported", description: `${data.length} characters exported as XLSX.` });
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,9 +97,16 @@ const DopplegangerAdmin = () => {
     if (!file) return;
     setImporting(true);
     try {
-      const text = await file.text();
-      const records: any[] = JSON.parse(text);
-      if (!Array.isArray(records)) throw new Error("File must contain a JSON array of characters.");
+      let records: any[];
+      if (file.name.endsWith('.json')) {
+        const text = await file.text();
+        records = JSON.parse(text);
+      } else {
+        const data = await file.arrayBuffer();
+        const wb = XLSX.read(data);
+        records = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      }
+      if (!Array.isArray(records)) throw new Error("File must contain an array/sheet of characters.");
 
       let created = 0;
       let failed = 0;
@@ -166,7 +172,7 @@ const DopplegangerAdmin = () => {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".json"
+                accept=".json,.xlsx,.xls,.csv"
                 className="hidden"
                 onChange={handleImport}
               />
@@ -232,7 +238,7 @@ const DopplegangerAdmin = () => {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <NPCDialog npc={u} onSuccess={loadUsers} trigger={
+                    <NPCDialog npc={u} onSuccess={loadUsers} showDelete={true} currentUserId={user?.id} trigger={
                       <Button size="sm" variant="outline"><Edit className="h-4 w-4 mr-1" />Edit</Button>
                     } />
                     <Button size="sm" variant="outline"

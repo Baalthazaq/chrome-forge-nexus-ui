@@ -641,6 +641,7 @@ export type Database = {
           has_succubus_profile: boolean | null
           id: string
           instinct: number | null
+          is_dead: boolean | null
           is_searchable: boolean | null
           job: string | null
           knowledge: number | null
@@ -677,6 +678,7 @@ export type Database = {
           has_succubus_profile?: boolean | null
           id?: string
           instinct?: number | null
+          is_dead?: boolean | null
           is_searchable?: boolean | null
           job?: string | null
           knowledge?: number | null
@@ -713,6 +715,7 @@ export type Database = {
           has_succubus_profile?: boolean | null
           id?: string
           instinct?: number | null
+          is_dead?: boolean | null
           is_searchable?: boolean | null
           job?: string | null
           knowledge?: number | null
