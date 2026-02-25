@@ -8,7 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, MessageCircle, Users, Eye, Clock, ExternalLink } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Users, Eye, Clock, ExternalLink, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { toast } from '@/hooks/use-toast';
 
 interface Cast {
   id: string;
@@ -156,6 +158,21 @@ const SendingAdmin = () => {
     }
   };
 
+  const deleteConversation = async (stone: StoneWithParticipants) => {
+    try {
+      // Delete casts first, then participants, then the stone
+      await supabase.from('casts').delete().eq('stone_id', stone.id);
+      await supabase.from('stone_participants').delete().eq('stone_id', stone.id);
+      await supabase.from('stones').delete().eq('id', stone.id);
+      
+      setStones(prev => prev.filter(s => s.id !== stone.id));
+      toast({ title: "Conversation deleted", description: `"${stone.display_name}" has been permanently deleted.` });
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      toast({ title: "Error", description: "Failed to delete conversation.", variant: "destructive" });
+    }
+  };
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -266,9 +283,36 @@ const SendingAdmin = () => {
                             )}
                           </div>
                         </div>
-                        <div className="text-right space-y-1">
+                        <div className="text-right space-y-1 flex flex-col items-end gap-2">
                           <p className="text-xs text-muted-foreground">Created: {new Date(stone.created_at).toLocaleDateString()}</p>
                           {stone.last_cast_at && <p className="text-xs text-muted-foreground">Last activity: {formatTime(stone.last_cast_at)}</p>}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                Delete
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Conversation?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete "{stone.display_name}" and all {stone.cast_count} messages. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteConversation(stone)}>
+                                  Delete Permanently
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
                     </DialogTrigger>
