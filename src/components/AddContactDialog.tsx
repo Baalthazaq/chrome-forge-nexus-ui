@@ -1,4 +1,27 @@
 import { useState, useEffect } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+
+const BioPreview = ({ bio }: { bio: string }) => {
+  const [expanded, setExpanded] = useState(false);
+  const needsTruncation = bio.length > 100;
+
+  return (
+    <div className="text-xs text-gray-500 max-w-xs">
+      <p className="whitespace-pre-wrap">
+        {needsTruncation && !expanded ? `${bio.slice(0, 100)}...` : bio}
+      </p>
+      {needsTruncation && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+          className="inline-flex items-center text-blue-400 hover:text-blue-300 mt-0.5"
+        >
+          {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          <span className="ml-0.5">{expanded ? 'Less' : 'More'}</span>
+        </button>
+      )}
+    </div>
+  );
+};
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -284,11 +307,7 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
                       <p className="text-sm text-gray-400">
                         {profile.character_class || 'Unknown Class'} • Level {profile.level || 1}
                       </p>
-                      {profile.bio && (
-                        <p className="text-xs text-gray-500 max-w-xs whitespace-pre-wrap">
-                          {profile.bio}
-                        </p>
-                      )}
+                      {profile.bio && <BioPreview bio={profile.bio} />}
                     </div>
                   </div>
                   <Button
