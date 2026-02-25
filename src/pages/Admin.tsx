@@ -89,7 +89,7 @@ const Admin = () => {
   const apps = [
     'charisma', 'sending', 'app-of-holding', 'questseek', 'succubus',
     'doppleganger', 'bholdr', '@tunes', 'cvnews',
-    'brittlewisp', 'wyrmcart', 'tome', 'timestop', 'maze'
+    'brittlewisp', 'wyrmcart', 'tome', 'timestop', 'maze', 'suggestion'
   ];
 
   return (
