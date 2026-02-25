@@ -25,11 +25,36 @@ const Doppleganger = () => {
   const userId = displayUser ? ((displayUser as any).user_id || (displayUser as any).id) : undefined;
 
   const {
-    sheet, updateSheet, loading: sheetLoading,
+    sheet, updateSheet: rawUpdateSheet, loading: sheetLoading,
     gameCards, classCards, subclassCards, filteredSubclasses, ancestryCards, communityCards, domainCards,
     selectedClass, selectedSubclass, baseEvasion, baseHP, domains,
     purchases, customItems,
   } = useCharacterSheet(userId);
+
+  // Sync sheet fields that also exist on profiles
+  const SHEET_TO_PROFILE_MAP: Record<string, string> = {
+    class: 'character_class',
+    subclass: 'subclass',
+    ancestry: 'ancestry',
+    community: 'community',
+    level: 'level',
+  };
+
+  const updateSheet = async (updates: Partial<typeof sheet>) => {
+    await rawUpdateSheet(updates as any);
+    // Sync relevant fields to profiles
+    if (!userId) return;
+    const profileSync: Record<string, any> = {};
+    for (const [sheetKey, profileKey] of Object.entries(SHEET_TO_PROFILE_MAP)) {
+      if (sheetKey in (updates as any)) {
+        profileSync[profileKey] = (updates as any)[sheetKey];
+      }
+    }
+    if (Object.keys(profileSync).length > 0) {
+      setProfile((prev: any) => prev ? { ...prev, ...profileSync } : prev);
+      await supabase.from('profiles').update(profileSync).eq('user_id', userId);
+    }
+  };
 
   // Compute proficiency and multiclass domains
   const choices = (sheet?.level_up_choices || {}) as LevelUpChoices;
@@ -43,6 +68,20 @@ const Doppleganger = () => {
     supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle()
       .then(({ data }) => { setProfile(data); setProfileLoading(false); });
   }, [userId]);
+
+  // One-time sync: ensure profile reflects sheet's authoritative fields
+  useEffect(() => {
+    if (!profile || !sheet || !userId) return;
+    const sync: Record<string, any> = {};
+    if (sheet.level !== profile.level) sync.level = sheet.level;
+    if (sheet.class && sheet.class !== profile.character_class) sync.character_class = sheet.class;
+    if (sheet.ancestry && sheet.ancestry !== profile.ancestry) sync.ancestry = sheet.ancestry;
+    if (sheet.community && sheet.community !== profile.community) sync.community = sheet.community;
+    if (Object.keys(sync).length > 0) {
+      setProfile((prev: any) => prev ? { ...prev, ...sync } : prev);
+      supabase.from('profiles').update(sync).eq('user_id', userId);
+    }
+  }, [sheet?.id]); // Only run once when sheet loads
 
   // SEO
   useEffect(() => {
