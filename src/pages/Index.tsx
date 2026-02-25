@@ -86,21 +86,20 @@ const apps = [
     color: "from-amber-400 to-yellow-500"
   },
   {
+    id: "bholdr",
+    name: "BHoldR",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/BHoldRC.gif",
+    description: "Video Feed",
+    route: "/bholdr",
+    color: "from-purple-500 to-blue-500"
+  },
+  {
     id: "suggestion",
     name: "Suggestion",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Suggestion.gif",
     description: "IT Support Goblin",
     route: "/suggestion",
     color: "from-green-400 to-emerald-600"
-  },
-  {
-    id: "bholdr",
-    name: "BHoldR",
-    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/BHoldRC.gif",
-    description: "Video Feed",
-    route: "/bholdr",
-    color: "from-purple-500 to-blue-500",
-    comingSoon: true
   },
   {
     id: "maze",
