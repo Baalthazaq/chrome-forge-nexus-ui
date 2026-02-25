@@ -70,8 +70,9 @@ const Doppleganger = () => {
   }, [userId]);
 
   // One-time sync: ensure profile reflects sheet's authoritative fields
+  const [hasSynced, setHasSynced] = useState(false);
   useEffect(() => {
-    if (!profile || !sheet || !userId) return;
+    if (!profile || !sheet || !userId || hasSynced) return;
     const sync: Record<string, any> = {};
     if (sheet.level !== profile.level) sync.level = sheet.level;
     if (sheet.class && sheet.class !== profile.character_class) sync.character_class = sheet.class;
@@ -81,7 +82,8 @@ const Doppleganger = () => {
       setProfile((prev: any) => prev ? { ...prev, ...sync } : prev);
       supabase.from('profiles').update(sync).eq('user_id', userId);
     }
-  }, [sheet?.id]); // Only run once when sheet loads
+    setHasSynced(true);
+  }, [profile, sheet, userId, hasSynced]);
 
   // SEO
   useEffect(() => {
