@@ -56,15 +56,59 @@ const Suggestion = () => {
     enabled: !!user,
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (file: File, maxSizeBytes: number): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let quality = 0.9;
+        let scale = 1;
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Canvas not supported"));
+
+        const attempt = () => {
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) return reject(new Error("Compression failed"));
+              if (blob.size <= maxSizeBytes || (quality <= 0.1 && scale <= 0.25)) {
+                resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }));
+              } else if (quality > 0.1) {
+                quality -= 0.15;
+                attempt();
+              } else {
+                scale -= 0.15;
+                quality = 0.7;
+                attempt();
+              }
+            },
+            "image/jpeg",
+            quality
+          );
+        };
+        attempt();
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 1024 * 1024) {
-      toast({ title: "File too large", description: "Screenshot must be under 1 MB.", variant: "destructive" });
-      return;
+    try {
+      const compressed = file.size > 1024 * 1024 ? await compressImage(file, 1024 * 1024) : file;
+      setScreenshotFile(compressed);
+      setScreenshotPreview(URL.createObjectURL(compressed));
+      if (file.size > 1024 * 1024) {
+        toast({ title: "Image compressed", description: `Shrunk from ${(file.size / 1024 / 1024).toFixed(1)} MB to ${(compressed.size / 1024 / 1024).toFixed(1)} MB.` });
+      }
+    } catch {
+      toast({ title: "Error", description: "Could not process image.", variant: "destructive" });
     }
-    setScreenshotFile(file);
-    setScreenshotPreview(URL.createObjectURL(file));
   };
 
   const clearScreenshot = () => {
@@ -203,7 +247,7 @@ const Suggestion = () => {
 
             {/* Screenshot */}
             <div className="space-y-2">
-              <Label className="text-gray-300">Screenshot (optional, max 1 MB)</Label>
+              <Label className="text-gray-300">Screenshot (optional, auto-compressed)</Label>
               {screenshotPreview ? (
                 <div className="relative inline-block">
                   <img src={screenshotPreview} alt="Preview" className="max-h-40 rounded-lg border border-gray-600" />
