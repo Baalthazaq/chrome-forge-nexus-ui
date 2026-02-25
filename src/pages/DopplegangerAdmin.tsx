@@ -24,13 +24,23 @@ const DopplegangerAdmin = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  const [sheets, setSheets] = useState<Record<string, any>>({});
+
   useEffect(() => {
     if (isAdmin) loadUsers();
   }, [isAdmin]);
 
   const loadUsers = async () => {
-    const { data } = await supabase.from("profiles").select("*").order("character_name");
-    setUsers(data || []);
+    const [profilesRes, sheetsRes] = await Promise.all([
+      supabase.from("profiles").select("*").order("character_name"),
+      supabase.from("character_sheets").select("user_id, class, subclass, community, ancestry, level"),
+    ]);
+    setUsers(profilesRes.data || []);
+    const sheetMap: Record<string, any> = {};
+    for (const s of sheetsRes.data || []) {
+      sheetMap[s.user_id] = s;
+    }
+    setSheets(sheetMap);
   };
 
   if (isLoading) {
@@ -79,10 +89,23 @@ const DopplegangerAdmin = () => {
 
   const handleExport = () => {
     const data = filteredUsers.map(u => {
+      const sheet = sheets[u.user_id];
       const obj: Record<string, any> = {};
       for (const f of exportFields) {
-        if (u[f] !== undefined && u[f] !== null) obj[f] = u[f];
+        // Use character_sheets as source of truth for these fields
+        if (f === 'character_class' && sheet?.class !== undefined) {
+          obj[f] = sheet.class;
+        } else if (f === 'ancestry' && sheet?.ancestry !== undefined) {
+          obj[f] = sheet.ancestry;
+        } else if (f === 'level' && sheet?.level !== undefined) {
+          obj[f] = sheet.level;
+        } else if (u[f] !== undefined && u[f] !== null) {
+          obj[f] = u[f];
+        }
       }
+      // Also include subclass/community from sheet
+      if (sheet?.subclass) obj['subclass'] = sheet.subclass;
+      if (sheet?.community) obj['community'] = sheet.community;
       return obj;
     });
     const ws = XLSX.utils.json_to_sheet(data);
