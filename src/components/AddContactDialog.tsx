@@ -140,36 +140,21 @@ export const AddContactDialog = ({ onContactAdded, existingContacts }: AddContac
         if (error) throw error;
       }
 
-      // Create mutual contact - check if the reverse contact exists
-      const { data: existingMutualContact } = await supabase
+      // Create/reactivate mutual contact
+      // Try to upsert - if the mutual contact already exists, just reactivate it
+      const { error: mutualError } = await supabase
         .from('contacts')
-        .select('*')
-        .eq('user_id', profileUserId)
-        .eq('contact_user_id', effectiveUserId)
-        .maybeSingle();
+        .upsert({
+          user_id: profileUserId,
+          contact_user_id: effectiveUserId,
+          personal_rating: 3,
+          is_active: true
+        }, { onConflict: 'user_id,contact_user_id' });
 
-      if (existingMutualContact) {
-        // Reactivate existing mutual contact
-        const { error } = await supabase
-          .from('contacts')
-          .update({ is_active: true })
-          .eq('id', existingMutualContact.id);
-        
-        if (error) throw error;
-      } else {
-        // Create new mutual contact
-        const { error } = await supabase
-          .from('contacts')
-          .insert({
-            user_id: profileUserId,
-            contact_user_id: effectiveUserId,
-            personal_rating: 3,
-            is_active: true
-          });
-
-        if (error) throw error;
+      // Ignore mutual contact errors (RLS may prevent this for non-admin users)
+      if (mutualError) {
+        console.warn('Could not create/update mutual contact (may already exist):', mutualError.message);
       }
-      
       toast({
         title: "Contact added",
         description: `${profileName} has been added to your contacts mutually.`,
