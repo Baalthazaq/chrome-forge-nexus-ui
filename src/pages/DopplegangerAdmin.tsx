@@ -1,14 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, ArrowLeft, UserPlus, Edit, Eye, Search } from "lucide-react";
+import { Shield, ArrowLeft, UserPlus, Edit, Eye, Search, Download, Upload } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NPCDialog } from "@/components/NPCDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const DopplegangerAdmin = () => {
   const navigate = useNavigate();
@@ -17,6 +18,9 @@ const DopplegangerAdmin = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [levelFilter, setLevelFilter] = useState("all");
   const [classFilter, setClassFilter] = useState("all");
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (isAdmin) loadUsers();
@@ -64,6 +68,72 @@ const DopplegangerAdmin = () => {
     return matchesSearch && matchesLevel && matchesClass;
   });
 
+  const exportFields = [
+    'character_name', 'ancestry', 'job', 'company', 'character_class', 'level',
+    'credit_rating', 'notes', 'is_searchable', 'has_succubus_profile',
+    'agility', 'strength', 'finesse', 'instinct', 'presence', 'knowledge',
+    'age', 'bio', 'employer', 'education', 'address', 'aliases', 'alias',
+  ];
+
+  const handleExport = () => {
+    const data = filteredUsers.map(u => {
+      const obj: Record<string, any> = {};
+      for (const f of exportFields) {
+        if (u[f] !== undefined && u[f] !== null) obj[f] = u[f];
+      }
+      return obj;
+    });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `npcs-export-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Exported", description: `${data.length} characters exported.` });
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const records: any[] = JSON.parse(text);
+      if (!Array.isArray(records)) throw new Error("File must contain a JSON array of characters.");
+
+      let created = 0;
+      let failed = 0;
+      for (const rec of records) {
+        if (!rec.character_name) { failed++; continue; }
+        const { data, error } = await supabase.functions.invoke('create-npc', { body: rec });
+        if (error) { console.error('Import error:', error); failed++; }
+        else {
+          // Sync character sheet
+          if (data?.npc_id) {
+            await supabase.from('character_sheets').upsert({
+              user_id: data.npc_id,
+              class: rec.character_class || null,
+              subclass: rec.subclass || null,
+              community: rec.community || null,
+              ancestry: rec.ancestry || null,
+              level: rec.level || 1,
+            }, { onConflict: 'user_id' });
+          }
+          created++;
+        }
+      }
+      toast({ title: "Import Complete", description: `${created} created, ${failed} failed.` });
+      loadUsers();
+    } catch (err: any) {
+      toast({ title: "Import Error", description: err.message, variant: "destructive" });
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -86,8 +156,30 @@ const DopplegangerAdmin = () => {
               NPC Management
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex gap-4 items-center">
+          <CardContent className="flex gap-4 items-center flex-wrap">
             <NPCDialog onSuccess={loadUsers} />
+            <Button onClick={handleExport} variant="outline" className="flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              Export {filteredUsers.length === users.length ? 'All' : `${filteredUsers.length} Filtered`}
+            </Button>
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={handleImport}
+              />
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                variant="outline"
+                className="flex items-center gap-2"
+                disabled={importing}
+              >
+                <Upload className="h-4 w-4" />
+                {importing ? 'Importing...' : 'Bulk Import'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
