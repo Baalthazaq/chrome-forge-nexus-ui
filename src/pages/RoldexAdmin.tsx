@@ -165,7 +165,7 @@ const RoldexAdmin = () => {
           label: (
             <div className="text-center p-2">
               <img
-                src={profile.avatar_url || `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face`}
+                src={profile.avatar_url || "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif"}
                 alt={profile.character_name}
                 className="w-12 h-12 rounded-full mx-auto mb-1 border-2 border-gray-300"
               />
@@ -439,7 +439,7 @@ const RoldexAdmin = () => {
                   <div className="space-y-3">
                     <div className="flex items-center space-x-3">
                       <img
-                        src={selectedNodeDetails.profile.avatar_url || `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face`}
+                        src={selectedNodeDetails.profile.avatar_url || "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif"}
                         alt={selectedNodeDetails.profile.character_name}
                         className="w-16 h-16 rounded-full border-2 border-gray-600"
                       />
