@@ -32,6 +32,7 @@ const VaultAdmin = () => {
   const [billDialogOpen, setBillDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [creditDialogOpen, setCreditDialogOpen] = useState(false);
+  const [creditUserFilter, setCreditUserFilter] = useState('');
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
   
   // Admin Form States
@@ -878,8 +879,18 @@ const VaultAdmin = () => {
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
                       <Label>Users (Select Multiple)</Label>
+                      <Input
+                        placeholder="Filter users..."
+                        value={creditUserFilter}
+                        onChange={(e) => setCreditUserFilter(e.target.value)}
+                        className="mb-2"
+                      />
                       <div className="border rounded p-3 max-h-32 overflow-y-auto">
-                        {profiles.map((profile) => (
+                        {profiles
+                          .filter((profile) =>
+                            (profile.character_name || '').toLowerCase().includes(creditUserFilter.toLowerCase())
+                          )
+                          .map((profile) => (
                           <div key={profile.user_id} className="flex items-center space-x-2 py-1">
                             <Checkbox
                               id={`credit-user-${profile.user_id}`}
