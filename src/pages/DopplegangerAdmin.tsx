@@ -71,7 +71,7 @@ const DopplegangerAdmin = () => {
   });
 
   const exportFields = [
-    'character_name', 'ancestry', 'job', 'company', 'character_class', 'level',
+    'user_id', 'character_name', 'ancestry', 'job', 'company', 'character_class', 'level',
     'credit_rating', 'notes', 'is_searchable', 'has_succubus_profile',
     'agility', 'strength', 'finesse', 'instinct', 'presence', 'knowledge',
     'age', 'bio', 'employer', 'education', 'address', 'aliases', 'alias',
@@ -109,27 +109,83 @@ const DopplegangerAdmin = () => {
       if (!Array.isArray(records)) throw new Error("File must contain an array/sheet of characters.");
 
       let created = 0;
+      let updated = 0;
       let failed = 0;
+
+      // Profile fields that can be updated
+      const profileFields = [
+        'character_name', 'ancestry', 'job', 'company', 'character_class', 'level',
+        'credit_rating', 'notes', 'is_searchable', 'has_succubus_profile',
+        'agility', 'strength', 'finesse', 'instinct', 'presence', 'knowledge',
+        'age', 'bio', 'employer', 'education', 'address', 'aliases', 'alias',
+      ];
+
       for (const rec of records) {
         if (!rec.character_name) { failed++; continue; }
-        const { data, error } = await supabase.functions.invoke('create-npc', { body: rec });
-        if (error) { console.error('Import error:', error); failed++; }
-        else {
-          // Sync character sheet
-          if (data?.npc_id) {
-            await supabase.from('character_sheets').upsert({
-              user_id: data.npc_id,
-              class: rec.character_class || null,
-              subclass: rec.subclass || null,
-              community: rec.community || null,
-              ancestry: rec.ancestry || null,
-              level: rec.level || 1,
-            }, { onConflict: 'user_id' });
+
+        if (rec.user_id) {
+          // Existing character — update profile and character sheet
+          try {
+            const profileUpdate: Record<string, any> = {};
+            for (const field of profileFields) {
+              if (rec[field] !== undefined && rec[field] !== '') {
+                profileUpdate[field] = rec[field];
+              }
+            }
+
+            if (Object.keys(profileUpdate).length > 0) {
+              const { error: profErr } = await supabase
+                .from('profiles')
+                .update(profileUpdate)
+                .eq('user_id', rec.user_id);
+              if (profErr) throw profErr;
+            }
+
+            // Sync character sheet fields
+            const sheetUpdate: Record<string, any> = {};
+            if (rec.character_class !== undefined) sheetUpdate.class = rec.character_class || null;
+            if (rec.ancestry !== undefined) sheetUpdate.ancestry = rec.ancestry || null;
+            if (rec.level !== undefined) sheetUpdate.level = rec.level || 1;
+            if (rec.subclass !== undefined) sheetUpdate.subclass = rec.subclass || null;
+            if (rec.community !== undefined) sheetUpdate.community = rec.community || null;
+
+            if (Object.keys(sheetUpdate).length > 0) {
+              await supabase
+                .from('character_sheets')
+                .update(sheetUpdate)
+                .eq('user_id', rec.user_id);
+            }
+
+            updated++;
+          } catch (err) {
+            console.error('Update error for', rec.character_name, err);
+            failed++;
           }
-          created++;
+        } else {
+          // New character — create via edge function
+          const { data, error } = await supabase.functions.invoke('create-npc', { body: rec });
+          if (error) { console.error('Import error:', error); failed++; }
+          else {
+            if (data?.npc_id) {
+              await supabase.from('character_sheets').upsert({
+                user_id: data.npc_id,
+                class: rec.character_class || null,
+                subclass: rec.subclass || null,
+                community: rec.community || null,
+                ancestry: rec.ancestry || null,
+                level: rec.level || 1,
+              }, { onConflict: 'user_id' });
+            }
+            created++;
+          }
         }
       }
-      toast({ title: "Import Complete", description: `${created} created, ${failed} failed.` });
+
+      const parts = [];
+      if (updated) parts.push(`${updated} updated`);
+      if (created) parts.push(`${created} created`);
+      if (failed) parts.push(`${failed} failed`);
+      toast({ title: "Import Complete", description: parts.join(', ') + '.' });
       loadUsers();
     } catch (err: any) {
       toast({ title: "Import Error", description: err.message, variant: "destructive" });
