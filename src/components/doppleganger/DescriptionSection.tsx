@@ -9,16 +9,21 @@ interface Props {
   sheet: CharacterSheet;
   updateSheet: (updates: Partial<CharacterSheet>) => Promise<void>;
   bio: string;
+  job: string;
+  company: string;
   isEditing: boolean;
   onBioUpdate?: (bio: string) => void;
+  onProfileUpdate?: (field: string, value: any) => void;
 }
 
-export function DescriptionSection({ sheet, updateSheet, bio, isEditing, onBioUpdate }: Props) {
+export function DescriptionSection({ sheet, updateSheet, bio, job, company, isEditing, onBioUpdate, onProfileUpdate }: Props) {
   const pd = sheet.physical_description || { clothes: '', eyes: '', body: '', skin: '' };
 
   const [localPd, setLocalPd] = useState(pd);
   const [localPersonality, setLocalPersonality] = useState(sheet.personality || '');
   const [localBio, setLocalBio] = useState(bio);
+  const [localJob, setLocalJob] = useState(job);
+  const [localCompany, setLocalCompany] = useState(company);
 
   const savePd = useCallback((field: keyof PhysicalDescription, value: string) => {
     const updated = { ...localPd, [field]: value };
@@ -106,6 +111,34 @@ export function DescriptionSection({ sheet, updateSheet, bio, isEditing, onBioUp
               <div className="text-gray-300 text-sm p-2 bg-gray-800/30 rounded min-h-[60px] whitespace-pre-wrap">
                 {localBio || '—'}
               </div>
+            )}
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">Job</label>
+            {isEditing ? (
+              <Input
+                value={localJob}
+                onChange={(e) => setLocalJob(e.target.value)}
+                onBlur={() => onProfileUpdate?.('job', localJob)}
+                placeholder="Character's job or occupation..."
+                className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm"
+              />
+            ) : (
+              <div className="text-gray-200 text-sm">{localJob || '—'}</div>
+            )}
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">Company</label>
+            {isEditing ? (
+              <Input
+                value={localCompany}
+                onChange={(e) => setLocalCompany(e.target.value)}
+                onBlur={() => onProfileUpdate?.('company', localCompany)}
+                placeholder="Company or guild..."
+                className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm"
+              />
+            ) : (
+              <div className="text-gray-200 text-sm">{localCompany || '—'}</div>
             )}
           </div>
         </div>
