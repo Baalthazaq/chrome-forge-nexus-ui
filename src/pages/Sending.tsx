@@ -371,8 +371,36 @@ const Sending = () => {
     try {
       const allMembers = [currentUser?.id!, ...selectedGroupMembers].sort();
 
-      // Check for duplicate group with exact same members
-      // We'll check after creation since it's complex to do beforehand with sorted sets
+      // Check for duplicate group with exact same active members
+      const { data: myGroupStones } = await supabase
+        .from('stone_participants')
+        .select('stone_id')
+        .eq('user_id', currentUser?.id);
+
+      if (myGroupStones && myGroupStones.length > 0) {
+        const groupStoneIds = myGroupStones.map(s => s.stone_id);
+        const { data: groupStones } = await supabase
+          .from('stones')
+          .select('id')
+          .in('id', groupStoneIds)
+          .eq('is_group', true);
+
+        if (groupStones) {
+          for (const gs of groupStones) {
+            const { data: participants } = await supabase
+              .from('stone_participants')
+              .select('user_id')
+              .eq('stone_id', gs.id)
+              .is('left_at', null);
+
+            const existingMembers = (participants || []).map(p => p.user_id).sort();
+            if (existingMembers.length === allMembers.length && existingMembers.every((id, i) => id === allMembers[i])) {
+              toast.error('A group with these exact members already exists');
+              return;
+            }
+          }
+        }
+      }
 
       const { data, error } = await supabase
         .from('stones')
@@ -394,7 +422,7 @@ const Sending = () => {
 
       await supabase.from('stone_participants').insert(participantInserts);
 
-      // Auto-create contacts for all members
+      // Auto-create contacts for all members (batched)
       await autoCreateContacts(allMembers, groupName.trim());
 
       setShowNewGroup(false);
@@ -410,27 +438,35 @@ const Sending = () => {
 
   const autoCreateContacts = async (memberIds: string[], chatName: string) => {
     try {
+      // Build all possible contact pairs
+      const pairs: { user_id: string; contact_user_id: string }[] = [];
       for (const userId of memberIds) {
         for (const otherUserId of memberIds) {
-          if (userId === otherUserId) continue;
-
-          // Check if contact already exists
-          const { data: existing } = await supabase
-            .from('contacts')
-            .select('id, relationship')
-            .eq('user_id', userId)
-            .eq('contact_user_id', otherUserId)
-            .single();
-
-          if (!existing) {
-            await supabase.from('contacts').insert({
-              user_id: userId,
-              contact_user_id: otherUserId,
-              relationship: `From: ${chatName}`,
-              is_active: true,
-            });
-          }
+          if (userId !== otherUserId) pairs.push({ user_id: userId, contact_user_id: otherUserId });
         }
+      }
+
+      // Batch check existing contacts
+      const { data: existingContacts } = await supabase
+        .from('contacts')
+        .select('user_id, contact_user_id')
+        .in('user_id', memberIds)
+        .in('contact_user_id', memberIds);
+
+      const existingSet = new Set(
+        (existingContacts || []).map(c => `${c.user_id}:${c.contact_user_id}`)
+      );
+
+      const newContacts = pairs
+        .filter(p => !existingSet.has(`${p.user_id}:${p.contact_user_id}`))
+        .map(p => ({
+          ...p,
+          relationship: `From: ${chatName}`,
+          is_active: true,
+        }));
+
+      if (newContacts.length > 0) {
+        await supabase.from('contacts').insert(newContacts);
       }
     } catch (error) {
       console.error('Error auto-creating contacts:', error);
