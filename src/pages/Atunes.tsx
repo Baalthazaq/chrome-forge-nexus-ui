@@ -92,23 +92,23 @@ const Atunes = () => {
   };
 
   const payAccumulated = async (sub: Subscription) => {
-    if (sub.accumulated_amount <= 0) return;
+    // Pay accumulated amount, or if 0, pay one cycle
+    const payAmount = sub.accumulated_amount > 0 ? sub.accumulated_amount : sub.amount;
+    if (payAmount <= 0) return;
     try {
       if (sub.from_user_id) {
-        // If there's a recipient, send money to them
         const { error } = await supabase.functions.invoke("financial-operations", {
           body: {
             operation: "send_money",
             to_user_id: sub.from_user_id,
-            amount: sub.accumulated_amount,
+            amount: payAmount,
             description: `Manual payment: ${sub.description}`,
             targetUserId: effectiveUserId,
           },
         });
         if (error) throw error;
       } else {
-        // No recipient (system subscription) — just deduct credits directly
-        const newBalance = userBalance - sub.accumulated_amount;
+        const newBalance = userBalance - payAmount;
         const { error } = await supabase
           .from("profiles")
           .update({ credits: newBalance })
@@ -116,8 +116,11 @@ const Atunes = () => {
         if (error) throw error;
       }
 
-      await supabase.from("recurring_payments").update({ accumulated_amount: 0 }).eq("id", sub.id);
-      toast({ title: "Payment Sent", description: `Paid ${formatHex(sub.accumulated_amount)} for ${sub.description}` });
+      await supabase.from("recurring_payments").update({ 
+        accumulated_amount: 0,
+        total_times_sent: sub.total_times_sent + 1,
+      }).eq("id", sub.id);
+      toast({ title: "Payment Sent", description: `Paid ${formatHex(payAmount)} for ${sub.description}` });
       loadData();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -276,11 +279,11 @@ const Atunes = () => {
                       </div>
                     </div>
 
-                    {/* Dates */}
-                    {sub.last_sent_at && (
+                    {/* Charge count */}
+                    {sub.total_times_sent > 0 && (
                       <div className="flex items-center gap-2 text-xs text-gray-500">
                         <Clock className="w-3 h-3" />
-                        Last charged: {new Date(sub.last_sent_at).toLocaleDateString()}
+                        Charged {sub.total_times_sent} time{sub.total_times_sent !== 1 ? 's' : ''} total
                       </div>
                     )}
 
@@ -313,7 +316,7 @@ const Atunes = () => {
                       {sub.status === "manual" && (
                         <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white text-xs"
                           onClick={() => setPayDialog(sub)}>
-                          <CreditCard className="w-3 h-3 mr-1" /> Pay {sub.accumulated_amount > 0 ? formatHex(sub.accumulated_amount) : "Now"}
+                          <CreditCard className="w-3 h-3 mr-1" /> Pay {formatHex(sub.accumulated_amount > 0 ? sub.accumulated_amount : sub.amount)}
                         </Button>
                       )}
                     </div>
@@ -364,25 +367,33 @@ const Atunes = () => {
       <Dialog open={!!payDialog} onOpenChange={() => setPayDialog(null)}>
         <DialogContent className="bg-gray-900 border-gray-700">
           <DialogHeader>
-            <DialogTitle className="text-gray-100">Pay Accumulated Balance</DialogTitle>
+            <DialogTitle className="text-gray-100">Pay Subscription</DialogTitle>
           </DialogHeader>
-          {payDialog && (
-            <div className="space-y-3">
-              <p className="text-gray-400 text-sm">
-                Pay <span className="text-red-400 font-mono">{formatHex(payDialog.accumulated_amount)}</span> for{" "}
-                <span className="text-purple-400">{payDialog.description}</span>?
-              </p>
-              <p className="text-xs text-gray-500">
-                Your balance: <span className="font-mono">{formatHex(userBalance)}</span>
-              </p>
-              {userBalance < payDialog.accumulated_amount && (
-                <div className="flex items-center gap-2 text-yellow-400 text-xs">
-                  <AlertTriangle className="w-3 h-3" />
-                  <span>This will overdraft your account</span>
-                </div>
-              )}
-            </div>
-          )}
+          {payDialog && (() => {
+            const payAmount = payDialog.accumulated_amount > 0 ? payDialog.accumulated_amount : payDialog.amount;
+            return (
+              <div className="space-y-3">
+                <p className="text-gray-400 text-sm">
+                  Pay <span className="text-red-400 font-mono">{formatHex(payAmount)}</span> for{" "}
+                  <span className="text-purple-400">{payDialog.description}</span>?
+                  {payDialog.accumulated_amount <= 0 && (
+                    <span className="text-gray-500 text-xs block mt-1">
+                      (One cycle payment — {formatHex(payDialog.amount)}/{payDialog.interval_type})
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Your balance: <span className="font-mono">{formatHex(userBalance)}</span>
+                </p>
+                {userBalance < payAmount && (
+                  <div className="flex items-center gap-2 text-yellow-400 text-xs">
+                    <AlertTriangle className="w-3 h-3" />
+                    <span>This will overdraft your account</span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           <DialogFooter>
             <Button variant="outline" className="border-gray-600 text-gray-400" onClick={() => setPayDialog(null)}>
               Cancel
