@@ -534,23 +534,21 @@ const Vault = () => {
                       <p>Unpaid Subs: {formatHex(unpaidSubsTotal)}</p>
                       <p className="text-purple-400">Annual Subs: {formatHex(annualSubsTotal)}/yr</p>
                     </div>
-                    {(billsTotal > 0 || unpaidSubsTotal > 0) && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3 w-full bg-red-900/50 border-red-700 hover:bg-red-800/50 text-red-400"
-                        onClick={() => {
-                          if (bills.length > 0) {
-                            const allBillIds = bills.map(b => b.id);
-                            checkOverdraftAndPay(allBillIds);
-                          }
-                        }}
-                        disabled={bills.length === 0}
-                      >
-                        <Receipt className="w-4 h-4 mr-2" />
-                        Pay All Bills ({bills.length})
-                      </Button>
-                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 w-full bg-red-900/50 border-red-700 hover:bg-red-800/50 text-red-400"
+                      onClick={() => {
+                        if (bills.length > 0) {
+                          const allBillIds = bills.map(b => b.id);
+                          checkOverdraftAndPay(allBillIds);
+                        }
+                      }}
+                      disabled={bills.length === 0}
+                    >
+                      <Receipt className="w-4 h-4 mr-2" />
+                      Pay All Bills ({bills.length})
+                    </Button>
                   </>
                 );
               })()}
