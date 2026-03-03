@@ -306,13 +306,13 @@ const Roldex = () => {
 
                   {/* Contact Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between space-x-2 mb-1">
-                      <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
                         <h3 className="text-lg font-semibold text-white truncate">
                           {profile.character_name || 'Unknown Character'}
                         </h3>
                         {isContact && (
-                          <Badge variant="outline" className={getTrustColor(personalRating)}>
+                          <Badge variant="outline" className={`${getTrustColor(personalRating)} flex-shrink-0`}>
                             {trustLevel}
                           </Badge>
                         )}
@@ -322,7 +322,7 @@ const Roldex = () => {
                         variant="outline" 
                         size="sm" 
                         onClick={() => handleRemoveContact(contactData.id)}
-                        className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white p-1 h-8 w-8"
+                        className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white p-1 h-8 w-8 flex-shrink-0"
                       >
                         <Trash2 className="w-3 h-3" />
                       </Button>
