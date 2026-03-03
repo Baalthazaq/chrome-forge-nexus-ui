@@ -525,7 +525,7 @@ const Vault = () => {
                 const totalLiabilities = billsTotal + unpaidSubsTotal;
                 return (
                   <>
-                    <div className={`text-2xl font-bold ${totalLiabilities > 0 ? "text-red-400" : "text-gray-500"}`}>
+                    <div className="text-2xl font-bold text-red-400">
                       {formatHex(totalLiabilities)}
                     </div>
                     <div className="text-xs text-gray-500 mt-2 space-y-0.5">
