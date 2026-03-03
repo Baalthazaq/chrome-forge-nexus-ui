@@ -35,14 +35,13 @@ export const useAppNotifications = () => {
         .eq("status", "pending");
       results["vault"] = (pendingBills ?? 0) > 0;
 
-      // @tunes: overdue recurring payments
-      const { count: overduePayments } = await supabase
+      // @tunes: subscriptions with accumulated debt (manual/paused)
+      const { count: accumulatedDebt } = await supabase
         .from("recurring_payments")
         .select("id", { count: "exact", head: true })
         .eq("to_user_id", user.id)
-        .eq("is_active", true)
-        .lt("next_send_at", new Date().toISOString());
-      results["atunes"] = (overduePayments ?? 0) > 0;
+        .gt("accumulated_amount", 0);
+      results["atunes"] = (accumulatedDebt ?? 0) > 0;
 
       // CVNews: breaking news currently active
       const { count: breakingNews } = await supabase
