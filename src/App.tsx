@@ -36,6 +36,7 @@ import BHoldRAdmin from "./pages/BHoldRAdmin";
 import DopplegangerAdmin from "./pages/DopplegangerAdmin";
 import Suggestion from "./pages/Suggestion";
 import SuggestionAdmin from "./pages/SuggestionAdmin";
+import OrganizationsAdmin from "./pages/OrganizationsAdmin";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +80,7 @@ const App = () => (
             <Route path="/admin/timestop" element={<TimestopAdmin />} />
             <Route path="/suggestion" element={<Suggestion />} />
             <Route path="/admin/suggestion" element={<SuggestionAdmin />} />
+            <Route path="/admin/organizations" element={<OrganizationsAdmin />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
