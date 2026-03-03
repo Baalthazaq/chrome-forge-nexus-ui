@@ -51,35 +51,15 @@ const Maze = () => {
           </div>
         </div>
 
-        {/* Mock map area */}
+        {/* Map area */}
         <Card className="bg-gray-900/40 border-gray-700/50 p-1 mb-6 overflow-hidden">
-          <div className="relative h-64 md:h-80 bg-gray-900/80 rounded-md flex items-center justify-center overflow-hidden">
-            {/* Fake map grid */}
-            <div className="absolute inset-0 opacity-10" style={{
-              backgroundImage: 'linear-gradient(rgba(20,184,166,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(20,184,166,0.5) 1px, transparent 1px)',
-              backgroundSize: '24px 24px'
-            }} />
-            {/* Fake roads */}
-            <div className="absolute top-1/2 left-0 right-0 h-px bg-teal-500/20" />
-            <div className="absolute top-0 bottom-0 left-1/2 w-px bg-teal-500/20" />
-            <div className="absolute top-1/4 left-0 right-0 h-px bg-teal-500/10" />
-            <div className="absolute top-0 bottom-0 left-1/4 w-px bg-teal-500/10" />
-            <div className="absolute top-0 bottom-0 left-3/4 w-px bg-teal-500/10" />
-            <div className="absolute top-3/4 left-0 right-0 h-px bg-teal-500/10" />
-
-            {/* Center pin */}
-            <div className="relative z-10 flex flex-col items-center">
-              <MapPin className="w-10 h-10 text-teal-400 drop-shadow-lg animate-bounce" />
-              <div className="mt-2 px-3 py-1 bg-black/70 border border-teal-500/30 rounded text-teal-300 text-xs font-mono">
-                You are here
-              </div>
-            </div>
-
-            {/* Scattered fake pins */}
-            <MapPin className="absolute top-8 left-16 w-4 h-4 text-gray-600" />
-            <MapPin className="absolute top-20 right-24 w-4 h-4 text-gray-600" />
-            <MapPin className="absolute bottom-16 left-1/3 w-4 h-4 text-gray-600" />
-            <MapPin className="absolute bottom-24 right-12 w-4 h-4 text-gray-600" />
+          <div className="relative h-[500px] md:h-[600px] bg-gray-900/80 rounded-md overflow-auto cursor-grab active:cursor-grabbing">
+            <img
+              src="https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/Map/RaccaDigitalMap.png"
+              alt="Map of Raccassammeddi"
+              className="min-w-full min-h-full object-contain"
+              draggable={false}
+            />
           </div>
         </Card>
 
