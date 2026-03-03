@@ -440,6 +440,10 @@ const Vault = () => {
                <div className={`text-sm ${getHexBreakdown(userProfile?.credits || 0).colorClass} mt-1`}>
                  {getHexBreakdown(userProfile?.credits || 0).breakdown}
                </div>
+               <p className="text-xs text-gray-400 mt-2">
+                 Available for transactions
+               </p>
+               <p className="text-xs mt-2">&nbsp;</p>
               <Dialog open={sendMoneyOpen} onOpenChange={setSendMoneyOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="mt-3 w-full bg-green-900/50 border-green-700 hover:bg-green-800/50 text-green-400">
