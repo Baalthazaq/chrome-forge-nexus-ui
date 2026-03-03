@@ -167,8 +167,9 @@ const Suggestion = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="text-gray-400 hover:text-white">
-              <ArrowLeft className="w-5 h-5" />
+            <Button variant="ghost" onClick={() => navigate("/")} className="text-gray-400 hover:text-white">
+              <ArrowLeft className="w-5 h-5 mr-2" />
+              Back to OS
             </Button>
             <h1 className="text-2xl font-bold text-green-400">Suggestion</h1>
           </div>
