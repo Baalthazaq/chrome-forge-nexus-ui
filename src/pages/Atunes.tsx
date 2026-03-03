@@ -289,34 +289,53 @@ const Atunes = () => {
 
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-800">
-                      {sub.status !== "active" && sub.status !== "cancelled" && (
-                        <Button size="sm" variant="outline" className="border-green-600/50 text-green-400 hover:bg-green-900/30 text-xs"
-                          onClick={() => setStatusDialog({ sub, newStatus: "active" })}>
-                          <Play className="w-3 h-3 mr-1" /> Activate
-                        </Button>
+                      {/* Active/Manual toggle */}
+                      {sub.status !== "cancelled" && sub.status !== "paused" && (
+                        sub.status === "active" ? (
+                          <Button size="sm" variant="outline" className="border-blue-600/50 text-blue-400 hover:bg-blue-900/30 text-xs"
+                            onClick={() => setStatusDialog({ sub, newStatus: "manual" })}>
+                            <Hand className="w-3 h-3 mr-1" /> Switch to Manual
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" className="border-green-600/50 text-green-400 hover:bg-green-900/30 text-xs"
+                            onClick={() => setStatusDialog({ sub, newStatus: "active" })}>
+                            <Play className="w-3 h-3 mr-1" /> Switch to Auto
+                          </Button>
+                        )
                       )}
-                      {sub.status === "active" && (
-                        <Button size="sm" variant="outline" className="border-yellow-600/50 text-yellow-400 hover:bg-yellow-900/30 text-xs"
-                          onClick={() => setStatusDialog({ sub, newStatus: "paused" })}>
-                          <Pause className="w-3 h-3 mr-1" /> Pause
-                        </Button>
+                      {/* Pause/Unpause */}
+                      {sub.status !== "cancelled" && (
+                        sub.status === "paused" ? (
+                          <Button size="sm" variant="outline" className="border-green-600/50 text-green-400 hover:bg-green-900/30 text-xs"
+                            onClick={() => setStatusDialog({ sub, newStatus: "active" })}>
+                            <Play className="w-3 h-3 mr-1" /> Unpause
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" className="border-yellow-600/50 text-yellow-400 hover:bg-yellow-900/30 text-xs"
+                            onClick={() => setStatusDialog({ sub, newStatus: "paused" })}>
+                            <Pause className="w-3 h-3 mr-1" /> Pause
+                          </Button>
+                        )
                       )}
-                      {(sub.status === "active" || sub.status === "paused") && (
-                        <Button size="sm" variant="outline" className="border-blue-600/50 text-blue-400 hover:bg-blue-900/30 text-xs"
-                          onClick={() => setStatusDialog({ sub, newStatus: "manual" })}>
-                          <Hand className="w-3 h-3 mr-1" /> Set Manual
-                        </Button>
-                      )}
+                      {/* Cancel */}
                       {sub.status !== "cancelled" && (
                         <Button size="sm" variant="outline" className="border-red-600/50 text-red-400 hover:bg-red-900/30 text-xs"
                           onClick={() => setStatusDialog({ sub, newStatus: "cancelled" })}>
                           <XCircle className="w-3 h-3 mr-1" /> Cancel
                         </Button>
                       )}
+                      {/* Manual pay button */}
                       {sub.status === "manual" && (
                         <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white text-xs"
                           onClick={() => setPayDialog(sub)}>
                           <CreditCard className="w-3 h-3 mr-1" /> Pay {formatHex(sub.accumulated_amount > 0 ? sub.accumulated_amount : sub.amount)}
+                        </Button>
+                      )}
+                      {/* Pay accumulated debt on cancelled subs */}
+                      {sub.status === "cancelled" && sub.accumulated_amount > 0 && (
+                        <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white text-xs"
+                          onClick={() => setPayDialog(sub)}>
+                          <CreditCard className="w-3 h-3 mr-1" /> Pay Remaining {formatHex(sub.accumulated_amount)}
                         </Button>
                       )}
                     </div>
@@ -341,13 +360,16 @@ const Atunes = () => {
                 <span className={statusConfig[statusDialog.newStatus]?.color}>{statusDialog.newStatus}</span>?
               </p>
               {statusDialog.newStatus === "paused" && (
-                <p className="text-xs text-yellow-400/80">Charges will accumulate but won't be deducted until reactivated.</p>
+                <p className="text-xs text-yellow-400/80">Charges will accumulate but won't be deducted. Bulk pay options will skip this subscription.</p>
               )}
               {statusDialog.newStatus === "manual" && (
-                <p className="text-xs text-blue-400/80">Charges will accumulate. You must manually pay from this page.</p>
+                <p className="text-xs text-blue-400/80">Charges will accumulate. You must manually pay from this page or App of Holding.</p>
               )}
               {statusDialog.newStatus === "cancelled" && (
-                <p className="text-xs text-red-400/80">This subscription will stop accumulating charges entirely.</p>
+                <p className="text-xs text-red-400/80">No further charges will accumulate. Any existing debt will remain payable.</p>
+              )}
+              {statusDialog.newStatus === "active" && (
+                <p className="text-xs text-green-400/80">Charges will be automatically deducted when time advances.</p>
               )}
             </div>
           )}

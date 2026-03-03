@@ -510,25 +510,33 @@ const Vault = () => {
           </Card>
           <Card className="bg-gray-900/50 border-gray-700/50 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-300">Unpaid Bills</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-300">Liabilities</CardTitle>
               <Receipt className="h-4 w-4 text-red-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-400">
-                ⏣{bills.reduce((sum, bill) => sum + bill.amount, 0)}
-              </div>
-              <div className="text-sm text-red-400 mt-1">
-                {getHexBreakdown(bills.reduce((sum, bill) => sum + bill.amount, 0)).breakdown}
-              </div>
-              <p className="text-xs text-gray-400 mt-2">
-                Total owed ({bills.length} bill{bills.length !== 1 ? 's' : ''})
-              </p>
-              <Link to="/atunes">
-                <Button variant="outline" size="sm" className="mt-3 w-full bg-red-900/50 border-red-700 hover:bg-red-800/50 text-red-400">
-                  <Receipt className="w-4 h-4 mr-2" />
-                  Pay Bills
-                </Button>
-              </Link>
+              {(() => {
+                const billsTotal = bills.reduce((sum, bill) => sum + bill.amount, 0);
+                const unpaidSubsTotal = recurringPayments.reduce((sum, rp) => sum + rp.accumulated_amount, 0);
+                const annualSubsTotal = recurringPayments
+                  .filter((rp: any) => rp.status !== "cancelled")
+                  .reduce((sum: number, rp: any) => {
+                    const multiplier: Record<string, number> = { daily: 365, weekly: 52, monthly: 13, yearly: 1 };
+                    return sum + rp.amount * (multiplier[rp.interval_type] || 1);
+                  }, 0);
+                const totalLiabilities = billsTotal + unpaidSubsTotal;
+                return (
+                  <>
+                    <div className={`text-2xl font-bold ${totalLiabilities > 0 ? "text-red-400" : "text-gray-500"}`}>
+                      {formatHex(totalLiabilities)}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-2 space-y-0.5">
+                      <p>Bills: {formatHex(billsTotal)} ({bills.length})</p>
+                      <p>Unpaid Subs: {formatHex(unpaidSubsTotal)}</p>
+                      <p className="text-purple-400">Annual Subs: {formatHex(annualSubsTotal)}/yr</p>
+                    </div>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
           <Card className="bg-gray-900/50 border-gray-700/50 backdrop-blur-sm">
@@ -538,8 +546,10 @@ const Vault = () => {
             </CardHeader>
             <CardContent>
               {(() => {
-                const unpaidTotal = bills.reduce((sum, bill) => sum + bill.amount, 0);
-                const netAssets = (userProfile?.credits || 0) + totalAssets - unpaidTotal;
+                const unpaidBills = bills.reduce((sum, bill) => sum + bill.amount, 0);
+                const unpaidSubs = recurringPayments.reduce((sum, rp) => sum + rp.accumulated_amount, 0);
+                const totalLiabilities = unpaidBills + unpaidSubs;
+                const netAssets = (userProfile?.credits || 0) + totalAssets - totalLiabilities;
                 return (
                   <>
                     <div className="text-2xl font-bold text-yellow-400">
@@ -551,7 +561,7 @@ const Vault = () => {
                     <div className="text-xs text-gray-500 mt-2 space-y-0.5">
                       <p>Hex Balance: ⏣{userProfile?.credits || 0}</p>
                       <p>Inventory: ⏣{totalAssets}</p>
-                      <p>Unpaid Bills: -⏣{unpaidTotal}</p>
+                      <p>Liabilities: -⏣{totalLiabilities}</p>
                     </div>
                   </>
                 );
@@ -639,6 +649,93 @@ const Vault = () => {
                   </Button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Subscriptions Section */}
+        {recurringPayments.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-purple-400 flex items-center">
+                <RefreshCw className="w-5 h-5 mr-2" />
+                Subscriptions ({recurringPayments.length})
+              </h2>
+              {(() => {
+                const payableSubs = recurringPayments.filter((rp: any) => rp.accumulated_amount > 0 && rp.status !== "paused");
+                const payableTotal = payableSubs.reduce((sum: number, rp: any) => sum + rp.accumulated_amount, 0);
+                if (payableSubs.length === 0) return null;
+                return (
+                  <Button
+                    size="sm"
+                    className="bg-purple-600 hover:bg-purple-700"
+                    onClick={async () => {
+                      const activeUserId = impersonatedUser?.user_id || user?.id;
+                      if (!activeUserId) return;
+                      const currentCredits = userProfile?.credits || 0;
+                      if (currentCredits - payableTotal < -600) {
+                        toast({ title: "Error", description: "Payment exceeds overdraft limit (1 Bag / 600 Hex).", variant: "destructive" });
+                        return;
+                      }
+                      try {
+                        for (const sub of payableSubs) {
+                          if (sub.from_user_id) {
+                            await supabase.functions.invoke("financial-operations", {
+                              body: { operation: "send_money", to_user_id: sub.from_user_id, amount: sub.accumulated_amount, description: `Sub payment: ${sub.description}`, targetUserId: activeUserId }
+                            });
+                          } else {
+                            const { data: profile } = await supabase.from("profiles").select("credits").eq("user_id", activeUserId).single();
+                            await supabase.from("profiles").update({ credits: (profile?.credits || 0) - sub.accumulated_amount }).eq("user_id", activeUserId);
+                          }
+                          await supabase.from("recurring_payments").update({ accumulated_amount: 0, total_times_sent: sub.total_times_sent + 1 }).eq("id", sub.id);
+                        }
+                        toast({ title: "Subscriptions Paid", description: `Paid ${formatHex(payableTotal)} across ${payableSubs.length} sub${payableSubs.length > 1 ? "s" : ""}` });
+                        loadData();
+                      } catch (error: any) {
+                        toast({ title: "Error", description: error.message, variant: "destructive" });
+                      }
+                    }}
+                  >
+                    <CreditCard className="w-4 h-4 mr-1" />
+                    Pay All Subs ({formatHex(payableTotal)})
+                  </Button>
+                );
+              })()}
+            </div>
+            <div className="grid gap-3">
+              {recurringPayments.map((rp: any) => {
+                const statusColors: Record<string, string> = {
+                  active: "text-green-400 border-green-500/50 bg-green-900/20",
+                  manual: "text-blue-400 border-blue-500/50 bg-blue-900/20",
+                  paused: "text-yellow-400 border-yellow-500/50 bg-yellow-900/20",
+                  cancelled: "text-red-400 border-red-500/50 bg-red-900/20",
+                };
+                const sc = statusColors[rp.status] || statusColors.active;
+                const meta = rp.metadata as any;
+                return (
+                  <Card key={rp.id} className={`border ${sc} backdrop-blur-sm`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-gray-200 truncate">{meta?.item_name || rp.description}</h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className={`text-xs capitalize ${sc}`}>{rp.status}</Badge>
+                            <span className="text-xs text-gray-500">{formatHex(rp.amount)}/{rp.interval_type}</span>
+                            {meta?.company && <span className="text-xs text-gray-500">• {meta.company}</span>}
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          {rp.accumulated_amount > 0 ? (
+                            <div className="text-red-400 font-mono text-sm">Owes {formatHex(rp.accumulated_amount)}</div>
+                          ) : (
+                            <div className="text-gray-500 text-sm">Paid up</div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         )}
