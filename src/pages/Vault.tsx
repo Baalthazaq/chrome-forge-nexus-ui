@@ -428,10 +428,10 @@ const Vault = () => {
 
         {/* Balance Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-gray-900/50 border-gray-700/50 backdrop-blur-sm">
+          <Card className="bg-gray-900/50 border-green-700/50 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-300">Hex Balance</CardTitle>
-              <CreditCard className="h-4 w-4 text-cyan-400" />
+              <CardTitle className="text-sm font-medium text-green-400">Hex Balance</CardTitle>
+              <CreditCard className="h-4 w-4 text-green-400" />
             </CardHeader>
             <CardContent>
               <div className={`text-2xl font-bold ${getHexBreakdown(userProfile?.credits || 0).colorClass}`}>
@@ -508,9 +508,9 @@ const Vault = () => {
               </Dialog>
             </CardContent>
           </Card>
-          <Card className="bg-gray-900/50 border-gray-700/50 backdrop-blur-sm">
+          <Card className="bg-gray-900/50 border-red-700/50 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-300">Liabilities</CardTitle>
+              <CardTitle className="text-sm font-medium text-red-400">Liabilities</CardTitle>
               <Receipt className="h-4 w-4 text-red-400" />
             </CardHeader>
             <CardContent>
@@ -534,14 +534,31 @@ const Vault = () => {
                       <p>Unpaid Subs: {formatHex(unpaidSubsTotal)}</p>
                       <p className="text-purple-400">Annual Subs: {formatHex(annualSubsTotal)}/yr</p>
                     </div>
+                    {(billsTotal > 0 || unpaidSubsTotal > 0) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 w-full bg-red-900/50 border-red-700 hover:bg-red-800/50 text-red-400"
+                        onClick={() => {
+                          if (bills.length > 0) {
+                            const allBillIds = bills.map(b => b.id);
+                            checkOverdraftAndPay(allBillIds);
+                          }
+                        }}
+                        disabled={bills.length === 0}
+                      >
+                        <Receipt className="w-4 h-4 mr-2" />
+                        Pay All Bills ({bills.length})
+                      </Button>
+                    )}
                   </>
                 );
               })()}
             </CardContent>
           </Card>
-          <Card className="bg-gray-900/50 border-gray-700/50 backdrop-blur-sm">
+          <Card className="bg-gray-900/50 border-yellow-700/50 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-300">Total Assets</CardTitle>
+              <CardTitle className="text-sm font-medium text-yellow-400">Total Assets</CardTitle>
               <TrendingUp className="h-4 w-4 text-yellow-400" />
             </CardHeader>
             <CardContent>
