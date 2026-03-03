@@ -199,10 +199,9 @@ export function CharacterHeader({
 
           {/* Identity Selectors */}
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {/* Name */}
             <div>
               <label className="text-gray-300 text-xs mb-1 block">Name</label>
-              {editingName ? (
+              {isEditing && editingName ? (
                 <div className="flex items-center gap-1">
                   <Input
                     value={nameValue}
@@ -217,9 +216,11 @@ export function CharacterHeader({
               ) : (
                 <div className="flex items-center gap-2">
                   <div className="text-2xl font-bold text-white truncate">{profile.character_name || 'Unnamed'}</div>
-                  <button onClick={() => { setNameValue(profile.character_name || ''); setEditingName(true); }} className="text-gray-500 hover:text-gray-300">
-                    <Pencil className="w-3 h-3" />
-                  </button>
+                  {isEditing && (
+                    <button onClick={() => { setNameValue(profile.character_name || ''); setEditingName(true); }} className="text-gray-500 hover:text-gray-300">
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               )}
             </div>
