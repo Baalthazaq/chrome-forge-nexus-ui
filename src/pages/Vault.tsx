@@ -433,7 +433,7 @@ const Vault = () => {
               <CardTitle className="text-sm font-medium text-green-400">Hex Balance</CardTitle>
               <CreditCard className="h-4 w-4 text-green-400" />
             </CardHeader>
-            <CardContent className="flex flex-col h-full">
+            <CardContent>
                <div className={`text-2xl font-bold ${getHexBreakdown(userProfile?.credits || 0).colorClass}`}>
                  ⏣{userProfile?.credits || 0}
                </div>
@@ -443,7 +443,6 @@ const Vault = () => {
                <p className="text-xs text-gray-400 mt-2">
                  Available for transactions
                </p>
-               <div className="mt-auto">
               <Dialog open={sendMoneyOpen} onOpenChange={setSendMoneyOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="mt-3 w-full bg-green-900/50 border-green-700 hover:bg-green-800/50 text-green-400">
@@ -507,7 +506,6 @@ const Vault = () => {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-              </div>
             </CardContent>
           </Card>
           <Card className="bg-gray-900/50 border-red-700/50 backdrop-blur-sm">
@@ -515,7 +513,7 @@ const Vault = () => {
               <CardTitle className="text-sm font-medium text-red-400">Liabilities</CardTitle>
               <Receipt className="h-4 w-4 text-red-400" />
             </CardHeader>
-            <CardContent className="flex flex-col h-full">
+            <CardContent>
               {(() => {
                 const billsTotal = bills.reduce((sum, bill) => sum + bill.amount, 0);
                 const unpaidSubsTotal = recurringPayments.reduce((sum, rp) => sum + rp.accumulated_amount, 0);
@@ -536,7 +534,6 @@ const Vault = () => {
                       <p>Unpaid Subs: {formatHex(unpaidSubsTotal)}</p>
                       <p className="text-purple-400">Annual Subs: {formatHex(annualSubsTotal)}/yr</p>
                     </div>
-                    <div className="mt-auto">
                     <Button
                       variant="outline"
                       size="sm"
@@ -552,7 +549,6 @@ const Vault = () => {
                       <Receipt className="w-4 h-4 mr-2" />
                       Pay All Bills ({bills.length})
                     </Button>
-                    </div>
                   </>
                 );
               })()}
