@@ -12,7 +12,7 @@ import { useMazeData, MapLocation, MapArea } from '@/hooks/useMazeData';
 import { InteractiveMap, LOCATION_ICON_TYPES } from '@/components/maze/InteractiveMap';
 import { AreaPanel } from '@/components/maze/AreaPanel';
 import { LocationPanel } from '@/components/maze/LocationPanel';
-import { findRoute } from '@/lib/pathfinding';
+import { findRoute, RouteEndpoint } from '@/lib/pathfinding';
 import { toast } from 'sonner';
 
 const Maze = () => {
