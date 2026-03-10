@@ -270,6 +270,9 @@ const Index = () => {
                       {app.comingSoon && (
                         <span className="text-[10px] text-yellow-500/70 font-mono mt-1 block">Coming Soon</span>
                       )}
+                      {(app as any).openBeta && (
+                        <span className="text-[10px] text-teal-400/70 font-mono mt-1 block">Open Beta</span>
+                      )}
                     </div>
                   </div>
 
