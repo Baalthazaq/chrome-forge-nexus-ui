@@ -58,6 +58,8 @@ export const InteractiveMap = ({
 }: InteractiveMapProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [hoveredAreas, setHoveredAreas] = useState<Set<string>>(new Set());
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
   // Calculate zoom transform from area polygon
   const zoomTransform = useMemo(() => {
