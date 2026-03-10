@@ -133,18 +133,21 @@ export const InteractiveMap = ({
             const pts = area.polygon_points.map(p => `${p.x},${p.y}`).join(' ');
             const isSelected = selectedArea?.id === area.id;
             return (
-              <polygon
-                key={area.id}
-                points={pts}
-                fill={isSelected ? 'rgba(20,184,166,0.25)' : 'rgba(20,184,166,0.1)'}
-                stroke={isSelected ? 'rgba(20,184,166,0.8)' : 'rgba(20,184,166,0.4)'}
-                strokeWidth={isSelected ? 0.4 : 0.2}
-                className="pointer-events-auto cursor-pointer transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAreaClick?.(area);
-                }}
-              />
+              <g key={area.id}>
+                <polygon
+                  points={pts}
+                  fill={isSelected ? 'rgba(20,184,166,0.25)' : 'rgba(20,184,166,0.1)'}
+                  stroke={isSelected ? 'rgba(20,184,166,0.8)' : 'rgba(20,184,166,0.4)'}
+                  strokeWidth={isSelected ? 0.4 : 0.2}
+                  className="pointer-events-auto cursor-pointer transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAreaClick?.(area);
+                  }}
+                >
+                  <title>{area.name}</title>
+                </polygon>
+              </g>
             );
           })}
 
