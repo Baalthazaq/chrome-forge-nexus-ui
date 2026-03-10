@@ -186,18 +186,6 @@ export const InteractiveMap = ({
                     e.stopPropagation();
                     onAreaClick?.(area);
                   }}
-                  onMouseEnter={() => setHoveredAreas(prev => new Set(prev).add(area.id))}
-                  onMouseLeave={() => setHoveredAreas(prev => {
-                    const next = new Set(prev);
-                    next.delete(area.id);
-                    return next;
-                  })}
-                  onMouseMove={(e) => {
-                    const container = containerRef.current;
-                    if (!container) return;
-                    const rect = container.getBoundingClientRect();
-                    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-                  }}
                 />
               </g>
             );
