@@ -32,7 +32,7 @@ const Maze = () => {
   // Add location
   const [placingLocation, setPlacingLocation] = useState(false);
   const [newLocCoords, setNewLocCoords] = useState<{ x: number; y: number } | null>(null);
-  const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '' });
+  const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', marker_color: '#14b8a6' });
 
   const publicLocations = maze.locations.filter(l => l.is_public || l.user_id === user?.id);
 
