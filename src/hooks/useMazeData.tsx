@@ -8,6 +8,7 @@ export interface MapLocation {
   description: string | null;
   icon_type: string;
   image_url: string | null;
+  marker_color: string;
   x: number;
   y: number;
   is_public: boolean;

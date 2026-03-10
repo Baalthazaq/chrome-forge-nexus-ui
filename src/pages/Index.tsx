@@ -108,7 +108,7 @@ const apps = [
     description: "Navigation",
     route: "/maze",
     color: "from-teal-500 to-green-600",
-    comingSoon: true
+    openBeta: true
   },
   {
     id: "succubus",
@@ -269,6 +269,9 @@ const Index = () => {
                       </p>
                       {app.comingSoon && (
                         <span className="text-[10px] text-yellow-500/70 font-mono mt-1 block">Coming Soon</span>
+                      )}
+                      {(app as any).openBeta && (
+                        <span className="text-[10px] text-teal-400/70 font-mono mt-1 block">Open Beta</span>
                       )}
                     </div>
                   </div>

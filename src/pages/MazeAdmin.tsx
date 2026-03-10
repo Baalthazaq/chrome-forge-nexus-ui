@@ -28,7 +28,7 @@ const MazeAdmin = () => {
   // Location state
   const [editingLocation, setEditingLocation] = useState<Partial<MapLocation> | null>(null);
   const [placingLocation, setPlacingLocation] = useState(false);
-  const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true });
+  const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6' });
 
   // Area state
   const [editingArea, setEditingArea] = useState<Partial<MapArea> | null>(null);
@@ -47,7 +47,7 @@ const MazeAdmin = () => {
   const startPlaceLocation = () => {
     setMapMode('place-location');
     setPlacingLocation(true);
-    setLocForm({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true });
+    setLocForm({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6' });
     toast.info('Click on the map to place a location');
   };
 
@@ -68,6 +68,7 @@ const MazeAdmin = () => {
           icon_type: locForm.icon_type,
           image_url: locForm.image_url || null,
           is_public: locForm.is_public,
+          marker_color: locForm.marker_color,
         });
         toast.success('Location updated');
       } else {
@@ -79,6 +80,7 @@ const MazeAdmin = () => {
           x: editingLocation.x!,
           y: editingLocation.y!,
           is_public: locForm.is_public,
+          marker_color: locForm.marker_color,
           user_id: user.id,
         });
         toast.success('Location created');
@@ -91,7 +93,7 @@ const MazeAdmin = () => {
 
   const startEditLocation = (loc: MapLocation) => {
     setEditingLocation(loc);
-    setLocForm({ name: loc.name, description: loc.description || '', icon_type: loc.icon_type, image_url: loc.image_url || '', is_public: loc.is_public });
+    setLocForm({ name: loc.name, description: loc.description || '', icon_type: loc.icon_type, image_url: loc.image_url || '', is_public: loc.is_public, marker_color: loc.marker_color || '#14b8a6' });
   };
 
   // --- Area Handlers ---
@@ -388,6 +390,17 @@ const MazeAdmin = () => {
                   {LOCATION_ICON_TYPES.map(t => <SelectItem key={t} value={t} className="text-gray-200">{t}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label className="text-gray-300">Marker Color</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <input type="color" value={locForm.marker_color} onChange={e => setLocForm(f => ({ ...f, marker_color: e.target.value }))} className="w-8 h-8 rounded cursor-pointer bg-transparent border border-gray-600" />
+                <div className="flex gap-1 flex-wrap">
+                  {['#14b8a6','#f59e0b','#ef4444','#3b82f6','#a855f7','#ec4899','#22c55e','#f97316','#06b6d4','#8b5cf6','#ffffff','#6b7280'].map(c => (
+                    <button key={c} onClick={() => setLocForm(f => ({ ...f, marker_color: c }))} className={`w-5 h-5 rounded-full border ${locForm.marker_color === c ? 'border-white scale-125' : 'border-gray-600'}`} style={{ backgroundColor: c }} />
+                  ))}
+                </div>
+              </div>
             </div>
             <div>
               <Label className="text-gray-300">Image URL</Label>

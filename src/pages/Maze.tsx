@@ -32,7 +32,7 @@ const Maze = () => {
   // Add location
   const [placingLocation, setPlacingLocation] = useState(false);
   const [newLocCoords, setNewLocCoords] = useState<{ x: number; y: number } | null>(null);
-  const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '' });
+  const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', marker_color: '#14b8a6' });
 
   const publicLocations = maze.locations.filter(l => l.is_public || l.user_id === user?.id);
 
@@ -94,6 +94,7 @@ const Maze = () => {
         description: locForm.description || null,
         icon_type: locForm.icon_type,
         image_url: locForm.image_url || null,
+        marker_color: locForm.marker_color,
         x: newLocCoords.x,
         y: newLocCoords.y,
         is_public: false,
@@ -101,7 +102,7 @@ const Maze = () => {
       });
       toast.success('Location added! (visible only to you until approved)');
       setNewLocCoords(null);
-      setLocForm({ name: '', description: '', icon_type: 'default', image_url: '' });
+      setLocForm({ name: '', description: '', icon_type: 'default', image_url: '', marker_color: '#14b8a6' });
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -216,6 +217,17 @@ const Maze = () => {
                   {LOCATION_ICON_TYPES.map(t => <SelectItem key={t} value={t} className="text-gray-200">{t}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label className="text-gray-300">Marker Color</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <input type="color" value={locForm.marker_color} onChange={e => setLocForm(f => ({ ...f, marker_color: e.target.value }))} className="w-8 h-8 rounded cursor-pointer bg-transparent border border-gray-600" />
+                <div className="flex gap-1 flex-wrap">
+                  {['#14b8a6','#f59e0b','#ef4444','#3b82f6','#a855f7','#ec4899','#22c55e','#f97316','#06b6d4','#8b5cf6','#ffffff','#6b7280'].map(c => (
+                    <button key={c} onClick={() => setLocForm(f => ({ ...f, marker_color: c }))} className={`w-5 h-5 rounded-full border ${locForm.marker_color === c ? 'border-white scale-125' : 'border-gray-600'}`} style={{ backgroundColor: c }} />
+                  ))}
+                </div>
+              </div>
             </div>
             <div>
               <Label className="text-gray-300">Image URL</Label>

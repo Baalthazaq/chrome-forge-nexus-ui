@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect, useMemo, MouseEvent } from 'react';
 import { MapLocation, MapArea, MapRouteNode, MapRouteEdge } from '@/hooks/useMazeData';
-import { MapPin, Building, Store, Landmark, Home, Skull, Trees, Zap } from 'lucide-react';
+import { MapPin, Building, Store, Landmark, Home, Skull, Trees, Zap, Church, Anchor, Beer, Hammer, Shield, Swords, BookOpen, Flame, Mountain, Waves, Castle, Star, Flag, Heart, Eye, Crown, Gem } from 'lucide-react';
 
 const MAP_URL = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/Map/RaccaDigitalMap.png';
 
@@ -13,6 +13,23 @@ const ICON_MAP: Record<string, typeof MapPin> = {
   danger: Skull,
   nature: Trees,
   tech: Zap,
+  temple: Church,
+  harbor: Anchor,
+  tavern: Beer,
+  smithy: Hammer,
+  guard: Shield,
+  arena: Swords,
+  library: BookOpen,
+  forge: Flame,
+  mountain: Mountain,
+  water: Waves,
+  castle: Castle,
+  star: Star,
+  flag: Flag,
+  heart: Heart,
+  eye: Eye,
+  crown: Crown,
+  gem: Gem,
 };
 
 export const LOCATION_ICON_TYPES = Object.keys(ICON_MAP);
@@ -324,9 +341,7 @@ export const InteractiveMap = ({
                 onLocationClick?.(loc);
               }}
             >
-              <Icon className={`w-5 h-5 drop-shadow-lg ${
-                isSelected ? 'text-teal-300' : loc.is_public ? 'text-teal-500' : 'text-amber-500'
-              }`} />
+              <Icon className="w-5 h-5 drop-shadow-lg" style={{ color: isSelected ? '#5eead4' : (loc as any).marker_color || (loc.is_public ? '#14b8a6' : '#f59e0b') }} />
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 bg-black/80 rounded text-[10px] font-mono text-gray-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                 {loc.name}
               </div>
