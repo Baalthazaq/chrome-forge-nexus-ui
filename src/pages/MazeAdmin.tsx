@@ -308,8 +308,13 @@ const MazeAdmin = () => {
 
               {/* Areas Tab */}
               <TabsContent value="areas" className="space-y-3 mt-4">
-                <Button onClick={startDrawArea} disabled={mapMode !== 'view'} size="sm" className="w-full bg-teal-600 hover:bg-teal-700">
-                  <Plus className="w-3 h-3 mr-1" /> Draw Area
+                <Button
+                  onClick={() => { if (mapMode === 'draw-polygon') { setMapMode('view'); setDrawingPolygon([]); toast.info('Cancelled'); } else startDrawArea(); }}
+                  disabled={mapMode !== 'view' && mapMode !== 'draw-polygon'}
+                  size="sm"
+                  className={`w-full ${mapMode === 'draw-polygon' ? 'bg-red-600 hover:bg-red-700' : 'bg-teal-600 hover:bg-teal-700'}`}
+                >
+                  {mapMode === 'draw-polygon' ? <><X className="w-3 h-3 mr-1" /> Cancel Drawing ({drawingPolygon.length} pts)</> : <><Plus className="w-3 h-3 mr-1" /> Draw Area</>}
                 </Button>
                 <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                   {maze.areas.map(area => (
