@@ -104,6 +104,15 @@ const MazeAdmin = () => {
   };
 
   const handleMapClickPolygon = (x: number, y: number) => {
+    // If we have 3+ points and click near the first point, close the polygon
+    if (drawingPolygon.length >= 3) {
+      const first = drawingPolygon[0];
+      const dist = Math.sqrt((x - first.x) ** 2 + (y - first.y) ** 2);
+      if (dist < 1.5) {
+        finishPolygon();
+        return;
+      }
+    }
     setDrawingPolygon(prev => [...prev, { x, y }]);
   };
 
