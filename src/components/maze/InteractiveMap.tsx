@@ -341,9 +341,7 @@ export const InteractiveMap = ({
                 onLocationClick?.(loc);
               }}
             >
-              <Icon className={`w-5 h-5 drop-shadow-lg ${
-                isSelected ? 'text-teal-300' : loc.is_public ? 'text-teal-500' : 'text-amber-500'
-              }`} />
+              <Icon className="w-5 h-5 drop-shadow-lg" style={{ color: isSelected ? '#5eead4' : (loc as any).marker_color || (loc.is_public ? '#14b8a6' : '#f59e0b') }} />
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 bg-black/80 rounded text-[10px] font-mono text-gray-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                 {loc.name}
               </div>
