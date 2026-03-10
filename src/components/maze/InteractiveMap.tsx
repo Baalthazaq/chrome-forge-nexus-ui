@@ -156,6 +156,8 @@ export const InteractiveMap = ({
       className="relative w-full overflow-hidden bg-gray-900 rounded-md"
       style={{ cursor }}
       onClick={handleClick}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => { setHoveredAreas(new Set()); setMousePos(null); }}
     >
       {/* Inner wrapper that gets zoomed */}
       <div className="relative w-full" data-map-inner style={innerStyle}>
