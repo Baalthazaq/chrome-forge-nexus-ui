@@ -100,7 +100,7 @@ const MazeAdmin = () => {
     setDrawingPolygon([]);
     setAreaForm({ name: '', description: '', image_url: '' });
     setEnvCard({ tier: 1, type: 'Exploration', impulses: [], difficulty: '', potential_adversaries: '', features: [] });
-    toast.info('Click on the map to draw polygon points. Double-click to finish.');
+    toast.info('Click on the map to draw polygon points. Click the starting point to close.');
   };
 
   const handleMapClickPolygon = (x: number, y: number) => {
