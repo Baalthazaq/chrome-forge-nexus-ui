@@ -282,8 +282,13 @@ const MazeAdmin = () => {
 
               {/* Locations Tab */}
               <TabsContent value="locations" className="space-y-3 mt-4">
-                <Button onClick={startPlaceLocation} disabled={mapMode !== 'view'} size="sm" className="w-full bg-teal-600 hover:bg-teal-700">
-                  <Plus className="w-3 h-3 mr-1" /> Place Location
+                <Button
+                  onClick={() => { if (mapMode === 'place-location') { setMapMode('view'); setPlacingLocation(false); toast.info('Cancelled'); } else startPlaceLocation(); }}
+                  disabled={mapMode !== 'view' && mapMode !== 'place-location'}
+                  size="sm"
+                  className={`w-full ${mapMode === 'place-location' ? 'bg-red-600 hover:bg-red-700' : 'bg-teal-600 hover:bg-teal-700'}`}
+                >
+                  {mapMode === 'place-location' ? <><X className="w-3 h-3 mr-1" /> Cancel Placing</> : <><Plus className="w-3 h-3 mr-1" /> Place Location</>}
                 </Button>
                 <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                   {maze.locations.map(loc => (
