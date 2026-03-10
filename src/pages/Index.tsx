@@ -108,7 +108,7 @@ const apps = [
     description: "Navigation",
     route: "/maze",
     color: "from-teal-500 to-green-600",
-    comingSoon: true
+    openBeta: true
   },
   {
     id: "succubus",

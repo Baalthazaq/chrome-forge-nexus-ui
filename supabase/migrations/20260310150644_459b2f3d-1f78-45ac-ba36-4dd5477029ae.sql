@@ -1,0 +1,1 @@
+ALTER TABLE public.map_locations ADD COLUMN marker_color text NOT NULL DEFAULT '#14b8a6';
