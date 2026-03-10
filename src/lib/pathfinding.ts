@@ -1,4 +1,17 @@
-import { MapRouteNode, MapRouteEdge, MapLocation } from '@/hooks/useMazeData';
+import { MapRouteNode, MapRouteEdge, MapLocation, MapArea } from '@/hooks/useMazeData';
+
+// Point-in-polygon test (ray casting)
+export function pointInPolygon(px: number, py: number, polygon: { x: number; y: number }[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x, yi = polygon[i].y;
+    const xj = polygon[j].x, yj = polygon[j].y;
+    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
 
 // Build adjacency list from edges (bidirectional)
 function buildAdjacencyList(edges: MapRouteEdge[]): Map<string, string[]> {
@@ -52,32 +65,117 @@ function bfs(adj: Map<string, string[]>, start: string, end: string): string[] |
   return null;
 }
 
+// BFS from a start node, returns distance map
+function bfsDistances(adj: Map<string, string[]>, start: string): Map<string, number> {
+  const dist = new Map<string, number>();
+  dist.set(start, 0);
+  const queue = [start];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    const d = dist.get(current)!;
+    for (const neighbor of (adj.get(current) || [])) {
+      if (!dist.has(neighbor)) {
+        dist.set(neighbor, d + 1);
+        queue.push(neighbor);
+      }
+    }
+  }
+  return dist;
+}
+
+// Find nodes inside a polygon
+function nodesInArea(area: MapArea, nodes: MapRouteNode[]): MapRouteNode[] {
+  return nodes.filter(n => pointInPolygon(n.x, n.y, area.polygon_points));
+}
+
+export type RouteEndpoint = 
+  | { type: 'location'; location: MapLocation }
+  | { type: 'area'; area: MapArea };
+
 export function findRoute(
-  fromLocation: MapLocation,
-  toLocation: MapLocation,
+  from: RouteEndpoint | MapLocation,
+  to: RouteEndpoint | MapLocation,
   nodes: MapRouteNode[],
   edges: MapRouteEdge[]
 ): { x: number; y: number }[] | null {
   const adj = buildAdjacencyList(edges);
-  const startNode = findNearestNode(fromLocation, nodes);
-  const endNode = findNearestNode(toLocation, nodes);
-  
-  if (!startNode || !endNode) return null;
-  
-  const nodePath = bfs(adj, startNode, endNode);
+
+  // Normalize to RouteEndpoint
+  const fromEp: RouteEndpoint = 'type' in from ? from : { type: 'location', location: from };
+  const toEp: RouteEndpoint = 'type' in to ? to : { type: 'location', location: to };
+
+  // Resolve start node(s)
+  let startNodeId: string | null = null;
+  let startCoord: { x: number; y: number } | null = null;
+
+  if (fromEp.type === 'location') {
+    startNodeId = findNearestNode(fromEp.location, nodes);
+    startCoord = { x: fromEp.location.x, y: fromEp.location.y };
+  }
+
+  // Resolve end
+  if (toEp.type === 'location') {
+    const endNodeId = findNearestNode(toEp.location, nodes);
+    if (!startNodeId || !endNodeId) return null;
+
+    const nodePath = bfs(adj, startNodeId, endNodeId);
+    if (!nodePath) return null;
+
+    const nodeMap = new Map(nodes.map(n => [n.id, n]));
+    return [
+      startCoord!,
+      ...nodePath.map(id => { const n = nodeMap.get(id)!; return { x: n.x, y: n.y }; }),
+      { x: toEp.location.x, y: toEp.location.y },
+    ];
+  }
+
+  // To is an area — find node inside area with fewest hops from start
+  if (fromEp.type === 'area') {
+    // Both are areas: find the pair of (nodeInFrom, nodeInTo) with fewest hops
+    const fromNodes = nodesInArea(fromEp.area, nodes);
+    const toNodes = nodesInArea(toEp.area, nodes);
+    if (fromNodes.length === 0 || toNodes.length === 0) return null;
+
+    let bestPath: string[] | null = null;
+    let bestFromNode: MapRouteNode | null = null;
+    let bestToNode: MapRouteNode | null = null;
+
+    for (const fn of fromNodes) {
+      const distances = bfsDistances(adj, fn.id);
+      for (const tn of toNodes) {
+        const d = distances.get(tn.id);
+        if (d !== undefined && (!bestPath || d < bestPath.length - 1)) {
+          const path = bfs(adj, fn.id, tn.id);
+          if (path) { bestPath = path; bestFromNode = fn; bestToNode = tn; }
+        }
+      }
+    }
+
+    if (!bestPath || !bestFromNode || !bestToNode) return null;
+    const nodeMap = new Map(nodes.map(n => [n.id, n]));
+    return bestPath.map(id => { const n = nodeMap.get(id)!; return { x: n.x, y: n.y }; });
+  }
+
+  // From is location, To is area
+  if (!startNodeId) return null;
+  const areaNodes = nodesInArea(toEp.area, nodes);
+  if (areaNodes.length === 0) return null;
+
+  const distances = bfsDistances(adj, startNodeId);
+  let bestNode: MapRouteNode | null = null;
+  let bestDist = Infinity;
+  for (const an of areaNodes) {
+    const d = distances.get(an.id);
+    if (d !== undefined && d < bestDist) { bestDist = d; bestNode = an; }
+  }
+
+  if (!bestNode) return null;
+  const nodePath = bfs(adj, startNodeId, bestNode.id);
   if (!nodePath) return null;
-  
+
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
-  
-  // Build coordinate path: location -> nodes -> location
-  const points: { x: number; y: number }[] = [
-    { x: fromLocation.x, y: fromLocation.y },
-    ...nodePath.map(id => {
-      const n = nodeMap.get(id)!;
-      return { x: n.x, y: n.y };
-    }),
-    { x: toLocation.x, y: toLocation.y },
+  return [
+    startCoord!,
+    ...nodePath.map(id => { const n = nodeMap.get(id)!; return { x: n.x, y: n.y }; }),
   ];
-  
-  return points;
 }

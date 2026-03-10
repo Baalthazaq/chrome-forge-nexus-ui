@@ -12,7 +12,7 @@ import { useMazeData, MapLocation, MapArea } from '@/hooks/useMazeData';
 import { InteractiveMap, LOCATION_ICON_TYPES } from '@/components/maze/InteractiveMap';
 import { AreaPanel } from '@/components/maze/AreaPanel';
 import { LocationPanel } from '@/components/maze/LocationPanel';
-import { findRoute } from '@/lib/pathfinding';
+import { findRoute, RouteEndpoint } from '@/lib/pathfinding';
 import { toast } from 'sonner';
 
 const Maze = () => {
@@ -36,9 +36,27 @@ const Maze = () => {
 
   const publicLocations = maze.locations.filter(l => l.is_public || l.user_id === user?.id);
 
+  // Combined route options: locations + areas (prefixed)
+  const routeOptions: { id: string; label: string; type: 'location' | 'area' }[] = [
+    ...publicLocations.map(l => ({ id: `loc:${l.id}`, label: l.name, type: 'location' as const })),
+    ...maze.areas.map(a => ({ id: `area:${a.id}`, label: `📍 ${a.name}`, type: 'area' as const })),
+  ];
+
+  const resolveEndpoint = (key: string): RouteEndpoint | null => {
+    if (key.startsWith('loc:')) {
+      const loc = maze.locations.find(l => l.id === key.slice(4));
+      return loc ? { type: 'location', location: loc } : null;
+    }
+    if (key.startsWith('area:')) {
+      const area = maze.areas.find(a => a.id === key.slice(5));
+      return area ? { type: 'area', area } : null;
+    }
+    return null;
+  };
+
   const handleFindRoute = () => {
-    const from = maze.locations.find(l => l.id === routeFrom);
-    const to = maze.locations.find(l => l.id === routeTo);
+    const from = resolveEndpoint(routeFrom);
+    const to = resolveEndpoint(routeTo);
     if (!from || !to) { toast.error('Select both locations'); return; }
     const path = findRoute(from, to, maze.routeNodes, maze.routeEdges);
     if (path) {
@@ -120,14 +138,14 @@ const Maze = () => {
         <div className="mb-4 flex flex-col sm:flex-row gap-2 bg-gray-900/60 border border-gray-700/50 rounded-lg p-3">
           <Select value={routeFrom} onValueChange={v => { setRouteFrom(v); setRoutePath(null); }}>
             <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 flex-1"><SelectValue placeholder="From..." /></SelectTrigger>
-            <SelectContent className="bg-gray-800 border-gray-700">
-              {publicLocations.map(l => <SelectItem key={l.id} value={l.id} className="text-gray-200">{l.name}</SelectItem>)}
+            <SelectContent className="bg-gray-800 border-gray-700 max-h-60">
+              {routeOptions.map(o => <SelectItem key={o.id} value={o.id} className="text-gray-200">{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={routeTo} onValueChange={v => { setRouteTo(v); setRoutePath(null); }}>
             <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 flex-1"><SelectValue placeholder="To..." /></SelectTrigger>
-            <SelectContent className="bg-gray-800 border-gray-700">
-              {publicLocations.filter(l => l.id !== routeFrom).map(l => <SelectItem key={l.id} value={l.id} className="text-gray-200">{l.name}</SelectItem>)}
+            <SelectContent className="bg-gray-800 border-gray-700 max-h-60">
+              {routeOptions.filter(o => o.id !== routeFrom).map(o => <SelectItem key={o.id} value={o.id} className="text-gray-200">{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Button onClick={handleFindRoute} disabled={!routeFrom || !routeTo} className="bg-teal-600 hover:bg-teal-700">
