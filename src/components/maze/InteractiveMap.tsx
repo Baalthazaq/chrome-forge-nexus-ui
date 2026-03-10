@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect, useMemo, MouseEvent } from 'react';
 import { MapLocation, MapArea, MapRouteNode, MapRouteEdge } from '@/hooks/useMazeData';
-import { MapPin, Building, Store, Landmark, Home, Skull, Trees, Zap, Church, Anchor, Beer, Hammer, Shield, Swords, BookOpen, Flame, Mountain, Waves, Castle, Star, Flag, Heart, Eye, Crown, Gem } from 'lucide-react';
+import { MapPin, Building, Store, Landmark, Home, Skull, Trees, Zap, Church, Shield, Eye, Crown, Waves, Factory, Warehouse, CircuitBoard, Wifi, Radio, Siren, Camera, Lock, KeyRound, Cpu, Monitor, Server, Crosshair, AlertTriangle, Cigarette } from 'lucide-react';
 
 const MAP_URL = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/Map/RaccaDigitalMap.png';
 
