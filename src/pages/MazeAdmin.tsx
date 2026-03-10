@@ -455,7 +455,16 @@ const MazeAdmin = () => {
                   </div>
                   <div>
                     <Label className="text-gray-400 text-xs">Impulses (comma-separated)</Label>
-                    <Input value={(envCard.impulses || []).join(', ')} onChange={e => setEnvCard(c => ({ ...c, impulses: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))} className="bg-gray-800 border-gray-700 text-gray-200" />
+                    <Input
+                      value={(envCard as any)._impulsesRaw ?? (envCard.impulses || []).join(', ')}
+                      onChange={e => setEnvCard(c => ({ ...c, _impulsesRaw: e.target.value }))}
+                      onBlur={e => setEnvCard(c => {
+                        const parsed = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                        const { _impulsesRaw, ...rest } = c as any;
+                        return { ...rest, impulses: parsed };
+                      })}
+                      className="bg-gray-800 border-gray-700 text-gray-200"
+                    />
                   </div>
                   <div>
                     <Label className="text-gray-400 text-xs">Difficulty</Label>

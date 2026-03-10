@@ -58,6 +58,8 @@ export const InteractiveMap = ({
 }: InteractiveMapProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [hoveredAreas, setHoveredAreas] = useState<Set<string>>(new Set());
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
   // Calculate zoom transform from area polygon
   const zoomTransform = useMemo(() => {
@@ -144,9 +146,19 @@ export const InteractiveMap = ({
                     e.stopPropagation();
                     onAreaClick?.(area);
                   }}
-                >
-                  <title>{area.name}</title>
-                </polygon>
+                  onMouseEnter={() => setHoveredAreas(prev => new Set(prev).add(area.id))}
+                  onMouseLeave={() => setHoveredAreas(prev => {
+                    const next = new Set(prev);
+                    next.delete(area.id);
+                    return next;
+                  })}
+                  onMouseMove={(e) => {
+                    const container = containerRef.current;
+                    if (!container) return;
+                    const rect = container.getBoundingClientRect();
+                    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                  }}
+                />
               </g>
             );
           })}
@@ -283,6 +295,16 @@ export const InteractiveMap = ({
         >
           ← Full Map
         </button>
+      )}
+
+      {/* Area hover tooltip */}
+      {hoveredAreas.size > 0 && mousePos && (
+        <div
+          className="absolute z-50 px-2 py-0.5 bg-black/80 rounded text-[10px] font-mono text-gray-300 whitespace-nowrap pointer-events-none"
+          style={{ left: mousePos.x + 12, top: mousePos.y - 8 }}
+        >
+          {areas.filter(a => hoveredAreas.has(a.id)).map(a => a.name).join(' · ')}
+        </div>
       )}
     </div>
   );
