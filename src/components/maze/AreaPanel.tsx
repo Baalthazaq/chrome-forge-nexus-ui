@@ -80,7 +80,7 @@ export const AreaPanel = ({ area, onClose }: AreaPanelProps) => {
       )}
 
       {/* Environment Card */}
-      <EnvironmentCardDisplay card={area.environment_card} areaName={area.name} />
+      <EnvironmentCardDisplay card={area.environment_card} areaName={area.name} isAdmin={false} />
 
       {/* Reviews */}
       <div className="space-y-3 border-t border-gray-700/50 pt-3">

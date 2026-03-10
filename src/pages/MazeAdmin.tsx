@@ -158,7 +158,7 @@ const MazeAdmin = () => {
   const startEditArea = (area: MapArea) => {
     setEditingArea(area);
     setAreaForm({ name: area.name, description: area.description || '', image_url: area.image_url || '' });
-    setEnvCard(area.environment_card || {});
+    setEnvCard(area.environment_card || { visible_fields: { impulses: true, difficulty: true, adversaries: true, features: true } });
   };
 
   // --- Route Handlers ---
