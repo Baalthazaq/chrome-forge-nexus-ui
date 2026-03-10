@@ -203,7 +203,7 @@ export const InteractiveMap = ({
                   fill={isSelected ? 'rgba(20,184,166,0.25)' : 'rgba(20,184,166,0.1)'}
                   stroke={isSelected ? 'rgba(20,184,166,0.8)' : 'rgba(20,184,166,0.4)'}
                   strokeWidth={isSelected ? 0.4 : 0.2}
-                  className="pointer-events-auto cursor-pointer transition-colors"
+                  className={`${mode === 'draw-polygon' ? 'pointer-events-none' : 'pointer-events-auto cursor-pointer'} transition-colors`}
                   onClick={(e) => {
                     e.stopPropagation();
                     // Find all areas under the click and pick the smallest
