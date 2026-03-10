@@ -334,8 +334,13 @@ const MazeAdmin = () => {
 
               {/* Routes Tab */}
               <TabsContent value="routes" className="space-y-3 mt-4">
-                <Button onClick={startDrawRoute} disabled={mapMode !== 'view'} size="sm" className="w-full bg-teal-600 hover:bg-teal-700">
-                  <Plus className="w-3 h-3 mr-1" /> Draw Route
+                <Button
+                  onClick={() => { if (mapMode === 'draw-route') { finishRoute(); } else startDrawRoute(); }}
+                  disabled={mapMode !== 'view' && mapMode !== 'draw-route'}
+                  size="sm"
+                  className={`w-full ${mapMode === 'draw-route' ? 'bg-red-600 hover:bg-red-700' : 'bg-teal-600 hover:bg-teal-700'}`}
+                >
+                  {mapMode === 'draw-route' ? <><X className="w-3 h-3 mr-1" /> Finish Route ({drawingRoute.length} nodes)</> : <><Plus className="w-3 h-3 mr-1" /> Draw Route</>}
                 </Button>
                 <div className="text-xs text-gray-400 font-mono space-y-1">
                   <p>Nodes: {maze.routeNodes.length}</p>
