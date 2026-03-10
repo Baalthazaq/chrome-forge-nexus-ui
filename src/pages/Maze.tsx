@@ -138,14 +138,14 @@ const Maze = () => {
         <div className="mb-4 flex flex-col sm:flex-row gap-2 bg-gray-900/60 border border-gray-700/50 rounded-lg p-3">
           <Select value={routeFrom} onValueChange={v => { setRouteFrom(v); setRoutePath(null); }}>
             <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 flex-1"><SelectValue placeholder="From..." /></SelectTrigger>
-            <SelectContent className="bg-gray-800 border-gray-700">
-              {publicLocations.map(l => <SelectItem key={l.id} value={l.id} className="text-gray-200">{l.name}</SelectItem>)}
+            <SelectContent className="bg-gray-800 border-gray-700 max-h-60">
+              {routeOptions.map(o => <SelectItem key={o.id} value={o.id} className="text-gray-200">{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={routeTo} onValueChange={v => { setRouteTo(v); setRoutePath(null); }}>
             <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 flex-1"><SelectValue placeholder="To..." /></SelectTrigger>
-            <SelectContent className="bg-gray-800 border-gray-700">
-              {publicLocations.filter(l => l.id !== routeFrom).map(l => <SelectItem key={l.id} value={l.id} className="text-gray-200">{l.name}</SelectItem>)}
+            <SelectContent className="bg-gray-800 border-gray-700 max-h-60">
+              {routeOptions.filter(o => o.id !== routeFrom).map(o => <SelectItem key={o.id} value={o.id} className="text-gray-200">{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Button onClick={handleFindRoute} disabled={!routeFrom || !routeTo} className="bg-teal-600 hover:bg-teal-700">
