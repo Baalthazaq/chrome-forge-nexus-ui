@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect, useMemo, MouseEvent } from 'react';
 import { MapLocation, MapArea, MapRouteNode, MapRouteEdge } from '@/hooks/useMazeData';
-import { MapPin, Building, Store, Landmark, Home, Skull, Trees, Zap, Church, Anchor, Beer, Hammer, Shield, Swords, BookOpen, Flame, Mountain, Waves, Castle, Star, Flag, Heart, Eye, Crown, Gem } from 'lucide-react';
+import { MapPin, Building, Store, Landmark, Home, Skull, Trees, Zap, Church, Shield, Eye, Crown, Waves, Factory, Warehouse, CircuitBoard, Wifi, Radio, Siren, Camera, Lock, KeyRound, Cpu, Monitor, Server, Crosshair, AlertTriangle, Cigarette } from 'lucide-react';
 
 const MAP_URL = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/Map/RaccaDigitalMap.png';
 
@@ -14,22 +14,25 @@ const ICON_MAP: Record<string, typeof MapPin> = {
   nature: Trees,
   tech: Zap,
   temple: Church,
-  harbor: Anchor,
-  tavern: Beer,
-  smithy: Hammer,
   guard: Shield,
-  arena: Swords,
-  library: BookOpen,
-  forge: Flame,
-  mountain: Mountain,
-  water: Waves,
-  castle: Castle,
-  star: Star,
-  flag: Flag,
-  heart: Heart,
-  eye: Eye,
   crown: Crown,
-  gem: Gem,
+  water: Waves,
+  eye: Eye,
+  factory: Factory,
+  warehouse: Warehouse,
+  circuit: CircuitBoard,
+  wifi: Wifi,
+  radio: Radio,
+  siren: Siren,
+  camera: Camera,
+  locked: Lock,
+  keycard: KeyRound,
+  processor: Cpu,
+  terminal: Monitor,
+  server: Server,
+  target: Crosshair,
+  hazard: AlertTriangle,
+  lounge: Cigarette,
 };
 
 export const LOCATION_ICON_TYPES = Object.keys(ICON_MAP);
