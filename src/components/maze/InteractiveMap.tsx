@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect, useMemo, MouseEvent } from 'react';
 import { MapLocation, MapArea, MapRouteNode, MapRouteEdge } from '@/hooks/useMazeData';
-import { MapPin, Building, Store, Landmark, Home, Skull, Trees, Zap } from 'lucide-react';
+import { MapPin, Building, Store, Landmark, Home, Skull, Trees, Zap, Church, Anchor, Beer, Hammer, Shield, Swords, BookOpen, Flame, Mountain, Waves, Castle, Star, Flag, Heart, Eye, Crown, Gem } from 'lucide-react';
 
 const MAP_URL = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/Map/RaccaDigitalMap.png';
 
@@ -13,6 +13,23 @@ const ICON_MAP: Record<string, typeof MapPin> = {
   danger: Skull,
   nature: Trees,
   tech: Zap,
+  temple: Church,
+  harbor: Anchor,
+  tavern: Beer,
+  smithy: Hammer,
+  guard: Shield,
+  arena: Swords,
+  library: BookOpen,
+  forge: Flame,
+  mountain: Mountain,
+  water: Waves,
+  castle: Castle,
+  star: Star,
+  flag: Flag,
+  heart: Heart,
+  eye: Eye,
+  crown: Crown,
+  gem: Gem,
 };
 
 export const LOCATION_ICON_TYPES = Object.keys(ICON_MAP);
