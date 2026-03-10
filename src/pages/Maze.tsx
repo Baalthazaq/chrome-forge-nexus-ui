@@ -219,6 +219,17 @@ const Maze = () => {
               </Select>
             </div>
             <div>
+              <Label className="text-gray-300">Marker Color</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <input type="color" value={locForm.marker_color} onChange={e => setLocForm(f => ({ ...f, marker_color: e.target.value }))} className="w-8 h-8 rounded cursor-pointer bg-transparent border border-gray-600" />
+                <div className="flex gap-1 flex-wrap">
+                  {['#14b8a6','#f59e0b','#ef4444','#3b82f6','#a855f7','#ec4899','#22c55e','#f97316','#06b6d4','#8b5cf6','#ffffff','#6b7280'].map(c => (
+                    <button key={c} onClick={() => setLocForm(f => ({ ...f, marker_color: c }))} className={`w-5 h-5 rounded-full border ${locForm.marker_color === c ? 'border-white scale-125' : 'border-gray-600'}`} style={{ backgroundColor: c }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div>
               <Label className="text-gray-300">Image URL</Label>
               <Input value={locForm.image_url} onChange={e => setLocForm(f => ({ ...f, image_url: e.target.value }))} className="bg-gray-800 border-gray-700 text-gray-200" placeholder="https://..." />
             </div>
