@@ -186,7 +186,28 @@ export const InteractiveMap = ({
                   className="pointer-events-auto cursor-pointer transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onAreaClick?.(area);
+                    // Find all areas under the click and pick the smallest
+                    const inner = containerRef.current?.querySelector('[data-map-inner]') as HTMLElement;
+                    if (!inner || !onAreaClick) return;
+                    const rect = inner.getBoundingClientRect();
+                    const px = ((e.clientX - rect.left) / rect.width) * 100;
+                    const py = ((e.clientY - rect.top) / rect.height) * 100;
+                    const overlapping = areas.filter(a =>
+                      a.polygon_points.length >= 3 && pointInPolygon(px, py, a.polygon_points)
+                    );
+                    if (overlapping.length === 0) return;
+                    // Pick smallest by polygon area (shoelace formula)
+                    const polyArea = (pts: { x: number; y: number }[]) => {
+                      let a = 0;
+                      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+                        a += pts[j].x * pts[i].y - pts[i].x * pts[j].y;
+                      }
+                      return Math.abs(a / 2);
+                    };
+                    const smallest = overlapping.reduce((s, c) =>
+                      polyArea(c.polygon_points) < polyArea(s.polygon_points) ? c : s
+                    );
+                    onAreaClick(smallest);
                   }}
                 />
               </g>
