@@ -102,7 +102,7 @@ const Maze = () => {
       });
       toast.success('Location added! (visible only to you until approved)');
       setNewLocCoords(null);
-      setLocForm({ name: '', description: '', icon_type: 'default', image_url: '' });
+      setLocForm({ name: '', description: '', icon_type: 'default', image_url: '', marker_color: '#14b8a6' });
     } catch (err: any) {
       toast.error(err.message);
     }

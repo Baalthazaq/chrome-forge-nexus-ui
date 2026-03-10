@@ -93,7 +93,7 @@ const MazeAdmin = () => {
 
   const startEditLocation = (loc: MapLocation) => {
     setEditingLocation(loc);
-    setLocForm({ name: loc.name, description: loc.description || '', icon_type: loc.icon_type, image_url: loc.image_url || '', is_public: loc.is_public });
+    setLocForm({ name: loc.name, description: loc.description || '', icon_type: loc.icon_type, image_url: loc.image_url || '', is_public: loc.is_public, marker_color: loc.marker_color || '#14b8a6' });
   };
 
   // --- Area Handlers ---
