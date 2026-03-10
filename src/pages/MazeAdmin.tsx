@@ -282,8 +282,13 @@ const MazeAdmin = () => {
 
               {/* Locations Tab */}
               <TabsContent value="locations" className="space-y-3 mt-4">
-                <Button onClick={startPlaceLocation} disabled={mapMode !== 'view'} size="sm" className="w-full bg-teal-600 hover:bg-teal-700">
-                  <Plus className="w-3 h-3 mr-1" /> Place Location
+                <Button
+                  onClick={() => { if (mapMode === 'place-location') { setMapMode('view'); setPlacingLocation(false); toast.info('Cancelled'); } else startPlaceLocation(); }}
+                  disabled={mapMode !== 'view' && mapMode !== 'place-location'}
+                  size="sm"
+                  className={`w-full ${mapMode === 'place-location' ? 'bg-red-600 hover:bg-red-700' : 'bg-teal-600 hover:bg-teal-700'}`}
+                >
+                  {mapMode === 'place-location' ? <><X className="w-3 h-3 mr-1" /> Cancel Placing</> : <><Plus className="w-3 h-3 mr-1" /> Place Location</>}
                 </Button>
                 <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                   {maze.locations.map(loc => (
@@ -303,8 +308,13 @@ const MazeAdmin = () => {
 
               {/* Areas Tab */}
               <TabsContent value="areas" className="space-y-3 mt-4">
-                <Button onClick={startDrawArea} disabled={mapMode !== 'view'} size="sm" className="w-full bg-teal-600 hover:bg-teal-700">
-                  <Plus className="w-3 h-3 mr-1" /> Draw Area
+                <Button
+                  onClick={() => { if (mapMode === 'draw-polygon') { setMapMode('view'); setDrawingPolygon([]); toast.info('Cancelled'); } else startDrawArea(); }}
+                  disabled={mapMode !== 'view' && mapMode !== 'draw-polygon'}
+                  size="sm"
+                  className={`w-full ${mapMode === 'draw-polygon' ? 'bg-red-600 hover:bg-red-700' : 'bg-teal-600 hover:bg-teal-700'}`}
+                >
+                  {mapMode === 'draw-polygon' ? <><X className="w-3 h-3 mr-1" /> Cancel Drawing ({drawingPolygon.length} pts)</> : <><Plus className="w-3 h-3 mr-1" /> Draw Area</>}
                 </Button>
                 <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                   {maze.areas.map(area => (
@@ -324,8 +334,13 @@ const MazeAdmin = () => {
 
               {/* Routes Tab */}
               <TabsContent value="routes" className="space-y-3 mt-4">
-                <Button onClick={startDrawRoute} disabled={mapMode !== 'view'} size="sm" className="w-full bg-teal-600 hover:bg-teal-700">
-                  <Plus className="w-3 h-3 mr-1" /> Draw Route
+                <Button
+                  onClick={() => { if (mapMode === 'draw-route') { finishRoute(); } else startDrawRoute(); }}
+                  disabled={mapMode !== 'view' && mapMode !== 'draw-route'}
+                  size="sm"
+                  className={`w-full ${mapMode === 'draw-route' ? 'bg-red-600 hover:bg-red-700' : 'bg-teal-600 hover:bg-teal-700'}`}
+                >
+                  {mapMode === 'draw-route' ? <><X className="w-3 h-3 mr-1" /> Finish Route ({drawingRoute.length} nodes)</> : <><Plus className="w-3 h-3 mr-1" /> Draw Route</>}
                 </Button>
                 <div className="text-xs text-gray-400 font-mono space-y-1">
                   <p>Nodes: {maze.routeNodes.length}</p>
