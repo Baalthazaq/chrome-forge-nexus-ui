@@ -94,6 +94,46 @@ export const InteractiveMap = ({
 
   const cursor = mode === 'view' ? 'default' : 'crosshair';
 
+  // Point-in-polygon test (ray casting)
+  const pointInPolygon = useCallback((px: number, py: number, polygon: { x: number; y: number }[]) => {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].x, yi = polygon[i].y;
+      const xj = polygon[j].x, yj = polygon[j].y;
+      if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }, []);
+
+  // Handle mouse move on the map inner element to detect all overlapping areas
+  const handleMouseMove = useCallback((e: MouseEvent<HTMLDivElement>) => {
+    const inner = e.currentTarget.querySelector('[data-map-inner]') as HTMLElement;
+    if (!inner) return;
+    const innerRect = inner.getBoundingClientRect();
+    const px = ((e.clientX - innerRect.left) / innerRect.width) * 100;
+    const py = ((e.clientY - innerRect.top) / innerRect.height) * 100;
+
+    const hovered = new Set<string>();
+    for (const area of areas) {
+      if (area.polygon_points.length >= 3 && pointInPolygon(px, py, area.polygon_points)) {
+        hovered.add(area.id);
+      }
+    }
+    setHoveredAreas(hovered);
+
+    if (hovered.size > 0) {
+      const container = containerRef.current;
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      }
+    } else {
+      setMousePos(null);
+    }
+  }, [areas, pointInPolygon]);
+
   // Build node map for edge rendering
   const nodeMap = new Map(routeNodes.map(n => [n.id, n]));
 
