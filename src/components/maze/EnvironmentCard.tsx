@@ -1,13 +1,20 @@
 import { EnvironmentCard as EnvCard } from '@/hooks/useMazeData';
-import { Badge } from '@/components/ui/badge';
 
 interface EnvironmentCardDisplayProps {
   card: EnvCard;
   areaName: string;
+  isAdmin?: boolean;
 }
 
-export const EnvironmentCardDisplay = ({ card, areaName }: EnvironmentCardDisplayProps) => {
+export const EnvironmentCardDisplay = ({ card, areaName, isAdmin = false }: EnvironmentCardDisplayProps) => {
   if (!card || (!card.tier && !card.type && !card.features?.length)) return null;
+
+  const visible = card.visible_fields || {};
+  // Default to true if not set
+  const showImpulses = isAdmin || visible.impulses !== false;
+  const showDifficulty = isAdmin || visible.difficulty !== false;
+  const showAdversaries = isAdmin || visible.adversaries !== false;
+  const showFeatures = isAdmin || visible.features !== false;
 
   return (
     <div className="bg-gray-900/80 border border-gray-700/50 rounded-lg p-4 space-y-3">
@@ -22,7 +29,7 @@ export const EnvironmentCardDisplay = ({ card, areaName }: EnvironmentCardDispla
       </div>
 
       {/* Impulses */}
-      {card.impulses && card.impulses.length > 0 && (
+      {showImpulses && card.impulses && card.impulses.length > 0 && (
         <div>
           <span className="text-xs text-gray-400 font-mono">Impulses: </span>
           <span className="text-sm text-gray-300">{card.impulses.join(', ')}</span>
@@ -30,15 +37,15 @@ export const EnvironmentCardDisplay = ({ card, areaName }: EnvironmentCardDispla
       )}
 
       {/* Difficulty & Adversaries */}
-      {(card.difficulty || card.potential_adversaries) && (
+      {(showDifficulty || showAdversaries) && (card.difficulty || card.potential_adversaries) && (
         <div className="bg-gray-800/60 rounded p-2 space-y-1">
-          {card.difficulty && (
+          {showDifficulty && card.difficulty && (
             <div>
               <span className="text-xs text-gray-400 font-mono font-bold">Difficulty: </span>
               <span className="text-sm text-gray-200">{card.difficulty}</span>
             </div>
           )}
-          {card.potential_adversaries && (
+          {showAdversaries && card.potential_adversaries && (
             <div>
               <span className="text-xs text-gray-400 font-mono font-bold">Potential adversaries: </span>
               <span className="text-sm text-gray-200">{card.potential_adversaries}</span>
@@ -48,7 +55,7 @@ export const EnvironmentCardDisplay = ({ card, areaName }: EnvironmentCardDispla
       )}
 
       {/* Features */}
-      {card.features && card.features.length > 0 && (
+      {showFeatures && card.features && card.features.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-sm font-bold text-gray-200 border-b border-gray-700/30 pb-1">Features</h4>
           {card.features.map((feat, i) => (
@@ -61,6 +68,11 @@ export const EnvironmentCardDisplay = ({ card, areaName }: EnvironmentCardDispla
             </div>
           ))}
         </div>
+      )}
+
+      {/* Hidden fields indicator for players */}
+      {!isAdmin && (visible.impulses === false || visible.difficulty === false || visible.adversaries === false || visible.features === false) && (
+        <p className="text-xs text-gray-600 italic font-mono">Some information is hidden.</p>
       )}
     </div>
   );

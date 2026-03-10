@@ -505,6 +505,28 @@ const MazeAdmin = () => {
                       </div>
                     ))}
                   </div>
+
+                  {/* Visibility Toggles */}
+                  <div className="border-t border-gray-700/30 pt-2 space-y-2">
+                    <Label className="text-gray-400 text-xs font-bold">Player Visibility</Label>
+                    {[
+                      { key: 'impulses', label: 'Impulses' },
+                      { key: 'difficulty', label: 'Difficulty' },
+                      { key: 'adversaries', label: 'Adversaries' },
+                      { key: 'features', label: 'Features' },
+                    ].map(({ key, label }) => (
+                      <div key={key} className="flex items-center justify-between">
+                        <span className="text-xs text-gray-300">{label}</span>
+                        <Switch
+                          checked={(envCard.visible_fields as any)?.[key] !== false}
+                          onCheckedChange={v => setEnvCard(c => ({
+                            ...c,
+                            visible_fields: { ...(c.visible_fields || {}), [key]: v },
+                          }))}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
