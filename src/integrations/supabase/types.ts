@@ -575,6 +575,176 @@ export type Database = {
         }
         Relationships: []
       }
+      map_area_reviews: {
+        Row: {
+          area_id: string
+          content: string | null
+          created_at: string
+          id: string
+          rating: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area_id: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          rating?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          area_id?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          rating?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_area_reviews_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "map_areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      map_areas: {
+        Row: {
+          created_at: string
+          description: string | null
+          environment_card: Json | null
+          id: string
+          image_url: string | null
+          name: string
+          polygon_points: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          environment_card?: Json | null
+          id?: string
+          image_url?: string | null
+          name: string
+          polygon_points?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          environment_card?: Json | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          polygon_points?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      map_locations: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon_type: string
+          id: string
+          image_url: string | null
+          is_public: boolean
+          name: string
+          updated_at: string
+          user_id: string
+          x: number
+          y: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon_type?: string
+          id?: string
+          image_url?: string | null
+          is_public?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+          x: number
+          y: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon_type?: string
+          id?: string
+          image_url?: string | null
+          is_public?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+          x?: number
+          y?: number
+        }
+        Relationships: []
+      }
+      map_route_edges: {
+        Row: {
+          created_at: string
+          from_node_id: string
+          id: string
+          to_node_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_node_id: string
+          id?: string
+          to_node_id: string
+        }
+        Update: {
+          created_at?: string
+          from_node_id?: string
+          id?: string
+          to_node_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_route_edges_from_node_id_fkey"
+            columns: ["from_node_id"]
+            isOneToOne: false
+            referencedRelation: "map_route_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "map_route_edges_to_node_id_fkey"
+            columns: ["to_node_id"]
+            isOneToOne: false
+            referencedRelation: "map_route_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      map_route_nodes: {
+        Row: {
+          created_at: string
+          id: string
+          x: number
+          y: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          x: number
+          y: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          x?: number
+          y?: number
+        }
+        Relationships: []
+      }
       news_articles: {
         Row: {
           content: string | null
