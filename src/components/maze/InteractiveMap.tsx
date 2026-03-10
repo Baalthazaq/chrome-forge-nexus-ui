@@ -335,7 +335,9 @@ export const InteractiveMap = ({
           return (
             <div
               key={loc.id}
-              className={`absolute -translate-x-1/2 -translate-y-full cursor-pointer group z-30 transition-transform ${
+              className={`absolute -translate-x-1/2 -translate-y-full group z-30 transition-transform ${
+                mode !== 'view' ? 'pointer-events-none' : 'cursor-pointer'
+              } ${
                 isSelected ? 'scale-125' : 'hover:scale-110'
               }`}
               style={{ left: `${loc.x}%`, top: `${loc.y}%` }}
