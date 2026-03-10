@@ -100,10 +100,19 @@ const MazeAdmin = () => {
     setDrawingPolygon([]);
     setAreaForm({ name: '', description: '', image_url: '' });
     setEnvCard({ tier: 1, type: 'Exploration', impulses: [], difficulty: '', potential_adversaries: '', features: [] });
-    toast.info('Click on the map to draw polygon points. Double-click to finish.');
+    toast.info('Click on the map to draw polygon points. Click the starting point to close.');
   };
 
   const handleMapClickPolygon = (x: number, y: number) => {
+    // If we have 3+ points and click near the first point, close the polygon
+    if (drawingPolygon.length >= 3) {
+      const first = drawingPolygon[0];
+      const dist = Math.sqrt((x - first.x) ** 2 + (y - first.y) ** 2);
+      if (dist < 1.5) {
+        finishPolygon();
+        return;
+      }
+    }
     setDrawingPolygon(prev => [...prev, { x, y }]);
   };
 
