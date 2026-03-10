@@ -296,6 +296,16 @@ export const InteractiveMap = ({
           ← Full Map
         </button>
       )}
+
+      {/* Area hover tooltip */}
+      {hoveredAreas.size > 0 && mousePos && (
+        <div
+          className="absolute z-50 px-2 py-0.5 bg-black/80 rounded text-[10px] font-mono text-gray-300 whitespace-nowrap pointer-events-none"
+          style={{ left: mousePos.x + 12, top: mousePos.y - 8 }}
+        >
+          {areas.filter(a => hoveredAreas.has(a.id)).map(a => a.name).join(' · ')}
+        </div>
+      )}
     </div>
   );
 };
