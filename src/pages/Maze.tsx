@@ -94,6 +94,7 @@ const Maze = () => {
         description: locForm.description || null,
         icon_type: locForm.icon_type,
         image_url: locForm.image_url || null,
+        marker_color: locForm.marker_color,
         x: newLocCoords.x,
         y: newLocCoords.y,
         is_public: false,
