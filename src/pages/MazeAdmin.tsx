@@ -68,6 +68,7 @@ const MazeAdmin = () => {
           icon_type: locForm.icon_type,
           image_url: locForm.image_url || null,
           is_public: locForm.is_public,
+          marker_color: locForm.marker_color,
         });
         toast.success('Location updated');
       } else {
