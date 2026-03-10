@@ -28,7 +28,7 @@ const MazeAdmin = () => {
   // Location state
   const [editingLocation, setEditingLocation] = useState<Partial<MapLocation> | null>(null);
   const [placingLocation, setPlacingLocation] = useState(false);
-  const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true });
+  const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6' });
 
   // Area state
   const [editingArea, setEditingArea] = useState<Partial<MapArea> | null>(null);
