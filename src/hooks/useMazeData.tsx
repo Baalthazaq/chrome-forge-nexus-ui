@@ -34,6 +34,12 @@ export interface EnvironmentCard {
   difficulty?: string;
   potential_adversaries?: string;
   features?: { name: string; type: string; description: string }[];
+  visible_fields?: {
+    impulses?: boolean;
+    difficulty?: boolean;
+    adversaries?: boolean;
+    features?: boolean;
+  };
 }
 
 export interface MapRouteNode {

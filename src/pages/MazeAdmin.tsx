@@ -158,7 +158,7 @@ const MazeAdmin = () => {
   const startEditArea = (area: MapArea) => {
     setEditingArea(area);
     setAreaForm({ name: area.name, description: area.description || '', image_url: area.image_url || '' });
-    setEnvCard(area.environment_card || {});
+    setEnvCard(area.environment_card || { visible_fields: { impulses: true, difficulty: true, adversaries: true, features: true } });
   };
 
   // --- Route Handlers ---
@@ -502,6 +502,28 @@ const MazeAdmin = () => {
                           features[i] = { ...features[i], description: e.target.value };
                           setEnvCard(c => ({ ...c, features }));
                         }} placeholder="Description" className="bg-gray-800 border-gray-700 text-gray-200 text-xs min-h-[40px]" />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Visibility Toggles */}
+                  <div className="border-t border-gray-700/30 pt-2 space-y-2">
+                    <Label className="text-gray-400 text-xs font-bold">Player Visibility</Label>
+                    {[
+                      { key: 'impulses', label: 'Impulses' },
+                      { key: 'difficulty', label: 'Difficulty' },
+                      { key: 'adversaries', label: 'Adversaries' },
+                      { key: 'features', label: 'Features' },
+                    ].map(({ key, label }) => (
+                      <div key={key} className="flex items-center justify-between">
+                        <span className="text-xs text-gray-300">{label}</span>
+                        <Switch
+                          checked={(envCard.visible_fields as any)?.[key] !== false}
+                          onCheckedChange={v => setEnvCard(c => ({
+                            ...c,
+                            visible_fields: { ...(c.visible_fields || {}), [key]: v },
+                          }))}
+                        />
                       </div>
                     ))}
                   </div>
