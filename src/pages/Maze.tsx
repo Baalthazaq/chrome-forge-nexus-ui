@@ -36,9 +36,27 @@ const Maze = () => {
 
   const publicLocations = maze.locations.filter(l => l.is_public || l.user_id === user?.id);
 
+  // Combined route options: locations + areas (prefixed)
+  const routeOptions: { id: string; label: string; type: 'location' | 'area' }[] = [
+    ...publicLocations.map(l => ({ id: `loc:${l.id}`, label: l.name, type: 'location' as const })),
+    ...maze.areas.map(a => ({ id: `area:${a.id}`, label: `📍 ${a.name}`, type: 'area' as const })),
+  ];
+
+  const resolveEndpoint = (key: string): RouteEndpoint | null => {
+    if (key.startsWith('loc:')) {
+      const loc = maze.locations.find(l => l.id === key.slice(4));
+      return loc ? { type: 'location', location: loc } : null;
+    }
+    if (key.startsWith('area:')) {
+      const area = maze.areas.find(a => a.id === key.slice(5));
+      return area ? { type: 'area', area } : null;
+    }
+    return null;
+  };
+
   const handleFindRoute = () => {
-    const from = maze.locations.find(l => l.id === routeFrom);
-    const to = maze.locations.find(l => l.id === routeTo);
+    const from = resolveEndpoint(routeFrom);
+    const to = resolveEndpoint(routeTo);
     if (!from || !to) { toast.error('Select both locations'); return; }
     const path = findRoute(from, to, maze.routeNodes, maze.routeEdges);
     if (path) {
