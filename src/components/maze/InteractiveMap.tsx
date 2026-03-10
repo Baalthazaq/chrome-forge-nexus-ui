@@ -194,7 +194,19 @@ export const InteractiveMap = ({
             />
             {drawingPolygon.map((p, i) => {
               const v = toViewPercent(p.x, p.y);
-              return <circle key={i} cx={v.x} cy={v.y} r={0.4} fill="rgba(251,191,36,0.8)" />;
+              const isFirst = i === 0 && drawingPolygon.length >= 3;
+              return (
+                <circle
+                  key={i}
+                  cx={v.x}
+                  cy={v.y}
+                  r={isFirst ? 0.7 : 0.4}
+                  fill={isFirst ? 'rgba(251,191,36,1)' : 'rgba(251,191,36,0.8)'}
+                  stroke={isFirst ? 'white' : 'none'}
+                  strokeWidth={isFirst ? 0.2 : 0}
+                  className={isFirst ? 'pointer-events-auto cursor-pointer' : ''}
+                />
+              );
             })}
           </>
         )}
