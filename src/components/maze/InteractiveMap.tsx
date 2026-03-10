@@ -203,7 +203,7 @@ export const InteractiveMap = ({
                   fill={isSelected ? 'rgba(20,184,166,0.25)' : 'rgba(20,184,166,0.1)'}
                   stroke={isSelected ? 'rgba(20,184,166,0.8)' : 'rgba(20,184,166,0.4)'}
                   strokeWidth={isSelected ? 0.4 : 0.2}
-                  className={`${mode === 'draw-polygon' ? 'pointer-events-none' : 'pointer-events-auto cursor-pointer'} transition-colors`}
+                  className={`${mode !== 'view' ? 'pointer-events-none' : 'pointer-events-auto cursor-pointer'} transition-colors`}
                   onClick={(e) => {
                     e.stopPropagation();
                     // Find all areas under the click and pick the smallest
@@ -319,7 +319,7 @@ export const InteractiveMap = ({
               className={`absolute w-3 h-3 rounded-full -translate-x-1/2 -translate-y-1/2 cursor-pointer border ${
                 isInDrawing ? 'bg-amber-400 border-amber-300' : 'bg-purple-500/60 border-purple-400/60'
               } hover:scale-150 transition-transform`}
-              style={{ left: `${node.x}%`, top: `${node.y}%`, zIndex: 20 }}
+              style={{ left: `${node.x}%`, top: `${node.y}%`, zIndex: 20, pointerEvents: mode !== 'view' && mode !== 'draw-route' ? 'none' : 'auto' }}
               onClick={(e) => {
                 e.stopPropagation();
                 onRouteNodeClick?.(node);
@@ -335,7 +335,9 @@ export const InteractiveMap = ({
           return (
             <div
               key={loc.id}
-              className={`absolute -translate-x-1/2 -translate-y-full cursor-pointer group z-30 transition-transform ${
+              className={`absolute -translate-x-1/2 -translate-y-full group z-30 transition-transform ${
+                mode !== 'view' ? 'pointer-events-none' : 'cursor-pointer'
+              } ${
                 isSelected ? 'scale-125' : 'hover:scale-110'
               }`}
               style={{ left: `${loc.x}%`, top: `${loc.y}%` }}
