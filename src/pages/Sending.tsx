@@ -885,20 +885,26 @@ const Sending = () => {
 
                 {/* Messages */}
                 <div className="flex-1 p-4 overflow-y-auto space-y-3">
-                  {casts.map((cast) => (
+                  {casts.map((cast) => {
+                    const isOwnMessage = cast.sender_id === currentUser?.id;
+                    const isSystemMessage = cast.sender_id === SYSTEM_SENDER_ID;
+                    const canEdit = isOwnMessage || isAdmin;
+                    return (
                     <div
                       key={cast.id}
-                      className={`flex ${cast.sender_id === currentUser?.id ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
                         className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg relative group ${
-                          cast.sender_id === currentUser?.id
+                          isSystemMessage
+                            ? 'bg-primary/20 border border-primary/30 text-foreground'
+                            : isOwnMessage
                             ? 'bg-cyan-500 text-white ml-12'
                             : 'bg-gray-700 text-gray-100 mr-12'
                         }`}
                       >
-                        {selectedStone.is_group && cast.sender_id !== currentUser?.id && (
-                          <p className="text-xs font-semibold mb-1 opacity-80">{cast.sender_name}</p>
+                        {(selectedStone.is_group || isSystemMessage) && !isOwnMessage && (
+                          <p className={`text-xs font-semibold mb-1 ${isSystemMessage ? 'text-primary' : 'opacity-80'}`}>{cast.sender_name}</p>
                         )}
                         <p className="text-sm font-mono leading-relaxed">{cast.message}</p>
                         <div className="flex items-center justify-between mt-1">
@@ -906,7 +912,7 @@ const Sending = () => {
                             {formatTime(cast.created_at)}
                             {cast.is_edited && <span className="ml-1">(edited)</span>}
                           </p>
-                          {cast.sender_id === currentUser?.id && (
+                          {canEdit && (
                             <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <Dialog>
                                 <DialogTrigger asChild>
@@ -938,7 +944,8 @@ const Sending = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
 
