@@ -183,6 +183,63 @@ const SendingAdmin = () => {
     }
   };
 
+  const sendAdminMessage = async (stone: StoneWithParticipants) => {
+    if (!adminMessage.trim() || !sendAsUserId) return;
+    setSending(true);
+    try {
+      const { data, error } = await supabase
+        .from('casts')
+        .insert({
+          stone_id: stone.id,
+          sender_id: sendAsUserId,
+          message: adminMessage.trim()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setConversationCasts(prev => [...prev, data as Cast]);
+      setAdminMessage('');
+      toast({ title: "Message sent", description: `Sent as ${sendAsUserId === SYSTEM_SENDER_ID ? 'System' : profMap.get(sendAsUserId) || 'Unknown'}` });
+      // Refresh stone list for latest cast
+      loadAllConversations();
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({ title: "Error", description: "Failed to send message.", variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const editCast = async () => {
+    if (!editingCast || !editMessage.trim()) return;
+    try {
+      const { error } = await supabase
+        .from('casts')
+        .update({
+          original_message: editingCast.original_message || editingCast.message,
+          message: editMessage.trim(),
+          is_edited: true,
+          edited_at: new Date().toISOString()
+        })
+        .eq('id', editingCast.id);
+
+      if (error) throw error;
+
+      setConversationCasts(prev => prev.map(cast =>
+        cast.id === editingCast.id
+          ? { ...cast, original_message: cast.original_message || cast.message, message: editMessage.trim(), is_edited: true, edited_at: new Date().toISOString() }
+          : cast
+      ));
+      setEditingCast(null);
+      setEditMessage('');
+      toast({ title: "Message edited" });
+    } catch (error) {
+      console.error('Error editing cast:', error);
+      toast({ title: "Error", description: "Failed to edit message.", variant: "destructive" });
+    }
+  };
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
