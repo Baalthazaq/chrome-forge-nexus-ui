@@ -134,6 +134,7 @@ const Sending = () => {
   }, [casts]);
 
   const getProfileName = (userId: string, profilesList: Profile[]) => {
+    if (userId === SYSTEM_SENDER_ID) return '⚙ System';
     return profilesList.find(p => p.user_id === userId)?.character_name || 'Unknown';
   };
 
