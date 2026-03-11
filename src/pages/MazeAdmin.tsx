@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { ArrowLeft, Shield, MapPin, Layers, Route, Plus, Trash2, Pencil, X, Save } from 'lucide-react';
+import { ArrowLeft, Shield, MapPin, Layers, Route, Plus, Trash2, Pencil, X, Save, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -214,6 +214,61 @@ const MazeAdmin = () => {
     toast.success('Route drawing finished');
   };
 
+  // --- Export / Import ---
+  const exportData = (type: 'locations' | 'areas') => {
+    const data = type === 'locations' ? maze.locations : maze.areas;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `maze-${type}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${data.length} ${type}`);
+  };
+
+  const importData = (type: 'locations' | 'areas') => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const items = JSON.parse(text);
+        if (!Array.isArray(items)) throw new Error('Expected a JSON array');
+        let updated = 0, created = 0;
+        for (const item of items) {
+          if (type === 'locations') {
+            const { id, created_at, updated_at, ...rest } = item;
+            if (id && maze.locations.find(l => l.id === id)) {
+              await maze.updateLocation.mutateAsync({ id, ...rest });
+              updated++;
+            } else {
+              await maze.createLocation.mutateAsync({ ...rest, user_id: rest.user_id || user!.id });
+              created++;
+            }
+          } else {
+            const { id, created_at, updated_at, ...rest } = item;
+            if (id && maze.areas.find(a => a.id === id)) {
+              await maze.updateArea.mutateAsync({ id, ...rest });
+              updated++;
+            } else {
+              await maze.createArea.mutateAsync(rest);
+              created++;
+            }
+          }
+        }
+        maze.invalidateAll();
+        toast.success(`Import complete: ${created} created, ${updated} updated`);
+      } catch (err: any) {
+        toast.error(`Import failed: ${err.message}`);
+      }
+    };
+    input.click();
+  };
+
   // Map click dispatcher
   const handleMapClick = (x: number, y: number) => {
     if (mapMode === 'place-location') handleMapClickLocation(x, y);
@@ -292,6 +347,14 @@ const MazeAdmin = () => {
                 >
                   {mapMode === 'place-location' ? <><X className="w-3 h-3 mr-1" /> Cancel Placing</> : <><Plus className="w-3 h-3 mr-1" /> Place Location</>}
                 </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => exportData('locations')} className="flex-1 border-gray-600 text-gray-300 text-xs">
+                    <Download className="w-3 h-3 mr-1" /> Export
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => importData('locations')} className="flex-1 border-gray-600 text-gray-300 text-xs">
+                    <Upload className="w-3 h-3 mr-1" /> Import
+                  </Button>
+                </div>
                 <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                   {maze.locations.map(loc => (
                     <div key={loc.id} className="flex items-center justify-between p-2 bg-gray-900/50 border border-gray-700/30 rounded text-sm">
@@ -318,6 +381,14 @@ const MazeAdmin = () => {
                 >
                   {mapMode === 'draw-polygon' ? <><X className="w-3 h-3 mr-1" /> Cancel Drawing ({drawingPolygon.length} pts)</> : <><Plus className="w-3 h-3 mr-1" /> Draw Area</>}
                 </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => exportData('areas')} className="flex-1 border-gray-600 text-gray-300 text-xs">
+                    <Download className="w-3 h-3 mr-1" /> Export
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => importData('areas')} className="flex-1 border-gray-600 text-gray-300 text-xs">
+                    <Upload className="w-3 h-3 mr-1" /> Import
+                  </Button>
+                </div>
                 <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                   {maze.areas.map(area => (
                     <div key={area.id} className="flex items-center justify-between p-2 bg-gray-900/50 border border-gray-700/30 rounded text-sm">
