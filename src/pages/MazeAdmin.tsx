@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useMazeData, MapLocation, MapArea, MapRouteNode, EnvironmentCard } from '@/hooks/useMazeData';
