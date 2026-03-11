@@ -307,8 +307,11 @@ const MazeAdmin = () => {
                 },
               },
             };
-            if (row.id && maze.areas.find(a => a.id === row.id)) {
-              await maze.updateArea.mutateAsync({ id: row.id, ...area });
+            const existingAreaById = row.id ? maze.areas.find(a => a.id === row.id) : null;
+            const existingAreaByName = !existingAreaById ? maze.areas.find(a => a.name.toLowerCase() === area.name.toLowerCase()) : null;
+            const existingArea = existingAreaById || existingAreaByName;
+            if (existingArea) {
+              await maze.updateArea.mutateAsync({ id: existingArea.id, ...area });
               updated++;
             } else {
               await maze.createArea.mutateAsync(area);
