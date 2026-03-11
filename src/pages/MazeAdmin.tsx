@@ -274,8 +274,11 @@ const MazeAdmin = () => {
               image_url: row.image_url || null,
               user_id: row.user_id || user!.id,
             };
-            if (row.id && maze.locations.find(l => l.id === row.id)) {
-              await maze.updateLocation.mutateAsync({ id: row.id, ...loc });
+            const existingById = row.id ? maze.locations.find(l => l.id === row.id) : null;
+            const existingByName = !existingById ? maze.locations.find(l => l.name.toLowerCase() === loc.name.toLowerCase()) : null;
+            const existing = existingById || existingByName;
+            if (existing) {
+              await maze.updateLocation.mutateAsync({ id: existing.id, ...loc });
               updated++;
             } else {
               await maze.createLocation.mutateAsync(loc);
@@ -304,8 +307,11 @@ const MazeAdmin = () => {
                 },
               },
             };
-            if (row.id && maze.areas.find(a => a.id === row.id)) {
-              await maze.updateArea.mutateAsync({ id: row.id, ...area });
+            const existingAreaById = row.id ? maze.areas.find(a => a.id === row.id) : null;
+            const existingAreaByName = !existingAreaById ? maze.areas.find(a => a.name.toLowerCase() === area.name.toLowerCase()) : null;
+            const existingArea = existingAreaById || existingAreaByName;
+            if (existingArea) {
+              await maze.updateArea.mutateAsync({ id: existingArea.id, ...area });
               updated++;
             } else {
               await maze.createArea.mutateAsync(area);
