@@ -291,8 +291,8 @@ const SendingAdmin = () => {
             <h1 className="text-3xl font-bold">Sending - Admin View</h1>
           </div>
           <Badge variant="outline" className="bg-primary/10 text-primary">
-            <Eye className="h-3 w-3 mr-1" />
-            Read Only
+            <MessageCircle className="h-3 w-3 mr-1" />
+            Admin Chat
           </Badge>
         </div>
 
