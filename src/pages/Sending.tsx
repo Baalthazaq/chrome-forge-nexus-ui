@@ -66,9 +66,11 @@ interface Profile {
   character_name: string;
 }
 
+const SYSTEM_SENDER_ID = '00000000-0000-0000-0000-000000000000';
+
 const Sending = () => {
   const { user } = useAuth();
-  const { impersonatedUser } = useAdmin();
+  const { impersonatedUser, isAdmin } = useAdmin();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentUserId = impersonatedUser ? impersonatedUser.user_id : user?.id;
   const currentUser = useMemo(() => currentUserId ? { id: currentUserId } : null, [currentUserId]);
