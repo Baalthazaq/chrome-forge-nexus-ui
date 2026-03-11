@@ -63,6 +63,12 @@ const SendingAdmin = () => {
   const [loading, setLoading] = useState(true);
   const [loadingCasts, setLoadingCasts] = useState(false);
   const [profMap, setProfMap] = useState<Map<string, string>>(new Map());
+  const [adminMessage, setAdminMessage] = useState('');
+  const [sendAsUserId, setSendAsUserId] = useState('');
+  const [sending, setSending] = useState(false);
+  const [editingCast, setEditingCast] = useState<Cast | null>(null);
+  const [editMessage, setEditMessage] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
