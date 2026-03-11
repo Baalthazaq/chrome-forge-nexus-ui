@@ -347,6 +347,14 @@ const MazeAdmin = () => {
                 >
                   {mapMode === 'place-location' ? <><X className="w-3 h-3 mr-1" /> Cancel Placing</> : <><Plus className="w-3 h-3 mr-1" /> Place Location</>}
                 </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => exportData('locations')} className="flex-1 border-gray-600 text-gray-300 text-xs">
+                    <Download className="w-3 h-3 mr-1" /> Export
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => importData('locations')} className="flex-1 border-gray-600 text-gray-300 text-xs">
+                    <Upload className="w-3 h-3 mr-1" /> Import
+                  </Button>
+                </div>
                 <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                   {maze.locations.map(loc => (
                     <div key={loc.id} className="flex items-center justify-between p-2 bg-gray-900/50 border border-gray-700/30 rounded text-sm">
