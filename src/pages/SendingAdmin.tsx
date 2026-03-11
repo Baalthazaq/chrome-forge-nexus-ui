@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -7,10 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, MessageCircle, Users, Eye, Clock, ExternalLink, Trash2 } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Users, Eye, Clock, ExternalLink, Trash2, Send, Edit, Pencil } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
+
+const SYSTEM_SENDER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface Cast {
   id: string;
@@ -59,6 +63,12 @@ const SendingAdmin = () => {
   const [loading, setLoading] = useState(true);
   const [loadingCasts, setLoadingCasts] = useState(false);
   const [profMap, setProfMap] = useState<Map<string, string>>(new Map());
+  const [adminMessage, setAdminMessage] = useState('');
+  const [sendAsUserId, setSendAsUserId] = useState('');
+  const [sending, setSending] = useState(false);
+  const [editingCast, setEditingCast] = useState<Cast | null>(null);
+  const [editMessage, setEditMessage] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
@@ -173,6 +183,63 @@ const SendingAdmin = () => {
     }
   };
 
+  const sendAdminMessage = async (stone: StoneWithParticipants) => {
+    if (!adminMessage.trim() || !sendAsUserId) return;
+    setSending(true);
+    try {
+      const { data, error } = await supabase
+        .from('casts')
+        .insert({
+          stone_id: stone.id,
+          sender_id: sendAsUserId,
+          message: adminMessage.trim()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setConversationCasts(prev => [...prev, data as Cast]);
+      setAdminMessage('');
+      toast({ title: "Message sent", description: `Sent as ${sendAsUserId === SYSTEM_SENDER_ID ? 'System' : profMap.get(sendAsUserId) || 'Unknown'}` });
+      // Refresh stone list for latest cast
+      loadAllConversations();
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({ title: "Error", description: "Failed to send message.", variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const editCast = async () => {
+    if (!editingCast || !editMessage.trim()) return;
+    try {
+      const { error } = await supabase
+        .from('casts')
+        .update({
+          original_message: editingCast.original_message || editingCast.message,
+          message: editMessage.trim(),
+          is_edited: true,
+          edited_at: new Date().toISOString()
+        })
+        .eq('id', editingCast.id);
+
+      if (error) throw error;
+
+      setConversationCasts(prev => prev.map(cast =>
+        cast.id === editingCast.id
+          ? { ...cast, original_message: cast.original_message || cast.message, message: editMessage.trim(), is_edited: true, edited_at: new Date().toISOString() }
+          : cast
+      ));
+      setEditingCast(null);
+      setEditMessage('');
+      toast({ title: "Message edited" });
+    } catch (error) {
+      console.error('Error editing cast:', error);
+      toast({ title: "Error", description: "Failed to edit message.", variant: "destructive" });
+    }
+  };
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -224,8 +291,8 @@ const SendingAdmin = () => {
             <h1 className="text-3xl font-bold">Sending - Admin View</h1>
           </div>
           <Badge variant="outline" className="bg-primary/10 text-primary">
-            <Eye className="h-3 w-3 mr-1" />
-            Read Only
+            <MessageCircle className="h-3 w-3 mr-1" />
+            Admin Chat
           </Badge>
         </div>
 
@@ -331,27 +398,7 @@ const SendingAdmin = () => {
                           {stone.last_cast_at && <span>Last activity: {formatTime(stone.last_cast_at)}</span>}
                           {stone.is_group && <span>Members: {stone.participant_names.join(', ')}</span>}
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <span className="text-sm text-muted-foreground self-center">Reply as:</span>
-                          {stone.participant_ids
-                            .filter(p => !p.left)
-                            .map((p) => (
-                              <Button
-                                key={p.user_id}
-                                size="sm"
-                                variant="outline"
-                                className="gap-1"
-                                onClick={async () => {
-                                  await startImpersonation(p.user_id);
-                                  navigate(`/sending?stone=${stone.id}`);
-                                }}
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                                {p.name}
-                              </Button>
-                            ))}
-                        </div>
-                        <ScrollArea className="h-[400px] border rounded-lg p-4">
+                        <ScrollArea className="h-[350px] border rounded-lg p-4">
                           {loadingCasts ? (
                             <div className="flex items-center justify-center h-full">
                               <MessageCircle className="h-8 w-8 mx-auto mb-2 text-primary animate-pulse" />
@@ -363,25 +410,41 @@ const SendingAdmin = () => {
                           ) : (
                             <div className="space-y-4">
                               {conversationCasts.map((cast) => {
-                                const senderName = profMap.get(cast.sender_id) || 'Unknown';
+                                const senderName = cast.sender_id === SYSTEM_SENDER_ID ? '⚙ System' : (profMap.get(cast.sender_id) || 'Unknown');
                                 return (
-                                  <div key={cast.id} className="flex justify-start">
+                                  <div key={cast.id} className="flex justify-start group">
                                     <div className={`max-w-sm lg:max-w-md px-4 py-3 rounded-lg ${
-                                      cast.is_deleted ? 'opacity-50 border-2 border-dashed border-red-400' : 'bg-muted'
+                                      cast.is_deleted ? 'opacity-50 border-2 border-dashed border-destructive' : cast.sender_id === SYSTEM_SENDER_ID ? 'bg-primary/10 border border-primary/30' : 'bg-muted'
                                     }`}>
                                       <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-xs font-medium">{senderName}</span>
+                                        <span className={`text-xs font-medium ${cast.sender_id === SYSTEM_SENDER_ID ? 'text-primary' : ''}`}>{senderName}</span>
                                         <span className="text-xs opacity-70">{formatTime(cast.created_at)}</span>
-                                        {cast.is_deleted && <span className="text-xs font-bold text-red-400">[DELETED]</span>}
-                                        {cast.is_edited && <span className="text-xs font-bold text-yellow-400">[EDITED]</span>}
+                                        {cast.is_deleted && <span className="text-xs font-bold text-destructive">[DELETED]</span>}
+                                        {cast.is_edited && <span className="text-xs font-bold text-yellow-500">[EDITED]</span>}
+                                        {!cast.is_deleted && (
+                                          <button
+                                            onClick={() => { setEditingCast(cast); setEditMessage(cast.message); }}
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-accent rounded"
+                                          >
+                                            <Pencil className="h-3 w-3" />
+                                          </button>
+                                        )}
                                       </div>
-                                      {cast.is_deleted ? (
-                                        <p className="text-sm font-mono leading-relaxed text-red-400 italic">[Message was deleted]</p>
+                                      {editingCast?.id === cast.id ? (
+                                        <div className="space-y-2">
+                                          <Textarea value={editMessage} onChange={(e) => setEditMessage(e.target.value)} className="text-sm" rows={2} />
+                                          <div className="flex gap-2">
+                                            <Button size="sm" onClick={editCast}>Save</Button>
+                                            <Button size="sm" variant="outline" onClick={() => { setEditingCast(null); setEditMessage(''); }}>Cancel</Button>
+                                          </div>
+                                        </div>
+                                      ) : cast.is_deleted ? (
+                                        <p className="text-sm font-mono leading-relaxed text-destructive italic">[Message was deleted]</p>
                                       ) : (
                                         <p className="text-sm font-mono leading-relaxed">{cast.message}</p>
                                       )}
-                                      {cast.is_edited && cast.original_message && !cast.is_deleted && (
-                                        <div className="mt-2 pt-2 border-t border-gray-300/20">
+                                      {cast.is_edited && cast.original_message && !cast.is_deleted && editingCast?.id !== cast.id && (
+                                        <div className="mt-2 pt-2 border-t border-border/30">
                                           <p className="text-xs text-muted-foreground mb-1">Original:</p>
                                           <p className="text-xs font-mono opacity-70 italic">{cast.original_message}</p>
                                         </div>
@@ -390,9 +453,45 @@ const SendingAdmin = () => {
                                   </div>
                                 );
                               })}
+                              <div ref={messagesEndRef} />
                             </div>
                           )}
                         </ScrollArea>
+                        {/* Admin message composer */}
+                        <div className="border rounded-lg p-3 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground whitespace-nowrap">Send as:</span>
+                            <Select value={sendAsUserId} onValueChange={setSendAsUserId}>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select sender..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={SYSTEM_SENDER_ID}>⚙ System</SelectItem>
+                                {stone.participant_ids
+                                  .filter(p => !p.left)
+                                  .map((p) => (
+                                    <SelectItem key={p.user_id} value={p.user_id}>{p.name}</SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex gap-2">
+                            <Textarea
+                              placeholder="Type a message..."
+                              value={adminMessage}
+                              onChange={(e) => setAdminMessage(e.target.value)}
+                              className="resize-none"
+                              rows={2}
+                            />
+                            <Button
+                              onClick={() => sendAdminMessage(stone)}
+                              disabled={!adminMessage.trim() || !sendAsUserId || sending}
+                              className="self-end"
+                            >
+                              <Send className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </DialogContent>
                   </Dialog>
