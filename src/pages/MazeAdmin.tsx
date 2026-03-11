@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useMazeData, MapLocation, MapArea, MapRouteNode, EnvironmentCard } from '@/hooks/useMazeData';
@@ -214,48 +215,100 @@ const MazeAdmin = () => {
     toast.success('Route drawing finished');
   };
 
-  // --- Export / Import ---
+  // --- Export / Import (XLSX) ---
   const exportData = (type: 'locations' | 'areas') => {
-    const data = type === 'locations' ? maze.locations : maze.areas;
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `maze-${type}-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success(`Exported ${data.length} ${type}`);
+    let rows: Record<string, any>[];
+    if (type === 'locations') {
+      rows = maze.locations.map(l => ({
+        id: l.id, name: l.name, description: l.description || '', x: l.x, y: l.y,
+        icon_type: l.icon_type, marker_color: l.marker_color, is_public: l.is_public,
+        image_url: l.image_url || '', user_id: l.user_id,
+      }));
+    } else {
+      rows = maze.areas.map(a => ({
+        id: a.id, name: a.name, description: a.description || '',
+        image_url: a.image_url || '',
+        polygon_points: JSON.stringify(a.polygon_points),
+        env_tier: a.environment_card?.tier ?? '',
+        env_type: a.environment_card?.type ?? '',
+        env_impulses: (a.environment_card?.impulses || []).join(', '),
+        env_difficulty: a.environment_card?.difficulty || '',
+        env_adversaries: a.environment_card?.potential_adversaries || '',
+        env_features: JSON.stringify(a.environment_card?.features || []),
+        visible_impulses: a.environment_card?.visible_fields?.impulses !== false,
+        visible_difficulty: a.environment_card?.visible_fields?.difficulty !== false,
+        visible_adversaries: a.environment_card?.visible_fields?.adversaries !== false,
+        visible_features: a.environment_card?.visible_fields?.features !== false,
+      }));
+    }
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, type);
+    XLSX.writeFile(wb, `maze-${type}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success(`Exported ${rows.length} ${type}`);
   };
 
   const importData = (type: 'locations' | 'areas') => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
+    input.accept = '.xlsx,.xls,.csv';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       try {
-        const text = await file.text();
-        const items = JSON.parse(text);
-        if (!Array.isArray(items)) throw new Error('Expected a JSON array');
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf);
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const items: any[] = XLSX.utils.sheet_to_json(ws);
+        if (!items.length) throw new Error('No rows found');
         let updated = 0, created = 0;
-        for (const item of items) {
+        for (const row of items) {
           if (type === 'locations') {
-            const { id, created_at, updated_at, ...rest } = item;
-            if (id && maze.locations.find(l => l.id === id)) {
-              await maze.updateLocation.mutateAsync({ id, ...rest });
+            const loc = {
+              name: String(row.name || ''),
+              description: row.description || null,
+              x: Number(row.x), y: Number(row.y),
+              icon_type: row.icon_type || 'default',
+              marker_color: row.marker_color || '#14b8a6',
+              is_public: row.is_public === true || row.is_public === 'true' || row.is_public === 'TRUE',
+              image_url: row.image_url || null,
+              user_id: row.user_id || user!.id,
+            };
+            if (row.id && maze.locations.find(l => l.id === row.id)) {
+              await maze.updateLocation.mutateAsync({ id: row.id, ...loc });
               updated++;
             } else {
-              await maze.createLocation.mutateAsync({ ...rest, user_id: rest.user_id || user!.id });
+              await maze.createLocation.mutateAsync(loc);
               created++;
             }
           } else {
-            const { id, created_at, updated_at, ...rest } = item;
-            if (id && maze.areas.find(a => a.id === id)) {
-              await maze.updateArea.mutateAsync({ id, ...rest });
+            const polygonPoints = typeof row.polygon_points === 'string' ? JSON.parse(row.polygon_points) : row.polygon_points || [];
+            const features = typeof row.env_features === 'string' && row.env_features ? JSON.parse(row.env_features) : [];
+            const area = {
+              name: String(row.name || ''),
+              description: row.description || null,
+              image_url: row.image_url || null,
+              polygon_points: polygonPoints,
+              environment_card: {
+                tier: row.env_tier ? Number(row.env_tier) : undefined,
+                type: row.env_type || undefined,
+                impulses: row.env_impulses ? String(row.env_impulses).split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+                difficulty: row.env_difficulty || '',
+                potential_adversaries: row.env_adversaries || '',
+                features,
+                visible_fields: {
+                  impulses: row.visible_impulses !== false && row.visible_impulses !== 'false' && row.visible_impulses !== 'FALSE',
+                  difficulty: row.visible_difficulty !== false && row.visible_difficulty !== 'false' && row.visible_difficulty !== 'FALSE',
+                  adversaries: row.visible_adversaries !== false && row.visible_adversaries !== 'false' && row.visible_adversaries !== 'FALSE',
+                  features: row.visible_features !== false && row.visible_features !== 'false' && row.visible_features !== 'FALSE',
+                },
+              },
+            };
+            if (row.id && maze.areas.find(a => a.id === row.id)) {
+              await maze.updateArea.mutateAsync({ id: row.id, ...area });
               updated++;
             } else {
-              await maze.createArea.mutateAsync(rest);
+              await maze.createArea.mutateAsync(area);
               created++;
             }
           }
