@@ -214,6 +214,61 @@ const MazeAdmin = () => {
     toast.success('Route drawing finished');
   };
 
+  // --- Export / Import ---
+  const exportData = (type: 'locations' | 'areas') => {
+    const data = type === 'locations' ? maze.locations : maze.areas;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `maze-${type}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${data.length} ${type}`);
+  };
+
+  const importData = (type: 'locations' | 'areas') => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const items = JSON.parse(text);
+        if (!Array.isArray(items)) throw new Error('Expected a JSON array');
+        let updated = 0, created = 0;
+        for (const item of items) {
+          if (type === 'locations') {
+            const { id, created_at, updated_at, ...rest } = item;
+            if (id && maze.locations.find(l => l.id === id)) {
+              await maze.updateLocation.mutateAsync({ id, ...rest });
+              updated++;
+            } else {
+              await maze.createLocation.mutateAsync({ ...rest, user_id: rest.user_id || user!.id });
+              created++;
+            }
+          } else {
+            const { id, created_at, updated_at, ...rest } = item;
+            if (id && maze.areas.find(a => a.id === id)) {
+              await maze.updateArea.mutateAsync({ id, ...rest });
+              updated++;
+            } else {
+              await maze.createArea.mutateAsync(rest);
+              created++;
+            }
+          }
+        }
+        maze.invalidateAll();
+        toast.success(`Import complete: ${created} created, ${updated} updated`);
+      } catch (err: any) {
+        toast.error(`Import failed: ${err.message}`);
+      }
+    };
+    input.click();
+  };
+
   // Map click dispatcher
   const handleMapClick = (x: number, y: number) => {
     if (mapMode === 'place-location') handleMapClickLocation(x, y);
