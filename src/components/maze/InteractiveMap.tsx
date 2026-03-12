@@ -190,6 +190,7 @@ export const InteractiveMap = ({
           alt="Map of Raccassammeddi"
           className="w-full block"
           draggable={false}
+          style={{ opacity: mapOpacity, transition: 'opacity 0.3s ease' }}
         />
 
         {/* SVG overlay for polygons, edges, paths */}
