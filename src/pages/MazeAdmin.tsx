@@ -386,6 +386,7 @@ const MazeAdmin = () => {
                 onLocationClick={startEditLocation}
                 onAreaClick={startEditArea}
                 onRouteNodeClick={handleRouteNodeClick}
+                selectedRouteNodeId={selectedRouteNodeId}
                 mode={mapMode}
                 mapOpacity={mapMode !== 'view' ? 0.7 : 1}
               />
