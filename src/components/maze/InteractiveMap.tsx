@@ -329,17 +329,17 @@ export const InteractiveMap = ({
                   strokeLinecap="round" strokeLinejoin="round"
                   filter="url(#routeGlow)"
                 />
-                {/* Base gradient line */}
+                {/* Base solid black line */}
                 <polyline points={pts} fill="none"
-                  stroke="url(#routeGradient)" strokeWidth={1.2}
+                  stroke="rgba(0,0,0,0.6)" strokeWidth={1.2}
                   strokeLinecap="round" strokeLinejoin="round"
                   filter="url(#routeGlow)"
                 />
-                {/* Dark scanning dashes */}
+                {/* Gradient scanning dashes */}
                 <polyline points={pts} fill="none"
-                  stroke="rgba(0,0,0,0.85)" strokeWidth={1.2}
+                  stroke="url(#routeGradient)" strokeWidth={1.2}
                   strokeLinecap="round" strokeLinejoin="round"
-                  strokeDasharray="2,4"
+                  strokeDasharray="1.5,4.5"
                   style={{ animation: 'routeFlow 0.8s linear infinite' }}
                 />
                 {/* Bright scan pulse */}
