@@ -309,25 +309,25 @@ export const InteractiveMap = ({
               <polyline
                 points={routePath.map(p => `${p.x},${p.y}`).join(' ')}
                 fill="none"
-                stroke="rgba(0,255,255,0.25)"
+                stroke="rgba(59,130,246,0.25)"
                 strokeWidth={2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
-              {/* Base color layer - cyan */}
+              {/* Base color layer - blue */}
               <polyline
                 points={routePath.map(p => `${p.x},${p.y}`).join(' ')}
                 fill="none"
-                stroke="rgba(0,255,255,0.8)"
+                stroke="rgba(59,130,246,0.9)"
                 strokeWidth={1.2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
-              {/* Animated dashes - magenta, flowing toward destination */}
+              {/* Animated dashes - black, flowing toward destination */}
               <polyline
                 points={routePath.map(p => `${p.x},${p.y}`).join(' ')}
                 fill="none"
-                stroke="rgba(255,0,200,0.9)"
+                stroke="rgba(0,0,0,0.95)"
                 strokeWidth={1.2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
