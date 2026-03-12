@@ -77,6 +77,7 @@ export const InteractiveMap = ({
   onRouteNodeClick,
   mode = 'view',
   zoomToArea,
+  mapOpacity = 1,
 }: InteractiveMapProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isZoomed, setIsZoomed] = useState(false);
