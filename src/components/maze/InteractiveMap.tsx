@@ -56,6 +56,7 @@ interface InteractiveMapProps {
   onRouteNodeClick?: (node: MapRouteNode) => void;
   mode?: 'view' | 'place-location' | 'draw-polygon' | 'draw-route';
   zoomToArea?: MapArea | null;
+  mapOpacity?: number;
 }
 
 export const InteractiveMap = ({
