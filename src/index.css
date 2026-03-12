@@ -103,6 +103,6 @@
 }
 
 @keyframes routeFlow {
-  from { stroke-dashoffset: 3.5; }
+  from { stroke-dashoffset: 6; }
   to { stroke-dashoffset: 0; }
 }
