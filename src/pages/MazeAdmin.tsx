@@ -187,7 +187,10 @@ const MazeAdmin = () => {
   };
 
   const handleRouteNodeClick = async (node: MapRouteNode) => {
-    if (mapMode !== 'draw-route') return;
+    if (mapMode !== 'draw-route') {
+      setSelectedRouteNodeId(prev => prev === node.id ? null : node.id);
+      return;
+    }
     if (drawingRoute.length > 0) {
       const lastNodeId = drawingRoute[drawingRoute.length - 1];
       if (lastNodeId !== node.id) {
