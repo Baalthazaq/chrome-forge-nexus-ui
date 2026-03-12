@@ -374,6 +374,22 @@ const MazeAdmin = () => {
           {/* Map */}
           <div className="lg:col-span-2">
             <Card className="bg-gray-900/40 border-gray-700/50 p-1">
+              <div className="flex items-center justify-end gap-1 px-2 py-1">
+                <span className="text-[10px] text-gray-500 font-mono mr-1">Map</span>
+                {[0.25, 0.5, 0.75, 1].map(v => (
+                  <button
+                    key={v}
+                    onClick={() => setMapOpacity(v)}
+                    className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition-colors ${
+                      mapOpacity === v
+                        ? 'bg-teal-600/40 text-teal-300 border border-teal-500/50'
+                        : 'text-gray-500 hover:text-gray-300 border border-transparent'
+                    }`}
+                  >
+                    {v * 100}%
+                  </button>
+                ))}
+              </div>
               <InteractiveMap
                 locations={maze.locations}
                 areas={maze.areas}
@@ -389,7 +405,7 @@ const MazeAdmin = () => {
                 onRouteNodeClick={handleRouteNodeClick}
                 selectedRouteNodeId={selectedRouteNodeId}
                 mode={mapMode}
-                mapOpacity={mapMode !== 'view' ? 0.7 : 1}
+                mapOpacity={mapOpacity}
               />
             </Card>
           </div>
