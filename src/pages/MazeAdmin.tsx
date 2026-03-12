@@ -486,9 +486,17 @@ const MazeAdmin = () => {
                 {maze.routeNodes.length > 0 && (
                   <div className="space-y-1 max-h-[50vh] overflow-y-auto">
                     {maze.routeNodes.map(node => (
-                      <div key={node.id} className="flex items-center justify-between p-1 bg-gray-900/50 border border-gray-700/30 rounded text-xs font-mono">
-                        <span className="text-gray-400">({node.x.toFixed(1)}, {node.y.toFixed(1)})</span>
-                        <button onClick={() => { maze.deleteRouteNode.mutate(node.id); toast.success('Node deleted'); }} className="p-1 text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                      <div
+                        key={node.id}
+                        className={`flex items-center justify-between p-1 rounded text-xs font-mono cursor-pointer transition-colors ${
+                          selectedRouteNodeId === node.id
+                            ? 'bg-purple-600/30 border border-purple-500/60 text-purple-300'
+                            : 'bg-gray-900/50 border border-gray-700/30 text-gray-400 hover:bg-gray-800/50'
+                        }`}
+                        onClick={() => setSelectedRouteNodeId(prev => prev === node.id ? null : node.id)}
+                      >
+                        <span>({node.x.toFixed(1)}, {node.y.toFixed(1)})</span>
+                        <button onClick={(e) => { e.stopPropagation(); maze.deleteRouteNode.mutate(node.id); setSelectedRouteNodeId(null); toast.success('Node deleted'); }} className="p-1 text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     ))}
                   </div>
