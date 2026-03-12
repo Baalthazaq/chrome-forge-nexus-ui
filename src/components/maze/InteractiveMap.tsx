@@ -48,6 +48,7 @@ interface InteractiveMapProps {
   showRouteEdges?: boolean;
   selectedArea?: MapArea | null;
   selectedLocation?: MapLocation | null;
+  selectedRouteNodeId?: string | null;
   drawingPolygon?: { x: number; y: number }[];
   drawingRoute?: string[];
   onMapClick?: (x: number, y: number) => void;
