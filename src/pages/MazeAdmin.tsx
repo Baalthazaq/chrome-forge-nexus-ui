@@ -25,6 +25,7 @@ const MazeAdmin = () => {
 
   const [activeTab, setActiveTab] = useState('locations');
   const [mapMode, setMapMode] = useState<'view' | 'place-location' | 'draw-polygon' | 'draw-route'>('view');
+  const [mapOpacity, setMapOpacity] = useState(1);
 
   // Location state
   const [editingLocation, setEditingLocation] = useState<Partial<MapLocation> | null>(null);
