@@ -304,15 +304,46 @@ export const InteractiveMap = ({
 
           {/* Pathfinding route (player view) */}
           {routePath && routePath.length > 1 && (
-            <polyline
-              points={routePath.map(p => `${p.x},${p.y}`).join(' ')}
-              fill="none"
-              stroke="rgba(59,130,246,0.9)"
-              strokeWidth={0.4}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeDasharray="1,0.5"
-            />
+            <>
+              <defs>
+                <linearGradient id="routeGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="rgba(59,130,246,0.3)" />
+                  <stop offset="50%" stopColor="rgba(59,130,246,0.9)" />
+                  <stop offset="100%" stopColor="rgba(59,130,246,0.3)" />
+                </linearGradient>
+              </defs>
+              {/* Background glow */}
+              <polyline
+                points={routePath.map(p => `${p.x},${p.y}`).join(' ')}
+                fill="none"
+                stroke="rgba(59,130,246,0.2)"
+                strokeWidth={0.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              {/* Animated dashes flowing toward destination */}
+              <polyline
+                points={routePath.map(p => `${p.x},${p.y}`).join(' ')}
+                fill="none"
+                stroke="rgba(59,130,246,0.9)"
+                strokeWidth={0.4}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray="2,1.5"
+                style={{ animation: 'routeFlow 1s linear infinite' }}
+              />
+              {/* Bright pulse layer */}
+              <polyline
+                points={routePath.map(p => `${p.x},${p.y}`).join(' ')}
+                fill="none"
+                stroke="rgba(147,197,253,0.6)"
+                strokeWidth={0.25}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray="1,3"
+                style={{ animation: 'routeFlow 0.7s linear infinite' }}
+              />
+            </>
           )}
         </svg>
 
