@@ -305,43 +305,34 @@ export const InteractiveMap = ({
           {/* Pathfinding route (player view) */}
           {routePath && routePath.length > 1 && (
             <>
-              <defs>
-                <linearGradient id="routeGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="rgba(59,130,246,0.3)" />
-                  <stop offset="50%" stopColor="rgba(59,130,246,0.9)" />
-                  <stop offset="100%" stopColor="rgba(59,130,246,0.3)" />
-                </linearGradient>
-              </defs>
-              {/* Background glow */}
+              {/* Outer glow */}
               <polyline
                 points={routePath.map(p => `${p.x},${p.y}`).join(' ')}
                 fill="none"
-                stroke="rgba(59,130,246,0.2)"
-                strokeWidth={0.8}
+                stroke="rgba(0,255,255,0.25)"
+                strokeWidth={2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
-              {/* Animated dashes flowing toward destination */}
+              {/* Base color layer - cyan */}
               <polyline
                 points={routePath.map(p => `${p.x},${p.y}`).join(' ')}
                 fill="none"
-                stroke="rgba(59,130,246,0.9)"
-                strokeWidth={0.4}
+                stroke="rgba(0,255,255,0.8)"
+                strokeWidth={1.2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeDasharray="2,1.5"
-                style={{ animation: 'routeFlow 1s linear infinite' }}
               />
-              {/* Bright pulse layer */}
+              {/* Animated dashes - magenta, flowing toward destination */}
               <polyline
                 points={routePath.map(p => `${p.x},${p.y}`).join(' ')}
                 fill="none"
-                stroke="rgba(147,197,253,0.6)"
-                strokeWidth={0.25}
+                stroke="rgba(255,0,200,0.9)"
+                strokeWidth={1.2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeDasharray="1,3"
-                style={{ animation: 'routeFlow 0.7s linear infinite' }}
+                strokeDasharray="3,3"
+                style={{ animation: 'routeFlow 0.8s linear infinite' }}
               />
             </>
           )}
