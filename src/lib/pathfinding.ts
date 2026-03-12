@@ -83,9 +83,22 @@ function bfsDistances(adj: Map<string, string[]>, start: string): Map<string, nu
   return dist;
 }
 
-// Find nodes inside a polygon
+// Find nodes inside a polygon, with fallback to nearest node to centroid
 function nodesInArea(area: MapArea, nodes: MapRouteNode[]): MapRouteNode[] {
-  return nodes.filter(n => pointInPolygon(n.x, n.y, area.polygon_points));
+  const inside = nodes.filter(n => pointInPolygon(n.x, n.y, area.polygon_points));
+  if (inside.length > 0) return inside;
+
+  // Fallback: find the nearest node to the polygon centroid
+  const centroid = area.polygon_points.reduce(
+    (acc, p) => ({ x: acc.x + p.x / area.polygon_points.length, y: acc.y + p.y / area.polygon_points.length }),
+    { x: 0, y: 0 }
+  );
+  const nearestId = findNearestNode(centroid, nodes);
+  if (nearestId) {
+    const node = nodes.find(n => n.id === nearestId);
+    if (node) return [node];
+  }
+  return [];
 }
 
 export type RouteEndpoint = 
