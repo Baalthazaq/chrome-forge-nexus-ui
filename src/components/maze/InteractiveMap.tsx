@@ -56,6 +56,7 @@ interface InteractiveMapProps {
   onRouteNodeClick?: (node: MapRouteNode) => void;
   mode?: 'view' | 'place-location' | 'draw-polygon' | 'draw-route';
   zoomToArea?: MapArea | null;
+  mapOpacity?: number;
 }
 
 export const InteractiveMap = ({
@@ -76,6 +77,7 @@ export const InteractiveMap = ({
   onRouteNodeClick,
   mode = 'view',
   zoomToArea,
+  mapOpacity = 1,
 }: InteractiveMapProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isZoomed, setIsZoomed] = useState(false);
@@ -188,6 +190,7 @@ export const InteractiveMap = ({
           alt="Map of Raccassammeddi"
           className="w-full block"
           draggable={false}
+          style={{ opacity: mapOpacity, transition: 'opacity 0.3s ease' }}
         />
 
         {/* SVG overlay for polygons, edges, paths */}

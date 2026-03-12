@@ -383,6 +383,7 @@ const MazeAdmin = () => {
                 onAreaClick={startEditArea}
                 onRouteNodeClick={handleRouteNodeClick}
                 mode={mapMode}
+                mapOpacity={mapMode !== 'view' ? 0.7 : 1}
               />
             </Card>
           </div>
