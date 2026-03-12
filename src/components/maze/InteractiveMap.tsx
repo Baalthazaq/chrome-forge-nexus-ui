@@ -303,39 +303,55 @@ export const InteractiveMap = ({
           })}
 
           {/* Pathfinding route (player view) */}
-          {routePath && routePath.length > 1 && (
-            <>
-              {/* Outer glow */}
-              <polyline
-                points={routePath.map(p => `${p.x},${p.y}`).join(' ')}
-                fill="none"
-                stroke="rgba(59,130,246,0.25)"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              {/* Base color layer - blue */}
-              <polyline
-                points={routePath.map(p => `${p.x},${p.y}`).join(' ')}
-                fill="none"
-                stroke="rgba(59,130,246,0.9)"
-                strokeWidth={1.2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              {/* Animated dashes - black, flowing toward destination */}
-              <polyline
-                points={routePath.map(p => `${p.x},${p.y}`).join(' ')}
-                fill="none"
-                stroke="rgba(0,0,0,0.95)"
-                strokeWidth={1.2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeDasharray="3,3"
-                style={{ animation: 'routeFlow 0.8s linear infinite' }}
-              />
-            </>
-          )}
+          {routePath && routePath.length > 1 && (() => {
+            const pts = routePath.map(p => `${p.x},${p.y}`).join(' ');
+            return (
+              <>
+                <defs>
+                  <linearGradient id="routeGradient" gradientUnits="userSpaceOnUse"
+                    x1={routePath[0].x} y1={routePath[0].y}
+                    x2={routePath[routePath.length - 1].x} y2={routePath[routePath.length - 1].y}>
+                    <stop offset="0%" stopColor="rgba(0,200,255,0.9)" />
+                    <stop offset="50%" stopColor="rgba(59,130,246,0.9)" />
+                    <stop offset="100%" stopColor="rgba(0,255,140,0.9)" />
+                  </linearGradient>
+                  <filter id="routeGlow">
+                    <feGaussianBlur stdDeviation="0.4" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+                {/* Outer neon glow */}
+                <polyline points={pts} fill="none"
+                  stroke="rgba(0,200,255,0.15)" strokeWidth={3}
+                  strokeLinecap="round" strokeLinejoin="round"
+                  filter="url(#routeGlow)"
+                />
+                {/* Base gradient line */}
+                <polyline points={pts} fill="none"
+                  stroke="url(#routeGradient)" strokeWidth={1.2}
+                  strokeLinecap="round" strokeLinejoin="round"
+                  filter="url(#routeGlow)"
+                />
+                {/* Dark scanning dashes */}
+                <polyline points={pts} fill="none"
+                  stroke="rgba(0,0,0,0.85)" strokeWidth={1.2}
+                  strokeLinecap="round" strokeLinejoin="round"
+                  strokeDasharray="2,4"
+                  style={{ animation: 'routeFlow 0.8s linear infinite' }}
+                />
+                {/* Bright scan pulse */}
+                <polyline points={pts} fill="none"
+                  stroke="rgba(0,255,255,0.5)" strokeWidth={0.4}
+                  strokeLinecap="round" strokeLinejoin="round"
+                  strokeDasharray="0.5,5.5"
+                  style={{ animation: 'routeFlow 0.6s linear infinite' }}
+                />
+              </>
+            );
+          })()}
         </svg>
 
         {/* Route nodes (admin only) */}
