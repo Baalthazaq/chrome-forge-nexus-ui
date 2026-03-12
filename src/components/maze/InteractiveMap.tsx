@@ -319,13 +319,15 @@ export const InteractiveMap = ({
         {/* Route nodes (admin only) */}
         {showRouteNodes && routeNodes.map(node => {
           const isInDrawing = drawingRoute.includes(node.id);
+          const isSelected = selectedRouteNodeId === node.id;
           return (
             <div
               key={node.id}
               className={`absolute w-3 h-3 rounded-full -translate-x-1/2 -translate-y-1/2 cursor-pointer border ${
+                isSelected ? 'bg-yellow-400 border-yellow-200 scale-150 ring-2 ring-yellow-400/50' :
                 isInDrawing ? 'bg-amber-400 border-amber-300' : 'bg-purple-500/60 border-purple-400/60'
               } hover:scale-150 transition-transform`}
-              style={{ left: `${node.x}%`, top: `${node.y}%`, zIndex: 20, pointerEvents: mode !== 'view' && mode !== 'draw-route' ? 'none' : 'auto' }}
+              style={{ left: `${node.x}%`, top: `${node.y}%`, zIndex: isSelected ? 25 : 20, pointerEvents: mode !== 'view' && mode !== 'draw-route' ? 'none' : 'auto' }}
               onClick={(e) => {
                 e.stopPropagation();
                 onRouteNodeClick?.(node);
