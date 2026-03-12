@@ -40,6 +40,7 @@ const MazeAdmin = () => {
 
   // Route state
   const [drawingRoute, setDrawingRoute] = useState<string[]>([]);
+  const [selectedRouteNodeId, setSelectedRouteNodeId] = useState<string | null>(null);
 
   if (adminLoading) return <div className="min-h-screen bg-black flex items-center justify-center"><Shield className="w-8 h-8 text-teal-500 animate-pulse" /></div>;
   if (!isAdmin) { navigate('/'); return null; }
