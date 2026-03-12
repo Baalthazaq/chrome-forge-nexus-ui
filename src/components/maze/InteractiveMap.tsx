@@ -70,6 +70,7 @@ export const InteractiveMap = ({
   showRouteEdges = false,
   selectedArea,
   selectedLocation,
+  selectedRouteNodeId,
   drawingPolygon = [],
   drawingRoute = [],
   onMapClick,
