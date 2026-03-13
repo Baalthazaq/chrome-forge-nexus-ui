@@ -282,7 +282,7 @@ const Sending = () => {
       if (error) throw error;
 
       // Load profile names for senders
-      const { data: profs } = await supabase.from('profiles').select('user_id, character_name');
+      const { data: profs } = await supabase.from('profiles').select('user_id, character_name, avatar_url');
       const profMap = new Map((profs || []).map(p => [p.user_id, p.character_name || 'Unknown']));
 
       setCasts((data || []).map(c => ({ ...c, sender_name: profMap.get(c.sender_id) })));
