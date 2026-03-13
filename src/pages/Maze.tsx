@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 const Maze = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const maze = useMazeData();
 
   const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
