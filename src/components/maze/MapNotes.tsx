@@ -4,16 +4,24 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Save, BookOpen, Loader2 } from 'lucide-react';
+import { Save, BookOpen, Loader2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MapNotesProps {
   locationId?: string;
   areaId?: string;
   targetName: string;
+  isAdmin?: boolean;
 }
 
-export const MapNotes = ({ locationId, areaId, targetName }: MapNotesProps) => {
+interface NoteWithProfile {
+  id: string;
+  content: string;
+  user_id: string;
+  character_name?: string | null;
+}
+
+export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false }: MapNotesProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [content, setContent] = useState('');
@@ -21,6 +29,7 @@ export const MapNotes = ({ locationId, areaId, targetName }: MapNotesProps) => {
 
   const noteKey = locationId ? ['map-note', 'location', locationId] : ['map-note', 'area', areaId];
 
+  // Player's own note
   const noteQuery = useQuery({
     queryKey: noteKey,
     enabled: !!user,
@@ -31,6 +40,34 @@ export const MapNotes = ({ locationId, areaId, targetName }: MapNotesProps) => {
       const { data, error } = await query.maybeSingle();
       if (error) throw error;
       return data as { id: string; content: string } | null;
+    },
+  });
+
+  // All notes (admin only)
+  const allNotesKey = locationId ? ['map-notes-all', 'location', locationId] : ['map-notes-all', 'area', areaId];
+  const allNotesQuery = useQuery({
+    queryKey: allNotesKey,
+    enabled: !!user && isAdmin,
+    queryFn: async () => {
+      let query = supabase.from('map_notes').select('*');
+      if (locationId) query = query.eq('location_id', locationId);
+      if (areaId) query = query.eq('area_id', areaId);
+      const { data, error } = await query;
+      if (error) throw error;
+      const notes = data || [];
+      if (notes.length === 0) return [] as NoteWithProfile[];
+      const userIds = [...new Set(notes.map((n: any) => n.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, character_name')
+        .in('user_id', userIds);
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p.character_name]));
+      return notes.map((n: any) => ({
+        id: n.id,
+        content: n.content,
+        user_id: n.user_id,
+        character_name: profileMap.get(n.user_id) || 'Unknown',
+      })) as NoteWithProfile[];
     },
   });
 
@@ -58,6 +95,7 @@ export const MapNotes = ({ locationId, areaId, targetName }: MapNotesProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: noteKey });
+      if (isAdmin) queryClient.invalidateQueries({ queryKey: allNotesKey });
       setHasEdited(false);
       toast.success('Notes saved');
     },
@@ -80,6 +118,9 @@ export const MapNotes = ({ locationId, areaId, targetName }: MapNotesProps) => {
   });
 
   if (!user) return null;
+
+  const allNotes = allNotesQuery.data || [];
+  const otherNotes = allNotes.filter(n => n.user_id !== user.id);
 
   return (
     <div className="space-y-2 border-t border-gray-700/50 pt-3">
@@ -111,6 +152,21 @@ export const MapNotes = ({ locationId, areaId, targetName }: MapNotesProps) => {
           Export to ToMe
         </Button>
       </div>
+
+      {/* Admin: show all players' notes */}
+      {isAdmin && otherNotes.length > 0 && (
+        <div className="space-y-2 border-t border-gray-700/50 pt-3 mt-2">
+          <h3 className="text-sm font-bold text-gray-300 font-mono flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5" /> Player Notes ({otherNotes.length})
+          </h3>
+          {otherNotes.map(note => (
+            <div key={note.id} className="bg-gray-800/30 rounded p-3 space-y-1">
+              <span className="text-xs font-medium text-teal-400">{note.character_name}</span>
+              <p className="text-xs text-gray-400 whitespace-pre-wrap">{note.content}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
