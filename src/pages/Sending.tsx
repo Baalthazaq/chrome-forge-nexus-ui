@@ -140,7 +140,7 @@ const Sending = () => {
   };
 
   const loadAllProfiles = async () => {
-    const { data } = await supabase.from('profiles').select('id, user_id, character_name');
+    const { data } = await supabase.from('profiles').select('id, user_id, character_name, avatar_url');
     if (data) setAllProfiles(data as Profile[]);
   };
 
