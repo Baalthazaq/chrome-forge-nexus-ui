@@ -896,7 +896,7 @@ const Sending = () => {
                     return (
                     <div
                       key={cast.id}
-                      className={`flex items-end gap-2 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                      className={`flex items-start gap-2 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                     >
                       {/* Avatar - left side for others */}
                       {!isOwnMessage && !isSystemMessage && (
