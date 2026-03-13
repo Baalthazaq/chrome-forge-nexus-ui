@@ -21,6 +21,8 @@ const Roldex = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { impersonatedUser } = useAdmin();
+  const [viewingAvatar, setViewingAvatar] = useState<string | null>(null);
+  const [viewingProfile, setViewingProfile] = useState<any | null>(null);
   
   // Use impersonated user if available, otherwise use authenticated user
   const effectiveUser = impersonatedUser || user;
