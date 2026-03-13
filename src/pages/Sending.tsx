@@ -64,6 +64,7 @@ interface Profile {
   id: string;
   user_id: string;
   character_name: string;
+  avatar_url: string | null;
 }
 
 const SYSTEM_SENDER_ID = '00000000-0000-0000-0000-000000000000';
@@ -139,7 +140,7 @@ const Sending = () => {
   };
 
   const loadAllProfiles = async () => {
-    const { data } = await supabase.from('profiles').select('id, user_id, character_name');
+    const { data } = await supabase.from('profiles').select('id, user_id, character_name, avatar_url');
     if (data) setAllProfiles(data as Profile[]);
   };
 
@@ -180,7 +181,7 @@ const Sending = () => {
       if (sError) throw sError;
 
       // Load all profiles for name lookups
-      const { data: profs } = await supabase.from('profiles').select('user_id, character_name');
+      const { data: profs } = await supabase.from('profiles').select('user_id, character_name, avatar_url');
       const profMap = new Map((profs || []).map(p => [p.user_id, p.character_name || 'Unknown']));
 
       const stonesWithInfo = await Promise.all(
@@ -281,7 +282,7 @@ const Sending = () => {
       if (error) throw error;
 
       // Load profile names for senders
-      const { data: profs } = await supabase.from('profiles').select('user_id, character_name');
+      const { data: profs } = await supabase.from('profiles').select('user_id, character_name, avatar_url');
       const profMap = new Map((profs || []).map(p => [p.user_id, p.character_name || 'Unknown']));
 
       setCasts((data || []).map(c => ({ ...c, sender_name: profMap.get(c.sender_id) })));
@@ -889,18 +890,31 @@ const Sending = () => {
                     const isOwnMessage = cast.sender_id === currentUser?.id;
                     const isSystemMessage = cast.sender_id === SYSTEM_SENDER_ID;
                     const canEdit = isOwnMessage || isAdmin;
+                    const senderProfile = allProfiles.find(p => p.user_id === cast.sender_id);
+                    const avatarUrl = senderProfile?.avatar_url;
+                    const fallbackAvatar = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif';
                     return (
                     <div
                       key={cast.id}
-                      className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                      className={`flex items-end gap-2 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                     >
+                      {/* Avatar - left side for others */}
+                      {!isOwnMessage && !isSystemMessage && (
+                        <div className="sending-avatar shrink-0">
+                          <img
+                            src={avatarUrl || fallbackAvatar}
+                            alt={cast.sender_name || 'Unknown'}
+                            className="w-8 h-8 object-cover"
+                          />
+                        </div>
+                      )}
                       <div
                         className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg relative group ${
                           isSystemMessage
                             ? 'bg-primary/20 border border-primary/30 text-foreground'
                             : isOwnMessage
-                            ? 'bg-cyan-500 text-white ml-12'
-                            : 'bg-gray-700 text-gray-100 mr-12'
+                            ? 'bg-cyan-500 text-white'
+                            : 'bg-gray-700 text-gray-100'
                         }`}
                       >
                         {(selectedStone.is_group || isSystemMessage) && !isOwnMessage && (
@@ -943,6 +957,16 @@ const Sending = () => {
                           )}
                         </div>
                       </div>
+                      {/* Avatar - right side for own messages */}
+                      {isOwnMessage && !isSystemMessage && (
+                        <div className="sending-avatar shrink-0">
+                          <img
+                            src={avatarUrl || fallbackAvatar}
+                            alt={cast.sender_name || 'You'}
+                            className="w-8 h-8 object-cover"
+                          />
+                        </div>
+                      )}
                     </div>
                     );
                   })}
