@@ -47,6 +47,8 @@ export const LocationPanel = ({ location, onClose }: LocationPanelProps) => {
         Type: {location.icon_type} • {location.is_public ? 'Public' : 'Private'}
       </div>
 
+      <MapNotes locationId={location.id} targetName={location.name} />
+
       {canDelete && (
         <Button
           variant="destructive"

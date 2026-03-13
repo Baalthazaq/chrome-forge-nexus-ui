@@ -83,6 +83,9 @@ export const AreaPanel = ({ area, onClose }: AreaPanelProps) => {
       {/* Environment Card */}
       <EnvironmentCardDisplay card={area.environment_card} areaName={area.name} isAdmin={false} />
 
+      {/* Personal Notes */}
+      <MapNotes areaId={area.id} targetName={area.name} />
+
       {/* Reviews */}
       <div className="space-y-3 border-t border-gray-700/50 pt-3">
         <h3 className="text-sm font-bold text-gray-300 font-mono">Reviews</h3>
