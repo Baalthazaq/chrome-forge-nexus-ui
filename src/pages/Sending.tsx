@@ -893,7 +893,7 @@ const Sending = () => {
                     const senderProfile = allProfiles.find(p => p.user_id === cast.sender_id);
                     const avatarUrl = senderProfile?.avatar_url;
                     const fallbackAvatar = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif';
-                    const systemAvatar = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Sending.png';
+                    const systemAvatar = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Sending%20Stone.gif';
                     const displayAvatar = isSystemMessage ? systemAvatar : (avatarUrl || fallbackAvatar);
                     return (
                     <div
@@ -913,14 +913,17 @@ const Sending = () => {
                       <div
                         className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg relative group ${
                           isSystemMessage
-                            ? 'bg-muted border border-border text-foreground'
+                            ? 'bg-gray-700 text-gray-100'
                             : isOwnMessage
                             ? 'bg-cyan-500 text-white'
                             : 'bg-gray-700 text-gray-100'
                         }`}
                       >
-                        {(selectedStone.is_group || isSystemMessage) && !isOwnMessage && (
-                          <p className={`text-xs font-semibold mb-1 ${isSystemMessage ? 'text-primary' : 'opacity-80'}`}>{cast.sender_name}</p>
+                        {isSystemMessage && (
+                          <p className="text-xs font-bold mb-1 text-cyan-400 tracking-widest font-mono">SYSTEM</p>
+                        )}
+                        {(selectedStone.is_group) && !isOwnMessage && !isSystemMessage && (
+                          <p className="text-xs font-semibold mb-1 opacity-80">{cast.sender_name}</p>
                         )}
                         <p className={`text-sm leading-relaxed ${isSystemMessage ? 'font-bold font-mono tracking-wide' : 'font-mono'}`}>{cast.message}</p>
                         <div className="flex items-center justify-between mt-1">
