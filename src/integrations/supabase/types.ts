@@ -691,6 +691,51 @@ export type Database = {
         }
         Relationships: []
       }
+      map_notes: {
+        Row: {
+          area_id: string | null
+          content: string
+          created_at: string
+          id: string
+          location_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          location_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          area_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          location_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_notes_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "map_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "map_notes_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "map_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       map_route_edges: {
         Row: {
           created_at: string

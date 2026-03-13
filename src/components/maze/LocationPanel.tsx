@@ -1,5 +1,6 @@
 import { MapLocation, useMazeData } from '@/hooks/useMazeData';
 import { useAuth } from '@/hooks/useAuth';
+import { MapNotes } from './MapNotes';
 import { Button } from '@/components/ui/button';
 import { X, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -45,6 +46,8 @@ export const LocationPanel = ({ location, onClose }: LocationPanelProps) => {
       <div className="text-xs text-gray-500 font-mono">
         Type: {location.icon_type} • {location.is_public ? 'Public' : 'Private'}
       </div>
+
+      <MapNotes locationId={location.id} targetName={location.name} />
 
       {canDelete && (
         <Button

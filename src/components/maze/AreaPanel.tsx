@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MapArea, MapAreaReview, useMazeData } from '@/hooks/useMazeData';
 import { useAuth } from '@/hooks/useAuth';
 import { EnvironmentCardDisplay } from './EnvironmentCard';
+import { MapNotes } from './MapNotes';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { X, Star, Send, Trash2 } from 'lucide-react';
@@ -81,6 +82,9 @@ export const AreaPanel = ({ area, onClose }: AreaPanelProps) => {
 
       {/* Environment Card */}
       <EnvironmentCardDisplay card={area.environment_card} areaName={area.name} isAdmin={false} />
+
+      {/* Personal Notes */}
+      <MapNotes areaId={area.id} targetName={area.name} />
 
       {/* Reviews */}
       <div className="space-y-3 border-t border-gray-700/50 pt-3">
