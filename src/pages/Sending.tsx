@@ -890,18 +890,31 @@ const Sending = () => {
                     const isOwnMessage = cast.sender_id === currentUser?.id;
                     const isSystemMessage = cast.sender_id === SYSTEM_SENDER_ID;
                     const canEdit = isOwnMessage || isAdmin;
+                    const senderProfile = allProfiles.find(p => p.user_id === cast.sender_id);
+                    const avatarUrl = senderProfile?.avatar_url;
+                    const fallbackAvatar = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif';
                     return (
                     <div
                       key={cast.id}
-                      className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                      className={`flex items-end gap-2 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                     >
+                      {/* Avatar - left side for others */}
+                      {!isOwnMessage && !isSystemMessage && (
+                        <div className="sending-avatar shrink-0">
+                          <img
+                            src={avatarUrl || fallbackAvatar}
+                            alt={cast.sender_name || 'Unknown'}
+                            className="w-8 h-8 object-cover"
+                          />
+                        </div>
+                      )}
                       <div
                         className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg relative group ${
                           isSystemMessage
                             ? 'bg-primary/20 border border-primary/30 text-foreground'
                             : isOwnMessage
-                            ? 'bg-cyan-500 text-white ml-12'
-                            : 'bg-gray-700 text-gray-100 mr-12'
+                            ? 'bg-cyan-500 text-white'
+                            : 'bg-gray-700 text-gray-100'
                         }`}
                       >
                         {(selectedStone.is_group || isSystemMessage) && !isOwnMessage && (
