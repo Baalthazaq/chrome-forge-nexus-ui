@@ -48,7 +48,7 @@ export const LocationPanel = ({ location, onClose, isAdmin = false }: LocationPa
         Type: {location.icon_type} • {location.is_public ? 'Public' : 'Private'}
       </div>
 
-      <MapNotes locationId={location.id} targetName={location.name} />
+      <MapNotes locationId={location.id} targetName={location.name} isAdmin={isAdmin} />
 
       {canDelete && (
         <Button

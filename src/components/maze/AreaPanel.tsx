@@ -85,7 +85,7 @@ export const AreaPanel = ({ area, onClose, isAdmin: isAdminProp = false }: AreaP
       <EnvironmentCardDisplay card={area.environment_card} areaName={area.name} isAdmin={false} />
 
       {/* Personal Notes */}
-      <MapNotes areaId={area.id} targetName={area.name} />
+      <MapNotes areaId={area.id} targetName={area.name} isAdmin={isAdminProp} />
 
       {/* Reviews */}
       <div className="space-y-3 border-t border-gray-700/50 pt-3">

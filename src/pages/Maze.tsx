@@ -180,10 +180,10 @@ const Maze = () => {
 
           {/* Side panel */}
           {selectedArea && (
-            <AreaPanel area={selectedArea} onClose={() => { setSelectedArea(null); setZoomToArea(null); }} />
+             <AreaPanel area={selectedArea} onClose={() => { setSelectedArea(null); setZoomToArea(null); }} isAdmin={isAdmin} />
           )}
           {selectedLocation && !selectedArea && (
-            <LocationPanel location={selectedLocation} onClose={() => setSelectedLocation(null)} />
+            <LocationPanel location={selectedLocation} onClose={() => setSelectedLocation(null)} isAdmin={isAdmin} />
           )}
         </div>
 
