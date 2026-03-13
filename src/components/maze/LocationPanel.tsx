@@ -8,9 +8,10 @@ import { toast } from 'sonner';
 interface LocationPanelProps {
   location: MapLocation;
   onClose: () => void;
+  isAdmin?: boolean;
 }
 
-export const LocationPanel = ({ location, onClose }: LocationPanelProps) => {
+export const LocationPanel = ({ location, onClose, isAdmin = false }: LocationPanelProps) => {
   const { user } = useAuth();
   const { deleteLocation } = useMazeData();
 
@@ -47,7 +48,7 @@ export const LocationPanel = ({ location, onClose }: LocationPanelProps) => {
         Type: {location.icon_type} • {location.is_public ? 'Public' : 'Private'}
       </div>
 
-      <MapNotes locationId={location.id} targetName={location.name} />
+      <MapNotes locationId={location.id} targetName={location.name} isAdmin={isAdmin} />
 
       {canDelete && (
         <Button

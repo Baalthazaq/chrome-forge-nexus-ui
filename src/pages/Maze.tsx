@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Search, Plus, Navigation } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { useMazeData, MapLocation, MapArea } from '@/hooks/useMazeData';
 import { InteractiveMap, LOCATION_ICON_TYPES } from '@/components/maze/InteractiveMap';
 import { AreaPanel } from '@/components/maze/AreaPanel';
@@ -18,6 +19,7 @@ import { toast } from 'sonner';
 const Maze = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const maze = useMazeData();
 
   const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
@@ -178,10 +180,10 @@ const Maze = () => {
 
           {/* Side panel */}
           {selectedArea && (
-            <AreaPanel area={selectedArea} onClose={() => { setSelectedArea(null); setZoomToArea(null); }} />
+             <AreaPanel area={selectedArea} onClose={() => { setSelectedArea(null); setZoomToArea(null); }} isAdmin={isAdmin} />
           )}
           {selectedLocation && !selectedArea && (
-            <LocationPanel location={selectedLocation} onClose={() => setSelectedLocation(null)} />
+            <LocationPanel location={selectedLocation} onClose={() => setSelectedLocation(null)} isAdmin={isAdmin} />
           )}
         </div>
 

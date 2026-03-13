@@ -13,9 +13,10 @@ import { toast } from 'sonner';
 interface AreaPanelProps {
   area: MapArea;
   onClose: () => void;
+  isAdmin?: boolean;
 }
 
-export const AreaPanel = ({ area, onClose }: AreaPanelProps) => {
+export const AreaPanel = ({ area, onClose, isAdmin: isAdminProp = false }: AreaPanelProps) => {
   const { user } = useAuth();
   const { createReview, deleteReview } = useMazeData();
   const [rating, setRating] = useState(3);
@@ -84,7 +85,7 @@ export const AreaPanel = ({ area, onClose }: AreaPanelProps) => {
       <EnvironmentCardDisplay card={area.environment_card} areaName={area.name} isAdmin={false} />
 
       {/* Personal Notes */}
-      <MapNotes areaId={area.id} targetName={area.name} />
+      <MapNotes areaId={area.id} targetName={area.name} isAdmin={isAdminProp} />
 
       {/* Reviews */}
       <div className="space-y-3 border-t border-gray-700/50 pt-3">
