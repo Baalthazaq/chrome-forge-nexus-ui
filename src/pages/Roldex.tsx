@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ArrowLeft, Plus, Search, Star, Filter, Zap, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -9,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { ContactNotesDialog } from "@/components/ContactNotesDialog";
 import { AddContactDialog } from "@/components/AddContactDialog";
+import { CharacterDetailDialog } from "@/components/CharacterDetailDialog";
 
 
 const Roldex = () => {
@@ -19,6 +21,8 @@ const Roldex = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { impersonatedUser } = useAdmin();
+  const [viewingAvatar, setViewingAvatar] = useState<string | null>(null);
+  const [viewingProfile, setViewingProfile] = useState<any | null>(null);
   
   // Use impersonated user if available, otherwise use authenticated user
   const effectiveUser = impersonatedUser || user;
@@ -299,7 +303,8 @@ const Roldex = () => {
                     <img 
                       src={profile.avatar_url || "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif"}
                       alt={profile.character_name || 'Character'}
-                      className="w-16 h-16 rounded-full object-cover border-2 border-gray-600"
+                      className="w-16 h-16 rounded-full object-cover border-2 border-gray-600 cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => setViewingAvatar(profile.avatar_url || "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif")}
                     />
                     <div className={`absolute -bottom-1 -right-1 w-5 h-5 ${getStatusColor()} rounded-full border-2 border-gray-900`}></div>
                   </div>
@@ -308,7 +313,10 @@ const Roldex = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <h3 className="text-lg font-semibold text-white truncate">
+                        <h3 
+                          className="text-lg font-semibold text-white truncate cursor-pointer hover:text-cyan-400 transition-colors"
+                          onClick={() => setViewingProfile(profile)}
+                        >
                           {profile.character_name || 'Unknown Character'}
                         </h3>
                         {isContact && (
@@ -416,6 +424,33 @@ const Roldex = () => {
             <div className="text-gray-400 text-sm">Avg Rating</div>
           </Card>
         </div>
+
+        {/* Avatar Full-Size Dialog */}
+        <Dialog open={!!viewingAvatar} onOpenChange={() => setViewingAvatar(null)}>
+          <DialogContent className="max-w-3xl bg-gray-900 border-gray-700 flex items-center justify-center p-2">
+            {viewingAvatar && (
+              <img 
+                src={viewingAvatar} 
+                alt="Full size avatar" 
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Character Detail Dialog */}
+        {viewingProfile && (
+          <CharacterDetailDialog
+            open={!!viewingProfile}
+            onOpenChange={(open) => { if (!open) setViewingProfile(null); }}
+            profile={viewingProfile}
+            contactData={getContactData(viewingProfile.user_id)}
+            tags={getContactTags(viewingProfile.user_id)}
+            trustLevel={getTrustLevel(getPersonalRating(viewingProfile.user_id))}
+            personalRating={getPersonalRating(viewingProfile.user_id)}
+            relationship={getRelationship(viewingProfile.user_id)}
+          />
+        )}
       </div>
     </div>
   );
