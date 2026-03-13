@@ -181,7 +181,7 @@ const Sending = () => {
       if (sError) throw sError;
 
       // Load all profiles for name lookups
-      const { data: profs } = await supabase.from('profiles').select('user_id, character_name');
+      const { data: profs } = await supabase.from('profiles').select('user_id, character_name, avatar_url');
       const profMap = new Map((profs || []).map(p => [p.user_id, p.character_name || 'Unknown']));
 
       const stonesWithInfo = await Promise.all(
