@@ -968,7 +968,10 @@ const Sending = () => {
                       </div>
                       {/* Avatar - right side for own messages */}
                       {isOwnMessage && !isSystemMessage && (
-                        <div className="sending-avatar shrink-0">
+                        <div 
+                          className="sending-avatar shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setViewingAvatar(displayAvatar)}
+                        >
                           <img
                             src={displayAvatar}
                             alt={cast.sender_name || 'You'}
