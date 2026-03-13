@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 interface LocationPanelProps {
   location: MapLocation;
   onClose: () => void;
+  isAdmin?: boolean;
 }
 
 export const LocationPanel = ({ location, onClose }: LocationPanelProps) => {
