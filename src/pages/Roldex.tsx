@@ -303,7 +303,8 @@ const Roldex = () => {
                     <img 
                       src={profile.avatar_url || "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif"}
                       alt={profile.character_name || 'Character'}
-                      className="w-16 h-16 rounded-full object-cover border-2 border-gray-600"
+                      className="w-16 h-16 rounded-full object-cover border-2 border-gray-600 cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => setViewingAvatar(profile.avatar_url || "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif")}
                     />
                     <div className={`absolute -bottom-1 -right-1 w-5 h-5 ${getStatusColor()} rounded-full border-2 border-gray-900`}></div>
                   </div>
