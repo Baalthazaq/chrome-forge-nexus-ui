@@ -107,33 +107,47 @@
   to { stroke-dashoffset: 0; }
 }
 
-/* Sending avatar - square with top-right and bottom-left corners clipped */
+/* Sending avatar - square with top-right and bottom-left corners clipped, animated border */
 .sending-avatar {
   position: relative;
+  padding: 2px;
   clip-path: polygon(
     0 0,
-    calc(100% - 6px) 0,
-    100% 6px,
+    calc(100% - 8px) 0,
+    100% 8px,
     100% 100%,
-    6px 100%,
-    0 calc(100% - 6px)
+    8px 100%,
+    0 calc(100% - 8px)
   );
-  background: hsl(var(--muted));
-  overflow: hidden;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.4), rgba(34, 211, 238, 0.15));
+  overflow: visible;
 }
 
 .sending-avatar::before {
   content: '';
   position: absolute;
-  inset: -2px;
+  inset: -1px;
   background: conic-gradient(
-    from 0deg,
-    rgba(34, 211, 238, 0.1),
-    rgba(34, 211, 238, 0.6),
-    rgba(34, 211, 238, 0.1),
-    rgba(34, 211, 238, 0.6),
-    rgba(34, 211, 238, 0.1)
+    from var(--sending-avatar-angle, 0deg),
+    transparent 0%,
+    rgba(34, 211, 238, 0.8) 10%,
+    transparent 20%
   );
+  clip-path: polygon(
+    0 0,
+    calc(100% - 8px) 0,
+    100% 8px,
+    100% 100%,
+    8px 100%,
+    0 calc(100% - 8px)
+  );
+  animation: avatarBorderSpin 3s linear infinite;
+  z-index: 0;
+}
+
+.sending-avatar img {
+  position: relative;
+  z-index: 1;
   clip-path: polygon(
     0 0,
     calc(100% - 6px) 0,
@@ -142,27 +156,15 @@
     6px 100%,
     0 calc(100% - 6px)
   );
-  animation: avatarBorderSpin 3s linear infinite;
-  z-index: -1;
-}
-
-.sending-avatar::after {
-  content: '';
-  position: absolute;
-  inset: 1px;
-  background: hsl(var(--background));
-  clip-path: polygon(
-    0 0,
-    calc(100% - 5px) 0,
-    100% 5px,
-    100% 100%,
-    5px 100%,
-    0 calc(100% - 5px)
-  );
-  z-index: -1;
 }
 
 @keyframes avatarBorderSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from { --sending-avatar-angle: 0deg; }
+  to { --sending-avatar-angle: 360deg; }
+}
+
+@property --sending-avatar-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
 }
