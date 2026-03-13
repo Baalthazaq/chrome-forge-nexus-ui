@@ -1031,8 +1031,26 @@ const Sending = () => {
           </Card>
         </div>
       </div>
+
+      {/* Avatar View Dialog */}
+      <Dialog open={!!viewingAvatar} onOpenChange={() => setViewingAvatar(null)}>
+        <DialogContent className="max-w-3xl bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Avatar</DialogTitle>
+          </DialogHeader>
+          {viewingAvatar && (
+            <div className="flex justify-center p-4">
+              <img
+                src={viewingAvatar}
+                alt="Full size avatar"
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
-export default Sending;
+export default Sending;"
