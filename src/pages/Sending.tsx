@@ -893,25 +893,27 @@ const Sending = () => {
                     const senderProfile = allProfiles.find(p => p.user_id === cast.sender_id);
                     const avatarUrl = senderProfile?.avatar_url;
                     const fallbackAvatar = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif';
+                    const systemAvatar = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Sending.png';
+                    const displayAvatar = isSystemMessage ? systemAvatar : (avatarUrl || fallbackAvatar);
                     return (
                     <div
                       key={cast.id}
-                      className={`flex items-start gap-2 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                      className={`flex items-start gap-2 ${isOwnMessage && !isSystemMessage ? 'justify-end' : 'justify-start'}`}
                     >
-                      {/* Avatar - left side for others */}
-                      {!isOwnMessage && !isSystemMessage && (
+                      {/* Avatar - left side for others and system */}
+                      {!isOwnMessage && (
                         <div className="sending-avatar shrink-0">
                           <img
-                            src={avatarUrl || fallbackAvatar}
+                            src={displayAvatar}
                             alt={cast.sender_name || 'Unknown'}
-                            className="w-10 h-10 object-cover"
+                            className="w-[52px] h-[52px] object-cover"
                           />
                         </div>
                       )}
                       <div
                         className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg relative group ${
                           isSystemMessage
-                            ? 'bg-primary/20 border border-primary/30 text-foreground'
+                            ? 'bg-muted border border-border text-foreground'
                             : isOwnMessage
                             ? 'bg-cyan-500 text-white'
                             : 'bg-gray-700 text-gray-100'
@@ -920,7 +922,7 @@ const Sending = () => {
                         {(selectedStone.is_group || isSystemMessage) && !isOwnMessage && (
                           <p className={`text-xs font-semibold mb-1 ${isSystemMessage ? 'text-primary' : 'opacity-80'}`}>{cast.sender_name}</p>
                         )}
-                        <p className="text-sm font-mono leading-relaxed">{cast.message}</p>
+                        <p className={`text-sm leading-relaxed ${isSystemMessage ? 'font-bold font-mono tracking-wide' : 'font-mono'}`}>{cast.message}</p>
                         <div className="flex items-center justify-between mt-1">
                           <p className="text-xs opacity-70">
                             {formatTime(cast.created_at)}
@@ -961,9 +963,9 @@ const Sending = () => {
                       {isOwnMessage && !isSystemMessage && (
                         <div className="sending-avatar shrink-0">
                           <img
-                            src={avatarUrl || fallbackAvatar}
+                            src={displayAvatar}
                             alt={cast.sender_name || 'You'}
-                            className="w-10 h-10 object-cover"
+                            className="w-[52px] h-[52px] object-cover"
                           />
                         </div>
                       )}
