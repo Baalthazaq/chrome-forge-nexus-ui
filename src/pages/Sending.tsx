@@ -94,6 +94,7 @@ const Sending = () => {
   const [showAddMember, setShowAddMember] = useState(false);
   const [showRename, setShowRename] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const [viewingAvatar, setViewingAvatar] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const wordCount = message.trim().split(/\s+/).filter(word => word.length > 0).length;
@@ -902,7 +903,10 @@ const Sending = () => {
                     >
                       {/* Avatar - left side for others and system */}
                       {!isOwnMessage && (
-                        <div className="sending-avatar shrink-0">
+                        <div 
+                          className="sending-avatar shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setViewingAvatar(displayAvatar)}
+                        >
                           <img
                             src={displayAvatar}
                             alt={cast.sender_name || 'Unknown'}
@@ -964,7 +968,10 @@ const Sending = () => {
                       </div>
                       {/* Avatar - right side for own messages */}
                       {isOwnMessage && !isSystemMessage && (
-                        <div className="sending-avatar shrink-0">
+                        <div 
+                          className="sending-avatar shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setViewingAvatar(displayAvatar)}
+                        >
                           <img
                             src={displayAvatar}
                             alt={cast.sender_name || 'You'}
@@ -1024,6 +1031,24 @@ const Sending = () => {
           </Card>
         </div>
       </div>
+
+      {/* Avatar View Dialog */}
+      <Dialog open={!!viewingAvatar} onOpenChange={() => setViewingAvatar(null)}>
+        <DialogContent className="max-w-3xl bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Avatar</DialogTitle>
+          </DialogHeader>
+          {viewingAvatar && (
+            <div className="flex justify-center p-4">
+              <img
+                src={viewingAvatar}
+                alt="Full size avatar"
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
