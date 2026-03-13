@@ -896,7 +896,7 @@ const Sending = () => {
                     return (
                     <div
                       key={cast.id}
-                      className={`flex items-end gap-2 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                      className={`flex items-start gap-2 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                     >
                       {/* Avatar - left side for others */}
                       {!isOwnMessage && !isSystemMessage && (
@@ -904,7 +904,7 @@ const Sending = () => {
                           <img
                             src={avatarUrl || fallbackAvatar}
                             alt={cast.sender_name || 'Unknown'}
-                            className="w-8 h-8 object-cover"
+                            className="w-10 h-10 object-cover"
                           />
                         </div>
                       )}
@@ -963,7 +963,7 @@ const Sending = () => {
                           <img
                             src={avatarUrl || fallbackAvatar}
                             alt={cast.sender_name || 'You'}
-                            className="w-8 h-8 object-cover"
+                            className="w-10 h-10 object-cover"
                           />
                         </div>
                       )}
