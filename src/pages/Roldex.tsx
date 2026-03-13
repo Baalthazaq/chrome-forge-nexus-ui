@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ArrowLeft, Plus, Search, Star, Filter, Zap, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -9,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { ContactNotesDialog } from "@/components/ContactNotesDialog";
 import { AddContactDialog } from "@/components/AddContactDialog";
+import { CharacterDetailDialog } from "@/components/CharacterDetailDialog";
 
 
 const Roldex = () => {
