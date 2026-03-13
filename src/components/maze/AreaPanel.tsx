@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MapArea, MapAreaReview, useMazeData } from '@/hooks/useMazeData';
 import { useAuth } from '@/hooks/useAuth';
 import { EnvironmentCardDisplay } from './EnvironmentCard';
+import { MapNotes } from './MapNotes';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { X, Star, Send, Trash2 } from 'lucide-react';
