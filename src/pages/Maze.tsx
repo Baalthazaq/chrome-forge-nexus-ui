@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Search, Plus, Navigation } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { useMazeData, MapLocation, MapArea } from '@/hooks/useMazeData';
 import { InteractiveMap, LOCATION_ICON_TYPES } from '@/components/maze/InteractiveMap';
 import { AreaPanel } from '@/components/maze/AreaPanel';
