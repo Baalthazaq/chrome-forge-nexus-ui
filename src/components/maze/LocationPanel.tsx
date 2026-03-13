@@ -1,5 +1,6 @@
 import { MapLocation, useMazeData } from '@/hooks/useMazeData';
 import { useAuth } from '@/hooks/useAuth';
+import { MapNotes } from './MapNotes';
 import { Button } from '@/components/ui/button';
 import { X, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
