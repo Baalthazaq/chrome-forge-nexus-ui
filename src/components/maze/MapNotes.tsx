@@ -35,11 +35,9 @@ export const MapNotes = ({ locationId, areaId, targetName }: MapNotesProps) => {
   });
 
   useEffect(() => {
-    if (noteQuery.data) {
-      setContent(noteQuery.data.content);
-      setHasEdited(false);
-    }
-  }, [noteQuery.data]);
+    setContent(noteQuery.data?.content ?? '');
+    setHasEdited(false);
+  }, [noteQuery.data, locationId, areaId]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
