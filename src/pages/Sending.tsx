@@ -64,6 +64,7 @@ interface Profile {
   id: string;
   user_id: string;
   character_name: string;
+  avatar_url: string | null;
 }
 
 const SYSTEM_SENDER_ID = '00000000-0000-0000-0000-000000000000';
