@@ -957,6 +957,16 @@ const Sending = () => {
                           )}
                         </div>
                       </div>
+                      {/* Avatar - right side for own messages */}
+                      {isOwnMessage && !isSystemMessage && (
+                        <div className="sending-avatar shrink-0">
+                          <img
+                            src={avatarUrl || fallbackAvatar}
+                            alt={cast.sender_name || 'You'}
+                            className="w-8 h-8 object-cover"
+                          />
+                        </div>
+                      )}
                     </div>
                     );
                   })}

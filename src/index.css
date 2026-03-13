@@ -106,3 +106,34 @@
   from { stroke-dashoffset: 6; }
   to { stroke-dashoffset: 0; }
 }
+
+/* Sending avatar - square with top-right and bottom-left corners clipped */
+.sending-avatar {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 6px) 0,
+    100% 6px,
+    100% 100%,
+    6px 100%,
+    0 calc(100% - 6px)
+  );
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--muted));
+  overflow: hidden;
+}
+
+.sending-avatar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 6px) 0,
+    100% 6px,
+    100% 100%,
+    6px 100%,
+    0 calc(100% - 6px)
+  );
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  pointer-events: none;
+}
