@@ -11,7 +11,7 @@ interface LocationPanelProps {
   isAdmin?: boolean;
 }
 
-export const LocationPanel = ({ location, onClose }: LocationPanelProps) => {
+export const LocationPanel = ({ location, onClose, isAdmin = false }: LocationPanelProps) => {
   const { user } = useAuth();
   const { deleteLocation } = useMazeData();
 
