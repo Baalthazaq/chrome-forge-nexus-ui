@@ -13,9 +13,10 @@ import { toast } from 'sonner';
 interface AreaPanelProps {
   area: MapArea;
   onClose: () => void;
+  isAdmin?: boolean;
 }
 
-export const AreaPanel = ({ area, onClose }: AreaPanelProps) => {
+export const AreaPanel = ({ area, onClose, isAdmin: isAdminProp = false }: AreaPanelProps) => {
   const { user } = useAuth();
   const { createReview, deleteReview } = useMazeData();
   const [rating, setRating] = useState(3);
