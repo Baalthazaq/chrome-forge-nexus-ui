@@ -424,6 +424,33 @@ const Roldex = () => {
             <div className="text-gray-400 text-sm">Avg Rating</div>
           </Card>
         </div>
+
+        {/* Avatar Full-Size Dialog */}
+        <Dialog open={!!viewingAvatar} onOpenChange={() => setViewingAvatar(null)}>
+          <DialogContent className="max-w-3xl bg-gray-900 border-gray-700 flex items-center justify-center p-2">
+            {viewingAvatar && (
+              <img 
+                src={viewingAvatar} 
+                alt="Full size avatar" 
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Character Detail Dialog */}
+        {viewingProfile && (
+          <CharacterDetailDialog
+            open={!!viewingProfile}
+            onOpenChange={(open) => { if (!open) setViewingProfile(null); }}
+            profile={viewingProfile}
+            contactData={getContactData(viewingProfile.user_id)}
+            tags={getContactTags(viewingProfile.user_id)}
+            trustLevel={getTrustLevel(getPersonalRating(viewingProfile.user_id))}
+            personalRating={getPersonalRating(viewingProfile.user_id)}
+            relationship={getRelationship(viewingProfile.user_id)}
+          />
+        )}
       </div>
     </div>
   );
