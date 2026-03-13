@@ -94,6 +94,7 @@ const Sending = () => {
   const [showAddMember, setShowAddMember] = useState(false);
   const [showRename, setShowRename] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const [viewingAvatar, setViewingAvatar] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const wordCount = message.trim().split(/\s+/).filter(word => word.length > 0).length;
