@@ -466,7 +466,7 @@ const Sending = () => {
         .filter(p => !existingSet.has(`${p.user_id}:${p.contact_user_id}`))
         .map(p => ({
           ...p,
-          relationship: `From: ${chatName}`,
+          relationship: chatName,
           is_active: true,
         }));
 
