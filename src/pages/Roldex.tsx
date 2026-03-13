@@ -313,7 +313,10 @@ const Roldex = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <h3 className="text-lg font-semibold text-white truncate">
+                        <h3 
+                          className="text-lg font-semibold text-white truncate cursor-pointer hover:text-cyan-400 transition-colors"
+                          onClick={() => setViewingProfile(profile)}
+                        >
                           {profile.character_name || 'Unknown Character'}
                         </h3>
                         {isContact && (
