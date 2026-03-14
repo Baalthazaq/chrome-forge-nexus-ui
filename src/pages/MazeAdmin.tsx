@@ -458,19 +458,29 @@ const MazeAdmin = () => {
                   </Button>
                 </div>
                 <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                  {maze.locations.map(loc => (
+                  {maze.locations.map(loc => {
+                    const LocIcon = ICON_MAP[loc.icon_type] || MapPin;
+                    return (
                     <div key={loc.id} className="flex items-center justify-between p-2 bg-gray-900/50 border border-gray-700/30 rounded text-sm">
                       <div className="flex items-center gap-2 min-w-0">
-                        <MapPin className={`w-3 h-3 flex-shrink-0 ${loc.is_public ? 'text-teal-500' : 'text-amber-500'}`} />
+                        <LocIcon className="w-3 h-3 flex-shrink-0" style={{ color: loc.marker_color || '#14b8a6' }} />
                         <span className="truncate">{loc.name}</span>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => { maze.updateLocation.mutate({ id: loc.id, is_public: !loc.is_public }); }}
+                          className="p-1 text-gray-400 hover:text-white"
+                          title={loc.is_public ? 'Public (click to hide)' : 'Private (click to publish)'}
+                        >
+                          {loc.is_public ? <Globe className="w-3 h-3 text-teal-400" /> : <EyeOff className="w-3 h-3 text-amber-500" />}
+                        </button>
                         <button onClick={() => startEditLocation(loc)} className="p-1 text-gray-400 hover:text-white" title="Edit"><Pencil className="w-3 h-3" /></button>
                         <button onClick={() => startRelocateLocation(loc)} className="p-1 text-gray-400 hover:text-cyan-400" title="Move location"><Move className="w-3 h-3" /></button>
                         <button onClick={() => { maze.deleteLocation.mutate(loc.id); toast.success('Deleted'); }} className="p-1 text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </TabsContent>
 
