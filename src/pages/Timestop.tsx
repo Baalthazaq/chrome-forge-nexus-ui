@@ -622,7 +622,7 @@ const Timestop = () => {
               </button>
             </div>
             {MONTHS.map((month) => {
-              const monthEvents = allEvents.filter((e) => e.event_month === month.number);
+              const monthEvents = allEvents.filter((e) => e.event_month === month.number).sort((a, b) => a.event_day - b.event_day);
               if (monthEvents.length === 0) return null;
               const isCurrent = month.number === currentDate.month && viewYear === currentDate.year;
               return (
