@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useMazeData, MapLocation, MapArea, MapRouteNode, EnvironmentCard } from '@/hooks/useMazeData';
-import { InteractiveMap, LOCATION_ICON_TYPES } from '@/components/maze/InteractiveMap';
+import { InteractiveMap, LOCATION_ICON_TYPES, ICON_MAP, ICON_LABELS } from '@/components/maze/InteractiveMap';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
