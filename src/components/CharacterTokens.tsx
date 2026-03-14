@@ -556,8 +556,11 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
                 <ToggleGroupItem value="square" aria-label="Square">
                   <Square className="h-4 w-4 mr-1" /> Square
                 </ToggleGroupItem>
-                <ToggleGroupItem value="hex" aria-label="Hexagon">
-                  <Hexagon className="h-4 w-4 mr-1" /> Hex
+                <ToggleGroupItem value="hex" aria-label="Hex Pointy">
+                  <Hexagon className="h-4 w-4 mr-1" /> Hex ▲
+                </ToggleGroupItem>
+                <ToggleGroupItem value="hex-flat" aria-label="Hex Flat">
+                  <Hexagon className="h-4 w-4 mr-1 rotate-90" /> Hex ⬣
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
