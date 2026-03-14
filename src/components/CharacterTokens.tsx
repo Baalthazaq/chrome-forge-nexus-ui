@@ -181,8 +181,8 @@ async function renderSheet(
         positions.push({ x: startX + c * step, y: startY + r * step });
       }
     }
-  } else {
-    // Hex tessellation (flat-top)
+  } else if (shape === 'hex') {
+    // Pointy-top hex tessellation
     const r = tokenSize / 2;
     const colW = r * Math.sqrt(3);
     const rowH = r * 1.5;
@@ -196,6 +196,26 @@ async function renderSheet(
       for (let col = 0; col < maxCols; col++) {
         const x = startX + col * colW + offsetX;
         const y = startY + row * rowH;
+        if (x + tokenSize <= A4_WIDTH - SHEET_MARGIN + 2 && y + tokenSize <= A4_HEIGHT - SHEET_MARGIN + 2) {
+          positions.push({ x, y });
+        }
+      }
+    }
+  } else {
+    // Flat-top hex tessellation
+    const r = tokenSize / 2;
+    const colW = r * 1.5;
+    const rowH = r * Math.sqrt(3);
+    const cols = Math.floor(usableW / colW);
+    const rows = Math.floor(usableH / rowH);
+    const startX = SHEET_MARGIN + Math.floor((usableW - cols * colW) / 2);
+    const startY = SHEET_MARGIN + Math.floor((usableH - rows * rowH) / 2);
+    for (let col = 0; col < cols; col++) {
+      const offsetY = col % 2 === 1 ? rowH / 2 : 0;
+      const maxRows = col % 2 === 1 ? rows - 1 : rows;
+      for (let row = 0; row < maxRows; row++) {
+        const x = startX + col * colW;
+        const y = startY + row * rowH + offsetY;
         if (x + tokenSize <= A4_WIDTH - SHEET_MARGIN + 2 && y + tokenSize <= A4_HEIGHT - SHEET_MARGIN + 2) {
           positions.push({ x, y });
         }
