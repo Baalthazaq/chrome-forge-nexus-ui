@@ -392,9 +392,6 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
   );
 };
 
-interface CharacterTokensProps {
-  trigger?: React.ReactNode;
-}
 
 export const CharacterTokensPage = () => {
   const navigate = useNavigate();
