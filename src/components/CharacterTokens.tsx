@@ -356,7 +356,7 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
           onClick={(e) => e.stopPropagation()}
         />
       </div>
-      {loading ? (
+      {!isVisible || loading ? (
         <div className="w-24 h-24 bg-muted animate-pulse rounded-full" />
       ) : tokenDataUrl ? (
         <img
@@ -365,10 +365,7 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
           alt={`${profile.character_name} token`}
           className="w-24 h-24 cursor-grab active:cursor-grabbing"
           draggable
-          onMouseEnter={prepareDragUrl}
-          onPointerDown={prepareDragUrl}
           onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
           onClick={(e) => e.stopPropagation()}
         />
       ) : (
