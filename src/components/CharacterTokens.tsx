@@ -260,8 +260,10 @@ interface TokenCardProps {
 
 const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggleSelect }: TokenCardProps) => {
   const [tokenDataUrl, setTokenDataUrl] = useState<string | null>(null);
+  const [dragUrl, setDragUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
+  const dragObjectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!profile.avatar_url) return;
@@ -271,6 +273,38 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
       .catch(() => setTokenDataUrl(null))
       .finally(() => setLoading(false));
   }, [profile.avatar_url, shape, borderWidth, borderColor]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (dragObjectUrlRef.current) {
+      URL.revokeObjectURL(dragObjectUrlRef.current);
+      dragObjectUrlRef.current = null;
+    }
+    setDragUrl(null);
+
+    if (!tokenDataUrl) return;
+
+    fetch(tokenDataUrl)
+      .then((res) => res.blob())
+      .then((blob) => {
+        if (cancelled) return;
+        const objectUrl = URL.createObjectURL(blob);
+        dragObjectUrlRef.current = objectUrl;
+        setDragUrl(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setDragUrl(null);
+      });
+
+    return () => {
+      cancelled = true;
+      if (dragObjectUrlRef.current) {
+        URL.revokeObjectURL(dragObjectUrlRef.current);
+        dragObjectUrlRef.current = null;
+      }
+    };
+  }, [tokenDataUrl]);
 
   const handleDownload = useCallback(() => {
     if (!tokenDataUrl) return;
@@ -282,18 +316,18 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
   }, [tokenDataUrl, profile.character_name]);
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
-    if (!tokenDataUrl || !profile.character_name) return;
-    
+    if (!dragUrl || !profile.character_name) return;
+
     const filename = `${profile.character_name.replace(/\s+/g, '_')}_token.png`;
-    
-    // DownloadURL format works synchronously with the drag event
+
     e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('DownloadURL', `image/png:${filename}:${tokenDataUrl}`);
-    
+    e.dataTransfer.setData('DownloadURL', `image/png:${filename}:${dragUrl}`);
+    e.dataTransfer.setData('text/uri-list', dragUrl);
+
     if (imgRef.current) {
       e.dataTransfer.setDragImage(imgRef.current, 48, 48);
     }
-  }, [tokenDataUrl, profile.character_name]);
+  }, [dragUrl, profile.character_name]);
 
   if (!profile.avatar_url) {
     return (
