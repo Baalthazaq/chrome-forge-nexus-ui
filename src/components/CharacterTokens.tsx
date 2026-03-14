@@ -59,9 +59,19 @@ function drawTokenShape(
     ctx.quadraticCurveTo(x, y + h, x, y + h - cornerRadius);
     ctx.lineTo(x, y + cornerRadius);
     ctx.quadraticCurveTo(x, y, x + cornerRadius, y);
-  } else {
+  } else if (shape === 'hex') {
+    // Pointy-top hex
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI / 3) * i - Math.PI / 6;
+      const px = cx + r * Math.cos(angle);
+      const py = cy + r * Math.sin(angle);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+  } else {
+    // Flat-top hex
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i;
       const px = cx + r * Math.cos(angle);
       const py = cy + r * Math.sin(angle);
       if (i === 0) ctx.moveTo(px, py);
