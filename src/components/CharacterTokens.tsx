@@ -1,15 +1,15 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Search, Download, Circle, Square, Hexagon, Coins, FileImage, CheckSquare } from 'lucide-react';
+import { Search, Download, Circle, Square, Hexagon, Coins, FileImage, CheckSquare, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 type TokenShape = 'circle' | 'square' | 'hex' | 'hex-flat';
@@ -392,23 +392,19 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
   );
 };
 
-interface CharacterTokensProps {
-  trigger?: React.ReactNode;
-}
 
-export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
+export const CharacterTokensPage = () => {
+  const navigate = useNavigate();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [classFilter, setClassFilter] = useState('all');
   const [shape, setShape] = useState<TokenShape>('circle');
   const [borderWidth, setBorderWidth] = useState(BORDER_WIDTH_DEFAULT);
   const [borderColor, setBorderColor] = useState('#d4af37');
-  const [open, setOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [generatingSheet, setGeneratingSheet] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
     const load = async () => {
       const { data } = await supabase
         .from('profiles')
@@ -417,7 +413,7 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
       setProfiles(data || []);
     };
     load();
-  }, [open]);
+  }, []);
 
   const classes = useMemo(() => {
     return profiles
@@ -491,7 +487,7 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
         } catch { /* skip */ }
       }
 
-      const sheetSize = Math.min(TOKEN_SIZE, 180); // Fit more on A4
+      const sheetSize = Math.min(TOKEN_SIZE, 180);
       const pages = await renderSheet(loaded, shape, borderWidth, borderColor, sheetSize);
 
       for (let i = 0; i < pages.length; i++) {
@@ -510,25 +506,22 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
   }, [downloadTargets, shape, borderWidth, borderColor]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10">
-            <span className="font-semibold">Character Tokens</span>
-            <span className="text-xs text-muted-foreground">Token Generator</span>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/admin')} className="gap-1">
+            <ArrowLeft className="h-4 w-4" />
+            Admin
           </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Coins className="h-5 w-5" />
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Coins className="h-6 w-6" />
             Character Tokens
-          </DialogTitle>
-        </DialogHeader>
+          </h1>
+        </div>
 
         {/* Controls */}
-        <div className="space-y-4 pb-4 border-b">
+        <div className="space-y-4 pb-4 border-b border-border">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label>Search</Label>
@@ -646,7 +639,7 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
         </div>
 
         {/* Token grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 pt-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
           {filtered.map(p => (
             <TokenCard
               key={p.user_id}
@@ -664,7 +657,7 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
             </p>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 };
