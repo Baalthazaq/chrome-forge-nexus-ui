@@ -465,7 +465,8 @@ const MazeAdmin = () => {
                         <span className="truncate">{loc.name}</span>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={() => startEditLocation(loc)} className="p-1 text-gray-400 hover:text-white"><Pencil className="w-3 h-3" /></button>
+                        <button onClick={() => startEditLocation(loc)} className="p-1 text-gray-400 hover:text-white" title="Edit"><Pencil className="w-3 h-3" /></button>
+                        <button onClick={() => startRelocateLocation(loc)} className="p-1 text-gray-400 hover:text-cyan-400" title="Move location"><Move className="w-3 h-3" /></button>
                         <button onClick={() => { maze.deleteLocation.mutate(loc.id); toast.success('Deleted'); }} className="p-1 text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
