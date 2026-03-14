@@ -12,7 +12,7 @@ import { Slider } from '@/components/ui/slider';
 import { Search, Download, Circle, Square, Hexagon, Coins, FileImage, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TokenShape = 'circle' | 'square' | 'hex';
+type TokenShape = 'circle' | 'square' | 'hex' | 'hex-flat';
 
 interface Profile {
   user_id: string;
