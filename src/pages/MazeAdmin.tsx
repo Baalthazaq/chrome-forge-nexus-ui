@@ -90,6 +90,8 @@ const MazeAdmin = () => {
           image_url: locForm.image_url || null,
           is_public: locForm.is_public,
           marker_color: locForm.marker_color,
+          ...(editingLocation.x !== undefined ? { x: editingLocation.x } : {}),
+          ...(editingLocation.y !== undefined ? { y: editingLocation.y } : {}),
         });
         toast.success('Location updated');
       } else {
