@@ -383,7 +383,7 @@ const MazeAdmin = () => {
                   Finish Route ({drawingRoute.length} nodes)
                 </Button>
               )}
-              <Button size="sm" variant="outline" onClick={() => { setMapMode('view'); setDrawingPolygon([]); setDrawingRoute([]); setPlacingLocation(false); }} className="border-gray-600 text-gray-300">
+              <Button size="sm" variant="outline" onClick={() => { setMapMode('view'); setDrawingPolygon([]); setDrawingRoute([]); setPlacingLocation(false); setRelocatingLocationId(null); }} className="border-gray-600 text-gray-300">
                 Cancel
               </Button>
             </div>
