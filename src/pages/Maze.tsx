@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useMazeData, MapLocation, MapArea } from '@/hooks/useMazeData';
-import { InteractiveMap, LOCATION_ICON_TYPES } from '@/components/maze/InteractiveMap';
+import { InteractiveMap, LOCATION_ICON_TYPES, ICON_MAP, ICON_LABELS } from '@/components/maze/InteractiveMap';
 import { AreaPanel } from '@/components/maze/AreaPanel';
 import { LocationPanel } from '@/components/maze/LocationPanel';
 import { findRoute, RouteEndpoint } from '@/lib/pathfinding';
