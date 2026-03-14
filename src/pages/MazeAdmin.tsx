@@ -56,9 +56,26 @@ const MazeAdmin = () => {
   };
 
   const handleMapClickLocation = (x: number, y: number) => {
-    setEditingLocation({ x, y });
+    if (relocatingLocationId) {
+      setEditingLocation({ id: relocatingLocationId, x, y });
+      // Pre-fill the form with existing data
+      const existing = maze.locations.find(l => l.id === relocatingLocationId);
+      if (existing) {
+        setLocForm({ name: existing.name, description: existing.description || '', icon_type: existing.icon_type, image_url: existing.image_url || '', is_public: existing.is_public, marker_color: existing.marker_color || '#14b8a6' });
+      }
+      setRelocatingLocationId(null);
+    } else {
+      setEditingLocation({ x, y });
+    }
     setMapMode('view');
     setPlacingLocation(false);
+  };
+
+  const startRelocateLocation = (loc: MapLocation) => {
+    setRelocatingLocationId(loc.id);
+    setMapMode('place-location');
+    setPlacingLocation(true);
+    toast.info(`Click on the map to move "${loc.name}"`);
   };
 
   const saveLocation = async () => {
