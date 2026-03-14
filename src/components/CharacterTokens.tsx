@@ -1,15 +1,15 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Search, Download, Circle, Square, Hexagon, Coins, FileImage, CheckSquare } from 'lucide-react';
+import { Search, Download, Circle, Square, Hexagon, Coins, FileImage, CheckSquare, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 type TokenShape = 'circle' | 'square' | 'hex' | 'hex-flat';
