@@ -343,6 +343,7 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
 
   return (
     <div
+      ref={cardRef}
       className={`flex flex-col items-center gap-2 p-3 border rounded-lg transition-colors cursor-pointer ${
         selected ? 'bg-primary/10 border-primary' : 'bg-card hover:bg-accent/50'
       }`}
