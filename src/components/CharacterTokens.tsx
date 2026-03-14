@@ -23,6 +23,12 @@ interface Profile {
   ancestry: string | null;
 }
 
+interface GroupChat {
+  id: string;
+  name: string | null;
+  participant_ids: string[];
+}
+
 const TOKEN_SIZE = 256;
 const BORDER_WIDTH_DEFAULT = 6;
 
