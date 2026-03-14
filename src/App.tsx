@@ -38,6 +38,7 @@ import Suggestion from "./pages/Suggestion";
 import SuggestionAdmin from "./pages/SuggestionAdmin";
 import OrganizationsAdmin from "./pages/OrganizationsAdmin";
 import MazeAdmin from "./pages/MazeAdmin";
+import { CharacterTokensPage } from "./components/CharacterTokens";
 
 const queryClient = new QueryClient();
 
