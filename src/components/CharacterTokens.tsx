@@ -12,7 +12,7 @@ import { Slider } from '@/components/ui/slider';
 import { Search, Download, Circle, Square, Hexagon, Coins, FileImage, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TokenShape = 'circle' | 'square' | 'hex';
+type TokenShape = 'circle' | 'square' | 'hex' | 'hex-flat';
 
 interface Profile {
   user_id: string;
@@ -59,9 +59,19 @@ function drawTokenShape(
     ctx.quadraticCurveTo(x, y + h, x, y + h - cornerRadius);
     ctx.lineTo(x, y + cornerRadius);
     ctx.quadraticCurveTo(x, y, x + cornerRadius, y);
-  } else {
+  } else if (shape === 'hex') {
+    // Pointy-top hex
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI / 3) * i - Math.PI / 6;
+      const px = cx + r * Math.cos(angle);
+      const py = cy + r * Math.sin(angle);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+  } else {
+    // Flat-top hex
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i;
       const px = cx + r * Math.cos(angle);
       const py = cy + r * Math.sin(angle);
       if (i === 0) ctx.moveTo(px, py);
@@ -171,8 +181,8 @@ async function renderSheet(
         positions.push({ x: startX + c * step, y: startY + r * step });
       }
     }
-  } else {
-    // Hex tessellation (flat-top)
+  } else if (shape === 'hex') {
+    // Pointy-top hex tessellation
     const r = tokenSize / 2;
     const colW = r * Math.sqrt(3);
     const rowH = r * 1.5;
@@ -186,6 +196,26 @@ async function renderSheet(
       for (let col = 0; col < maxCols; col++) {
         const x = startX + col * colW + offsetX;
         const y = startY + row * rowH;
+        if (x + tokenSize <= A4_WIDTH - SHEET_MARGIN + 2 && y + tokenSize <= A4_HEIGHT - SHEET_MARGIN + 2) {
+          positions.push({ x, y });
+        }
+      }
+    }
+  } else {
+    // Flat-top hex tessellation
+    const r = tokenSize / 2;
+    const colW = r * 1.5;
+    const rowH = r * Math.sqrt(3);
+    const cols = Math.floor(usableW / colW);
+    const rows = Math.floor(usableH / rowH);
+    const startX = SHEET_MARGIN + Math.floor((usableW - cols * colW) / 2);
+    const startY = SHEET_MARGIN + Math.floor((usableH - rows * rowH) / 2);
+    for (let col = 0; col < cols; col++) {
+      const offsetY = col % 2 === 1 ? rowH / 2 : 0;
+      const maxRows = col % 2 === 1 ? rows - 1 : rows;
+      for (let row = 0; row < maxRows; row++) {
+        const x = startX + col * colW;
+        const y = startY + row * rowH + offsetY;
         if (x + tokenSize <= A4_WIDTH - SHEET_MARGIN + 2 && y + tokenSize <= A4_HEIGHT - SHEET_MARGIN + 2) {
           positions.push({ x, y });
         }
@@ -526,8 +556,11 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
                 <ToggleGroupItem value="square" aria-label="Square">
                   <Square className="h-4 w-4 mr-1" /> Square
                 </ToggleGroupItem>
-                <ToggleGroupItem value="hex" aria-label="Hexagon">
-                  <Hexagon className="h-4 w-4 mr-1" /> Hex
+                <ToggleGroupItem value="hex" aria-label="Hex Pointy">
+                  <Hexagon className="h-4 w-4 mr-1" /> Hex ▲
+                </ToggleGroupItem>
+                <ToggleGroupItem value="hex-flat" aria-label="Hex Flat">
+                  <Hexagon className="h-4 w-4 mr-1 rotate-90" /> Hex ⬣
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
