@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { ArrowLeft, Shield, MapPin, Layers, Route, Plus, Trash2, Pencil, X, Save, Download, Upload } from 'lucide-react';
+import { ArrowLeft, Shield, MapPin, Layers, Route, Plus, Trash2, Pencil, X, Save, Download, Upload, Move } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -30,6 +30,7 @@ const MazeAdmin = () => {
   // Location state
   const [editingLocation, setEditingLocation] = useState<Partial<MapLocation> | null>(null);
   const [placingLocation, setPlacingLocation] = useState(false);
+  const [relocatingLocationId, setRelocatingLocationId] = useState<string | null>(null);
   const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6' });
 
   // Area state
@@ -55,9 +56,26 @@ const MazeAdmin = () => {
   };
 
   const handleMapClickLocation = (x: number, y: number) => {
-    setEditingLocation({ x, y });
+    if (relocatingLocationId) {
+      setEditingLocation({ id: relocatingLocationId, x, y });
+      // Pre-fill the form with existing data
+      const existing = maze.locations.find(l => l.id === relocatingLocationId);
+      if (existing) {
+        setLocForm({ name: existing.name, description: existing.description || '', icon_type: existing.icon_type, image_url: existing.image_url || '', is_public: existing.is_public, marker_color: existing.marker_color || '#14b8a6' });
+      }
+      setRelocatingLocationId(null);
+    } else {
+      setEditingLocation({ x, y });
+    }
     setMapMode('view');
     setPlacingLocation(false);
+  };
+
+  const startRelocateLocation = (loc: MapLocation) => {
+    setRelocatingLocationId(loc.id);
+    setMapMode('place-location');
+    setPlacingLocation(true);
+    toast.info(`Click on the map to move "${loc.name}"`);
   };
 
   const saveLocation = async () => {
@@ -72,6 +90,8 @@ const MazeAdmin = () => {
           image_url: locForm.image_url || null,
           is_public: locForm.is_public,
           marker_color: locForm.marker_color,
+          ...(editingLocation.x !== undefined ? { x: editingLocation.x } : {}),
+          ...(editingLocation.y !== undefined ? { y: editingLocation.y } : {}),
         });
         toast.success('Location updated');
       } else {
@@ -363,7 +383,7 @@ const MazeAdmin = () => {
                   Finish Route ({drawingRoute.length} nodes)
                 </Button>
               )}
-              <Button size="sm" variant="outline" onClick={() => { setMapMode('view'); setDrawingPolygon([]); setDrawingRoute([]); setPlacingLocation(false); }} className="border-gray-600 text-gray-300">
+              <Button size="sm" variant="outline" onClick={() => { setMapMode('view'); setDrawingPolygon([]); setDrawingRoute([]); setPlacingLocation(false); setRelocatingLocationId(null); }} className="border-gray-600 text-gray-300">
                 Cancel
               </Button>
             </div>
@@ -422,7 +442,7 @@ const MazeAdmin = () => {
               {/* Locations Tab */}
               <TabsContent value="locations" className="space-y-3 mt-4">
                 <Button
-                  onClick={() => { if (mapMode === 'place-location') { setMapMode('view'); setPlacingLocation(false); toast.info('Cancelled'); } else startPlaceLocation(); }}
+                  onClick={() => { if (mapMode === 'place-location') { setMapMode('view'); setPlacingLocation(false); setRelocatingLocationId(null); toast.info('Cancelled'); } else startPlaceLocation(); }}
                   disabled={mapMode !== 'view' && mapMode !== 'place-location'}
                   size="sm"
                   className={`w-full ${mapMode === 'place-location' ? 'bg-red-600 hover:bg-red-700' : 'bg-teal-600 hover:bg-teal-700'}`}
@@ -445,7 +465,8 @@ const MazeAdmin = () => {
                         <span className="truncate">{loc.name}</span>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={() => startEditLocation(loc)} className="p-1 text-gray-400 hover:text-white"><Pencil className="w-3 h-3" /></button>
+                        <button onClick={() => startEditLocation(loc)} className="p-1 text-gray-400 hover:text-white" title="Edit"><Pencil className="w-3 h-3" /></button>
+                        <button onClick={() => startRelocateLocation(loc)} className="p-1 text-gray-400 hover:text-cyan-400" title="Move location"><Move className="w-3 h-3" /></button>
                         <button onClick={() => { maze.deleteLocation.mutate(loc.id); toast.success('Deleted'); }} className="p-1 text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
