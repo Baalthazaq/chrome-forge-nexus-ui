@@ -560,7 +560,7 @@ export const CharacterTokensPage = () => {
 
         {/* Controls */}
         <div className="space-y-4 pb-4 border-b border-border">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-1.5">
               <Label>Search</Label>
               <div className="relative">
