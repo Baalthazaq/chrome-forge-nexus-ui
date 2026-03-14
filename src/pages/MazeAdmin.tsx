@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { ArrowLeft, Shield, MapPin, Layers, Route, Plus, Trash2, Pencil, X, Save, Download, Upload, Move } from 'lucide-react';
+import { ArrowLeft, Shield, MapPin, Layers, Route, Plus, Trash2, Pencil, X, Save, Download, Upload, Move, Globe, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 
