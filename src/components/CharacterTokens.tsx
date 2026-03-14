@@ -407,16 +407,41 @@ export const CharacterTokensPage = () => {
   const [shape, setShape] = useState<TokenShape>('circle');
   const [borderWidth, setBorderWidth] = useState(BORDER_WIDTH_DEFAULT);
   const [borderColor, setBorderColor] = useState('#d4af37');
+  const [groupChats, setGroupChats] = useState<GroupChat[]>([]);
+  const [groupFilter, setGroupFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [generatingSheet, setGeneratingSheet] = useState(false);
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('user_id, character_name, character_class, avatar_url, level, ancestry')
-        .order('character_name');
-      setProfiles(data || []);
+      const [profilesRes, stonesRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('user_id, character_name, character_class, avatar_url, level, ancestry')
+          .order('character_name'),
+        supabase
+          .from('stones')
+          .select('id, name, is_group')
+          .eq('is_group', true),
+      ]);
+      setProfiles(profilesRes.data || []);
+
+      if (stonesRes.data && stonesRes.data.length > 0) {
+        const { data: participants } = await supabase
+          .from('stone_participants')
+          .select('stone_id, user_id')
+          .is('left_at', null)
+          .in('stone_id', stonesRes.data.map(s => s.id));
+
+        const groups: GroupChat[] = stonesRes.data.map(s => ({
+          id: s.id,
+          name: s.name,
+          participant_ids: (participants || [])
+            .filter(p => p.stone_id === s.id)
+            .map(p => p.user_id),
+        }));
+        setGroupChats(groups);
+      }
     };
     load();
   }, []);
@@ -428,6 +453,12 @@ export const CharacterTokensPage = () => {
       .sort();
   }, [profiles]);
 
+  const groupMemberIds = useMemo(() => {
+    if (groupFilter === 'all') return null;
+    const group = groupChats.find(g => g.id === groupFilter);
+    return group ? new Set(group.participant_ids) : null;
+  }, [groupFilter, groupChats]);
+
   const filtered = useMemo(() => {
     return profiles.filter(p => {
       if (!p.avatar_url) return false;
@@ -436,9 +467,10 @@ export const CharacterTokensPage = () => {
         p.character_class?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.ancestry?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesClass = classFilter === 'all' || p.character_class === classFilter;
-      return matchesSearch && matchesClass;
+      const matchesGroup = !groupMemberIds || groupMemberIds.has(p.user_id);
+      return matchesSearch && matchesClass && matchesGroup;
     });
-  }, [profiles, searchTerm, classFilter]);
+  }, [profiles, searchTerm, classFilter, groupMemberIds]);
 
   const toggleSelect = useCallback((userId: string) => {
     setSelectedIds(prev => {
