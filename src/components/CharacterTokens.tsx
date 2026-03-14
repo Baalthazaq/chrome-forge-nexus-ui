@@ -252,13 +252,25 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
   }, [tokenDataUrl, profile.character_name]);
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
-    if (!tokenDataUrl) return;
-    e.dataTransfer.setData('text/uri-list', tokenDataUrl);
-    e.dataTransfer.setData('text/plain', tokenDataUrl);
+    if (!tokenDataUrl || !profile.character_name) return;
+    
+    // Convert data URL to blob and create a named file object
+    fetch(tokenDataUrl)
+      .then(res => res.blob())
+      .then(blob => {
+        const filename = `${profile.character_name.replace(/\s+/g, '_')}_token.png`;
+        const file = new File([blob], filename, { type: 'image/png' });
+        const fileUrl = URL.createObjectURL(file);
+        
+        e.dataTransfer.setData('text/uri-list', fileUrl);
+        e.dataTransfer.setData('text/plain', fileUrl);
+        e.dataTransfer.setData('DownloadURL', `image/png:${filename}:${fileUrl}`);
+      });
+    
     if (imgRef.current) {
       e.dataTransfer.setDragImage(imgRef.current, 48, 48);
     }
-  }, [tokenDataUrl]);
+  }, [tokenDataUrl, profile.character_name]);
 
   if (!profile.avatar_url) {
     return (
