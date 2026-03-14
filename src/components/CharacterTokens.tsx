@@ -588,6 +588,21 @@ export const CharacterTokensPage = () => {
             </div>
 
             <div className="space-y-1.5">
+              <Label>Group Chat</Label>
+              <Select value={groupFilter} onValueChange={setGroupFilter}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Characters</SelectItem>
+                  {groupChats.map(g => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.name || 'Unnamed Group'} ({g.participant_ids.length})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
               <Label>Border Color</Label>
               <div className="flex gap-2">
                 <input
