@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { User, Shield, Eye, Settings, Search } from 'lucide-react';
 import { NPCDialog } from '@/components/NPCDialog';
+import { CharacterTokens } from '@/components/CharacterTokens';
 
 const Admin = () => {
   const navigate = useNavigate();
