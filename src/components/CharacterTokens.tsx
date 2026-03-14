@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Search, Download, Circle, Square, Hexagon, Coins } from 'lucide-react';
+import { Search, Download, Circle, Square, Hexagon, Coins, FileImage, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
 
 type TokenShape = 'circle' | 'square' | 'hex';
@@ -25,21 +26,30 @@ interface Profile {
 const TOKEN_SIZE = 256;
 const BORDER_WIDTH_DEFAULT = 6;
 
+// A4 at 150 DPI
+const A4_WIDTH = 1240;
+const A4_HEIGHT = 1754;
+const SHEET_MARGIN = 40;
+
 function drawTokenShape(
   ctx: CanvasRenderingContext2D,
   shape: TokenShape,
   size: number,
-  inset: number = 0
+  inset: number = 0,
+  offsetX: number = 0,
+  offsetY: number = 0
 ) {
   const half = size / 2;
   const r = half - inset;
+  const cx = offsetX + half;
+  const cy = offsetY + half;
 
   ctx.beginPath();
   if (shape === 'circle') {
-    ctx.arc(half, half, r, 0, Math.PI * 2);
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
   } else if (shape === 'square') {
     const cornerRadius = 8;
-    const x = inset, y = inset, w = size - inset * 2, h = size - inset * 2;
+    const x = offsetX + inset, y = offsetY + inset, w = size - inset * 2, h = size - inset * 2;
     ctx.moveTo(x + cornerRadius, y);
     ctx.lineTo(x + w - cornerRadius, y);
     ctx.quadraticCurveTo(x + w, y, x + w, y + cornerRadius);
@@ -50,16 +60,56 @@ function drawTokenShape(
     ctx.lineTo(x, y + cornerRadius);
     ctx.quadraticCurveTo(x, y, x + cornerRadius, y);
   } else {
-    // Hexagon (flat-top)
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI / 3) * i - Math.PI / 6;
-      const px = half + r * Math.cos(angle);
-      const py = half + r * Math.sin(angle);
+      const px = cx + r * Math.cos(angle);
+      const py = cy + r * Math.sin(angle);
       if (i === 0) ctx.moveTo(px, py);
       else ctx.lineTo(px, py);
     }
   }
   ctx.closePath();
+}
+
+async function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = url;
+  });
+}
+
+function drawImageClipped(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  shape: TokenShape,
+  size: number,
+  borderWidth: number,
+  borderColor: string,
+  offsetX: number = 0,
+  offsetY: number = 0
+) {
+  ctx.save();
+  drawTokenShape(ctx, shape, size, borderWidth / 2, offsetX, offsetY);
+  ctx.clip();
+
+  const imgAspect = img.width / img.height;
+  let sx = 0, sy = 0, sw = img.width, sh = img.height;
+  if (imgAspect > 1) { sw = img.height; sx = (img.width - sw) / 2; }
+  else { sh = img.width; sy = (img.height - sh) / 2; }
+  ctx.drawImage(img, sx, sy, sw, sh, offsetX, offsetY, size, size);
+  ctx.restore();
+
+  if (borderWidth > 0) {
+    ctx.save();
+    drawTokenShape(ctx, shape, size, borderWidth / 2, offsetX, offsetY);
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = borderWidth;
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 async function renderToken(
@@ -69,51 +119,104 @@ async function renderToken(
   borderColor: string,
   size: number = TOKEN_SIZE
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext('2d')!;
+  const img = await loadImage(imageUrl);
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  ctx.clearRect(0, 0, size, size);
+  drawImageClipped(ctx, img, shape, size, borderWidth, borderColor);
+  return canvas.toDataURL('image/png');
+}
 
-      // Clear to transparent
-      ctx.clearRect(0, 0, size, size);
+interface SheetProfile {
+  profile: Profile;
+  img: HTMLImageElement;
+}
 
-      // Clip to shape and draw image
-      ctx.save();
-      drawTokenShape(ctx, shape, size, borderWidth / 2);
-      ctx.clip();
+async function renderSheet(
+  profiles: SheetProfile[],
+  shape: TokenShape,
+  borderWidth: number,
+  borderColor: string,
+  tokenSize: number = TOKEN_SIZE
+): Promise<string[]> {
+  const pages: string[] = [];
+  const usableW = A4_WIDTH - SHEET_MARGIN * 2;
+  const usableH = A4_HEIGHT - SHEET_MARGIN * 2;
 
-      // Draw image covering the shape area
-      const imgAspect = img.width / img.height;
-      let sx = 0, sy = 0, sw = img.width, sh = img.height;
-      if (imgAspect > 1) {
-        sw = img.height;
-        sx = (img.width - sw) / 2;
-      } else {
-        sh = img.width;
-        sy = (img.height - sh) / 2;
+  let positions: { x: number; y: number }[] = [];
+
+  if (shape === 'square') {
+    // Seamless grid – no gaps
+    const cols = Math.floor(usableW / tokenSize);
+    const rows = Math.floor(usableH / tokenSize);
+    const startX = SHEET_MARGIN + Math.floor((usableW - cols * tokenSize) / 2);
+    const startY = SHEET_MARGIN + Math.floor((usableH - rows * tokenSize) / 2);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        positions.push({ x: startX + c * tokenSize, y: startY + r * tokenSize });
       }
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size);
-      ctx.restore();
-
-      // Draw border
-      if (borderWidth > 0) {
-        ctx.save();
-        drawTokenShape(ctx, shape, size, borderWidth / 2);
-        ctx.strokeStyle = borderColor;
-        ctx.lineWidth = borderWidth;
-        ctx.stroke();
-        ctx.restore();
+    }
+  } else if (shape === 'circle') {
+    // Close grid, same as square spacing but with small gap
+    const gap = 4;
+    const step = tokenSize + gap;
+    const cols = Math.floor(usableW / step);
+    const rows = Math.floor(usableH / step);
+    const startX = SHEET_MARGIN + Math.floor((usableW - cols * step + gap) / 2);
+    const startY = SHEET_MARGIN + Math.floor((usableH - rows * step + gap) / 2);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        positions.push({ x: startX + c * step, y: startY + r * step });
       }
+    }
+  } else {
+    // Hex tessellation (flat-top)
+    const r = tokenSize / 2;
+    const colW = r * Math.sqrt(3);
+    const rowH = r * 1.5;
+    const cols = Math.floor(usableW / colW);
+    const rows = Math.floor(usableH / rowH);
+    const startX = SHEET_MARGIN + Math.floor((usableW - cols * colW) / 2);
+    const startY = SHEET_MARGIN + Math.floor((usableH - rows * rowH) / 2);
+    for (let row = 0; row < rows; row++) {
+      const offsetX = row % 2 === 1 ? colW / 2 : 0;
+      const maxCols = row % 2 === 1 ? cols - 1 : cols;
+      for (let col = 0; col < maxCols; col++) {
+        const x = startX + col * colW + offsetX;
+        const y = startY + row * rowH;
+        if (x + tokenSize <= A4_WIDTH - SHEET_MARGIN + 2 && y + tokenSize <= A4_HEIGHT - SHEET_MARGIN + 2) {
+          positions.push({ x, y });
+        }
+      }
+    }
+  }
 
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => reject(new Error('Failed to load image'));
-    img.src = imageUrl;
-  });
+  const perPage = positions.length;
+  if (perPage === 0) return [];
+
+  const totalPages = Math.ceil(profiles.length / perPage);
+
+  for (let page = 0; page < totalPages; page++) {
+    const canvas = document.createElement('canvas');
+    canvas.width = A4_WIDTH;
+    canvas.height = A4_HEIGHT;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
+
+    const pageProfiles = profiles.slice(page * perPage, (page + 1) * perPage);
+    for (let i = 0; i < pageProfiles.length; i++) {
+      const { img } = pageProfiles[i];
+      const pos = positions[i];
+      drawImageClipped(ctx, img, shape, tokenSize, borderWidth, borderColor, pos.x, pos.y);
+    }
+
+    pages.push(canvas.toDataURL('image/png'));
+  }
+
+  return pages;
 }
 
 interface TokenCardProps {
@@ -121,9 +224,11 @@ interface TokenCardProps {
   shape: TokenShape;
   borderWidth: number;
   borderColor: string;
+  selected: boolean;
+  onToggleSelect: (userId: string) => void;
 }
 
-const TokenCard = ({ profile, shape, borderWidth, borderColor }: TokenCardProps) => {
+const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggleSelect }: TokenCardProps) => {
   const [tokenDataUrl, setTokenDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -167,7 +272,19 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor }: TokenCardProps)
   }
 
   return (
-    <div className="flex flex-col items-center gap-2 p-3 border rounded-lg bg-card hover:bg-accent/50 transition-colors">
+    <div
+      className={`flex flex-col items-center gap-2 p-3 border rounded-lg transition-colors cursor-pointer ${
+        selected ? 'bg-primary/10 border-primary' : 'bg-card hover:bg-accent/50'
+      }`}
+      onClick={() => onToggleSelect(profile.user_id)}
+    >
+      <div className="w-full flex justify-end">
+        <Checkbox
+          checked={selected}
+          onCheckedChange={() => onToggleSelect(profile.user_id)}
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
       {loading ? (
         <div className="w-24 h-24 bg-muted animate-pulse rounded-full" />
       ) : tokenDataUrl ? (
@@ -178,6 +295,7 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor }: TokenCardProps)
           className="w-24 h-24 cursor-grab active:cursor-grabbing"
           draggable
           onDragStart={handleDragStart}
+          onClick={(e) => e.stopPropagation()}
         />
       ) : (
         <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center text-muted-foreground text-xs">
@@ -195,7 +313,7 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor }: TokenCardProps)
           Lv.{profile.level}
         </Badge>
       </div>
-      <Button size="sm" variant="ghost" onClick={handleDownload} disabled={!tokenDataUrl} className="h-7 text-xs gap-1">
+      <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDownload(); }} disabled={!tokenDataUrl} className="h-7 text-xs gap-1">
         <Download className="h-3 w-3" />
         PNG
       </Button>
@@ -215,6 +333,8 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
   const [borderWidth, setBorderWidth] = useState(BORDER_WIDTH_DEFAULT);
   const [borderColor, setBorderColor] = useState('#d4af37');
   const [open, setOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [generatingSheet, setGeneratingSheet] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -247,8 +367,30 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
     });
   }, [profiles, searchTerm, classFilter]);
 
-  const handleDownloadAll = useCallback(async () => {
-    for (const p of filtered) {
+  const toggleSelect = useCallback((userId: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(filtered.map(p => p.user_id)));
+  }, [filtered]);
+
+  const selectNone = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const downloadTargets = useMemo(() => {
+    if (selectedIds.size > 0) return filtered.filter(p => selectedIds.has(p.user_id));
+    return filtered;
+  }, [filtered, selectedIds]);
+
+  const handleDownloadSelected = useCallback(async () => {
+    for (const p of downloadTargets) {
       if (!p.avatar_url) continue;
       try {
         const dataUrl = await renderToken(p.avatar_url, shape, borderWidth, borderColor);
@@ -259,8 +401,42 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
         await new Promise(r => setTimeout(r, 300));
       } catch { /* skip */ }
     }
-    toast.success(`Downloaded ${filtered.length} tokens`);
-  }, [filtered, shape, borderWidth, borderColor]);
+    toast.success(`Downloaded ${downloadTargets.length} tokens`);
+  }, [downloadTargets, shape, borderWidth, borderColor]);
+
+  const handleDownloadSheet = useCallback(async () => {
+    if (downloadTargets.length === 0) {
+      toast.error('No tokens to arrange on sheet');
+      return;
+    }
+    setGeneratingSheet(true);
+    try {
+      const loaded: SheetProfile[] = [];
+      for (const p of downloadTargets) {
+        if (!p.avatar_url) continue;
+        try {
+          const img = await loadImage(p.avatar_url);
+          loaded.push({ profile: p, img });
+        } catch { /* skip */ }
+      }
+
+      const sheetSize = Math.min(TOKEN_SIZE, 180); // Fit more on A4
+      const pages = await renderSheet(loaded, shape, borderWidth, borderColor, sheetSize);
+
+      for (let i = 0; i < pages.length; i++) {
+        const link = document.createElement('a');
+        link.download = `token_sheet_${i + 1}.png`;
+        link.href = pages[i];
+        link.click();
+        await new Promise(r => setTimeout(r, 300));
+      }
+      toast.success(`Downloaded ${pages.length} sheet(s) with ${loaded.length} tokens`);
+    } catch (err) {
+      toast.error('Failed to generate sheet');
+    } finally {
+      setGeneratingSheet(false);
+    }
+  }, [downloadTargets, shape, borderWidth, borderColor]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -283,7 +459,6 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
         {/* Controls */}
         <div className="space-y-4 pb-4 border-b">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Search */}
             <div className="space-y-1.5">
               <Label>Search</Label>
               <div className="relative">
@@ -297,7 +472,6 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
               </div>
             </div>
 
-            {/* Class filter */}
             <div className="space-y-1.5">
               <Label>Class</Label>
               <Select value={classFilter} onValueChange={setClassFilter}>
@@ -311,7 +485,6 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
               </Select>
             </div>
 
-            {/* Border color */}
             <div className="space-y-1.5">
               <Label>Border Color</Label>
               <div className="flex gap-2">
@@ -338,8 +511,7 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-end gap-6">
-            {/* Shape toggle */}
+          <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1.5">
               <Label>Shape</Label>
               <ToggleGroup type="single" value={shape} onValueChange={v => v && setShape(v as TokenShape)}>
@@ -355,7 +527,6 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
               </ToggleGroup>
             </div>
 
-            {/* Border width */}
             <div className="space-y-1.5 min-w-[140px]">
               <Label>Border Width: {borderWidth}px</Label>
               <Slider
@@ -366,16 +537,37 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
                 step={1}
               />
             </div>
+          </div>
 
-            {/* Download all */}
-            <Button onClick={handleDownloadAll} variant="outline" size="sm" className="gap-1">
+          {/* Selection & Download controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={selectAll} variant="outline" size="sm" className="gap-1 text-xs">
+              <CheckSquare className="h-3 w-3" />
+              Select All
+            </Button>
+            <Button onClick={selectNone} variant="outline" size="sm" className="text-xs" disabled={selectedIds.size === 0}>
+              Clear Selection
+            </Button>
+
+            <div className="flex-1" />
+
+            <span className="text-xs text-muted-foreground">
+              {selectedIds.size > 0 ? `${selectedIds.size} selected` : `${filtered.length} tokens`}
+            </span>
+
+            <Button onClick={handleDownloadSelected} variant="outline" size="sm" className="gap-1">
               <Download className="h-4 w-4" />
-              Download All ({filtered.length})
+              {selectedIds.size > 0 ? `Download Selected (${selectedIds.size})` : `Download All (${filtered.length})`}
+            </Button>
+
+            <Button onClick={handleDownloadSheet} variant="outline" size="sm" className="gap-1" disabled={generatingSheet}>
+              <FileImage className="h-4 w-4" />
+              {generatingSheet ? 'Generating...' : 'Download as Sheet'}
             </Button>
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Drag tokens directly onto Roll20, Foundry VTT, or other VTT platforms. Tokens export as transparent PNGs.
+            Drag tokens onto Roll20, Foundry VTT, etc. Click tokens to select for batch download or sheet export. Sheets are A4 @ 150 DPI.
           </p>
         </div>
 
@@ -388,6 +580,8 @@ export const CharacterTokens = ({ trigger }: CharacterTokensProps) => {
               shape={shape}
               borderWidth={borderWidth}
               borderColor={borderColor}
+              selected={selectedIds.has(p.user_id)}
+              onToggleSelect={toggleSelect}
             />
           ))}
           {filtered.length === 0 && (
