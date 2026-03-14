@@ -91,6 +91,17 @@ async function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [header, base64] = dataUrl.split(',');
+  const mime = header.match(/data:(.*?);base64/)?.[1] || 'image/png';
+  const binary = atob(base64 || '');
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mime });
+}
+
 function drawImageClipped(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
@@ -260,7 +271,6 @@ interface TokenCardProps {
 
 const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggleSelect }: TokenCardProps) => {
   const [tokenDataUrl, setTokenDataUrl] = useState<string | null>(null);
-  const [dragUrl, setDragUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const dragObjectUrlRef = useRef<string | null>(null);
@@ -275,35 +285,33 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
   }, [profile.avatar_url, shape, borderWidth, borderColor]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    if (dragObjectUrlRef.current) {
-      URL.revokeObjectURL(dragObjectUrlRef.current);
-      dragObjectUrlRef.current = null;
-    }
-    setDragUrl(null);
-
-    if (!tokenDataUrl) return;
-
-    fetch(tokenDataUrl)
-      .then((res) => res.blob())
-      .then((blob) => {
-        if (cancelled) return;
-        const objectUrl = URL.createObjectURL(blob);
-        dragObjectUrlRef.current = objectUrl;
-        setDragUrl(objectUrl);
-      })
-      .catch(() => {
-        if (!cancelled) setDragUrl(null);
-      });
-
     return () => {
-      cancelled = true;
       if (dragObjectUrlRef.current) {
         URL.revokeObjectURL(dragObjectUrlRef.current);
         dragObjectUrlRef.current = null;
       }
     };
+  }, []);
+
+  useEffect(() => {
+    if (dragObjectUrlRef.current) {
+      URL.revokeObjectURL(dragObjectUrlRef.current);
+      dragObjectUrlRef.current = null;
+    }
+  }, [tokenDataUrl]);
+
+  const prepareDragUrl = useCallback(() => {
+    if (!tokenDataUrl) return null;
+    if (dragObjectUrlRef.current) return dragObjectUrlRef.current;
+
+    try {
+      const blob = dataUrlToBlob(tokenDataUrl);
+      const objectUrl = URL.createObjectURL(blob);
+      dragObjectUrlRef.current = objectUrl;
+      return objectUrl;
+    } catch {
+      return null;
+    }
   }, [tokenDataUrl]);
 
   const handleDownload = useCallback(() => {
@@ -316,18 +324,27 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
   }, [tokenDataUrl, profile.character_name]);
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
-    if (!dragUrl || !profile.character_name) return;
+    if (!profile.character_name) return;
+
+    const dragUrl = prepareDragUrl();
+    if (!dragUrl) return;
 
     const filename = `${profile.character_name.replace(/\s+/g, '_')}_token.png`;
 
     e.dataTransfer.effectAllowed = 'copy';
     e.dataTransfer.setData('DownloadURL', `image/png:${filename}:${dragUrl}`);
-    e.dataTransfer.setData('text/uri-list', dragUrl);
 
     if (imgRef.current) {
       e.dataTransfer.setDragImage(imgRef.current, 48, 48);
     }
-  }, [dragUrl, profile.character_name]);
+  }, [prepareDragUrl, profile.character_name]);
+
+  const handleDragEnd = useCallback(() => {
+    if (dragObjectUrlRef.current) {
+      URL.revokeObjectURL(dragObjectUrlRef.current);
+      dragObjectUrlRef.current = null;
+    }
+  }, []);
 
   if (!profile.avatar_url) {
     return (
@@ -363,7 +380,10 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
           alt={`${profile.character_name} token`}
           className="w-24 h-24 cursor-grab active:cursor-grabbing"
           draggable
+          onMouseEnter={prepareDragUrl}
+          onPointerDown={prepareDragUrl}
           onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
           onClick={(e) => e.stopPropagation()}
         />
       ) : (
