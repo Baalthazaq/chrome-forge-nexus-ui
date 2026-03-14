@@ -157,7 +157,10 @@ const Admin = () => {
                 <span className="font-semibold">Organizations</span>
                 <span className="text-xs text-muted-foreground">Groups Admin</span>
               </Button>
-              <CharacterTokens />
+              <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => navigate('/admin/tokens')}>
+                <span className="font-semibold">Character Tokens</span>
+                <span className="text-xs text-muted-foreground">Token Generator</span>
+              </Button>
             </div>
           </CardContent>
         </Card>
