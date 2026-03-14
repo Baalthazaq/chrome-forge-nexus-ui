@@ -157,6 +157,7 @@ const Admin = () => {
                 <span className="font-semibold">Organizations</span>
                 <span className="text-xs text-muted-foreground">Groups Admin</span>
               </Button>
+              <CharacterTokens />
             </div>
           </CardContent>
         </Card>
