@@ -215,8 +215,15 @@ const Maze = () => {
               <Label className="text-gray-300">Icon Type</Label>
               <Select value={locForm.icon_type} onValueChange={v => setLocForm(f => ({ ...f, icon_type: v }))}>
                 <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-gray-800 border-gray-700">
-                  {LOCATION_ICON_TYPES.map(t => <SelectItem key={t} value={t} className="text-gray-200">{t}</SelectItem>)}
+                <SelectContent className="bg-gray-800 border-gray-700 max-h-60">
+                  {LOCATION_ICON_TYPES.map(t => {
+                    const Icon = ICON_MAP[t];
+                    return (
+                      <SelectItem key={t} value={t} className="text-gray-200">
+                        <span className="flex items-center gap-2"><Icon className="w-4 h-4" />{ICON_LABELS[t]}</span>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
