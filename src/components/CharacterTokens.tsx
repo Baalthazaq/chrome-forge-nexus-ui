@@ -272,47 +272,36 @@ interface TokenCardProps {
 const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggleSelect }: TokenCardProps) => {
   const [tokenDataUrl, setTokenDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
-  const dragObjectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!profile.avatar_url) return;
+    const node = cardRef.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible || !profile.avatar_url) return;
     setLoading(true);
     renderToken(profile.avatar_url, shape, borderWidth, borderColor)
       .then(setTokenDataUrl)
       .catch(() => setTokenDataUrl(null))
       .finally(() => setLoading(false));
-  }, [profile.avatar_url, shape, borderWidth, borderColor]);
-
-  useEffect(() => {
-    return () => {
-      if (dragObjectUrlRef.current) {
-        URL.revokeObjectURL(dragObjectUrlRef.current);
-        dragObjectUrlRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (dragObjectUrlRef.current) {
-      URL.revokeObjectURL(dragObjectUrlRef.current);
-      dragObjectUrlRef.current = null;
-    }
-  }, [tokenDataUrl]);
-
-  const prepareDragUrl = useCallback(() => {
-    if (!tokenDataUrl) return null;
-    if (dragObjectUrlRef.current) return dragObjectUrlRef.current;
-
-    try {
-      const blob = dataUrlToBlob(tokenDataUrl);
-      const objectUrl = URL.createObjectURL(blob);
-      dragObjectUrlRef.current = objectUrl;
-      return objectUrl;
-    } catch {
-      return null;
-    }
-  }, [tokenDataUrl]);
+  }, [isVisible, profile.avatar_url, shape, borderWidth, borderColor]);
 
   const handleDownload = useCallback(() => {
     if (!tokenDataUrl) return;
@@ -324,27 +313,22 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
   }, [tokenDataUrl, profile.character_name]);
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
-    if (!profile.character_name) return;
-
-    const dragUrl = prepareDragUrl();
-    if (!dragUrl) return;
+    if (!tokenDataUrl || !profile.character_name) return;
 
     const filename = `${profile.character_name.replace(/\s+/g, '_')}_token.png`;
+    const blob = dataUrlToBlob(tokenDataUrl);
+    const objectUrl = URL.createObjectURL(blob);
 
     e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('DownloadURL', `image/png:${filename}:${dragUrl}`);
+    e.dataTransfer.setData('DownloadURL', `image/png:${filename}:${objectUrl}`);
 
     if (imgRef.current) {
       e.dataTransfer.setDragImage(imgRef.current, 48, 48);
     }
-  }, [prepareDragUrl, profile.character_name]);
 
-  const handleDragEnd = useCallback(() => {
-    if (dragObjectUrlRef.current) {
-      URL.revokeObjectURL(dragObjectUrlRef.current);
-      dragObjectUrlRef.current = null;
-    }
-  }, []);
+    // Keep URL alive long enough for OS drop target, then clean up
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+  }, [tokenDataUrl, profile.character_name]);
 
   if (!profile.avatar_url) {
     return (
