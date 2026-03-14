@@ -1,10 +1,10 @@
 import { useRef, useState, useCallback, useEffect, useMemo, MouseEvent } from 'react';
 import { MapLocation, MapArea, MapRouteNode, MapRouteEdge } from '@/hooks/useMazeData';
-import { MapPin, Building, Store, Landmark, Home, Skull, Trees, Zap, Church, Shield, Eye, Crown, Waves, Factory, Warehouse, CircuitBoard, Wifi, Radio, Siren, Camera, Lock, KeyRound, Cpu, Monitor, Server, Crosshair, AlertTriangle, Cigarette, UtensilsCrossed } from 'lucide-react';
+import { MapPin, Building, Store, Landmark, Home, Skull, Trees, Zap, Church, ShieldCheck, Eye, Crown, Waves, Factory, Warehouse, CircuitBoard, Wifi, Radio, Siren, Camera, Lock, KeyRound, Cpu, Monitor, Server, Crosshair, AlertTriangle, Cigarette, UtensilsCrossed, Wrench } from 'lucide-react';
 
 const MAP_URL = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/Map/RaccaDigitalMap.png';
 
-const ICON_MAP: Record<string, typeof MapPin> = {
+export const ICON_MAP: Record<string, typeof MapPin> = {
   default: MapPin,
   building: Building,
   store: Store,
@@ -12,9 +12,9 @@ const ICON_MAP: Record<string, typeof MapPin> = {
   home: Home,
   danger: Skull,
   nature: Trees,
-  tech: Zap,
+  energy: Zap,
   temple: Church,
-  guard: Shield,
+  security: ShieldCheck,
   crown: Crown,
   water: Waves,
   eye: Eye,
@@ -34,7 +34,12 @@ const ICON_MAP: Record<string, typeof MapPin> = {
   hazard: AlertTriangle,
   lounge: Cigarette,
   restaurant: UtensilsCrossed,
+  tools: Wrench,
 };
+
+export const ICON_LABELS: Record<string, string> = Object.fromEntries(
+  Object.keys(ICON_MAP).map(k => [k, k.charAt(0).toUpperCase() + k.slice(1)])
+);
 
 export const LOCATION_ICON_TYPES = Object.keys(ICON_MAP);
 

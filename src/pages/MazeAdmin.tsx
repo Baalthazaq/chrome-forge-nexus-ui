@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useMazeData, MapLocation, MapArea, MapRouteNode, EnvironmentCard } from '@/hooks/useMazeData';
-import { InteractiveMap, LOCATION_ICON_TYPES } from '@/components/maze/InteractiveMap';
+import { InteractiveMap, LOCATION_ICON_TYPES, ICON_MAP, ICON_LABELS } from '@/components/maze/InteractiveMap';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { ArrowLeft, Shield, MapPin, Layers, Route, Plus, Trash2, Pencil, X, Save, Download, Upload, Move } from 'lucide-react';
+import { ArrowLeft, Shield, MapPin, Layers, Route, Plus, Trash2, Pencil, X, Save, Download, Upload, Move, Globe, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -458,19 +458,29 @@ const MazeAdmin = () => {
                   </Button>
                 </div>
                 <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                  {maze.locations.map(loc => (
+                  {maze.locations.map(loc => {
+                    const LocIcon = ICON_MAP[loc.icon_type] || MapPin;
+                    return (
                     <div key={loc.id} className="flex items-center justify-between p-2 bg-gray-900/50 border border-gray-700/30 rounded text-sm">
                       <div className="flex items-center gap-2 min-w-0">
-                        <MapPin className={`w-3 h-3 flex-shrink-0 ${loc.is_public ? 'text-teal-500' : 'text-amber-500'}`} />
+                        <LocIcon className="w-3 h-3 flex-shrink-0" style={{ color: loc.marker_color || '#14b8a6' }} />
                         <span className="truncate">{loc.name}</span>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => { maze.updateLocation.mutate({ id: loc.id, is_public: !loc.is_public }); }}
+                          className="p-1 text-gray-400 hover:text-white"
+                          title={loc.is_public ? 'Public (click to hide)' : 'Private (click to publish)'}
+                        >
+                          {loc.is_public ? <Globe className="w-3 h-3 text-teal-400" /> : <EyeOff className="w-3 h-3 text-amber-500" />}
+                        </button>
                         <button onClick={() => startEditLocation(loc)} className="p-1 text-gray-400 hover:text-white" title="Edit"><Pencil className="w-3 h-3" /></button>
                         <button onClick={() => startRelocateLocation(loc)} className="p-1 text-gray-400 hover:text-cyan-400" title="Move location"><Move className="w-3 h-3" /></button>
                         <button onClick={() => { maze.deleteLocation.mutate(loc.id); toast.success('Deleted'); }} className="p-1 text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </TabsContent>
 
@@ -568,8 +578,15 @@ const MazeAdmin = () => {
               <Label className="text-gray-300">Icon Type</Label>
               <Select value={locForm.icon_type} onValueChange={v => setLocForm(f => ({ ...f, icon_type: v }))}>
                 <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-gray-800 border-gray-700">
-                  {LOCATION_ICON_TYPES.map(t => <SelectItem key={t} value={t} className="text-gray-200">{t}</SelectItem>)}
+                <SelectContent className="bg-gray-800 border-gray-700 max-h-60">
+                  {LOCATION_ICON_TYPES.map(t => {
+                    const Icon = ICON_MAP[t];
+                    return (
+                      <SelectItem key={t} value={t} className="text-gray-200">
+                        <span className="flex items-center gap-2"><Icon className="w-4 h-4" />{ICON_LABELS[t]}</span>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
