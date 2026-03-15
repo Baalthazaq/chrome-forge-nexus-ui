@@ -1073,22 +1073,15 @@ const VaultAdmin = () => {
                       <DialogTitle>Create Recurring Payment</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="recurring-from">From Account</Label>
-                        <Select value={recurringForm.from_user_id} onValueChange={(value) => setRecurringForm({...recurringForm, from_user_id: value})}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select account" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="system">System</SelectItem>
-                            {profiles.map((profile) => (
-                              <SelectItem key={profile.user_id} value={profile.user_id}>
-                                {profile.character_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      {renderFromAccountSelect(
+                        recurringForm.from_user_id,
+                        (val) => {
+                          const org = organizations.find(o => o.id === val);
+                          setRecurringForm({...recurringForm, from_user_id: val, sender_alias: org ? org.name : recurringForm.sender_alias});
+                        },
+                        recurringFromFilter,
+                        setRecurringFromFilter
+                      )}
                       
                       <div className="grid gap-2">
                         <Label htmlFor="recurring-sender-alias">Sender Name/Alias</Label>
