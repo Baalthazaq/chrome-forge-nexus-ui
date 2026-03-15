@@ -754,12 +754,20 @@ const Vault = () => {
                             {meta?.company && <span className="text-xs text-gray-500">• {meta.company}</span>}
                           </div>
                         </div>
-                        <div className="text-right flex-shrink-0">
+                        <div className="text-right flex-shrink-0 flex items-center gap-2">
                           {rp.accumulated_amount > 0 ? (
                             <div className="text-red-400 font-mono text-sm">Owes {formatHex(rp.accumulated_amount)}</div>
                           ) : (
                             <div className="text-gray-500 text-sm">Paid up</div>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-gray-500 hover:text-red-400 hover:bg-red-900/20"
+                            onClick={() => { setPendingDeleteSub(rp); setDeleteSubDialogOpen(true); }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
