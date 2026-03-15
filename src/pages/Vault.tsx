@@ -85,6 +85,8 @@ const Vault = () => {
   const [sendDescription, setSendDescription] = useState("");
   const [overdraftDialogOpen, setOverdraftDialogOpen] = useState(false);
   const [pendingBillPayment, setPendingBillPayment] = useState<{ billIds: string[], totalAmount: number } | null>(null);
+  const [deleteSubDialogOpen, setDeleteSubDialogOpen] = useState(false);
+  const [pendingDeleteSub, setPendingDeleteSub] = useState<any>(null);
 
   // Add Item Dialog State
   const [addItemOpen, setAddItemOpen] = useState(false);
