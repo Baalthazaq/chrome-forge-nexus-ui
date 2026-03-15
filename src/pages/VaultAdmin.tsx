@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { ArrowLeft, Users, Receipt, RefreshCw, Plus, Play, PlayCircle, XCircle, Check, DollarSign, Send, Minus, Calculator } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { ArrowLeft, Users, Receipt, RefreshCw, Plus, Play, PlayCircle, XCircle, Check, DollarSign, Send, Minus, Calculator, Building2, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,7 @@ const VaultAdmin = () => {
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [recurringPayments, setRecurringPayments] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // Admin Dialog States
@@ -34,6 +35,11 @@ const VaultAdmin = () => {
   const [creditDialogOpen, setCreditDialogOpen] = useState(false);
   const [creditUserFilter, setCreditUserFilter] = useState('');
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
+  
+  // From Account search filters
+  const [billFromFilter, setBillFromFilter] = useState('');
+  const [paymentFromFilter, setPaymentFromFilter] = useState('');
+  const [recurringFromFilter, setRecurringFromFilter] = useState('');
   
   // Admin Form States
   const [billForm, setBillForm] = useState({
@@ -75,12 +81,14 @@ const VaultAdmin = () => {
     if (!user || !isAdmin) return;
     
     try {
-      // Load all profiles
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("user_id, character_name, credits");
+      // Load all profiles and organizations
+      const [profileRes, orgRes] = await Promise.all([
+        supabase.from("profiles").select("user_id, character_name, credits"),
+        supabase.from("organizations").select("id, name").eq("is_public", true).order("name"),
+      ]);
       
-      setProfiles(profileData || []);
+      setProfiles(profileRes.data || []);
+      setOrganizations(orgRes.data || []);
 
       // Load all bills (both paid and unpaid)
       const { data: allBillData } = await supabase
@@ -489,7 +497,89 @@ const VaultAdmin = () => {
 
   const getName = (id?: string | null) => {
     const p = profiles.find((pr) => pr.user_id === id);
-    return p?.character_name || 'System';
+    if (p) return p.character_name;
+    const org = organizations.find((o) => o.id === id);
+    if (org) return org.name;
+    return 'System';
+  };
+
+  // Reusable searchable "From Account" component
+  const renderFromAccountSelect = (
+    value: string, 
+    onChange: (val: string) => void, 
+    filter: string, 
+    setFilter: (val: string) => void,
+    label: string = "From Account"
+  ) => {
+    const selectedLabel = value === 'system' ? 'System' : getName(value) || 'Select account';
+    const lf = filter.toLowerCase();
+    const filteredProfiles = profiles.filter(p => (p.character_name || '').toLowerCase().includes(lf));
+    const filteredOrgs = organizations.filter(o => o.name.toLowerCase().includes(lf));
+    const showSystem = 'system'.includes(lf);
+
+    return (
+      <div className="grid gap-2">
+        <Label>{label}</Label>
+        {value && (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Selected:</span>
+            <Badge variant="outline">{selectedLabel}</Badge>
+            <Button variant="ghost" size="sm" className="h-5 px-1 text-xs" onClick={() => onChange('')}>Clear</Button>
+          </div>
+        )}
+        <div className="relative">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search users & organizations..."
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        <div className="border rounded p-2 max-h-32 overflow-y-auto space-y-0.5">
+          {showSystem && (
+            <button
+              className={`w-full text-left px-2 py-1 rounded text-sm hover:bg-accent ${value === 'system' ? 'bg-accent font-medium' : ''}`}
+              onClick={() => onChange('system')}
+            >
+              System
+            </button>
+          )}
+          {filteredOrgs.length > 0 && (
+            <>
+              <div className="text-xs text-muted-foreground font-medium px-2 pt-1 flex items-center gap-1">
+                <Building2 className="w-3 h-3" /> Organizations
+              </div>
+              {filteredOrgs.map(org => (
+                <button
+                  key={org.id}
+                  className={`w-full text-left px-2 py-1 rounded text-sm hover:bg-accent ${value === org.id ? 'bg-accent font-medium' : ''}`}
+                  onClick={() => { onChange(org.id); setFilter(''); }}
+                >
+                  {org.name}
+                </button>
+              ))}
+            </>
+          )}
+          {filteredProfiles.length > 0 && (
+            <>
+              <div className="text-xs text-muted-foreground font-medium px-2 pt-1 flex items-center gap-1">
+                <Users className="w-3 h-3" /> Characters
+              </div>
+              {filteredProfiles.map(profile => (
+                <button
+                  key={profile.user_id}
+                  className={`w-full text-left px-2 py-1 rounded text-sm hover:bg-accent ${value === profile.user_id ? 'bg-accent font-medium' : ''}`}
+                  onClick={() => { onChange(profile.user_id); setFilter(''); }}
+                >
+                  {profile.character_name}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -594,22 +684,15 @@ const VaultAdmin = () => {
                     <DialogTitle>Send Bill to Multiple Recipients</DialogTitle>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="bill-from">From Account</Label>
-                      <Select value={billForm.from_user_id} onValueChange={(value) => setBillForm({...billForm, from_user_id: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select account" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="system">System</SelectItem>
-                          {profiles.map((profile) => (
-                            <SelectItem key={profile.user_id} value={profile.user_id}>
-                              {profile.character_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {renderFromAccountSelect(
+                      billForm.from_user_id,
+                      (val) => {
+                        const org = organizations.find(o => o.id === val);
+                        setBillForm({...billForm, from_user_id: val, sender_alias: org ? org.name : billForm.sender_alias});
+                      },
+                      billFromFilter,
+                      setBillFromFilter
+                    )}
                     
                     <div className="grid gap-2">
                       <Label htmlFor="bill-sender-alias">Sender Name/Alias</Label>
@@ -766,22 +849,15 @@ const VaultAdmin = () => {
                     <DialogTitle>Send Payment to Multiple Recipients</DialogTitle>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="payment-from">From Account</Label>
-                      <Select value={paymentForm.from_user_id} onValueChange={(value) => setPaymentForm({...paymentForm, from_user_id: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select account" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="system">System</SelectItem>
-                          {profiles.map((profile) => (
-                            <SelectItem key={profile.user_id} value={profile.user_id}>
-                              {profile.character_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {renderFromAccountSelect(
+                      paymentForm.from_user_id,
+                      (val) => {
+                        const org = organizations.find(o => o.id === val);
+                        setPaymentForm({...paymentForm, from_user_id: val, sender_alias: org ? org.name : paymentForm.sender_alias});
+                      },
+                      paymentFromFilter,
+                      setPaymentFromFilter
+                    )}
                     
                     <div className="grid gap-2">
                       <Label htmlFor="payment-sender-alias">Sender Name/Alias</Label>
@@ -997,22 +1073,15 @@ const VaultAdmin = () => {
                       <DialogTitle>Create Recurring Payment</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="recurring-from">From Account</Label>
-                        <Select value={recurringForm.from_user_id} onValueChange={(value) => setRecurringForm({...recurringForm, from_user_id: value})}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select account" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="system">System</SelectItem>
-                            {profiles.map((profile) => (
-                              <SelectItem key={profile.user_id} value={profile.user_id}>
-                                {profile.character_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      {renderFromAccountSelect(
+                        recurringForm.from_user_id,
+                        (val) => {
+                          const org = organizations.find(o => o.id === val);
+                          setRecurringForm({...recurringForm, from_user_id: val, sender_alias: org ? org.name : recurringForm.sender_alias});
+                        },
+                        recurringFromFilter,
+                        setRecurringFromFilter
+                      )}
                       
                       <div className="grid gap-2">
                         <Label htmlFor="recurring-sender-alias">Sender Name/Alias</Label>

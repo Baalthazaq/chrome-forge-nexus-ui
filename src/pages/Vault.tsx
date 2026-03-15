@@ -85,6 +85,8 @@ const Vault = () => {
   const [sendDescription, setSendDescription] = useState("");
   const [overdraftDialogOpen, setOverdraftDialogOpen] = useState(false);
   const [pendingBillPayment, setPendingBillPayment] = useState<{ billIds: string[], totalAmount: number } | null>(null);
+  const [deleteSubDialogOpen, setDeleteSubDialogOpen] = useState(false);
+  const [pendingDeleteSub, setPendingDeleteSub] = useState<any>(null);
 
   // Add Item Dialog State
   const [addItemOpen, setAddItemOpen] = useState(false);
@@ -238,6 +240,20 @@ const Vault = () => {
 
   const handlePayBill = async (billId: string) => {
     checkOverdraftAndPay([billId]);
+  };
+
+  const handleDeleteSubscription = async () => {
+    if (!pendingDeleteSub) return;
+    try {
+      const { error } = await supabase.from("recurring_payments").delete().eq("id", pendingDeleteSub.id);
+      if (error) throw error;
+      toast({ title: "Subscription Deleted", description: `${pendingDeleteSub.description} has been removed` });
+      setPendingDeleteSub(null);
+      setDeleteSubDialogOpen(false);
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
   };
 
   const resetAddItemForm = () => {
@@ -738,12 +754,20 @@ const Vault = () => {
                             {meta?.company && <span className="text-xs text-gray-500">• {meta.company}</span>}
                           </div>
                         </div>
-                        <div className="text-right flex-shrink-0">
+                        <div className="text-right flex-shrink-0 flex items-center gap-2">
                           {rp.accumulated_amount > 0 ? (
                             <div className="text-red-400 font-mono text-sm">Owes {formatHex(rp.accumulated_amount)}</div>
                           ) : (
                             <div className="text-gray-500 text-sm">Paid up</div>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-gray-500 hover:text-red-400 hover:bg-red-900/20"
+                            onClick={() => { setPendingDeleteSub(rp); setDeleteSubDialogOpen(true); }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
@@ -1198,6 +1222,30 @@ const Vault = () => {
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               Delete Item
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Subscription Confirmation Dialog */}
+      <AlertDialog open={deleteSubDialogOpen} onOpenChange={setDeleteSubDialogOpen}>
+        <AlertDialogContent className="bg-gray-900 border-red-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-400">Delete Subscription</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              Are you sure you want to permanently delete the subscription <strong>{pendingDeleteSub?.description}</strong>?
+              {pendingDeleteSub?.accumulated_amount > 0 && (
+                <><br /><br />This subscription has <span className="text-red-400">{formatHex(pendingDeleteSub.accumulated_amount)}</span> in unpaid debt which will be forgiven.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-800 border-gray-600 text-gray-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteSubscription}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete Subscription
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
