@@ -182,6 +182,9 @@ function BackpackInner({ sheet, updateSheet, purchases, isEditing, open, onOpenC
     if (id === sheet.secondary_weapon_purchase_id) return false;
     if (id === sheet.armor_purchase_id) return false;
     if (backpackIds.includes(id)) return false;
+    // Services can't go in the backpack
+    const cat = (p.category || '').toLowerCase();
+    if (cat === 'service') return false;
     return true;
   });
 
