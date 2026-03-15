@@ -26,6 +26,7 @@ const VaultAdmin = () => {
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [recurringPayments, setRecurringPayments] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // Admin Dialog States
@@ -34,6 +35,11 @@ const VaultAdmin = () => {
   const [creditDialogOpen, setCreditDialogOpen] = useState(false);
   const [creditUserFilter, setCreditUserFilter] = useState('');
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
+  
+  // From Account search filters
+  const [billFromFilter, setBillFromFilter] = useState('');
+  const [paymentFromFilter, setPaymentFromFilter] = useState('');
+  const [recurringFromFilter, setRecurringFromFilter] = useState('');
   
   // Admin Form States
   const [billForm, setBillForm] = useState({
