@@ -497,7 +497,89 @@ const VaultAdmin = () => {
 
   const getName = (id?: string | null) => {
     const p = profiles.find((pr) => pr.user_id === id);
-    return p?.character_name || 'System';
+    if (p) return p.character_name;
+    const org = organizations.find((o) => o.id === id);
+    if (org) return org.name;
+    return 'System';
+  };
+
+  // Reusable searchable "From Account" component
+  const renderFromAccountSelect = (
+    value: string, 
+    onChange: (val: string) => void, 
+    filter: string, 
+    setFilter: (val: string) => void,
+    label: string = "From Account"
+  ) => {
+    const selectedLabel = value === 'system' ? 'System' : getName(value) || 'Select account';
+    const lf = filter.toLowerCase();
+    const filteredProfiles = profiles.filter(p => (p.character_name || '').toLowerCase().includes(lf));
+    const filteredOrgs = organizations.filter(o => o.name.toLowerCase().includes(lf));
+    const showSystem = 'system'.includes(lf);
+
+    return (
+      <div className="grid gap-2">
+        <Label>{label}</Label>
+        {value && (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Selected:</span>
+            <Badge variant="outline">{selectedLabel}</Badge>
+            <Button variant="ghost" size="sm" className="h-5 px-1 text-xs" onClick={() => onChange('')}>Clear</Button>
+          </div>
+        )}
+        <div className="relative">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search users & organizations..."
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        <div className="border rounded p-2 max-h-32 overflow-y-auto space-y-0.5">
+          {showSystem && (
+            <button
+              className={`w-full text-left px-2 py-1 rounded text-sm hover:bg-accent ${value === 'system' ? 'bg-accent font-medium' : ''}`}
+              onClick={() => onChange('system')}
+            >
+              System
+            </button>
+          )}
+          {filteredOrgs.length > 0 && (
+            <>
+              <div className="text-xs text-muted-foreground font-medium px-2 pt-1 flex items-center gap-1">
+                <Building2 className="w-3 h-3" /> Organizations
+              </div>
+              {filteredOrgs.map(org => (
+                <button
+                  key={org.id}
+                  className={`w-full text-left px-2 py-1 rounded text-sm hover:bg-accent ${value === org.id ? 'bg-accent font-medium' : ''}`}
+                  onClick={() => { onChange(org.id); setFilter(''); }}
+                >
+                  {org.name}
+                </button>
+              ))}
+            </>
+          )}
+          {filteredProfiles.length > 0 && (
+            <>
+              <div className="text-xs text-muted-foreground font-medium px-2 pt-1 flex items-center gap-1">
+                <Users className="w-3 h-3" /> Characters
+              </div>
+              {filteredProfiles.map(profile => (
+                <button
+                  key={profile.user_id}
+                  className={`w-full text-left px-2 py-1 rounded text-sm hover:bg-accent ${value === profile.user_id ? 'bg-accent font-medium' : ''}`}
+                  onClick={() => { onChange(profile.user_id); setFilter(''); }}
+                >
+                  {profile.character_name}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
