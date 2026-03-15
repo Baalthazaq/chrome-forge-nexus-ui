@@ -242,6 +242,20 @@ const Vault = () => {
     checkOverdraftAndPay([billId]);
   };
 
+  const handleDeleteSubscription = async () => {
+    if (!pendingDeleteSub) return;
+    try {
+      const { error } = await supabase.from("recurring_payments").delete().eq("id", pendingDeleteSub.id);
+      if (error) throw error;
+      toast({ title: "Subscription Deleted", description: `${pendingDeleteSub.description} has been removed` });
+      setPendingDeleteSub(null);
+      setDeleteSubDialogOpen(false);
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
   const resetAddItemForm = () => {
     setNewItemName(""); setNewItemCategory("misc"); setNewItemNotes("");
     setNewItemTier("1"); setNewItemCompany(""); setNewItemDescription("");
