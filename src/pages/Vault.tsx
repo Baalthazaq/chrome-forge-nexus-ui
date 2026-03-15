@@ -1226,6 +1226,30 @@ const Vault = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Delete Subscription Confirmation Dialog */}
+      <AlertDialog open={deleteSubDialogOpen} onOpenChange={setDeleteSubDialogOpen}>
+        <AlertDialogContent className="bg-gray-900 border-red-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-400">Delete Subscription</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              Are you sure you want to permanently delete the subscription <strong>{pendingDeleteSub?.description}</strong>?
+              {pendingDeleteSub?.accumulated_amount > 0 && (
+                <><br /><br />This subscription has <span className="text-red-400">{formatHex(pendingDeleteSub.accumulated_amount)}</span> in unpaid debt which will be forgiven.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-800 border-gray-600 text-gray-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteSubscription}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete Subscription
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
