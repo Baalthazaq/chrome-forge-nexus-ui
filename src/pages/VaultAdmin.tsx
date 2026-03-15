@@ -81,12 +81,14 @@ const VaultAdmin = () => {
     if (!user || !isAdmin) return;
     
     try {
-      // Load all profiles
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("user_id, character_name, credits");
+      // Load all profiles and organizations
+      const [profileRes, orgRes] = await Promise.all([
+        supabase.from("profiles").select("user_id, character_name, credits"),
+        supabase.from("organizations").select("id, name").eq("is_public", true).order("name"),
+      ]);
       
-      setProfiles(profileData || []);
+      setProfiles(profileRes.data || []);
+      setOrganizations(orgRes.data || []);
 
       // Load all bills (both paid and unpaid)
       const { data: allBillData } = await supabase
