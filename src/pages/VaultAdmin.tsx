@@ -849,22 +849,15 @@ const VaultAdmin = () => {
                     <DialogTitle>Send Payment to Multiple Recipients</DialogTitle>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="payment-from">From Account</Label>
-                      <Select value={paymentForm.from_user_id} onValueChange={(value) => setPaymentForm({...paymentForm, from_user_id: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select account" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="system">System</SelectItem>
-                          {profiles.map((profile) => (
-                            <SelectItem key={profile.user_id} value={profile.user_id}>
-                              {profile.character_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {renderFromAccountSelect(
+                      paymentForm.from_user_id,
+                      (val) => {
+                        const org = organizations.find(o => o.id === val);
+                        setPaymentForm({...paymentForm, from_user_id: val, sender_alias: org ? org.name : paymentForm.sender_alias});
+                      },
+                      paymentFromFilter,
+                      setPaymentFromFilter
+                    )}
                     
                     <div className="grid gap-2">
                       <Label htmlFor="payment-sender-alias">Sender Name/Alias</Label>
