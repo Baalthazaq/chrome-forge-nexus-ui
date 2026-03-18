@@ -68,6 +68,17 @@ export interface MapAreaReview {
   profile?: { character_name: string | null; avatar_url: string | null };
 }
 
+export interface MapLocationReview {
+  id: string;
+  location_id: string;
+  user_id: string;
+  rating: number;
+  content: string | null;
+  created_at: string;
+  updated_at: string;
+  profile?: { character_name: string | null; avatar_url: string | null };
+}
+
 export const useMazeData = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
