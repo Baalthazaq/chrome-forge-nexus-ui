@@ -2,8 +2,9 @@ import React from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, ArrowLeft, Pencil, Check, X, Plus, Zap } from "lucide-react";
+import { Camera, ArrowLeft, Pencil, Check, X, Plus, Zap, Timer, Sun, Moon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useRef, useEffect } from "react";
@@ -29,6 +30,9 @@ interface Props {
   subclassCards: GameCard[];
   domainCards: GameCard[];
   selectedSubclass: GameCard | undefined;
+  downtimeBalance?: number;
+  onShortRest?: () => void;
+  onLongRest?: () => void;
 }
 
 function AncestryCombobox({ value, onChange, ancestryCards, isEditing }: {
@@ -106,6 +110,7 @@ export function CharacterHeader({
   classCards, filteredSubclasses, ancestryCards, communityCards,
   domains, displayUser, isEditing, onProfileUpdate, onStatChange,
   gameCards, subclassCards, domainCards, selectedSubclass,
+  downtimeBalance, onShortRest, onLongRest,
 }: Props) {
   const { toast } = useToast();
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -411,6 +416,25 @@ export function CharacterHeader({
                     </span>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Downtime & Rest */}
+            {downtimeBalance !== undefined && (
+              <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap items-center gap-2 pt-1">
+                <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 text-xs">
+                  <Timer className="w-3 h-3 mr-1" /> {downtimeBalance}h downtime
+                </Badge>
+                {onShortRest && (
+                  <Button variant="outline" size="sm" className="border-amber-600 text-amber-400 hover:bg-amber-900/30 h-7 text-xs" onClick={onShortRest}>
+                    <Sun className="w-3 h-3 mr-1" /> Short Rest
+                  </Button>
+                )}
+                {onLongRest && (
+                  <Button variant="outline" size="sm" className="border-indigo-600 text-indigo-400 hover:bg-indigo-900/30 h-7 text-xs" onClick={onLongRest}>
+                    <Moon className="w-3 h-3 mr-1" /> Long Rest
+                  </Button>
+                )}
               </div>
             )}
           </div>
