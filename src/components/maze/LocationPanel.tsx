@@ -3,7 +3,6 @@ import { MapLocation, MapArea, MapLocationReview, useMazeData } from '@/hooks/us
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
 import { MapNotes } from './MapNotes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
