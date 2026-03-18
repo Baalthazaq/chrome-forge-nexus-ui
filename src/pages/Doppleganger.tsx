@@ -22,6 +22,10 @@ const Doppleganger = () => {
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [downtimeBalance, setDowntimeBalance] = useState(0);
+  const [restType, setRestType] = useState<"short" | "long">("short");
+  const [restOpen, setRestOpen] = useState(false);
+  const [gameDate, setGameDate] = useState<{ day: number; month: number; year: number } | undefined>();
 
   const displayUser = impersonatedUser || user;
   const userId = displayUser ? ((displayUser as any).user_id || (displayUser as any).id) : undefined;
