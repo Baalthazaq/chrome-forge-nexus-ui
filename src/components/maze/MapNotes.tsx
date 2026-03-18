@@ -117,47 +117,65 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
   const exportToTome = useMutation({
     mutationFn: async () => {
       if (!user || !targetName) return;
-      const parts: string[] = [];
-      parts.push(`# ${targetName}`);
-      if (locationDescription) parts.push(`\n${locationDescription}`);
-      if (locationImageUrl) parts.push(`\nImage: ${locationImageUrl}`);
+
+      const chapters: { title: string; content: string }[] = [];
+
+      // Chapter 1: Overview
+      const overviewParts: string[] = [];
+      overviewParts.push(`# ${targetName}`);
+      if (locationDescription) overviewParts.push(`\n${locationDescription}`);
+      if (locationImageUrl) overviewParts.push(`\nImage: ${locationImageUrl}`);
       if (containingAreas.length > 0) {
-        parts.push(`\n**Areas:** ${containingAreas.join(' → ')}`);
+        overviewParts.push(`\n**Areas:** ${containingAreas.join(' → ')}`);
       }
-      // Environment cards
+      chapters.push({ title: 'Overview', content: overviewParts.join('\n') });
+
+      // Chapter 2: Environment (if any cards)
       if (environmentCards.length > 0) {
-        parts.push(`\n---`);
+        const envParts: string[] = [];
         environmentCards.forEach(({ areaName, card }) => {
-          parts.push(`\n### ${areaName} Environment`);
-          if (card.tier || card.type) parts.push(`Tier ${card.tier || '?'} ${card.type || ''}`);
-          if (card.difficulty) parts.push(`**Difficulty:** ${card.difficulty}`);
-          if (card.impulses?.length) parts.push(`**Impulses:** ${card.impulses.join(', ')}`);
-          if (card.potential_adversaries) parts.push(`**Potential Adversaries:** ${card.potential_adversaries}`);
+          envParts.push(`### ${areaName}`);
+          if (card.tier || card.type) envParts.push(`Tier ${card.tier || '?'} ${card.type || ''}`);
+          if (card.difficulty) envParts.push(`**Difficulty:** ${card.difficulty}`);
+          if (card.impulses?.length) envParts.push(`**Impulses:** ${card.impulses.join(', ')}`);
+          if (card.potential_adversaries) envParts.push(`**Potential Adversaries:** ${card.potential_adversaries}`);
           if (card.features?.length) {
-            parts.push(`**Features:**`);
-            card.features.forEach(f => parts.push(`- **${f.name}** (${f.type}): ${f.description}`));
+            envParts.push(`**Features:**`);
+            card.features.forEach(f => envParts.push(`- **${f.name}** (${f.type}): ${f.description}`));
           }
+          envParts.push('');
         });
+        chapters.push({ title: 'Environment', content: envParts.join('\n') });
       }
-      // Reviews
+
+      // Chapter 3: Reviews (if any)
       if (reviews.length > 0) {
-        parts.push(`\n---\n### Reviews (${reviews.length})`);
+        const reviewParts: string[] = [];
+        reviewParts.push(`### Reviews (${reviews.length})`);
         reviews.forEach(r => {
           const name = r.profile?.character_name || 'Unknown';
           const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
-          parts.push(`- **${name}** ${stars}${r.content ? `: ${r.content}` : ''}`);
+          reviewParts.push(`- **${name}** ${stars}${r.content ? `: ${r.content}` : ''}`);
         });
+        chapters.push({ title: 'Reviews', content: reviewParts.join('\n') });
       }
+
+      // Chapter 4: Personal Notes (if any)
       if (content.trim()) {
-        parts.push(`\n---\n**Personal Notes:**\n${content.trim()}`);
+        chapters.push({ title: 'Personal Notes', content: content.trim() });
       }
-      const exportContent = parts.join('\n');
+
+      const allContent = chapters.map(c => c.content).join('\n\n');
+      const wordCount = allContent.trim().split(/\s+/).length;
+      const pages = Math.max(1, Math.ceil(wordCount / 750));
       const tags = ['maze', locationId ? 'location' : 'area'];
+
       const { error } = await supabase.from('tome_entries').insert({
         user_id: user.id,
-        title: `${targetName}`,
-        content: exportContent,
+        title: targetName,
+        content: JSON.stringify(chapters),
         tags,
+        pages,
       });
       if (error) throw error;
     },

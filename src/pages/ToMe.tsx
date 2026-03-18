@@ -1343,8 +1343,8 @@ const ToMe = () => {
                         {chapters[currentChapter]?.title}
                       </h3>
                     )}
-                    <div className="text-white text-lg leading-relaxed whitespace-pre-wrap">
-                      {pageContent}
+                    <div className="text-white text-lg leading-relaxed">
+                      {renderMarkdown(pageContent)}
                     </div>
                   </div>
                 </div>
