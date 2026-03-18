@@ -25,7 +25,7 @@ const QuestseekAdmin = () => {
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [profileMap, setProfileMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [downtimeConfig, setDowntimeConfig] = useState({ hours_per_day: 8 });
+  const [downtimeConfig, setDowntimeConfig] = useState({ hours_per_day: 10 });
 
   // Create/Edit dialog
   const [questDialogOpen, setQuestDialogOpen] = useState(false);
