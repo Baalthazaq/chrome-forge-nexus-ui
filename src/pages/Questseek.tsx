@@ -285,18 +285,39 @@ const Questseek = () => {
           </div>
         )}
 
-        {/* Downtime Balance */}
+        {/* Downtime Balance + Rest Buttons */}
         <Card className="p-4 bg-gray-900/50 border-cyan-500/30 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Timer className="w-5 h-5 text-cyan-400" />
               <span className="text-white font-medium">Downtime Balance</span>
             </div>
-            <span className={`text-2xl font-bold ${downtimeBalance > 0 ? "text-cyan-400" : "text-red-400"}`}>
-              {downtimeBalance}h
-            </span>
+            <div className="flex items-center gap-3">
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" className="border-amber-600 text-amber-400 hover:bg-amber-900/30" onClick={() => { setRestType("short"); setRestOpen(true); }}>
+                  <Sun className="w-3 h-3 mr-1" /> Short Rest
+                </Button>
+                <Button size="sm" variant="outline" className="border-indigo-600 text-indigo-400 hover:bg-indigo-900/30" onClick={() => { setRestType("long"); setRestOpen(true); }}>
+                  <Moon className="w-3 h-3 mr-1" /> Long Rest
+                </Button>
+              </div>
+              <span className={`text-2xl font-bold ${downtimeBalance > 0 ? "text-cyan-400" : "text-red-400"}`}>
+                {downtimeBalance}h
+              </span>
+            </div>
           </div>
         </Card>
+
+        <RestDialog
+          type={restType}
+          open={restOpen}
+          onClose={() => setRestOpen(false)}
+          userId={effectiveUserId}
+          impersonatedUserId={impersonatedUser?.user_id}
+          currentBalance={downtimeBalance}
+          gameDate={gameDate}
+          onComplete={loadData}
+        />
 
         <Tabs defaultValue="commissions" className="space-y-6">
           <TabsList className="bg-gray-900/50 border border-gray-700/50">
