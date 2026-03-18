@@ -46,8 +46,12 @@ Deno.serve(async (req) => {
         return await acceptQuest(effectiveUserId, params)
       case 'submit_quest':
         return await submitQuest(effectiveUserId, params)
+      case 'resign_quest':
+        return await resignQuest(effectiveUserId, params)
       case 'get_user_quests':
         return await getUserQuests(effectiveUserId)
+      case 'get_downtime':
+        return await getDowntime(effectiveUserId)
       default:
         return new Response(JSON.stringify({ error: 'Invalid operation' }), {
           status: 400,
@@ -62,6 +66,32 @@ Deno.serve(async (req) => {
     })
   }
 })
+
+async function getDowntime(userId: string) {
+  const { data, error } = await supabase
+    .from('downtime_balances')
+    .select('*')
+    .eq('user_id', userId)
+    .single()
+
+  if (error && error.code === 'PGRST116') {
+    // No row yet, create one
+    const { data: created, error: createErr } = await supabase
+      .from('downtime_balances')
+      .insert({ user_id: userId, balance: 0 })
+      .select()
+      .single()
+    if (createErr) throw createErr
+    return new Response(JSON.stringify({ downtime: created }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+  if (error) throw error
+
+  return new Response(JSON.stringify({ downtime: data }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
 
 async function acceptQuest(userId: string, { questId }: { questId: string }) {
   const { data: quest, error: questError } = await supabase
@@ -78,11 +108,73 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
     })
   }
 
+  // For commissions, check available quantity
+  if (quest.job_type === 'commission' && quest.available_quantity !== null && quest.available_quantity <= 0) {
+    return new Response(JSON.stringify({ error: 'No more slots available for this commission' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // For full-time jobs, check if already holding one
+  if (quest.job_type === 'full_time') {
+    const { data: existing } = await supabase
+      .from('quest_acceptances')
+      .select('id')
+      .eq('quest_id', questId)
+      .eq('user_id', userId)
+      .eq('status', 'accepted')
+      .single()
+
+    if (existing) {
+      return new Response(JSON.stringify({ error: 'Already employed in this job' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Create the acceptance
+    const { error: acceptError } = await supabase
+      .from('quest_acceptances')
+      .insert({
+        quest_id: questId,
+        user_id: userId,
+        status: 'accepted'
+      })
+
+    if (acceptError) throw acceptError
+
+    // Create recurring payment for full-time job income
+    const intervalType = quest.pay_interval || 'daily'
+    const { error: rpError } = await supabase
+      .from('recurring_payments')
+      .insert({
+        to_user_id: userId,
+        from_user_id: null,
+        amount: quest.reward, // reward is used as the pay amount
+        interval_type: intervalType,
+        description: `Full-time job: ${quest.title}`,
+        next_send_at: new Date().toISOString(),
+        status: 'active',
+        is_active: true,
+        metadata: { quest_id: questId, job_type: 'full_time' }
+      })
+
+    if (rpError) throw rpError
+
+    return new Response(JSON.stringify({ success: true, jobType: 'full_time' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // For commissions (one-off or repeatable)
+  // Check if already has an active acceptance for this quest
   const { data: existing } = await supabase
     .from('quest_acceptances')
     .select('id')
     .eq('quest_id', questId)
     .eq('user_id', userId)
+    .eq('status', 'accepted')
     .single()
 
   if (existing) {
@@ -100,11 +192,75 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
       status: 'accepted'
     })
 
-  if (acceptError) {
-    return new Response(JSON.stringify({ error: acceptError.message }), {
-      status: 500,
+  if (acceptError) throw acceptError
+
+  return new Response(JSON.stringify({ success: true }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function submitQuest(userId: string, { questId, notes, rollResult, rollType }: { questId: string, notes?: string, rollResult?: number, rollType?: string }) {
+  // Get the quest to check type
+  const { data: quest } = await supabase
+    .from('quests')
+    .select('*')
+    .eq('id', questId)
+    .single()
+
+  if (!quest) {
+    return new Response(JSON.stringify({ error: 'Quest not found' }), {
+      status: 404,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
+  }
+
+  // Get user's downtime balance
+  const { data: downtime } = await supabase
+    .from('downtime_balances')
+    .select('*')
+    .eq('user_id', userId)
+    .single()
+
+  const currentBalance = downtime?.balance || 0
+
+  // Check downtime cost
+  if (quest.downtime_cost > 0 && currentBalance < quest.downtime_cost) {
+    return new Response(JSON.stringify({ error: `Not enough downtime. Need ${quest.downtime_cost} hours, have ${currentBalance}.` }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Deduct downtime
+  if (quest.downtime_cost > 0) {
+    await supabase
+      .from('downtime_balances')
+      .update({ balance: currentBalance - quest.downtime_cost, updated_at: new Date().toISOString() })
+      .eq('user_id', userId)
+  }
+
+  // Update the acceptance
+  const { error: updateError } = await supabase
+    .from('quest_acceptances')
+    .update({
+      status: 'submitted',
+      submitted_at: new Date().toISOString(),
+      notes: notes || '',
+      roll_result: rollResult ?? null,
+      roll_type: rollType ?? null
+    })
+    .eq('quest_id', questId)
+    .eq('user_id', userId)
+    .eq('status', 'accepted')
+
+  if (updateError) throw updateError
+
+  // For commissions with quantity, decrement available_quantity
+  if (quest.job_type === 'commission' && quest.available_quantity !== null) {
+    await supabase
+      .from('quests')
+      .update({ available_quantity: Math.max(0, quest.available_quantity - 1) })
+      .eq('id', questId)
   }
 
   return new Response(JSON.stringify({ success: true }), {
@@ -112,24 +268,23 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
   })
 }
 
-async function submitQuest(userId: string, { questId, notes }: { questId: string, notes?: string }) {
+async function resignQuest(userId: string, { questId }: { questId: string }) {
+  // Update acceptance to resigned
   const { error: updateError } = await supabase
     .from('quest_acceptances')
-    .update({
-      status: 'submitted',
-      submitted_at: new Date().toISOString(),
-      notes: notes || ''
-    })
+    .update({ status: 'resigned' })
     .eq('quest_id', questId)
     .eq('user_id', userId)
     .eq('status', 'accepted')
 
-  if (updateError) {
-    return new Response(JSON.stringify({ error: updateError.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
-  }
+  if (updateError) throw updateError
+
+  // Remove associated recurring payment for full-time jobs
+  await supabase
+    .from('recurring_payments')
+    .delete()
+    .eq('to_user_id', userId)
+    .filter('metadata->>quest_id', 'eq', questId)
 
   return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -147,20 +302,20 @@ async function getUserQuests(userId: string) {
         description,
         client,
         reward,
+        reward_min,
         difficulty,
         time_limit,
-        tags
+        tags,
+        job_type,
+        downtime_cost,
+        available_quantity,
+        pay_interval
       )
     `)
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
-  if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
-  }
+  if (error) throw error
 
   return new Response(JSON.stringify({ quests }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }

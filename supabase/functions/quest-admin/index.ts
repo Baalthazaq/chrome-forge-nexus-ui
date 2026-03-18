@@ -14,7 +14,6 @@ Deno.serve(async (req) => {
   try {
     const { operation, ...params } = await req.json()
     
-    // Get authenticated user
     const authHeader = req.headers.get('Authorization')!
     const token = authHeader.replace('Bearer ', '')
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
@@ -26,7 +25,6 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Check if user is admin
     const { data: userRole } = await supabase
       .from('user_roles')
       .select('role')
@@ -53,6 +51,12 @@ Deno.serve(async (req) => {
         return await getSubmittedQuests()
       case 'complete_quest':
         return await completeQuest(params)
+      case 'replenish_quest':
+        return await replenishQuest(params)
+      case 'get_downtime_config':
+        return await getDowntimeConfig()
+      case 'update_downtime_config':
+        return await updateDowntimeConfig(params)
       default:
         return new Response(JSON.stringify({ error: 'Invalid operation' }), {
           status: 400,
@@ -116,16 +120,31 @@ async function getAllQuests() {
         user_id,
         status,
         submitted_at,
-        profiles!user_id (
-          character_name
-        )
+        roll_result,
+        roll_type,
+        times_completed,
+        notes,
+        final_payment
       )
     `)
     .order('created_at', { ascending: false })
 
   if (error) throw error
 
-  return new Response(JSON.stringify({ quests }), {
+  // Fetch profiles for each acceptance's user_id
+  const userIds = new Set<string>()
+  quests?.forEach(q => q.quest_acceptances?.forEach((a: any) => userIds.add(a.user_id)))
+  
+  let profileMap: Record<string, string> = {}
+  if (userIds.size > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('user_id, character_name')
+      .in('user_id', [...userIds])
+    profiles?.forEach(p => { profileMap[p.user_id] = p.character_name || 'Unknown' })
+  }
+
+  return new Response(JSON.stringify({ quests, profileMap }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })
 }
@@ -140,11 +159,10 @@ async function getSubmittedQuests() {
         title,
         description,
         reward,
-        client
-      ),
-      profiles!user_id (
-        character_name,
-        user_id
+        reward_min,
+        client,
+        job_type,
+        downtime_cost
       )
     `)
     .eq('status', 'submitted')
@@ -152,7 +170,18 @@ async function getSubmittedQuests() {
 
   if (error) throw error
 
-  return new Response(JSON.stringify({ submissions }), {
+  // Fetch profiles
+  const userIds = submissions?.map(s => s.user_id) || []
+  let profileMap: Record<string, string> = {}
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('user_id, character_name')
+      .in('user_id', [...new Set(userIds)])
+    profiles?.forEach(p => { profileMap[p.user_id] = p.character_name || 'Unknown' })
+  }
+
+  return new Response(JSON.stringify({ submissions, profileMap }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })
 }
@@ -166,7 +195,6 @@ async function completeQuest({
   finalPayment: number,
   participants?: string[]
 }) {
-  // Get the quest acceptance
   const { data: acceptance, error: acceptanceError } = await supabase
     .from('quest_acceptances')
     .select(`
@@ -174,11 +202,9 @@ async function completeQuest({
       quests (
         id,
         title,
-        reward
-      ),
-      profiles!user_id (
-        character_name,
-        user_id
+        reward,
+        job_type,
+        available_quantity
       )
     `)
     .eq('id', acceptanceId)
@@ -188,15 +214,11 @@ async function completeQuest({
     throw new Error('Quest acceptance not found')
   }
 
-  // Determine payment per participant
   const totalParticipants = participants.length > 0 ? participants.length : 1
   const paymentPerParticipant = Math.floor(finalPayment / totalParticipants)
-  
-  // Get all participant profiles
   const participantIds = participants.length > 0 ? participants : [acceptance.user_id]
   
   for (const participantId of participantIds) {
-    // Get participant's current credits
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('credits')
@@ -208,10 +230,9 @@ async function completeQuest({
       continue
     }
 
-    // Update participant's credits
     const { error: creditError } = await supabase
       .from('profiles')
-      .update({ credits: profile.credits + paymentPerParticipant })
+      .update({ credits: (profile.credits || 0) + paymentPerParticipant })
       .eq('user_id', participantId)
 
     if (creditError) {
@@ -219,7 +240,6 @@ async function completeQuest({
       continue
     }
 
-    // Create transaction record
     await supabase
       .from('transactions')
       .insert({
@@ -233,18 +253,21 @@ async function completeQuest({
           quest_id: acceptance.quest_id,
           acceptance_id: acceptanceId,
           original_reward: acceptance.quests.reward,
-          final_payment: finalPayment
+          final_payment: finalPayment,
+          roll_result: acceptance.roll_result,
+          roll_type: acceptance.roll_type
         }
       })
   }
 
-  // Update quest acceptance to completed
+  // Update quest acceptance
   const { error: updateError } = await supabase
     .from('quest_acceptances')
     .update({
       status: 'completed',
       completed_at: new Date().toISOString(),
-      final_payment: finalPayment
+      final_payment: finalPayment,
+      times_completed: (acceptance.times_completed || 0) + 1
     })
     .eq('id', acceptanceId)
 
@@ -255,6 +278,64 @@ async function completeQuest({
     participantsPaid: participantIds.length,
     paymentPerParticipant
   }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function replenishQuest({ questId, quantity }: { questId: string, quantity: number }) {
+  const { data: quest, error: getErr } = await supabase
+    .from('quests')
+    .select('available_quantity')
+    .eq('id', questId)
+    .single()
+
+  if (getErr || !quest) throw new Error('Quest not found')
+
+  const newQty = (quest.available_quantity || 0) + quantity
+
+  const { error } = await supabase
+    .from('quests')
+    .update({ available_quantity: newQty })
+    .eq('id', questId)
+
+  if (error) throw error
+
+  return new Response(JSON.stringify({ success: true, newQuantity: newQty }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function getDowntimeConfig() {
+  const { data, error } = await supabase
+    .from('downtime_config')
+    .select('*')
+    .limit(1)
+    .single()
+
+  if (error) throw error
+
+  return new Response(JSON.stringify({ config: data }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function updateDowntimeConfig({ hoursPerDay }: { hoursPerDay: number }) {
+  const { data: existing } = await supabase
+    .from('downtime_config')
+    .select('id')
+    .limit(1)
+    .single()
+
+  if (!existing) throw new Error('Downtime config not found')
+
+  const { error } = await supabase
+    .from('downtime_config')
+    .update({ hours_per_day: hoursPerDay, updated_at: new Date().toISOString() })
+    .eq('id', existing.id)
+
+  if (error) throw error
+
+  return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })
 }

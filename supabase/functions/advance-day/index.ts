@@ -117,6 +117,15 @@ serve(async (req) => {
     let currentMonth = cal.current_month;
     let currentYear = cal.current_year;
     const billingSummary: string[] = [];
+    const downtimeSummary: string[] = [];
+
+    // Get downtime config
+    const { data: dtConfig } = await supabase
+      .from("downtime_config")
+      .select("*")
+      .limit(1)
+      .single();
+    const hoursPerDay = dtConfig?.hours_per_day || 8;
 
     for (let i = 0; i < advanceCount; i++) {
       currentDay++;
@@ -129,6 +138,108 @@ serve(async (req) => {
         }
       }
 
+      // --- DOWNTIME PROCESSING ---
+      // 1. Grant downtime hours to all players
+      const { data: allBalances } = await supabase
+        .from("downtime_balances")
+        .select("*");
+
+      if (allBalances && allBalances.length > 0) {
+        for (const bal of allBalances) {
+          const newBalance = bal.balance + hoursPerDay;
+          await supabase
+            .from("downtime_balances")
+            .update({ balance: newBalance, updated_at: new Date().toISOString() })
+            .eq("id", bal.id);
+        }
+        downtimeSummary.push(`Granted ${hoursPerDay}h to ${allBalances.length} players`);
+      }
+
+      // 2. Process full-time job downtime costs
+      // Find all active full-time job acceptances
+      const { data: ftAcceptances } = await supabase
+        .from("quest_acceptances")
+        .select(`
+          id,
+          user_id,
+          quest_id,
+          quests (
+            id,
+            downtime_cost,
+            job_type,
+            title
+          )
+        `)
+        .eq("status", "accepted");
+
+      const fullTimeAcceptances = ftAcceptances?.filter(
+        (a: any) => a.quests?.job_type === "full_time"
+      ) || [];
+
+      for (const fta of fullTimeAcceptances) {
+        const quest = fta.quests as any;
+        const dailyCost = quest.downtime_cost || 0;
+        if (dailyCost <= 0) continue;
+
+        // Get current downtime balance
+        const { data: bal } = await supabase
+          .from("downtime_balances")
+          .select("*")
+          .eq("user_id", fta.user_id)
+          .single();
+
+        if (!bal) continue;
+
+        if (bal.balance >= dailyCost) {
+          // Deduct downtime
+          await supabase
+            .from("downtime_balances")
+            .update({ balance: bal.balance - dailyCost, updated_at: new Date().toISOString() })
+            .eq("id", bal.id);
+        } else {
+          // Not enough downtime - pause the recurring payment
+          await supabase
+            .from("recurring_payments")
+            .update({ status: "paused", is_active: false })
+            .filter("metadata->>quest_id", "eq", fta.quest_id)
+            .eq("to_user_id", fta.user_id);
+
+          downtimeSummary.push(`Paused ${quest.title} for user (insufficient downtime)`);
+        }
+      }
+
+      // 3. Unpause full-time jobs where balance recovered
+      for (const fta of fullTimeAcceptances) {
+        const quest = fta.quests as any;
+        const dailyCost = quest.downtime_cost || 0;
+
+        const { data: bal } = await supabase
+          .from("downtime_balances")
+          .select("*")
+          .eq("user_id", fta.user_id)
+          .single();
+
+        if (bal && bal.balance >= dailyCost) {
+          // Check if payment is paused
+          const { data: rp } = await supabase
+            .from("recurring_payments")
+            .select("*")
+            .filter("metadata->>quest_id", "eq", fta.quest_id)
+            .eq("to_user_id", fta.user_id)
+            .eq("status", "paused")
+            .single();
+
+          if (rp) {
+            await supabase
+              .from("recurring_payments")
+              .update({ status: "active", is_active: true })
+              .eq("id", rp.id);
+            downtimeSummary.push(`Resumed ${quest.title} for user (downtime recovered)`);
+          }
+        }
+      }
+
+      // --- BILLING PROCESSING ---
       const triggers = getBillingTriggers(currentDay, currentMonth);
 
       for (const [interval, shouldTrigger] of Object.entries(triggers)) {
@@ -169,6 +280,7 @@ serve(async (req) => {
         newDate: { day: currentDay, month: currentMonth, year: currentYear },
         daysAdvanced: advanceCount,
         billing: billingSummary,
+        downtime: downtimeSummary,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
