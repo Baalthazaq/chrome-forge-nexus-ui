@@ -84,8 +84,17 @@ export const AreaPanel = ({ area, onClose, isAdmin: isAdminProp = false }: AreaP
       {/* Environment Card */}
       <EnvironmentCardDisplay card={area.environment_card} areaName={area.name} isAdmin={false} />
 
-      {/* Personal Notes */}
-      <MapNotes areaId={area.id} targetName={area.name} isAdmin={isAdminProp} />
+      <MapNotes
+        areaId={area.id}
+        targetName={area.name}
+        isAdmin={isAdminProp}
+        locationDescription={area.description}
+        locationImageUrl={area.image_url}
+        environmentCards={area.environment_card?.tier || area.environment_card?.type || area.environment_card?.features?.length
+          ? [{ areaName: area.name, card: area.environment_card }]
+          : []}
+        reviews={reviews}
+      />
 
       {/* Reviews */}
       <div className="space-y-3 border-t border-gray-700/50 pt-3">
