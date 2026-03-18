@@ -47,9 +47,9 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
   // Player's own note
   const noteQuery = useQuery({
     queryKey: noteKey,
-    enabled: !!user,
+    enabled: !!effectiveUserId,
     queryFn: async () => {
-      let query = supabase.from('map_notes').select('*').eq('user_id', user!.id);
+      let query = supabase.from('map_notes').select('*').eq('user_id', effectiveUserId!);
       if (locationId) query = query.eq('location_id', locationId);
       if (areaId) query = query.eq('area_id', areaId);
       const { data, error } = await query.maybeSingle();
