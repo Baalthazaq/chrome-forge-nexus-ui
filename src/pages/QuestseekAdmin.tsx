@@ -457,7 +457,7 @@ const QuestseekAdmin = () => {
             <DialogTitle className="text-white">Approve: {selectedSubmission?.quests?.title}</DialogTitle>
             <DialogDescription className="text-gray-400">
               By: {profileMap[selectedSubmission?.user_id] || "Unknown"}
-              {selectedSubmission?.roll_result !== null && ` • Roll: ${selectedSubmission.roll_result} (${selectedSubmission.roll_type?.replace("_", " ")})`}
+              {selectedSubmission?.roll_result != null && ` • Roll: ${selectedSubmission?.roll_result} (${selectedSubmission?.roll_type?.replace("_", " ")})`}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
