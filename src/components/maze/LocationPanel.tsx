@@ -17,6 +17,7 @@ export const LocationPanel = ({ location, onClose, isAdmin = false, onRelocate }
   const { deleteLocation } = useMazeData();
 
   const canDelete = user?.id === location.user_id && !location.is_public;
+  const canRelocate = !!onRelocate && (isAdmin || user?.id === location.user_id);
 
   const handleDelete = async () => {
     try {
