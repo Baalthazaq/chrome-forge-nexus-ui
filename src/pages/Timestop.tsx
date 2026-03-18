@@ -461,12 +461,27 @@ const Timestop = () => {
               👁 Viewing as: {impersonatedUser.character_name}
             </p>
           )}
+          {/* Downtime + Rest */}
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <div className="flex items-center gap-1 text-cyan-400 text-xs font-mono">
+              <Timer className="w-3 h-3" /> {downtimeBalance}h
+            </div>
+            <Button size="sm" variant="ghost" className="text-amber-400 hover:text-amber-300 text-xs h-6 px-2" onClick={() => { setRestType("short"); setRestOpen(true); }}>
+              <Sun className="w-3 h-3 mr-1" /> Short Rest
+            </Button>
+            <Button size="sm" variant="ghost" className="text-indigo-400 hover:text-indigo-300 text-xs h-6 px-2" onClick={() => { setRestType("long"); setRestOpen(true); }}>
+              <Moon className="w-3 h-3 mr-1" /> Long Rest
+            </Button>
+          </div>
           <div className="flex justify-center gap-2 mt-3">
             <Button size="sm" variant={viewMode === "monthly" ? "default" : "ghost"} onClick={() => setViewMode("monthly")} className={viewMode === "monthly" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
               <Calendar className="w-3 h-3 mr-1" /> Monthly
             </Button>
             <Button size="sm" variant={viewMode === "annual" ? "default" : "ghost"} onClick={() => setViewMode("annual")} className={viewMode === "annual" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
               <List className="w-3 h-3 mr-1" /> Annual
+            </Button>
+            <Button size="sm" variant={viewMode === "downtime" ? "default" : "ghost"} onClick={() => { setViewMode("downtime"); loadDowntimeActivities(); }} className={viewMode === "downtime" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
+              <Clock className="w-3 h-3 mr-1" /> Downtime
             </Button>
           </div>
         </div>
