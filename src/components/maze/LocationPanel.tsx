@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapLocation, MapArea, MapLocationReview, EnvironmentCard, useMazeData } from '@/hooks/useMazeData';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { MapNotes } from './MapNotes';
