@@ -104,7 +104,7 @@ const TimestopAdmin = () => {
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-all"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("user_id, character_name");
+      const { data, error } = await supabase.from("profiles").select("user_id, character_name, is_npc");
       if (error) throw error;
       return data;
     },
