@@ -180,8 +180,19 @@ const Doppleganger = () => {
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 via-black to-purple-900/20" />
 
       <div className="relative z-10 container mx-auto px-4 py-6 max-w-6xl">
-        {/* Edit toggle */}
-        <div className="flex justify-end mb-2">
+        {/* Edit toggle + Downtime + Rest */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 text-xs">
+              <Timer className="w-3 h-3 mr-1" /> {downtimeBalance}h downtime
+            </Badge>
+            <Button variant="outline" size="sm" className="border-amber-600 text-amber-400 hover:bg-amber-900/30 h-7 text-xs" onClick={() => { setRestType("short"); setRestOpen(true); }}>
+              <Sun className="w-3 h-3 mr-1" /> Short Rest
+            </Button>
+            <Button variant="outline" size="sm" className="border-indigo-600 text-indigo-400 hover:bg-indigo-900/30 h-7 text-xs" onClick={() => { setRestType("long"); setRestOpen(true); }}>
+              <Moon className="w-3 h-3 mr-1" /> Long Rest
+            </Button>
+          </div>
           <Button
             variant="outline"
             size="sm"
@@ -192,6 +203,17 @@ const Doppleganger = () => {
             {isEditing ? 'View Mode' : 'Edit Mode'}
           </Button>
         </div>
+
+        <RestDialog
+          type={restType}
+          open={restOpen}
+          onClose={() => setRestOpen(false)}
+          userId={userId}
+          impersonatedUserId={impersonatedUser?.user_id}
+          currentBalance={downtimeBalance}
+          gameDate={gameDate}
+          onComplete={loadDowntime}
+        />
 
         <CharacterHeader
           profile={profile}

@@ -775,6 +775,18 @@ const Timestop = () => {
         </div>
       </div>
 
+      {/* Rest Dialog */}
+      <RestDialog
+        type={restType}
+        open={restOpen}
+        onClose={() => setRestOpen(false)}
+        userId={effectiveUserId}
+        impersonatedUserId={impersonatedUser?.user_id}
+        currentBalance={downtimeBalance}
+        gameDate={gameDate ? { day: gameDate.current_day, month: gameDate.current_month, year: gameDate.current_year } : undefined}
+        onComplete={() => { loadDowntime(); loadDowntimeActivities(); }}
+      />
+
       {/* Share Event Dialog */}
       {shareEventId && (
         <ShareEventDialog
