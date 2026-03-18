@@ -216,7 +216,7 @@ export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRel
                   try {
                     await createLocationReview.mutateAsync({
                       location_id: location.id,
-                      user_id: user.id,
+                      user_id: effectiveUserId,
                       rating: reviewRating,
                       content: reviewContent.trim() || '',
                     });

@@ -52,7 +52,7 @@ export const AreaPanel = ({ area, onClose, isAdmin: isAdminProp = false }: AreaP
     try {
       await createReview.mutateAsync({
         area_id: area.id,
-        user_id: user.id,
+        user_id: effectiveUserId,
         rating,
         content: reviewContent.trim() || '',
       });

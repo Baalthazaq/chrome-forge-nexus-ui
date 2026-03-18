@@ -36,6 +36,8 @@ interface NoteWithProfile {
 
 export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, locationDescription, locationImageUrl, containingAreas = [], environmentCards = [], reviews = [] }: MapNotesProps) => {
   const { user } = useAuth();
+  const { impersonatedUser } = useAdmin();
+  const effectiveUserId = impersonatedUser?.user_id || user?.id;
   const queryClient = useQueryClient();
   const [content, setContent] = useState('');
   const [hasEdited, setHasEdited] = useState(false);
