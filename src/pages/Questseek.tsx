@@ -71,6 +71,15 @@ const Questseek = () => {
   const [rollResult, setRollResult] = useState("");
   const [rollType, setRollType] = useState("");
   const [submitNotes, setSubmitNotes] = useState("");
+  const [restType, setRestType] = useState<"short" | "long">("short");
+  const [restOpen, setRestOpen] = useState(false);
+  const [gameDate, setGameDate] = useState<{ day: number; month: number; year: number } | undefined>();
+
+  useEffect(() => {
+    supabase.from("game_calendar").select("*").limit(1).single().then(({ data }) => {
+      if (data) setGameDate({ day: data.current_day, month: data.current_month, year: data.current_year });
+    });
+  }, []);
 
   useEffect(() => {
     if (effectiveUserId) {
