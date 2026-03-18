@@ -142,7 +142,7 @@ export const ContactNotesDialog = ({ contact, contactId, relationship: initialRe
       if (contact.address) overviewParts.push(`**Address:** ${contact.address}`);
       if (contact.education) overviewParts.push(`**Education:** ${contact.education}`);
       if (contact.security_rating) overviewParts.push(`**Security Rating:** ${contact.security_rating}`);
-      if (contact.aliases && contact.aliases.length > 0) overviewParts.push(`**Known Aliases:** ${contact.aliases.join(', ')}`);
+      
       chapters.push({ title: 'Overview', content: overviewParts.join('\n') });
 
       // Chapter 2: Bio
