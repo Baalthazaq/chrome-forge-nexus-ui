@@ -147,7 +147,7 @@ export const useMazeData = () => {
   // Location mutations
   const createLocation = useMutation({
     mutationFn: async (loc: Omit<MapLocation, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await supabase.from('map_locations').insert(loc).select().single();
+      const { data, error } = await supabase.from('map_locations').insert(loc as any).select().single();
       if (error) throw error;
       return data;
     },
@@ -156,7 +156,7 @@ export const useMazeData = () => {
 
   const updateLocation = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<MapLocation> & { id: string }) => {
-      const { error } = await supabase.from('map_locations').update(updates).eq('id', id);
+      const { error } = await supabase.from('map_locations').update(updates as any).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['map-locations'] }),
