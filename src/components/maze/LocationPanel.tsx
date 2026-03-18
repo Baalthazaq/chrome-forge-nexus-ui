@@ -50,6 +50,8 @@ const pointInPolygon = (px: number, py: number, polygon: { x: number; y: number 
 
 export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRelocate }: LocationPanelProps) => {
   const { user } = useAuth();
+  const { impersonatedUser } = useAdmin();
+  const effectiveUserId = impersonatedUser?.user_id || user?.id;
   const { deleteLocation, updateLocation, createLocationReview, deleteLocationReview } = useMazeData();
   const [editing, setEditing] = useState(false);
   const [reviewRating, setReviewRating] = useState(3);
