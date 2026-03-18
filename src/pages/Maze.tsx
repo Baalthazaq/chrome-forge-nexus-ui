@@ -82,11 +82,29 @@ const Maze = () => {
     setSelectedArea(null);
   };
 
-  const handleMapClick = (x: number, y: number) => {
+  const handleMapClick = async (x: number, y: number) => {
+    if (relocatingLocation) {
+      try {
+        await maze.updateLocation.mutateAsync({ id: relocatingLocation.id, x, y });
+        toast.success(`"${relocatingLocation.name}" moved`);
+      } catch (err: any) {
+        toast.error(err.message);
+      }
+      setRelocatingLocation(null);
+      setPlacingLocation(false);
+      return;
+    }
     if (placingLocation) {
       setNewLocCoords({ x, y });
       setPlacingLocation(false);
     }
+  };
+
+  const handleRelocateLocation = (loc: MapLocation) => {
+    setRelocatingLocation(loc);
+    setPlacingLocation(true);
+    setSelectedLocation(null);
+    toast.info(`Click on the map to move "${loc.name}"`);
   };
 
   const handleSaveLocation = async () => {
