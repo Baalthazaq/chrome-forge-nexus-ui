@@ -40,7 +40,7 @@ const Timestop = () => {
   const queryClient = useQueryClient();
   const [viewMonth, setViewMonth] = useState(1);
   const [viewYear, setViewYear] = useState(2626);
-  const [viewMode, setViewMode] = useState<"monthly" | "annual">("monthly");
+  const [viewMode, setViewMode] = useState<"monthly" | "annual" | "downtime">("monthly");
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventDesc, setNewEventDesc] = useState("");
@@ -51,6 +51,10 @@ const Timestop = () => {
   const [expandedHolidays, setExpandedHolidays] = useState<Set<string>>(new Set());
   const [shareEventId, setShareEventId] = useState<string | null>(null);
   const [shareEventTitle, setShareEventTitle] = useState("");
+  const [restType, setRestType] = useState<"short" | "long">("short");
+  const [restOpen, setRestOpen] = useState(false);
+  const [downtimeBalance, setDowntimeBalance] = useState(0);
+  const [downtimeActivities, setDowntimeActivities] = useState<any[]>([]);
 
   const { data: gameDate } = useQuery({
     queryKey: ["game-calendar"],
