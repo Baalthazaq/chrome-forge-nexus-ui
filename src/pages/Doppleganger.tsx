@@ -258,18 +258,7 @@ const Doppleganger = () => {
           isEditing={isEditing}
         />
 
-        {/* Downtime & Rest */}
-        <div className="flex items-center gap-2 mb-6">
-          <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 text-xs">
-            <Timer className="w-3 h-3 mr-1" /> {downtimeBalance}h downtime
-          </Badge>
-          <Button variant="outline" size="sm" className="border-amber-600 text-amber-400 hover:bg-amber-900/30 h-7 text-xs" onClick={() => { setRestType("short"); setRestOpen(true); }}>
-            <Sun className="w-3 h-3 mr-1" /> Short Rest
-          </Button>
-          <Button variant="outline" size="sm" className="border-indigo-600 text-indigo-400 hover:bg-indigo-900/30 h-7 text-xs" onClick={() => { setRestType("long"); setRestOpen(true); }}>
-            <Moon className="w-3 h-3 mr-1" /> Long Rest
-          </Button>
-        </div>
+
 
         <EquipmentSection
           sheet={sheet}
