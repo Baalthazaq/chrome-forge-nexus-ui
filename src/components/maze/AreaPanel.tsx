@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapArea, MapAreaReview, useMazeData } from '@/hooks/useMazeData';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { EnvironmentCardDisplay } from './EnvironmentCard';
 import { MapNotes } from './MapNotes';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,8 @@ interface AreaPanelProps {
 
 export const AreaPanel = ({ area, onClose, isAdmin: isAdminProp = false }: AreaPanelProps) => {
   const { user } = useAuth();
+  const { impersonatedUser } = useAdmin();
+  const effectiveUserId = impersonatedUser?.user_id || user?.id;
   const { createReview, deleteReview } = useMazeData();
   const [rating, setRating] = useState(3);
   const [reviewContent, setReviewContent] = useState('');
@@ -49,7 +52,7 @@ export const AreaPanel = ({ area, onClose, isAdmin: isAdminProp = false }: AreaP
     try {
       await createReview.mutateAsync({
         area_id: area.id,
-        user_id: user.id,
+        user_id: effectiveUserId,
         rating,
         content: reviewContent.trim() || '',
       });

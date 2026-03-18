@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapLocation, MapArea, MapLocationReview, EnvironmentCard, useMazeData } from '@/hooks/useMazeData';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { MapNotes } from './MapNotes';
@@ -49,6 +50,8 @@ const pointInPolygon = (px: number, py: number, polygon: { x: number; y: number 
 
 export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRelocate }: LocationPanelProps) => {
   const { user } = useAuth();
+  const { impersonatedUser } = useAdmin();
+  const effectiveUserId = impersonatedUser?.user_id || user?.id;
   const { deleteLocation, updateLocation, createLocationReview, deleteLocationReview } = useMazeData();
   const [editing, setEditing] = useState(false);
   const [reviewRating, setReviewRating] = useState(3);
@@ -213,7 +216,7 @@ export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRel
                   try {
                     await createLocationReview.mutateAsync({
                       location_id: location.id,
-                      user_id: user.id,
+                      user_id: effectiveUserId,
                       rating: reviewRating,
                       content: reviewContent.trim() || '',
                     });

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,6 +36,8 @@ interface NoteWithProfile {
 
 export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, locationDescription, locationImageUrl, containingAreas = [], environmentCards = [], reviews = [] }: MapNotesProps) => {
   const { user } = useAuth();
+  const { impersonatedUser } = useAdmin();
+  const effectiveUserId = impersonatedUser?.user_id || user?.id;
   const queryClient = useQueryClient();
   const [content, setContent] = useState('');
   const [hasEdited, setHasEdited] = useState(false);
@@ -44,9 +47,9 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
   // Player's own note
   const noteQuery = useQuery({
     queryKey: noteKey,
-    enabled: !!user,
+    enabled: !!effectiveUserId,
     queryFn: async () => {
-      let query = supabase.from('map_notes').select('*').eq('user_id', user!.id);
+      let query = supabase.from('map_notes').select('*').eq('user_id', effectiveUserId!);
       if (locationId) query = query.eq('location_id', locationId);
       if (areaId) query = query.eq('area_id', areaId);
       const { data, error } = await query.maybeSingle();
@@ -59,7 +62,7 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
   const allNotesKey = locationId ? ['map-notes-all', 'location', locationId] : ['map-notes-all', 'area', areaId];
   const allNotesQuery = useQuery({
     queryKey: allNotesKey,
-    enabled: !!user && isAdmin,
+    enabled: !!effectiveUserId && isAdmin,
     queryFn: async () => {
       let query = supabase.from('map_notes').select('*');
       if (locationId) query = query.eq('location_id', locationId);
@@ -90,7 +93,7 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!user) return;
+      if (!effectiveUserId) return;
       if (noteQuery.data) {
         const { error } = await supabase
           .from('map_notes')
@@ -98,7 +101,7 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
           .eq('id', noteQuery.data.id);
         if (error) throw error;
       } else {
-        const insertData: any = { user_id: user.id, content };
+        const insertData: any = { user_id: effectiveUserId, content };
         if (locationId) insertData.location_id = locationId;
         if (areaId) insertData.area_id = areaId;
         const { error } = await supabase.from('map_notes').insert(insertData);
@@ -116,7 +119,7 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
 
   const exportToTome = useMutation({
     mutationFn: async () => {
-      if (!user || !targetName) return;
+      if (!effectiveUserId || !targetName) return;
 
       const chapters: { title: string; content: string }[] = [];
 
@@ -171,7 +174,7 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
       const tags = ['maze', locationId ? 'location' : 'area'];
 
       const { error } = await supabase.from('tome_entries').insert({
-        user_id: user.id,
+        user_id: effectiveUserId,
         title: targetName,
         content: JSON.stringify(chapters),
         tags,
@@ -183,10 +186,10 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
     onError: (err: any) => toast.error(err.message),
   });
 
-  if (!user) return null;
+  if (!effectiveUserId) return null;
 
   const allNotes = allNotesQuery.data || [];
-  const otherNotes = allNotes.filter(n => n.user_id !== user.id);
+  const otherNotes = allNotes.filter(n => n.user_id !== effectiveUserId);
 
   return (
     <div className="space-y-2 border-t border-gray-700/50 pt-3">
