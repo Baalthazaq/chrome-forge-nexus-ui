@@ -6,6 +6,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Save, BookOpen, Loader2, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import { EnvironmentCard } from '@/hooks/useMazeData';
+
+interface ReviewData {
+  rating: number;
+  content: string | null;
+  profile?: { character_name: string | null } | null;
+}
 
 interface MapNotesProps {
   locationId?: string;
@@ -15,6 +22,8 @@ interface MapNotesProps {
   locationDescription?: string | null;
   locationImageUrl?: string | null;
   containingAreas?: string[];
+  environmentCards?: { areaName: string; card: EnvironmentCard }[];
+  reviews?: ReviewData[];
 }
 
 interface NoteWithProfile {
