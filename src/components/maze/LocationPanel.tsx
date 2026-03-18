@@ -47,8 +47,35 @@ const pointInPolygon = (px: number, py: number, polygon: { x: number; y: number 
 
 export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRelocate }: LocationPanelProps) => {
   const { user } = useAuth();
-  const { deleteLocation, updateLocation } = useMazeData();
+  const { deleteLocation, updateLocation, createLocationReview, deleteLocationReview } = useMazeData();
   const [editing, setEditing] = useState(false);
+  const [reviewRating, setReviewRating] = useState(3);
+  const [reviewContent, setReviewContent] = useState('');
+
+  const reviewsQuery = useQuery({
+    queryKey: ['map-location-reviews', location.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('map_location_reviews')
+        .select('*')
+        .eq('location_id', location.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const userIds = [...new Set((data || []).map((r: any) => r.user_id))];
+      if (userIds.length === 0) return [] as MapLocationReview[];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, character_name, avatar_url')
+        .in('user_id', userIds);
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      return (data || []).map((r: any) => ({
+        ...r,
+        profile: profileMap.get(r.user_id) || null,
+      })) as MapLocationReview[];
+    },
+  });
+
+  const reviews = reviewsQuery.data || [];
   const [editForm, setEditForm] = useState({
     name: location.name,
     description: location.description || '',
