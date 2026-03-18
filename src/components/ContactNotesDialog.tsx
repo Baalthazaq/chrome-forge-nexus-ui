@@ -122,37 +122,74 @@ export const ContactNotesDialog = ({ contact, contactId, relationship: initialRe
   };
 
   const saveAsToMe = async () => {
-    if (!notes.trim()) {
-      toast({
-        title: "No notes to save",
-        description: "Please add some notes before saving as ToMe.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setLoading(true);
     try {
       if (!effectiveUser) throw new Error('Not authenticated');
+
+      const chapters: { title: string; content: string }[] = [];
+      const name = contact.character_name || 'Unknown';
+
+      // Chapter 1: Overview
+      const overviewParts: string[] = [`# ${name}`];
+      if (contact.alias) overviewParts.push(`**Alias:** @${contact.alias}`);
+      if (contact.ancestry) overviewParts.push(`**Ancestry:** ${contact.ancestry}`);
+      if (contact.character_class) overviewParts.push(`**Class:** ${contact.character_class}`);
+      if (contact.level) overviewParts.push(`**Level:** ${contact.level}`);
+      if (contact.job) overviewParts.push(`**Job:** ${contact.job}`);
+      if (contact.company) overviewParts.push(`**Company:** ${contact.company}`);
+      if (contact.employer) overviewParts.push(`**Employer:** ${contact.employer}`);
+      if (contact.age) overviewParts.push(`**Age:** ${contact.age}`);
+      if (contact.address) overviewParts.push(`**Address:** ${contact.address}`);
+      if (contact.education) overviewParts.push(`**Education:** ${contact.education}`);
+      if (contact.security_rating) overviewParts.push(`**Security Rating:** ${contact.security_rating}`);
+      if (contact.aliases && contact.aliases.length > 0) overviewParts.push(`**Known Aliases:** ${contact.aliases.join(', ')}`);
+      chapters.push({ title: 'Overview', content: overviewParts.join('\n') });
+
+      // Chapter 2: Bio
+      if (contact.bio) {
+        chapters.push({ title: 'Bio', content: contact.bio });
+      }
+
+      // Chapter 3: Stats
+      const stats = ['agility', 'strength', 'finesse', 'instinct', 'presence', 'knowledge'];
+      const knownStats = stats.filter(s => contact[s] != null && contact[s] !== 0);
+      if (knownStats.length > 0) {
+        const statLines = knownStats.map(s => `- **${s.charAt(0).toUpperCase() + s.slice(1)}:** ${contact[s]}`);
+        chapters.push({ title: 'Known Stats', content: statLines.join('\n') });
+      }
+
+      // Chapter 4: Your Assessment
+      const assessmentParts: string[] = [];
+      const trustLabels = ['Untrusted', 'Questionable', 'Neutral', 'Reliable', 'Trusted'];
+      assessmentParts.push(`**Trustworthiness:** ${'★'.repeat(rating)}${'☆'.repeat(5 - rating)} (${trustLabels[rating - 1] || 'Neutral'})`);
+      if (relationship) assessmentParts.push(`**Relationship:** ${relationship}`);
+      if (tags.length > 0) assessmentParts.push(`**Tags:** ${tags.join(', ')}`);
+      if (notes.trim()) assessmentParts.push(`\n### Personal Notes\n${notes.trim()}`);
+      chapters.push({ title: 'Your Assessment', content: assessmentParts.join('\n') });
+
+      const allContent = chapters.map(c => c.content).join('\n\n');
+      const wordCount = allContent.trim().split(/\s+/).length;
+      const pages = Math.max(1, Math.ceil(wordCount / 750));
 
       await supabase
         .from('tome_entries')
         .insert({
           user_id: effectiveUser.user_id || effectiveUser.id,
-          title: `Notes on ${contact.character_name || 'Unknown'}`,
-          content: notes,
-          tags: [`Contact: ${contact.name}`, ...tags]
+          title: `Dossier: ${name}`,
+          content: JSON.stringify(chapters),
+          tags: [`Contact: ${name}`, ...tags],
+          pages,
         });
 
       toast({
         title: "Saved to ToMe",
-        description: "Notes have been archived in your ToMe.",
+        description: `Dossier on ${name} has been archived in your ToMe.`,
       });
     } catch (error) {
       console.error('Error saving to ToMe:', error);
       toast({
         title: "Error",
-        description: "Failed to save notes to ToMe.",
+        description: "Failed to save dossier to ToMe.",
         variant: "destructive",
       });
     } finally {
