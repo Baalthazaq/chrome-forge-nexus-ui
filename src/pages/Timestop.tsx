@@ -654,7 +654,7 @@ const Timestop = () => {
               </Card>
             )}
           </>
-        ) : (
+        ) : viewMode === "annual" ? (
           /* Annual View */
           <div className="space-y-4">
             <div className="flex items-center justify-center gap-4 mb-4">
@@ -703,6 +703,63 @@ const Timestop = () => {
                 </Card>
               );
             })}
+          </div>
+        ) : (
+          /* Downtime View */
+          <div className="space-y-4">
+            <Card className="bg-gray-900/40 border-cyan-500/30 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-cyan-300 font-mono text-sm font-medium">Downtime Balance</h3>
+                <span className={`text-xl font-bold font-mono ${downtimeBalance > 0 ? "text-cyan-400" : "text-red-400"}`}>{downtimeBalance}h</span>
+              </div>
+              <p className="text-gray-500 text-xs">Cap: 100 hours</p>
+            </Card>
+
+            <h3 className="text-gray-300 font-mono text-sm font-medium">Activity Log</h3>
+            {downtimeActivities.length === 0 ? (
+              <Card className="bg-gray-900/40 border-gray-700/50 p-6 text-center text-gray-500 text-sm">
+                No downtime activities recorded yet.
+              </Card>
+            ) : (
+              downtimeActivities.map((act: any) => {
+                const actMonth = act.game_month ? getMonthInfo(act.game_month) : null;
+                const typeLabels: Record<string, string> = {
+                  short_rest: "Short Rest",
+                  long_rest: "Long Rest",
+                  commission: "Commission",
+                  full_time_deduction: "Full-Time Job",
+                };
+                const typeColors: Record<string, string> = {
+                  short_rest: "text-amber-400 border-amber-500/50",
+                  long_rest: "text-indigo-400 border-indigo-500/50",
+                  commission: "text-emerald-400 border-emerald-500/50",
+                  full_time_deduction: "text-cyan-400 border-cyan-500/50",
+                };
+                return (
+                  <Card key={act.id} className="bg-gray-900/40 border-gray-700/50 p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={`text-xs ${typeColors[act.activity_type] || "text-gray-400"}`}>
+                          {typeLabels[act.activity_type] || act.activity_type}
+                        </Badge>
+                        <span className="text-gray-500 text-xs font-mono">
+                          {act.game_day && actMonth ? `${act.game_day} of ${actMonth.name}, Year ${act.game_year}` : ""}
+                        </span>
+                      </div>
+                      <span className="text-red-400 text-sm font-mono">-{act.hours_spent}h</span>
+                    </div>
+                    {act.activities_chosen && act.activities_chosen.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {act.activities_chosen.map((a: string, i: number) => (
+                          <Badge key={i} variant="outline" className="text-xs text-gray-400 border-gray-600">{a}</Badge>
+                        ))}
+                      </div>
+                    )}
+                    {act.notes && <p className="text-gray-500 text-xs mt-1">{act.notes}</p>}
+                  </Card>
+                );
+              })
+            )}
           </div>
         )}
 
