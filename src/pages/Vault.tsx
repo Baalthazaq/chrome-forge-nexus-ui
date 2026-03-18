@@ -68,6 +68,8 @@ const Vault = () => {
   const [recurringPayments, setRecurringPayments] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [downtimeBalance, setDowntimeBalance] = useState(0);
+  const [incomePayments, setIncomePayments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedBills, setSelectedBills] = useState<string[]>([]);
   const [showAllTransactions, setShowAllTransactions] = useState(false);
