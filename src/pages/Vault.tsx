@@ -122,7 +122,7 @@ const Vault = () => {
     if (!activeUserId) return;
     
     try {
-      const [profileRes, transactionRes, billRes, profilesRes, rpRes, inventoryRes] = await Promise.all([
+      const [profileRes, transactionRes, billRes, profilesRes, rpRes, inventoryRes, downtimeRes] = await Promise.all([
         supabase.from("profiles").select("*").eq("user_id", activeUserId).single(),
         supabase.from("transactions").select("*")
           .or(`user_id.eq.${activeUserId},from_user_id.eq.${activeUserId},to_user_id.eq.${activeUserId}`)
@@ -134,6 +134,9 @@ const Vault = () => {
           .order("created_at", { ascending: false }),
         supabase.from("user_augmentations").select("*").eq("user_id", activeUserId)
           .order("installed_at", { ascending: false }),
+        supabase.functions.invoke("quest-operations", {
+          body: { operation: "get_downtime", targetUserId: impersonatedUser?.user_id },
+        }),
       ]);
 
       setUserProfile(profileRes.data);
@@ -142,6 +145,11 @@ const Vault = () => {
       setProfiles(profilesRes.data || []);
       setRecurringPayments(rpRes.data || []);
       setInventoryItems(inventoryRes.data || []);
+      if (downtimeRes.data?.downtime) setDowntimeBalance(downtimeRes.data.downtime.balance);
+
+      // Separate income payments (full-time job recurring payments)
+      const allRp = rpRes.data || [];
+      setIncomePayments(allRp.filter((rp: any) => (rp.metadata as any)?.job_type === "full_time"));
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
