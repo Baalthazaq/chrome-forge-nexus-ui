@@ -161,7 +161,7 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
           size="sm"
           variant="outline"
           onClick={() => exportToTome.mutate()}
-          disabled={!content.trim() || exportToTome.isPending}
+          disabled={exportToTome.isPending}
           className="border-gray-600 text-gray-300 hover:bg-gray-800"
         >
           {exportToTome.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <BookOpen className="w-3 h-3 mr-1" />}
