@@ -189,7 +189,7 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
   if (!effectiveUserId) return null;
 
   const allNotes = allNotesQuery.data || [];
-  const otherNotes = allNotes.filter(n => n.user_id !== user.id);
+  const otherNotes = allNotes.filter(n => n.user_id !== effectiveUserId);
 
   return (
     <div className="space-y-2 border-t border-gray-700/50 pt-3">
