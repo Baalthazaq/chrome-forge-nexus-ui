@@ -518,6 +518,45 @@ export type Database = {
         }
         Relationships: []
       }
+      downtime_balances: {
+        Row: {
+          balance: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      downtime_config: {
+        Row: {
+          hours_per_day: number
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          hours_per_day?: number
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          hours_per_day?: number
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       game_calendar: {
         Row: {
           current_day: number
@@ -1066,8 +1105,11 @@ export type Database = {
           id: string
           notes: string | null
           quest_id: string
+          roll_result: number | null
+          roll_type: string | null
           status: string | null
           submitted_at: string | null
+          times_completed: number
           updated_at: string
           user_id: string
         }
@@ -1078,8 +1120,11 @@ export type Database = {
           id?: string
           notes?: string | null
           quest_id: string
+          roll_result?: number | null
+          roll_type?: string | null
           status?: string | null
           submitted_at?: string | null
+          times_completed?: number
           updated_at?: string
           user_id: string
         }
@@ -1090,8 +1135,11 @@ export type Database = {
           id?: string
           notes?: string | null
           quest_id?: string
+          roll_result?: number | null
+          roll_type?: string | null
           status?: string | null
           submitted_at?: string | null
+          times_completed?: number
           updated_at?: string
           user_id?: string
         }
@@ -1107,12 +1155,17 @@ export type Database = {
       }
       quests: {
         Row: {
+          available_quantity: number | null
           client: string | null
           created_at: string
           description: string | null
           difficulty: string | null
+          downtime_cost: number
           id: string
+          job_type: string
+          pay_interval: string | null
           reward: number
+          reward_min: number
           status: string | null
           tags: string[] | null
           time_limit: string | null
@@ -1120,12 +1173,17 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          available_quantity?: number | null
           client?: string | null
           created_at?: string
           description?: string | null
           difficulty?: string | null
+          downtime_cost?: number
           id?: string
+          job_type?: string
+          pay_interval?: string | null
           reward?: number
+          reward_min?: number
           status?: string | null
           tags?: string[] | null
           time_limit?: string | null
@@ -1133,12 +1191,17 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          available_quantity?: number | null
           client?: string | null
           created_at?: string
           description?: string | null
           difficulty?: string | null
+          downtime_cost?: number
           id?: string
+          job_type?: string
+          pay_interval?: string | null
           reward?: number
+          reward_min?: number
           status?: string | null
           tags?: string[] | null
           time_limit?: string | null
