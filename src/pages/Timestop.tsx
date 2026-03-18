@@ -72,6 +72,28 @@ const Timestop = () => {
     }
   }, [gameDate]);
 
+  // Load downtime
+  const loadDowntime = async () => {
+    if (!effectiveUserId) return;
+    const { data } = await supabase.functions.invoke("quest-operations", {
+      body: { operation: "get_downtime", targetUserId: impersonatedUser?.user_id },
+    });
+    if (data?.downtime) setDowntimeBalance(data.downtime.balance);
+  };
+
+  const loadDowntimeActivities = async () => {
+    if (!effectiveUserId) return;
+    const { data } = await supabase.functions.invoke("quest-operations", {
+      body: { operation: "get_downtime_activities", targetUserId: impersonatedUser?.user_id },
+    });
+    if (data?.activities) setDowntimeActivities(data.activities);
+  };
+
+  useEffect(() => {
+    loadDowntime();
+    loadDowntimeActivities();
+  }, [effectiveUserId]);
+
   const currentDate: GameDate = gameDate
     ? { day: gameDate.current_day, month: gameDate.current_month, year: gameDate.current_year }
     : { day: 1, month: 1, year: 1 };
