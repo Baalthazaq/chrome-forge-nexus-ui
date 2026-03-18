@@ -110,6 +110,7 @@ export function CharacterHeader({
   classCards, filteredSubclasses, ancestryCards, communityCards,
   domains, displayUser, isEditing, onProfileUpdate, onStatChange,
   gameCards, subclassCards, domainCards, selectedSubclass,
+  downtimeBalance, onShortRest, onLongRest,
 }: Props) {
   const { toast } = useToast();
   const [avatarUploading, setAvatarUploading] = useState(false);
