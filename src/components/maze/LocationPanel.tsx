@@ -12,7 +12,7 @@ interface LocationPanelProps {
   onRelocate?: (location: MapLocation) => void;
 }
 
-export const LocationPanel = ({ location, onClose, isAdmin = false }: LocationPanelProps) => {
+export const LocationPanel = ({ location, onClose, isAdmin = false, onRelocate }: LocationPanelProps) => {
   const { user } = useAuth();
   const { deleteLocation } = useMazeData();
 
