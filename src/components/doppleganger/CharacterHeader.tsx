@@ -421,18 +421,18 @@ export function CharacterHeader({
 
             {/* Downtime & Rest */}
             {downtimeBalance !== undefined && (
-              <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap items-center gap-2 pt-1">
-                <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 text-xs">
-                  <Timer className="w-3 h-3 mr-1" /> {downtimeBalance}h downtime
+              <div className="sm:col-span-2 lg:col-span-3 flex items-center gap-1.5">
+                <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 text-[11px] px-1.5 py-0.5">
+                  <Timer className="w-3 h-3 mr-0.5" />{downtimeBalance}h
                 </Badge>
                 {onShortRest && (
-                  <Button variant="outline" size="sm" className="border-amber-600 text-amber-400 hover:bg-amber-900/30 h-7 text-xs" onClick={onShortRest}>
-                    <Sun className="w-3 h-3 mr-1" /> Short Rest
+                  <Button variant="outline" size="sm" className="border-amber-600 text-amber-400 hover:bg-amber-900/30 h-6 px-2 text-[11px]" onClick={onShortRest}>
+                    <Sun className="w-3 h-3 mr-0.5" />Short
                   </Button>
                 )}
                 {onLongRest && (
-                  <Button variant="outline" size="sm" className="border-indigo-600 text-indigo-400 hover:bg-indigo-900/30 h-7 text-xs" onClick={onLongRest}>
-                    <Moon className="w-3 h-3 mr-1" /> Long Rest
+                  <Button variant="outline" size="sm" className="border-indigo-600 text-indigo-400 hover:bg-indigo-900/30 h-6 px-2 text-[11px]" onClick={onLongRest}>
+                    <Moon className="w-3 h-3 mr-0.5" />Long
                   </Button>
                 )}
               </div>
