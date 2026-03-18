@@ -12,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MONTHS, DAY_NAMES, formatGameDate, isFrippery, getMonth, getBillingTriggers, getBillingDescription, advanceDay, type GameDate } from "@/lib/gameCalendar";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 
 interface CalendarEvent {
