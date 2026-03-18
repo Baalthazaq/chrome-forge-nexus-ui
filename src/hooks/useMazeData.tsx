@@ -273,6 +273,23 @@ export const useMazeData = () => {
     onSuccess: (_, vars) => queryClient.invalidateQueries({ queryKey: ['map-area-reviews', vars.area_id] }),
   });
 
+  // Location Reviews
+  const createLocationReview = useMutation({
+    mutationFn: async (review: { location_id: string; user_id: string; rating: number; content: string }) => {
+      const { error } = await supabase.from('map_location_reviews').insert(review);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => queryClient.invalidateQueries({ queryKey: ['map-location-reviews', vars.location_id] }),
+  });
+
+  const deleteLocationReview = useMutation({
+    mutationFn: async ({ id, location_id }: { id: string; location_id: string }) => {
+      const { error } = await supabase.from('map_location_reviews').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => queryClient.invalidateQueries({ queryKey: ['map-location-reviews', vars.location_id] }),
+  });
+
   return {
     locations: locationsQuery.data || [],
     areas: areasQuery.data || [],
@@ -292,6 +309,8 @@ export const useMazeData = () => {
     useAreaReviews,
     createReview,
     deleteReview,
+    createLocationReview,
+    deleteLocationReview,
     invalidateAll,
   };
 };
