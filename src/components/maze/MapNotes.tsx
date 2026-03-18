@@ -174,7 +174,7 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
       const tags = ['maze', locationId ? 'location' : 'area'];
 
       const { error } = await supabase.from('tome_entries').insert({
-        user_id: user.id,
+        user_id: effectiveUserId,
         title: targetName,
         content: JSON.stringify(chapters),
         tags,
