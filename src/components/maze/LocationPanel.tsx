@@ -166,6 +166,73 @@ export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRel
           containingAreas={containingAreas.map(a => a.name)}
         />
 
+        {/* Reviews */}
+        <div className="space-y-3 border-t border-gray-700/50 pt-3">
+          <h3 className="text-sm font-bold text-gray-300 font-mono">Reviews</h3>
+          {user && (
+            <div className="space-y-2 bg-gray-800/50 rounded p-3">
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <button key={s} onClick={() => setReviewRating(s)}>
+                    <Star className={`w-4 h-4 ${s <= reviewRating ? 'text-amber-400 fill-amber-400' : 'text-gray-600'}`} />
+                  </button>
+                ))}
+              </div>
+              <Textarea
+                value={reviewContent}
+                onChange={e => setReviewContent(e.target.value)}
+                placeholder="Write a review..."
+                className="bg-gray-900/50 border-gray-700/50 text-gray-300 text-sm min-h-[60px]"
+              />
+              <Button
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await createLocationReview.mutateAsync({
+                      location_id: location.id,
+                      user_id: user.id,
+                      rating: reviewRating,
+                      content: reviewContent.trim() || '',
+                    });
+                    setReviewContent('');
+                    setReviewRating(3);
+                    toast.success('Review posted');
+                  } catch (err: any) {
+                    toast.error(err.message);
+                  }
+                }}
+                disabled={createLocationReview.isPending}
+                className="bg-teal-600 hover:bg-teal-700"
+              >
+                <Send className="w-3 h-3 mr-1" /> Post
+              </Button>
+            </div>
+          )}
+          {reviews.map(review => (
+            <div key={review.id} className="bg-gray-800/30 rounded p-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-200">
+                    {review.profile?.character_name || 'Unknown'}
+                  </span>
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map(s => (
+                      <Star key={s} className={`w-3 h-3 ${s <= review.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-600'}`} />
+                    ))}
+                  </div>
+                </div>
+                {user?.id === review.user_id && (
+                  <button onClick={() => deleteLocationReview.mutate({ id: review.id, location_id: location.id })}>
+                    <Trash2 className="w-3 h-3 text-gray-500 hover:text-red-400" />
+                  </button>
+                )}
+              </div>
+              {review.content && <p className="text-xs text-gray-400">{review.content}</p>}
+            </div>
+          ))}
+          {reviews.length === 0 && <p className="text-xs text-gray-500 font-mono">No reviews yet.</p>}
+        </div>
+
         {canDelete && (
           <Button
             variant="destructive"
