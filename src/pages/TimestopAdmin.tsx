@@ -724,19 +724,42 @@ const PlayerDowntimeSection = ({ profiles }: { profiles: any[] }) => {
   const [balances, setBalances] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [downtimeConfig, setDowntimeConfig] = useState({ hours_per_day: 10 });
+  const [editingBalance, setEditingBalance] = useState<string | null>(null);
+  const [editBalanceValue, setEditBalanceValue] = useState("");
 
   useEffect(() => {
-    const load = async () => {
-      const [balRes, actRes] = await Promise.all([
-        supabase.from("downtime_balances").select("*"),
-        supabase.from("downtime_activities").select("*").order("created_at", { ascending: false }).limit(50),
-      ]);
-      setBalances(balRes.data || []);
-      setActivities(actRes.data || []);
-      setLoading(false);
-    };
     load();
   }, []);
+
+  const load = async () => {
+    const [balRes, actRes, configRes] = await Promise.all([
+      supabase.from("downtime_balances").select("*"),
+      supabase.from("downtime_activities").select("*").order("created_at", { ascending: false }).limit(50),
+      supabase.functions.invoke("quest-admin", { body: { operation: "get_downtime_config" } }),
+    ]);
+    setBalances(balRes.data || []);
+    setActivities(actRes.data || []);
+    if (configRes.data?.config) setDowntimeConfig(configRes.data.config);
+    setLoading(false);
+  };
+
+  const updateDowntimeHours = async (hours: number) => {
+    const { data, error } = await supabase.functions.invoke("quest-admin", {
+      body: { operation: "update_downtime_config", hoursPerDay: hours },
+    });
+    if (!error && !data?.error) {
+      setDowntimeConfig((prev) => ({ ...prev, hours_per_day: hours }));
+    }
+  };
+
+  const saveBalance = async (balanceId: string, userId: string) => {
+    const newVal = parseInt(editBalanceValue);
+    if (isNaN(newVal)) return;
+    await supabase.from("downtime_balances").update({ balance: newVal, updated_at: new Date().toISOString() }).eq("id", balanceId);
+    setBalances((prev) => prev.map((b) => (b.id === balanceId ? { ...b, balance: newVal } : b)));
+    setEditingBalance(null);
+  };
 
   const getName = (userId: string) => profiles.find((p) => p.user_id === userId)?.character_name || "Unknown";
 
@@ -744,17 +767,66 @@ const PlayerDowntimeSection = ({ profiles }: { profiles: any[] }) => {
 
   return (
     <Card className="bg-gray-900/40 border-cyan-500/30 p-4 mt-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Timer className="w-4 h-4 text-cyan-400" />
-        <h3 className="text-cyan-300 font-mono text-sm font-medium">Player Downtime</h3>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Timer className="w-4 h-4 text-cyan-400" />
+          <h3 className="text-cyan-300 font-mono text-sm font-medium">Player Downtime</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400 text-xs font-mono">Per day:</span>
+          <Input
+            type="number"
+            value={downtimeConfig.hours_per_day}
+            onChange={(e) => setDowntimeConfig((prev) => ({ ...prev, hours_per_day: parseInt(e.target.value) || 0 }))}
+            className="w-16 h-7 bg-gray-800 border-gray-700 text-white text-xs"
+          />
+          <span className="text-gray-500 text-xs">h</span>
+          <Button size="sm" onClick={() => updateDowntimeHours(downtimeConfig.hours_per_day)} className="h-7 px-2 text-xs bg-cyan-600 hover:bg-cyan-700">
+            Save
+          </Button>
+        </div>
       </div>
 
       {/* Balances */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
         {balances.map((b) => (
-          <div key={b.id} className="p-2 rounded bg-gray-800/50 border border-gray-700/50">
+          <div
+            key={b.id}
+            className="p-2 rounded bg-gray-800/50 border border-gray-700/50 cursor-pointer hover:border-cyan-500/40 transition-colors"
+            onClick={() => {
+              setEditingBalance(b.id);
+              setEditBalanceValue(String(b.balance));
+            }}
+          >
             <p className="text-xs text-gray-400">{getName(b.user_id)}</p>
-            <p className={`text-lg font-bold font-mono ${b.balance > 0 ? "text-cyan-400" : "text-red-400"}`}>{b.balance}h</p>
+            {editingBalance === b.id ? (
+              <div className="flex items-center gap-1 mt-1">
+                <Input
+                  type="number"
+                  value={editBalanceValue}
+                  onChange={(e) => setEditBalanceValue(e.target.value)}
+                  className="w-16 h-6 bg-gray-700 border-gray-600 text-white text-sm p-1"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveBalance(b.id, b.user_id);
+                    if (e.key === "Escape") setEditingBalance(null);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <Button
+                  size="sm"
+                  className="h-6 px-2 text-xs bg-cyan-600 hover:bg-cyan-700"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    saveBalance(b.id, b.user_id);
+                  }}
+                >
+                  ✓
+                </Button>
+              </div>
+            ) : (
+              <p className={`text-lg font-bold font-mono ${b.balance > 0 ? "text-cyan-400" : "text-red-400"}`}>{b.balance}h</p>
+            )}
           </div>
         ))}
       </div>
@@ -764,14 +836,18 @@ const PlayerDowntimeSection = ({ profiles }: { profiles: any[] }) => {
       <div className="space-y-1 max-h-60 overflow-y-auto">
         {activities.map((act) => {
           const typeLabels: Record<string, string> = {
-            short_rest: "Short Rest", long_rest: "Long Rest",
-            commission: "Commission", full_time_deduction: "Full-Time",
+            short_rest: "Short Rest",
+            long_rest: "Long Rest",
+            commission: "Commission",
+            full_time_deduction: "Full-Time",
           };
           return (
             <div key={act.id} className="flex items-center justify-between p-2 rounded bg-gray-800/30 text-xs">
               <div className="flex items-center gap-2">
                 <span className="text-gray-300 font-medium">{getName(act.user_id)}</span>
-                <Badge variant="outline" className="text-xs text-gray-400">{typeLabels[act.activity_type] || act.activity_type}</Badge>
+                <Badge variant="outline" className="text-xs text-gray-400">
+                  {typeLabels[act.activity_type] || act.activity_type}
+                </Badge>
                 {act.notes && <span className="text-gray-500 truncate max-w-[150px]">{act.notes}</span>}
               </div>
               <span className="text-red-400 font-mono">-{act.hours_spent}h</span>

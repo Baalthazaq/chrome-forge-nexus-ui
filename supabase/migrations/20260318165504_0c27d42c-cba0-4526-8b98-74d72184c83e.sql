@@ -1,0 +1,1 @@
+ALTER TABLE public.downtime_config ALTER COLUMN hours_per_day SET DEFAULT 10;
