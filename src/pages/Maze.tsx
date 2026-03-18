@@ -143,10 +143,19 @@ const Maze = () => {
             <Button
               size="sm"
               variant={placingLocation ? 'default' : 'outline'}
-              onClick={() => { setPlacingLocation(!placingLocation); if (placingLocation) toast.info('Cancelled'); else toast.info('Click on the map to place a location'); }}
+              onClick={() => {
+                if (placingLocation) {
+                  setPlacingLocation(false);
+                  setRelocatingLocation(null);
+                  toast.info('Cancelled');
+                } else {
+                  setPlacingLocation(true);
+                  toast.info('Click on the map to place a location');
+                }
+              }}
               className={placingLocation ? 'bg-amber-600 hover:bg-amber-700' : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
             >
-              <Plus className="w-3 h-3 mr-1" /> {placingLocation ? 'Cancel' : 'Add Location'}
+              <Plus className="w-3 h-3 mr-1" /> {placingLocation ? (relocatingLocation ? 'Cancel Move' : 'Cancel') : 'Add Location'}
             </Button>
           )}
         </div>
