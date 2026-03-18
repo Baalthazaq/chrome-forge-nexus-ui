@@ -93,7 +93,7 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!user) return;
+      if (!effectiveUserId) return;
       if (noteQuery.data) {
         const { error } = await supabase
           .from('map_notes')
