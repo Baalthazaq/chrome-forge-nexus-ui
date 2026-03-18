@@ -62,7 +62,7 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
   const allNotesKey = locationId ? ['map-notes-all', 'location', locationId] : ['map-notes-all', 'area', areaId];
   const allNotesQuery = useQuery({
     queryKey: allNotesKey,
-    enabled: !!user && isAdmin,
+    enabled: !!effectiveUserId && isAdmin,
     queryFn: async () => {
       let query = supabase.from('map_notes').select('*');
       if (locationId) query = query.eq('location_id', locationId);
