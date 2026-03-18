@@ -85,6 +85,7 @@ export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRel
     image_url: location.image_url || '',
     marker_color: location.marker_color,
   });
+  const [envCard, setEnvCard] = useState<EnvironmentCard>(location.environment_card || {});
 
   const isOwner = user?.id === location.user_id;
   const canDelete = isOwner && !location.is_public;
