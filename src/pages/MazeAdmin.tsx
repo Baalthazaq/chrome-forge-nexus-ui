@@ -105,6 +105,7 @@ const MazeAdmin = () => {
           is_public: locForm.is_public,
           marker_color: locForm.marker_color,
           user_id: user.id,
+          environment_card: {},
         });
         toast.success('Location created');
       }
