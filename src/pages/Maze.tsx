@@ -211,7 +211,7 @@ const Maze = () => {
              <AreaPanel area={selectedArea} onClose={() => { setSelectedArea(null); setZoomToArea(null); }} isAdmin={isAdmin} />
           )}
           {selectedLocation && !selectedArea && (
-            <LocationPanel location={selectedLocation} onClose={() => setSelectedLocation(null)} isAdmin={isAdmin} />
+            <LocationPanel location={selectedLocation} onClose={() => setSelectedLocation(null)} isAdmin={isAdmin} onRelocate={handleRelocateLocation} />
           )}
         </div>
 
