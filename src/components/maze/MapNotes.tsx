@@ -119,7 +119,7 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
 
   const exportToTome = useMutation({
     mutationFn: async () => {
-      if (!user || !targetName) return;
+      if (!effectiveUserId || !targetName) return;
 
       const chapters: { title: string; content: string }[] = [];
 
