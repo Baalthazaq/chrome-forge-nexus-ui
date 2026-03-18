@@ -201,7 +201,6 @@ const QuestseekAdmin = () => {
   const activeQuests = quests.filter(q => q.status === "active");
   const cancelledQuests = quests.filter(q => q.status === "cancelled");
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const exportQuests = () => {
     const rows = quests.map(q => ({
