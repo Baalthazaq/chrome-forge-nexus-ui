@@ -24,7 +24,7 @@ interface NoteWithProfile {
   character_name?: string | null;
 }
 
-export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false }: MapNotesProps) => {
+export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, locationDescription, locationImageUrl, containingAreas = [] }: MapNotesProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [content, setContent] = useState('');
