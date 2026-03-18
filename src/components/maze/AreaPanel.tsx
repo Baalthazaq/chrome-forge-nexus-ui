@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapArea, MapAreaReview, useMazeData } from '@/hooks/useMazeData';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { EnvironmentCardDisplay } from './EnvironmentCard';
 import { MapNotes } from './MapNotes';
 import { Button } from '@/components/ui/button';
