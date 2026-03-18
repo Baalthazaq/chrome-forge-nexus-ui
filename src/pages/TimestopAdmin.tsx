@@ -104,7 +104,7 @@ const TimestopAdmin = () => {
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-all"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("user_id, character_name");
+      const { data, error } = await supabase.from("profiles").select("user_id, character_name, is_npc");
       if (error) throw error;
       return data;
     },
@@ -763,7 +763,86 @@ const PlayerDowntimeSection = ({ profiles }: { profiles: any[] }) => {
 
   const getName = (userId: string) => profiles.find((p) => p.user_id === userId)?.character_name || "Unknown";
 
+  const isNpc = (userId: string) => profiles.find((p) => p.user_id === userId)?.is_npc === true;
+
+  const playerBalances = balances.filter((b) => !isNpc(b.user_id));
+  const npcBalances = balances.filter((b) => isNpc(b.user_id));
+  const playerActivities = activities.filter((a) => !isNpc(a.user_id));
+  const npcActivities = activities.filter((a) => isNpc(a.user_id));
+
   if (loading) return null;
+
+  const renderBalances = (items: any[]) => (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+      {items.map((b) => (
+        <div
+          key={b.id}
+          className="p-2 rounded bg-gray-800/50 border border-gray-700/50 cursor-pointer hover:border-cyan-500/40 transition-colors"
+          onClick={() => {
+            setEditingBalance(b.id);
+            setEditBalanceValue(String(b.balance));
+          }}
+        >
+          <p className="text-xs text-gray-400">{getName(b.user_id)}</p>
+          {editingBalance === b.id ? (
+            <div className="flex items-center gap-1 mt-1">
+              <Input
+                type="number"
+                value={editBalanceValue}
+                onChange={(e) => setEditBalanceValue(e.target.value)}
+                className="w-16 h-6 bg-gray-700 border-gray-600 text-white text-sm p-1"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveBalance(b.id, b.user_id);
+                  if (e.key === "Escape") setEditingBalance(null);
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <Button
+                size="sm"
+                className="h-6 px-2 text-xs bg-cyan-600 hover:bg-cyan-700"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  saveBalance(b.id, b.user_id);
+                }}
+              >
+                ✓
+              </Button>
+            </div>
+          ) : (
+            <p className={`text-lg font-bold font-mono ${b.balance > 0 ? "text-cyan-400" : "text-red-400"}`}>{b.balance}h</p>
+          )}
+        </div>
+      ))}
+      {items.length === 0 && <p className="text-gray-600 text-xs col-span-full">No entries.</p>}
+    </div>
+  );
+
+  const renderActivities = (items: any[]) => (
+    <div className="space-y-1 max-h-60 overflow-y-auto">
+      {items.map((act) => {
+        const typeLabels: Record<string, string> = {
+          short_rest: "Short Rest",
+          long_rest: "Long Rest",
+          commission: "Commission",
+          full_time_deduction: "Full-Time",
+        };
+        return (
+          <div key={act.id} className="flex items-center justify-between p-2 rounded bg-gray-800/30 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-300 font-medium">{getName(act.user_id)}</span>
+              <Badge variant="outline" className="text-xs text-gray-400">
+                {typeLabels[act.activity_type] || act.activity_type}
+              </Badge>
+              {act.notes && <span className="text-gray-500 truncate max-w-[150px]">{act.notes}</span>}
+            </div>
+            <span className="text-red-400 font-mono">-{act.hours_spent}h</span>
+          </div>
+        );
+      })}
+      {items.length === 0 && <p className="text-gray-600 text-xs">No activities yet.</p>}
+    </div>
+  );
 
   return (
     <Card className="bg-gray-900/40 border-cyan-500/30 p-4 mt-6">
@@ -787,75 +866,28 @@ const PlayerDowntimeSection = ({ profiles }: { profiles: any[] }) => {
         </div>
       </div>
 
-      {/* Balances */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-        {balances.map((b) => (
-          <div
-            key={b.id}
-            className="p-2 rounded bg-gray-800/50 border border-gray-700/50 cursor-pointer hover:border-cyan-500/40 transition-colors"
-            onClick={() => {
-              setEditingBalance(b.id);
-              setEditBalanceValue(String(b.balance));
-            }}
-          >
-            <p className="text-xs text-gray-400">{getName(b.user_id)}</p>
-            {editingBalance === b.id ? (
-              <div className="flex items-center gap-1 mt-1">
-                <Input
-                  type="number"
-                  value={editBalanceValue}
-                  onChange={(e) => setEditBalanceValue(e.target.value)}
-                  className="w-16 h-6 bg-gray-700 border-gray-600 text-white text-sm p-1"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveBalance(b.id, b.user_id);
-                    if (e.key === "Escape") setEditingBalance(null);
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <Button
-                  size="sm"
-                  className="h-6 px-2 text-xs bg-cyan-600 hover:bg-cyan-700"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    saveBalance(b.id, b.user_id);
-                  }}
-                >
-                  ✓
-                </Button>
-              </div>
-            ) : (
-              <p className={`text-lg font-bold font-mono ${b.balance > 0 ? "text-cyan-400" : "text-red-400"}`}>{b.balance}h</p>
-            )}
-          </div>
-        ))}
-      </div>
+      <Tabs defaultValue="players" className="w-full">
+        <TabsList className="bg-gray-800/50 border border-gray-700/50 mb-3">
+          <TabsTrigger value="players" className="text-xs data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
+            Players ({playerBalances.length})
+          </TabsTrigger>
+          <TabsTrigger value="npcs" className="text-xs data-[state=active]:bg-amber-600 data-[state=active]:text-white">
+            NPCs ({npcBalances.length})
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Recent Activities */}
-      <h4 className="text-gray-400 text-xs font-mono mb-2">Recent Activities</h4>
-      <div className="space-y-1 max-h-60 overflow-y-auto">
-        {activities.map((act) => {
-          const typeLabels: Record<string, string> = {
-            short_rest: "Short Rest",
-            long_rest: "Long Rest",
-            commission: "Commission",
-            full_time_deduction: "Full-Time",
-          };
-          return (
-            <div key={act.id} className="flex items-center justify-between p-2 rounded bg-gray-800/30 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="text-gray-300 font-medium">{getName(act.user_id)}</span>
-                <Badge variant="outline" className="text-xs text-gray-400">
-                  {typeLabels[act.activity_type] || act.activity_type}
-                </Badge>
-                {act.notes && <span className="text-gray-500 truncate max-w-[150px]">{act.notes}</span>}
-              </div>
-              <span className="text-red-400 font-mono">-{act.hours_spent}h</span>
-            </div>
-          );
-        })}
-        {activities.length === 0 && <p className="text-gray-600 text-xs">No activities yet.</p>}
-      </div>
+        <TabsContent value="players">
+          {renderBalances(playerBalances)}
+          <h4 className="text-gray-400 text-xs font-mono mb-2">Recent Activities</h4>
+          {renderActivities(playerActivities)}
+        </TabsContent>
+
+        <TabsContent value="npcs">
+          {renderBalances(npcBalances)}
+          <h4 className="text-gray-400 text-xs font-mono mb-2">Recent Activities</h4>
+          {renderActivities(npcActivities)}
+        </TabsContent>
+      </Tabs>
     </Card>
   );
 };

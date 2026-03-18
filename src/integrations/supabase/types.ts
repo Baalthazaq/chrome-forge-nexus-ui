@@ -1021,6 +1021,7 @@ export type Database = {
           id: string
           instinct: number | null
           is_dead: boolean | null
+          is_npc: boolean | null
           is_searchable: boolean | null
           job: string | null
           knowledge: number | null
@@ -1058,6 +1059,7 @@ export type Database = {
           id?: string
           instinct?: number | null
           is_dead?: boolean | null
+          is_npc?: boolean | null
           is_searchable?: boolean | null
           job?: string | null
           knowledge?: number | null
@@ -1095,6 +1097,7 @@ export type Database = {
           id?: string
           instinct?: number | null
           is_dead?: boolean | null
+          is_npc?: boolean | null
           is_searchable?: boolean | null
           job?: string | null
           knowledge?: number | null

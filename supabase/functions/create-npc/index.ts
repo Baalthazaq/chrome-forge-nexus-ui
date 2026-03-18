@@ -124,7 +124,8 @@ serve(async (req) => {
         education: education || null,
         address: address || null,
         aliases: aliases || [],
-        security_rating: security_rating || 'C'
+        security_rating: security_rating || 'C',
+        is_npc: true
       }, { onConflict: 'user_id' })
 
     if (profileError) {
