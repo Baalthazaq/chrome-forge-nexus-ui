@@ -75,6 +75,22 @@ const Doppleganger = () => {
       .then(({ data }) => { setProfile(data); setProfileLoading(false); });
   }, [userId]);
 
+  // Load downtime & game date
+  const loadDowntime = async () => {
+    if (!userId) return;
+    const { data } = await supabase.functions.invoke("quest-operations", {
+      body: { operation: "get_downtime", targetUserId: impersonatedUser?.user_id },
+    });
+    if (data?.downtime) setDowntimeBalance(data.downtime.balance);
+  };
+
+  useEffect(() => {
+    loadDowntime();
+    supabase.from("game_calendar").select("*").limit(1).single().then(({ data }) => {
+      if (data) setGameDate({ day: data.current_day, month: data.current_month, year: data.current_year });
+    });
+  }, [userId]);
+
   // One-time sync: ensure profile reflects sheet's authoritative fields
   const [hasSynced, setHasSynced] = useState(false);
   useEffect(() => {
