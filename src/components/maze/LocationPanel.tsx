@@ -2,13 +2,14 @@ import { MapLocation, useMazeData } from '@/hooks/useMazeData';
 import { useAuth } from '@/hooks/useAuth';
 import { MapNotes } from './MapNotes';
 import { Button } from '@/components/ui/button';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, Move } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface LocationPanelProps {
   location: MapLocation;
   onClose: () => void;
   isAdmin?: boolean;
+  onRelocate?: (location: MapLocation) => void;
 }
 
 export const LocationPanel = ({ location, onClose, isAdmin = false }: LocationPanelProps) => {
