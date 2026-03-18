@@ -33,6 +33,7 @@ const Maze = () => {
 
   // Add location
   const [placingLocation, setPlacingLocation] = useState(false);
+  const [relocatingLocation, setRelocatingLocation] = useState<MapLocation | null>(null);
   const [newLocCoords, setNewLocCoords] = useState<{ x: number; y: number } | null>(null);
   const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', marker_color: '#14b8a6' });
 
@@ -81,11 +82,29 @@ const Maze = () => {
     setSelectedArea(null);
   };
 
-  const handleMapClick = (x: number, y: number) => {
+  const handleMapClick = async (x: number, y: number) => {
+    if (relocatingLocation) {
+      try {
+        await maze.updateLocation.mutateAsync({ id: relocatingLocation.id, x, y });
+        toast.success(`"${relocatingLocation.name}" moved`);
+      } catch (err: any) {
+        toast.error(err.message);
+      }
+      setRelocatingLocation(null);
+      setPlacingLocation(false);
+      return;
+    }
     if (placingLocation) {
       setNewLocCoords({ x, y });
       setPlacingLocation(false);
     }
+  };
+
+  const handleRelocateLocation = (loc: MapLocation) => {
+    setRelocatingLocation(loc);
+    setPlacingLocation(true);
+    setSelectedLocation(null);
+    toast.info(`Click on the map to move "${loc.name}"`);
   };
 
   const handleSaveLocation = async () => {
@@ -124,10 +143,19 @@ const Maze = () => {
             <Button
               size="sm"
               variant={placingLocation ? 'default' : 'outline'}
-              onClick={() => { setPlacingLocation(!placingLocation); if (placingLocation) toast.info('Cancelled'); else toast.info('Click on the map to place a location'); }}
+              onClick={() => {
+                if (placingLocation) {
+                  setPlacingLocation(false);
+                  setRelocatingLocation(null);
+                  toast.info('Cancelled');
+                } else {
+                  setPlacingLocation(true);
+                  toast.info('Click on the map to place a location');
+                }
+              }}
               className={placingLocation ? 'bg-amber-600 hover:bg-amber-700' : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
             >
-              <Plus className="w-3 h-3 mr-1" /> {placingLocation ? 'Cancel' : 'Add Location'}
+              <Plus className="w-3 h-3 mr-1" /> {placingLocation ? (relocatingLocation ? 'Cancel Move' : 'Cancel') : 'Add Location'}
             </Button>
           )}
         </div>
@@ -183,7 +211,7 @@ const Maze = () => {
              <AreaPanel area={selectedArea} onClose={() => { setSelectedArea(null); setZoomToArea(null); }} isAdmin={isAdmin} />
           )}
           {selectedLocation && !selectedArea && (
-            <LocationPanel location={selectedLocation} onClose={() => setSelectedLocation(null)} isAdmin={isAdmin} />
+            <LocationPanel location={selectedLocation} onClose={() => setSelectedLocation(null)} isAdmin={isAdmin} onRelocate={handleRelocateLocation} />
           )}
         </div>
 

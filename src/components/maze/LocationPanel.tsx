@@ -2,20 +2,22 @@ import { MapLocation, useMazeData } from '@/hooks/useMazeData';
 import { useAuth } from '@/hooks/useAuth';
 import { MapNotes } from './MapNotes';
 import { Button } from '@/components/ui/button';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, Move } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface LocationPanelProps {
   location: MapLocation;
   onClose: () => void;
   isAdmin?: boolean;
+  onRelocate?: (location: MapLocation) => void;
 }
 
-export const LocationPanel = ({ location, onClose, isAdmin = false }: LocationPanelProps) => {
+export const LocationPanel = ({ location, onClose, isAdmin = false, onRelocate }: LocationPanelProps) => {
   const { user } = useAuth();
   const { deleteLocation } = useMazeData();
 
   const canDelete = user?.id === location.user_id && !location.is_public;
+  const canRelocate = !!onRelocate && (isAdmin || user?.id === location.user_id);
 
   const handleDelete = async () => {
     try {
@@ -49,6 +51,17 @@ export const LocationPanel = ({ location, onClose, isAdmin = false }: LocationPa
       </div>
 
       <MapNotes locationId={location.id} targetName={location.name} isAdmin={isAdmin} />
+
+      {canRelocate && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => { onRelocate!(location); onClose(); }}
+          className="w-full border-gray-600 text-gray-300 hover:bg-gray-800"
+        >
+          <Move className="w-3 h-3 mr-1" /> Move Location
+        </Button>
+      )}
 
       {canDelete && (
         <Button
