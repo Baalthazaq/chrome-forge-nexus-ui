@@ -41,6 +41,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { TomeShareDialog } from '@/components/TomeShareDialog';
 import { TomeShareNotifications } from '@/components/TomeShareNotifications';
 import { z } from 'zod';
+import { renderMarkdown } from '@/lib/markdownRenderer';
 
 const tomeEntrySchema = z.object({
   title: z.string().trim().min(1, 'Title is required').max(200, 'Title too long (max 200 chars)'),
@@ -1343,8 +1344,8 @@ const ToMe = () => {
                         {chapters[currentChapter]?.title}
                       </h3>
                     )}
-                    <div className="text-white text-lg leading-relaxed whitespace-pre-wrap">
-                      {pageContent}
+                    <div className="text-white text-lg leading-relaxed">
+                      {renderMarkdown(pageContent)}
                     </div>
                   </div>
                 </div>
