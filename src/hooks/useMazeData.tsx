@@ -13,6 +13,7 @@ export interface MapLocation {
   y: number;
   is_public: boolean;
   user_id: string;
+  environment_card: EnvironmentCard;
   created_at: string;
   updated_at: string;
 }
