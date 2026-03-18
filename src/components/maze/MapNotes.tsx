@@ -117,13 +117,36 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
   const exportToTome = useMutation({
     mutationFn: async () => {
       if (!user || !targetName) return;
-      // Build rich export content
       const parts: string[] = [];
       parts.push(`# ${targetName}`);
       if (locationDescription) parts.push(`\n${locationDescription}`);
       if (locationImageUrl) parts.push(`\nImage: ${locationImageUrl}`);
       if (containingAreas.length > 0) {
         parts.push(`\n**Areas:** ${containingAreas.join(' → ')}`);
+      }
+      // Environment cards
+      if (environmentCards.length > 0) {
+        parts.push(`\n---`);
+        environmentCards.forEach(({ areaName, card }) => {
+          parts.push(`\n### ${areaName} Environment`);
+          if (card.tier || card.type) parts.push(`Tier ${card.tier || '?'} ${card.type || ''}`);
+          if (card.difficulty) parts.push(`**Difficulty:** ${card.difficulty}`);
+          if (card.impulses?.length) parts.push(`**Impulses:** ${card.impulses.join(', ')}`);
+          if (card.potential_adversaries) parts.push(`**Potential Adversaries:** ${card.potential_adversaries}`);
+          if (card.features?.length) {
+            parts.push(`**Features:**`);
+            card.features.forEach(f => parts.push(`- **${f.name}** (${f.type}): ${f.description}`));
+          }
+        });
+      }
+      // Reviews
+      if (reviews.length > 0) {
+        parts.push(`\n---\n### Reviews (${reviews.length})`);
+        reviews.forEach(r => {
+          const name = r.profile?.character_name || 'Unknown';
+          const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
+          parts.push(`- **${name}** ${stars}${r.content ? `: ${r.content}` : ''}`);
+        });
       }
       if (content.trim()) {
         parts.push(`\n---\n**Personal Notes:**\n${content.trim()}`);
