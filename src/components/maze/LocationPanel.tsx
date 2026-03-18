@@ -52,6 +52,17 @@ export const LocationPanel = ({ location, onClose, isAdmin = false, onRelocate }
 
       <MapNotes locationId={location.id} targetName={location.name} isAdmin={isAdmin} />
 
+      {canRelocate && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => { onRelocate!(location); onClose(); }}
+          className="w-full border-gray-600 text-gray-300 hover:bg-gray-800"
+        >
+          <Move className="w-3 h-3 mr-1" /> Move Location
+        </Button>
+      )}
+
       {canDelete && (
         <Button
           variant="destructive"
