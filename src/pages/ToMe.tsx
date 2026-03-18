@@ -417,11 +417,28 @@ const ToMe = () => {
   };
 
   const getPageContent = (content: string, pageNumber: number) => {
-    const words = content.trim().split(/\s+/);
+    // Split into lines first, then paginate by word count while preserving line breaks
+    const lines = content.split('\n');
     const wordsPerPage = 750;
-    const startIndex = (pageNumber - 1) * wordsPerPage;
-    const endIndex = startIndex + wordsPerPage;
-    return words.slice(startIndex, endIndex).join(' ');
+    const startWord = (pageNumber - 1) * wordsPerPage;
+    const endWord = startWord + wordsPerPage;
+    
+    let wordCount = 0;
+    const pageLines: string[] = [];
+    
+    for (const line of lines) {
+      const lineWords = line.trim() === '' ? 0 : line.trim().split(/\s+/).length;
+      
+      if (wordCount + lineWords > endWord && pageLines.length > 0) break;
+      
+      if (wordCount + lineWords > startWord || (wordCount >= startWord)) {
+        pageLines.push(line);
+      }
+      
+      wordCount += lineWords || 1; // empty lines count as 1 for pagination
+    }
+    
+    return pageLines.join('\n');
   };
 
   const getChapterContent = (chapters: any[], chapterIndex: number) => {
