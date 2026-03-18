@@ -33,6 +33,7 @@ const Maze = () => {
 
   // Add location
   const [placingLocation, setPlacingLocation] = useState(false);
+  const [relocatingLocation, setRelocatingLocation] = useState<MapLocation | null>(null);
   const [newLocCoords, setNewLocCoords] = useState<{ x: number; y: number } | null>(null);
   const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', marker_color: '#14b8a6' });
 
