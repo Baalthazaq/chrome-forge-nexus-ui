@@ -48,6 +48,7 @@ const QuestseekAdmin = () => {
   const [replenishDialogOpen, setReplenishDialogOpen] = useState(false);
   const [replenishQuestId, setReplenishQuestId] = useState("");
   const [replenishQty, setReplenishQty] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isAdmin) {
