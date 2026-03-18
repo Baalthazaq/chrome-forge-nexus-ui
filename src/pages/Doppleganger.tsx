@@ -221,6 +221,9 @@ const Doppleganger = () => {
           subclassCards={subclassCards}
           domainCards={domainCards}
           selectedSubclass={selectedSubclass}
+          downtimeBalance={downtimeBalance}
+          onShortRest={() => { setRestType("short"); setRestOpen(true); }}
+          onLongRest={() => { setRestType("long"); setRestOpen(true); }}
         />
 
         <StatsGrid
