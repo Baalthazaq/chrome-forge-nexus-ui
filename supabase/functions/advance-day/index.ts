@@ -7,21 +7,14 @@ const corsHeaders = {
 };
 
 const MONTHS = [
-  { number: 1, days: 28 },
-  { number: 2, days: 28 },
-  { number: 3, days: 28 },
-  { number: 4, days: 28 },
-  { number: 5, days: 28 },
-  { number: 6, days: 28 },
-  { number: 7, days: 28 },
-  { number: 8, days: 1 }, // Frippery
-  { number: 9, days: 28 },
-  { number: 10, days: 28 },
-  { number: 11, days: 28 },
-  { number: 12, days: 28 },
-  { number: 13, days: 28 },
-  { number: 14, days: 28 },
+  { number: 1, days: 28 }, { number: 2, days: 28 }, { number: 3, days: 28 },
+  { number: 4, days: 28 }, { number: 5, days: 28 }, { number: 6, days: 28 },
+  { number: 7, days: 28 }, { number: 8, days: 1 }, { number: 9, days: 28 },
+  { number: 10, days: 28 }, { number: 11, days: 28 }, { number: 12, days: 28 },
+  { number: 13, days: 28 }, { number: 14, days: 28 },
 ];
+
+const DOWNTIME_CAP = 100;
 
 function getMonthDays(monthNum: number): number {
   return MONTHS.find(m => m.number === monthNum)?.days || 28;
@@ -53,7 +46,6 @@ serve(async (req) => {
       auth: { persistSession: false },
     });
 
-    // Auth check
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
     const token = authHeader.replace("Bearer ", "");
@@ -61,55 +53,36 @@ serve(async (req) => {
     if (userError || !userData.user) throw new Error("Not authenticated");
 
     const { data: userRole } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userData.user.id)
-      .single();
+      .from("user_roles").select("role").eq("user_id", userData.user.id).single();
     if (!userRole || userRole.role !== "admin") throw new Error("Admin only");
 
     const body = await req.json().catch(() => ({}));
     const { operation } = body;
 
-    // Get current calendar
     const { data: cal, error: calError } = await supabase
-      .from("game_calendar")
-      .select("*")
-      .limit(1)
-      .single();
+      .from("game_calendar").select("*").limit(1).single();
     if (calError || !cal) throw new Error("Could not read game calendar");
 
-    // SET DATE operation - no billing
+    // SET DATE operation
     if (operation === "set_date") {
       const { day, month, year } = body;
       if (!day || !month || !year) throw new Error("day, month, year required");
-      
-      const monthDays = getMonthDays(month);
-      const clampedDay = Math.min(Math.max(1, day), monthDays);
+      const clampedDay = Math.min(Math.max(1, day), getMonthDays(month));
       const clampedMonth = Math.min(Math.max(1, month), 14);
 
       const { error: updateError } = await supabase
         .from("game_calendar")
-        .update({
-          current_day: clampedDay,
-          current_month: clampedMonth,
-          current_year: year,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ current_day: clampedDay, current_month: clampedMonth, current_year: year, updated_at: new Date().toISOString() })
         .eq("id", cal.id);
-
       if (updateError) throw updateError;
 
       return new Response(
-        JSON.stringify({
-          success: true,
-          newDate: { day: clampedDay, month: clampedMonth, year },
-          operation: "set_date",
-        }),
+        JSON.stringify({ success: true, newDate: { day: clampedDay, month: clampedMonth, year }, operation: "set_date" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // ADVANCE operation (default)
+    // ADVANCE operation
     const { days = 1 } = body;
     const advanceCount = Math.min(Math.max(1, days), 365);
 
@@ -119,12 +92,8 @@ serve(async (req) => {
     const billingSummary: string[] = [];
     const downtimeSummary: string[] = [];
 
-    // Get downtime config
     const { data: dtConfig } = await supabase
-      .from("downtime_config")
-      .select("*")
-      .limit(1)
-      .single();
+      .from("downtime_config").select("*").limit(1).single();
     const hoursPerDay = dtConfig?.hours_per_day || 8;
 
     for (let i = 0; i < advanceCount; i++) {
@@ -132,44 +101,29 @@ serve(async (req) => {
       if (currentDay > getMonthDays(currentMonth)) {
         currentDay = 1;
         currentMonth++;
-        if (currentMonth > 14) {
-          currentMonth = 1;
-          currentYear++;
-        }
+        if (currentMonth > 14) { currentMonth = 1; currentYear++; }
       }
 
       // --- DOWNTIME PROCESSING ---
-      // 1. Grant downtime hours to all players
+      // 1. Grant downtime hours (capped at 100)
       const { data: allBalances } = await supabase
-        .from("downtime_balances")
-        .select("*");
+        .from("downtime_balances").select("*");
 
       if (allBalances && allBalances.length > 0) {
         for (const bal of allBalances) {
-          const newBalance = bal.balance + hoursPerDay;
+          const newBalance = Math.min(bal.balance + hoursPerDay, DOWNTIME_CAP);
           await supabase
             .from("downtime_balances")
             .update({ balance: newBalance, updated_at: new Date().toISOString() })
             .eq("id", bal.id);
         }
-        downtimeSummary.push(`Granted ${hoursPerDay}h to ${allBalances.length} players`);
+        downtimeSummary.push(`Granted ${hoursPerDay}h to ${allBalances.length} players (cap ${DOWNTIME_CAP})`);
       }
 
       // 2. Process full-time job downtime costs
-      // Find all active full-time job acceptances
       const { data: ftAcceptances } = await supabase
         .from("quest_acceptances")
-        .select(`
-          id,
-          user_id,
-          quest_id,
-          quests (
-            id,
-            downtime_cost,
-            job_type,
-            title
-          )
-        `)
+        .select(`id, user_id, quest_id, quests (id, downtime_cost, job_type, title)`)
         .eq("status", "accepted");
 
       const fullTimeAcceptances = ftAcceptances?.filter(
@@ -181,21 +135,27 @@ serve(async (req) => {
         const dailyCost = quest.downtime_cost || 0;
         if (dailyCost <= 0) continue;
 
-        // Get current downtime balance
         const { data: bal } = await supabase
-          .from("downtime_balances")
-          .select("*")
-          .eq("user_id", fta.user_id)
-          .single();
-
+          .from("downtime_balances").select("*").eq("user_id", fta.user_id).single();
         if (!bal) continue;
 
         if (bal.balance >= dailyCost) {
-          // Deduct downtime
           await supabase
             .from("downtime_balances")
             .update({ balance: bal.balance - dailyCost, updated_at: new Date().toISOString() })
             .eq("id", bal.id);
+
+          // Log the deduction as an activity
+          await supabase.from("downtime_activities").insert({
+            user_id: fta.user_id,
+            activity_type: "full_time_deduction",
+            hours_spent: dailyCost,
+            activities_chosen: [],
+            notes: `Auto-deduction for ${quest.title}`,
+            game_day: currentDay,
+            game_month: currentMonth,
+            game_year: currentYear,
+          });
         } else {
           // Not enough downtime - pause the recurring payment
           await supabase
@@ -214,16 +174,11 @@ serve(async (req) => {
         const dailyCost = quest.downtime_cost || 0;
 
         const { data: bal } = await supabase
-          .from("downtime_balances")
-          .select("*")
-          .eq("user_id", fta.user_id)
-          .single();
+          .from("downtime_balances").select("*").eq("user_id", fta.user_id).single();
 
         if (bal && bal.balance >= dailyCost) {
-          // Check if payment is paused
           const { data: rp } = await supabase
-            .from("recurring_payments")
-            .select("*")
+            .from("recurring_payments").select("*")
             .filter("metadata->>quest_id", "eq", fta.quest_id)
             .eq("to_user_id", fta.user_id)
             .eq("status", "paused")
@@ -264,14 +219,8 @@ serve(async (req) => {
 
     const { error: updateError } = await supabase
       .from("game_calendar")
-      .update({
-        current_day: currentDay,
-        current_month: currentMonth,
-        current_year: currentYear,
-        updated_at: new Date().toISOString(),
-      })
+      .update({ current_day: currentDay, current_month: currentMonth, current_year: currentYear, updated_at: new Date().toISOString() })
       .eq("id", cal.id);
-
     if (updateError) throw updateError;
 
     return new Response(
