@@ -217,26 +217,8 @@ const QuestseekAdmin = () => {
           <div className="w-20" />
         </div>
 
-        {/* Downtime Config */}
-        <Card className="p-4 bg-gray-900/50 border-cyan-500/30 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Settings className="w-5 h-5 text-cyan-400" />
-              <span className="text-white font-medium">Downtime per Day</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                value={downtimeConfig.hours_per_day}
-                onChange={e => setDowntimeConfig(prev => ({ ...prev, hours_per_day: parseInt(e.target.value) || 0 }))}
-                className="w-20 bg-gray-800 border-gray-600 text-white"
-              />
-              <span className="text-gray-400">hours</span>
-              <Button size="sm" onClick={() => updateDowntimeHours(downtimeConfig.hours_per_day)}
-                className="bg-cyan-600 hover:bg-cyan-700">Save</Button>
-            </div>
-          </div>
-        </Card>
+
+
 
         <Tabs defaultValue="submissions" className="space-y-6">
           <TabsList className="bg-gray-900/50 border border-gray-700/50">
