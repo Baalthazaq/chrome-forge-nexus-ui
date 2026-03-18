@@ -200,6 +200,81 @@ const QuestseekAdmin = () => {
   const activeQuests = quests.filter(q => q.status === "active");
   const cancelledQuests = quests.filter(q => q.status === "cancelled");
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const exportQuests = () => {
+    const rows = quests.map(q => ({
+      title: q.title,
+      description: q.description || "",
+      client: q.client || "",
+      job_type: q.job_type,
+      reward_min: q.reward_min || 0,
+      reward: q.reward || 0,
+      difficulty: q.difficulty || "",
+      downtime_cost: q.downtime_cost || 0,
+      available_quantity: q.available_quantity ?? "",
+      pay_interval: q.pay_interval || "",
+      tags: q.tags?.join(", ") || "",
+      time_limit: q.time_limit || "",
+      status: q.status || "active",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Quests");
+    XLSX.writeFile(wb, "questseek_export.xlsx");
+    toast({ title: `Exported ${rows.length} quests` });
+  };
+
+  const importQuests = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data);
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows: any[] = XLSX.utils.sheet_to_json(ws);
+
+      let created = 0, updated = 0, errors = 0;
+      for (const row of rows) {
+        const payload = {
+          title: String(row.title || "").trim(),
+          description: row.description ? String(row.description) : null,
+          client: row.client ? String(row.client) : null,
+          job_type: row.job_type || "commission",
+          reward_min: parseInt(row.reward_min) || 0,
+          reward: parseInt(row.reward) || 0,
+          difficulty: row.difficulty || "Low Risk",
+          downtime_cost: parseInt(row.downtime_cost) || 0,
+          available_quantity: row.available_quantity !== "" && row.available_quantity != null ? parseInt(row.available_quantity) : null,
+          pay_interval: row.pay_interval || null,
+          tags: row.tags ? String(row.tags).split(",").map((t: string) => t.trim()).filter(Boolean) : null,
+          time_limit: row.time_limit ? String(row.time_limit) : null,
+          status: row.status || "active",
+        };
+        if (!payload.title) { errors++; continue; }
+
+        // Check if quest with same title exists
+        const existing = quests.find(q => q.title.toLowerCase() === payload.title.toLowerCase());
+        if (existing) {
+          const { error } = await supabase.functions.invoke("quest-admin", {
+            body: { operation: "update_quest", id: existing.id, ...payload },
+          });
+          if (error) errors++; else updated++;
+        } else {
+          const { error } = await supabase.functions.invoke("quest-admin", {
+            body: { operation: "create_quest", ...payload },
+          });
+          if (error) errors++; else created++;
+        }
+      }
+      toast({ title: "Import complete", description: `Created: ${created}, Updated: ${updated}${errors ? `, Errors: ${errors}` : ""}` });
+      loadData();
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/20 via-black to-teal-900/20" />
@@ -215,7 +290,15 @@ const QuestseekAdmin = () => {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
             Questseek Admin
           </h1>
-          <div className="w-20" />
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={exportQuests} className="border-gray-700 text-gray-300 hover:text-white">
+              <Download className="w-4 h-4 mr-1" /> Export
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="border-gray-700 text-gray-300 hover:text-white">
+              <Upload className="w-4 h-4 mr-1" /> Import
+            </Button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={importQuests} className="hidden" />
+          </div>
         </div>
 
 
