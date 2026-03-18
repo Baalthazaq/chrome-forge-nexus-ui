@@ -12,6 +12,9 @@ interface MapNotesProps {
   areaId?: string;
   targetName: string;
   isAdmin?: boolean;
+  locationDescription?: string | null;
+  locationImageUrl?: string | null;
+  containingAreas?: string[];
 }
 
 interface NoteWithProfile {
