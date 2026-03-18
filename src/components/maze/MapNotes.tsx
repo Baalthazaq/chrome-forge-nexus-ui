@@ -186,7 +186,7 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
     onError: (err: any) => toast.error(err.message),
   });
 
-  if (!user) return null;
+  if (!effectiveUserId) return null;
 
   const allNotes = allNotesQuery.data || [];
   const otherNotes = allNotes.filter(n => n.user_id !== user.id);
