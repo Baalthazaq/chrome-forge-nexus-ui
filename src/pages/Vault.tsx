@@ -610,7 +610,43 @@ const Vault = () => {
           </Card>
         </div>
 
-        {/* Bills Section */}
+        {/* Income & Downtime Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <Card className="bg-gray-900/50 border-cyan-700/50 backdrop-blur-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-cyan-400">Downtime</CardTitle>
+              <Clock className="h-4 w-4 text-cyan-400" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${downtimeBalance > 0 ? "text-cyan-400" : "text-red-400"}`}>
+                {downtimeBalance}h
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Available hours for commissions</p>
+            </CardContent>
+          </Card>
+          {incomePayments.length > 0 && (
+            <Card className="bg-gray-900/50 border-emerald-700/50 backdrop-blur-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-emerald-400">Job Income</CardTitle>
+                <Briefcase className="h-4 w-4 text-emerald-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  {incomePayments.map((ip: any) => (
+                    <div key={ip.id} className="flex justify-between text-sm">
+                      <span className="text-gray-300">{ip.description}</span>
+                      <span className={`font-medium ${ip.status === 'paused' ? 'text-yellow-400' : 'text-emerald-400'}`}>
+                        {formatHex(ip.amount)}/{ip.interval_type}
+                        {ip.status === 'paused' && ' (paused)'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
         {bills.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
