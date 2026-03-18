@@ -12,6 +12,9 @@ interface MapNotesProps {
   areaId?: string;
   targetName: string;
   isAdmin?: boolean;
+  locationDescription?: string | null;
+  locationImageUrl?: string | null;
+  containingAreas?: string[];
 }
 
 interface NoteWithProfile {
@@ -21,7 +24,7 @@ interface NoteWithProfile {
   character_name?: string | null;
 }
 
-export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false }: MapNotesProps) => {
+export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, locationDescription, locationImageUrl, containingAreas = [] }: MapNotesProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [content, setContent] = useState('');
@@ -104,12 +107,25 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false }: Ma
 
   const exportToTome = useMutation({
     mutationFn: async () => {
-      if (!user || !content.trim()) return;
+      if (!user || !targetName) return;
+      // Build rich export content
+      const parts: string[] = [];
+      parts.push(`# ${targetName}`);
+      if (locationDescription) parts.push(`\n${locationDescription}`);
+      if (locationImageUrl) parts.push(`\nImage: ${locationImageUrl}`);
+      if (containingAreas.length > 0) {
+        parts.push(`\n**Areas:** ${containingAreas.join(' → ')}`);
+      }
+      if (content.trim()) {
+        parts.push(`\n---\n**Personal Notes:**\n${content.trim()}`);
+      }
+      const exportContent = parts.join('\n');
+      const tags = ['maze', locationId ? 'location' : 'area'];
       const { error } = await supabase.from('tome_entries').insert({
         user_id: user.id,
-        title: `Notes: ${targetName}`,
-        content: content.trim(),
-        tags: ['maze', locationId ? 'location' : 'area'],
+        title: `${targetName}`,
+        content: exportContent,
+        tags,
       });
       if (error) throw error;
     },
@@ -145,7 +161,7 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false }: Ma
           size="sm"
           variant="outline"
           onClick={() => exportToTome.mutate()}
-          disabled={!content.trim() || exportToTome.isPending}
+          disabled={exportToTome.isPending}
           className="border-gray-600 text-gray-300 hover:bg-gray-800"
         >
           {exportToTome.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <BookOpen className="w-3 h-3 mr-1" />}
