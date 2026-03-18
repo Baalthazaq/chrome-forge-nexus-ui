@@ -120,6 +120,7 @@ const Maze = () => {
         y: newLocCoords.y,
         is_public: false,
         user_id: user.id,
+        environment_card: {},
       });
       toast.success('Location added! (visible only to you until approved)');
       setNewLocCoords(null);

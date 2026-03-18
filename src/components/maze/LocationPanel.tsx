@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapLocation, MapArea, MapLocationReview, useMazeData } from '@/hooks/useMazeData';
+import { MapLocation, MapArea, MapLocationReview, EnvironmentCard, useMazeData } from '@/hooks/useMazeData';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { X, Trash2, Move, Pencil, Star, Send } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { X, Trash2, Move, Pencil, Star, Send, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { LOCATION_ICON_TYPES, ICON_MAP, ICON_LABELS } from './InteractiveMap';
 
@@ -84,6 +85,7 @@ export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRel
     image_url: location.image_url || '',
     marker_color: location.marker_color,
   });
+  const [envCard, setEnvCard] = useState<EnvironmentCard>(location.environment_card || {});
 
   const isOwner = user?.id === location.user_id;
   const canDelete = isOwner && !location.is_public;
@@ -114,6 +116,7 @@ export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRel
         icon_type: editForm.icon_type,
         image_url: editForm.image_url || null,
         marker_color: editForm.marker_color,
+        environment_card: envCard,
       });
       toast.success('Location updated');
       setEditing(false);
@@ -158,6 +161,11 @@ export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRel
           </div>
         )}
 
+        {/* Location's own environment card */}
+        {location.environment_card && (location.environment_card.tier || location.environment_card.type || location.environment_card.features?.length) && (
+          <EnvironmentCardDisplay card={location.environment_card} areaName={location.name} isAdmin={false} />
+        )}
+
         {/* Environment cards from containing areas */}
         {containingAreas.map(a => {
           const card = a.environment_card;
@@ -172,7 +180,12 @@ export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRel
           locationDescription={location.description}
           locationImageUrl={location.image_url}
           containingAreas={containingAreas.map(a => a.name)}
-          environmentCards={containingAreas.filter(a => a.environment_card?.tier || a.environment_card?.type || a.environment_card?.features?.length).map(a => ({ areaName: a.name, card: a.environment_card }))}
+          environmentCards={[
+            ...(location.environment_card?.tier || location.environment_card?.type || location.environment_card?.features?.length
+              ? [{ areaName: location.name, card: location.environment_card }]
+              : []),
+            ...containingAreas.filter(a => a.environment_card?.tier || a.environment_card?.type || a.environment_card?.features?.length).map(a => ({ areaName: a.name, card: a.environment_card })),
+          ]}
           reviews={reviews}
         />
 
@@ -303,7 +316,38 @@ export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRel
               <Input value={editForm.image_url} onChange={e => setEditForm(f => ({ ...f, image_url: e.target.value }))} className="bg-gray-800 border-gray-700 text-gray-200" placeholder="https://..." />
             </div>
 
-            {/* Coordinates + Move */}
+            {/* Environment Card */}
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white">
+                <ChevronDown className="w-3 h-3" /> Environment Card
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-2 mt-2 bg-gray-800/50 rounded p-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-gray-400 text-xs">Tier</Label>
+                    <Input type="number" value={envCard.tier ?? ''} onChange={e => setEnvCard(c => ({ ...c, tier: e.target.value ? Number(e.target.value) : undefined }))} className="bg-gray-900 border-gray-700 text-gray-200 h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-xs">Type</Label>
+                    <Input value={envCard.type ?? ''} onChange={e => setEnvCard(c => ({ ...c, type: e.target.value || undefined }))} className="bg-gray-900 border-gray-700 text-gray-200 h-8 text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-gray-400 text-xs">Difficulty</Label>
+                  <Input value={envCard.difficulty ?? ''} onChange={e => setEnvCard(c => ({ ...c, difficulty: e.target.value || undefined }))} className="bg-gray-900 border-gray-700 text-gray-200 h-8 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-gray-400 text-xs">Impulses (comma-separated)</Label>
+                  <Input value={(envCard.impulses || []).join(', ')} onChange={e => setEnvCard(c => ({ ...c, impulses: e.target.value ? e.target.value.split(',').map(s => s.trim()) : undefined }))} className="bg-gray-900 border-gray-700 text-gray-200 h-8 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-gray-400 text-xs">Potential Adversaries</Label>
+                  <Input value={envCard.potential_adversaries ?? ''} onChange={e => setEnvCard(c => ({ ...c, potential_adversaries: e.target.value || undefined }))} className="bg-gray-900 border-gray-700 text-gray-200 h-8 text-sm" />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+
             <div>
               <Label className="text-gray-300">Coordinates</Label>
               <div className="flex items-center gap-2 mt-1">

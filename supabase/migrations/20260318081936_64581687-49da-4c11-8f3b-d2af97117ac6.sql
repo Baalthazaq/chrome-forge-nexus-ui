@@ -1,0 +1,1 @@
+ALTER TABLE public.map_locations ADD COLUMN environment_card jsonb DEFAULT '{}'::jsonb;
