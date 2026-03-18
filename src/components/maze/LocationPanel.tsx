@@ -316,7 +316,38 @@ export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRel
               <Input value={editForm.image_url} onChange={e => setEditForm(f => ({ ...f, image_url: e.target.value }))} className="bg-gray-800 border-gray-700 text-gray-200" placeholder="https://..." />
             </div>
 
-            {/* Coordinates + Move */}
+            {/* Environment Card */}
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white">
+                <ChevronDown className="w-3 h-3" /> Environment Card
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-2 mt-2 bg-gray-800/50 rounded p-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-gray-400 text-xs">Tier</Label>
+                    <Input type="number" value={envCard.tier ?? ''} onChange={e => setEnvCard(c => ({ ...c, tier: e.target.value ? Number(e.target.value) : undefined }))} className="bg-gray-900 border-gray-700 text-gray-200 h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-xs">Type</Label>
+                    <Input value={envCard.type ?? ''} onChange={e => setEnvCard(c => ({ ...c, type: e.target.value || undefined }))} className="bg-gray-900 border-gray-700 text-gray-200 h-8 text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-gray-400 text-xs">Difficulty</Label>
+                  <Input value={envCard.difficulty ?? ''} onChange={e => setEnvCard(c => ({ ...c, difficulty: e.target.value || undefined }))} className="bg-gray-900 border-gray-700 text-gray-200 h-8 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-gray-400 text-xs">Impulses (comma-separated)</Label>
+                  <Input value={(envCard.impulses || []).join(', ')} onChange={e => setEnvCard(c => ({ ...c, impulses: e.target.value ? e.target.value.split(',').map(s => s.trim()) : undefined }))} className="bg-gray-900 border-gray-700 text-gray-200 h-8 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-gray-400 text-xs">Potential Adversaries</Label>
+                  <Input value={envCard.potential_adversaries ?? ''} onChange={e => setEnvCard(c => ({ ...c, potential_adversaries: e.target.value || undefined }))} className="bg-gray-900 border-gray-700 text-gray-200 h-8 text-sm" />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+
             <div>
               <Label className="text-gray-300">Coordinates</Label>
               <div className="flex items-center gap-2 mt-1">
