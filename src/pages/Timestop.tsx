@@ -14,6 +14,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MONTHS, DAY_NAMES, formatGameDate, isFrippery, getMonth, type GameDate } from "@/lib/gameCalendar";
 import { toast } from "@/hooks/use-toast";
 import ShareEventDialog from "@/components/ShareEventDialog";
+import RestDialog from "@/components/RestDialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { getMonth as getMonthInfo } from "@/lib/gameCalendar";
 
 interface CalendarEvent {
   id: string;
