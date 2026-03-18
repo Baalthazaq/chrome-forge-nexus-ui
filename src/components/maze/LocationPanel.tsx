@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { X, Trash2, Move, Pencil } from 'lucide-react';
+import { X, Trash2, Move, Pencil, Star, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { LOCATION_ICON_TYPES, ICON_MAP, ICON_LABELS } from './InteractiveMap';
 
