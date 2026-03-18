@@ -6,15 +6,17 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ArrowLeft, Plus, Edit, Trash2, Newspaper, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { z } from 'zod';
+import { MONTHS, getMonth } from '@/lib/gameCalendar';
 
 const articleSchema = z.object({
   headline: z.string().trim().min(1, 'Headline is required').max(300, 'Headline too long (max 300 chars)'),
@@ -23,7 +25,6 @@ const articleSchema = z.object({
   image_url: z.string().trim().max(2000).nullable(),
   tags: z.array(z.string().max(50)).max(20),
   is_breaking: z.boolean(),
-  publish_date: z.string().nullable(),
   is_published: z.boolean(),
 });
 
@@ -35,8 +36,12 @@ interface NewsArticle {
   image_url: string | null;
   tags: string[];
   is_breaking: boolean;
+  publish_day: number | null;
+  publish_month: number | null;
+  publish_year: number | null;
   publish_date: string | null;
   is_published: boolean;
+  user_id: string | null;
   created_at: string;
 }
 
@@ -48,6 +53,7 @@ const CVNewsAdmin = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<NewsArticle | null>(null);
+  const [gameDate, setGameDate] = useState<{ day: number; month: number; year: number } | null>(null);
 
   // Form state
   const [headline, setHeadline] = useState('');
@@ -56,11 +62,18 @@ const CVNewsAdmin = () => {
   const [imageUrl, setImageUrl] = useState('');
   const [tagsInput, setTagsInput] = useState('');
   const [isBreaking, setIsBreaking] = useState(false);
-  const [publishDate, setPublishDate] = useState('');
   const [isPublished, setIsPublished] = useState(false);
+  const [pubDay, setPubDay] = useState('');
+  const [pubMonth, setPubMonth] = useState('');
+  const [pubYear, setPubYear] = useState('');
 
   useEffect(() => {
-    if (isAdmin) loadArticles();
+    if (isAdmin) {
+      loadArticles();
+      supabase.from('game_calendar').select('*').limit(1).single().then(({ data }) => {
+        if (data) setGameDate({ day: data.current_day, month: data.current_month, year: data.current_year });
+      });
+    }
   }, [isAdmin]);
 
   const loadArticles = async () => {
@@ -68,7 +81,7 @@ const CVNewsAdmin = () => {
       .from('news_articles')
       .select('*')
       .order('created_at', { ascending: false });
-    if (data) setArticles(data);
+    if (data) setArticles(data as unknown as NewsArticle[]);
     if (error) console.error('Error loading articles:', error);
   };
 
@@ -79,8 +92,10 @@ const CVNewsAdmin = () => {
     setImageUrl('');
     setTagsInput('');
     setIsBreaking(false);
-    setPublishDate('');
     setIsPublished(false);
+    setPubDay('');
+    setPubMonth('');
+    setPubYear('');
     setEditingArticle(null);
   };
 
@@ -92,8 +107,10 @@ const CVNewsAdmin = () => {
     setImageUrl(article.image_url || '');
     setTagsInput((article.tags || []).join(', '));
     setIsBreaking(article.is_breaking);
-    setPublishDate(article.publish_date ? new Date(article.publish_date).toISOString().slice(0, 16) : '');
     setIsPublished(article.is_published);
+    setPubDay(article.publish_day?.toString() || '');
+    setPubMonth(article.publish_month?.toString() || '');
+    setPubYear(article.publish_year?.toString() || '');
     setDialogOpen(true);
   };
 
@@ -111,7 +128,6 @@ const CVNewsAdmin = () => {
       image_url: imageUrl.trim() || null,
       tags,
       is_breaking: isBreaking,
-      publish_date: publishDate ? new Date(publishDate).toISOString() : null,
       is_published: isPublished,
     };
 
@@ -120,15 +136,12 @@ const CVNewsAdmin = () => {
       toast({ title: "Validation Error", description: parsed.error.errors[0]?.message || "Invalid input", variant: "destructive" });
       return;
     }
-    const articleData = parsed.data as {
-      headline: string;
-      summary: string | null;
-      content: string | null;
-      image_url: string | null;
-      tags: string[];
-      is_breaking: boolean;
-      publish_date: string | null;
-      is_published: boolean;
+
+    const articleData: any = {
+      ...parsed.data,
+      publish_day: pubDay ? parseInt(pubDay) : null,
+      publish_month: pubMonth ? parseInt(pubMonth) : null,
+      publish_year: pubYear ? parseInt(pubYear) : null,
     };
 
     // If marking as breaking, unmark all others first
@@ -180,6 +193,13 @@ const CVNewsAdmin = () => {
     if (!error) loadArticles();
   };
 
+  const formatPubDate = (a: NewsArticle) => {
+    if (!a.publish_day || !a.publish_month || !a.publish_year) return 'No date set';
+    const m = getMonth(a.publish_month);
+    if (a.publish_month === 8) return `Frippery, ${a.publish_year}`;
+    return `${a.publish_day} ${m?.name || '?'}, ${a.publish_year}`;
+  };
+
   if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><p>Loading...</p></div>;
   if (!isAdmin) return null;
 
@@ -225,8 +245,42 @@ const CVNewsAdmin = () => {
                     <Input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} placeholder="Politics, Crime, Economy..." />
                   </div>
                   <div>
-                    <Label>Publish Date (real-world, hidden from players)</Label>
-                    <Input type="datetime-local" value={publishDate} onChange={(e) => setPublishDate(e.target.value)} />
+                    <Label>Publish Date (In-Game Calendar)</Label>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        type="number"
+                        value={pubDay}
+                        onChange={(e) => setPubDay(e.target.value)}
+                        placeholder="Day"
+                        className="w-20"
+                        min={1}
+                        max={28}
+                      />
+                      <Select value={pubMonth} onValueChange={setPubMonth}>
+                        <SelectTrigger className="w-40">
+                          <SelectValue placeholder="Month" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover text-popover-foreground z-50">
+                          {MONTHS.map(m => (
+                            <SelectItem key={m.number} value={m.number.toString()}>
+                              {m.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        value={pubYear}
+                        onChange={(e) => setPubYear(e.target.value)}
+                        placeholder="Year"
+                        className="w-24"
+                      />
+                    </div>
+                    {gameDate && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Current game date: {gameDate.day} {getMonth(gameDate.month)?.name}, {gameDate.year}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-6">
                     <div className="flex items-center gap-2">
@@ -269,6 +323,9 @@ const CVNewsAdmin = () => {
                       ) : (
                         <Badge variant="outline" className="text-xs">Draft</Badge>
                       )}
+                      {article.user_id && (
+                        <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-400">Player</Badge>
+                      )}
                     </div>
                     {article.summary && (
                       <p className="text-sm text-muted-foreground line-clamp-1">{article.summary}</p>
@@ -277,11 +334,9 @@ const CVNewsAdmin = () => {
                       {(article.tags || []).map((tag) => (
                         <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
                       ))}
-                      {article.publish_date && (
-                        <span className="text-xs text-muted-foreground">
-                          Publishes: {new Date(article.publish_date).toLocaleString()}
-                        </span>
-                      )}
+                      <span className="text-xs text-muted-foreground">
+                        {formatPubDate(article)}
+                      </span>
                     </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
