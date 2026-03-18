@@ -92,7 +92,10 @@ export const useMazeData = () => {
         .select('*')
         .order('name');
       if (error) throw error;
-      return (data || []) as MapLocation[];
+      return (data || []).map((l: any) => ({
+        ...l,
+        environment_card: l.environment_card || {},
+      })) as MapLocation[];
     },
   });
 

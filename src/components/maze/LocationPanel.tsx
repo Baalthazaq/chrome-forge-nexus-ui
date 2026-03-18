@@ -158,6 +158,11 @@ export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRel
           </div>
         )}
 
+        {/* Location's own environment card */}
+        {location.environment_card && (location.environment_card.tier || location.environment_card.type || location.environment_card.features?.length) && (
+          <EnvironmentCardDisplay card={location.environment_card} areaName={location.name} isAdmin={false} />
+        )}
+
         {/* Environment cards from containing areas */}
         {containingAreas.map(a => {
           const card = a.environment_card;
@@ -172,7 +177,12 @@ export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRel
           locationDescription={location.description}
           locationImageUrl={location.image_url}
           containingAreas={containingAreas.map(a => a.name)}
-          environmentCards={containingAreas.filter(a => a.environment_card?.tier || a.environment_card?.type || a.environment_card?.features?.length).map(a => ({ areaName: a.name, card: a.environment_card }))}
+          environmentCards={[
+            ...(location.environment_card?.tier || location.environment_card?.type || location.environment_card?.features?.length
+              ? [{ areaName: location.name, card: location.environment_card }]
+              : []),
+            ...containingAreas.filter(a => a.environment_card?.tier || a.environment_card?.type || a.environment_card?.features?.length).map(a => ({ areaName: a.name, card: a.environment_card })),
+          ]}
           reviews={reviews}
         />
 
