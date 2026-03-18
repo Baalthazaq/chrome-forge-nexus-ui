@@ -30,6 +30,9 @@ interface Props {
   subclassCards: GameCard[];
   domainCards: GameCard[];
   selectedSubclass: GameCard | undefined;
+  downtimeBalance?: number;
+  onShortRest?: () => void;
+  onLongRest?: () => void;
 }
 
 function AncestryCombobox({ value, onChange, ancestryCards, isEditing }: {
