@@ -101,7 +101,7 @@ export const MapNotes = ({ locationId, areaId, targetName, isAdmin = false, loca
           .eq('id', noteQuery.data.id);
         if (error) throw error;
       } else {
-        const insertData: any = { user_id: user.id, content };
+        const insertData: any = { user_id: effectiveUserId, content };
         if (locationId) insertData.location_id = locationId;
         if (areaId) insertData.area_id = areaId;
         const { error } = await supabase.from('map_notes').insert(insertData);
