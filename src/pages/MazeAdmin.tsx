@@ -298,6 +298,7 @@ const MazeAdmin = () => {
               is_public: row.is_public === true || row.is_public === 'true' || row.is_public === 'TRUE',
               image_url: row.image_url || null,
               user_id: row.user_id || user!.id,
+              environment_card: {},
             };
             const existingById = row.id ? maze.locations.find(l => l.id === row.id) : null;
             const existingByName = !existingById ? maze.locations.find(l => l.name.toLowerCase() === loc.name.toLowerCase()) : null;
