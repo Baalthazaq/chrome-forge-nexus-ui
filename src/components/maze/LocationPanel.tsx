@@ -116,6 +116,7 @@ export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRel
         icon_type: editForm.icon_type,
         image_url: editForm.image_url || null,
         marker_color: editForm.marker_color,
+        environment_card: envCard,
       });
       toast.success('Location updated');
       setEditing(false);
