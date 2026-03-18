@@ -922,9 +922,13 @@ export type Database = {
           is_breaking: boolean | null
           is_published: boolean | null
           publish_date: string | null
+          publish_day: number | null
+          publish_month: number | null
+          publish_year: number | null
           summary: string | null
           tags: string[] | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           content?: string | null
@@ -935,9 +939,13 @@ export type Database = {
           is_breaking?: boolean | null
           is_published?: boolean | null
           publish_date?: string | null
+          publish_day?: number | null
+          publish_month?: number | null
+          publish_year?: number | null
           summary?: string | null
           tags?: string[] | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           content?: string | null
@@ -948,9 +956,13 @@ export type Database = {
           is_breaking?: boolean | null
           is_published?: boolean | null
           publish_date?: string | null
+          publish_day?: number | null
+          publish_month?: number | null
+          publish_year?: number | null
           summary?: string | null
           tags?: string[] | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

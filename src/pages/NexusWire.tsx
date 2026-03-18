@@ -4,9 +4,15 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Clock, AlertTriangle, Search, ChevronRight } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ArrowLeft, Clock, AlertTriangle, Search, ChevronRight, Plus } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { MONTHS, getMonth } from "@/lib/gameCalendar";
 
 const ORGS = [
   "Biogen","Void Systems","Neuro-Corp","Arcane Inc.","Titan Heavy Industries","Apex Dynamics",
@@ -30,8 +36,18 @@ interface NewsArticle {
   image_url: string | null;
   tags: string[];
   is_breaking: boolean;
+  publish_day: number | null;
+  publish_month: number | null;
+  publish_year: number | null;
   publish_date: string | null;
+  user_id: string | null;
   created_at: string;
+}
+
+interface GameDate {
+  day: number;
+  month: number;
+  year: number;
 }
 
 const MarketTicker = () => {
@@ -58,34 +74,86 @@ const MarketTicker = () => {
   );
 };
 
-const timeAgo = (dateStr: string) => {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-};
+/** Compare game dates: is a <= b? */
+function gameDateLte(a: { day: number; month: number; year: number }, b: GameDate): boolean {
+  if (a.year !== b.year) return a.year < b.year;
+  if (a.month !== b.month) return a.month < b.month;
+  return a.day <= b.day;
+}
+
+function formatGameDateShort(day: number | null, month: number | null, year: number | null): string {
+  if (!day || !month || !year) return '';
+  const m = getMonth(month);
+  if (!m) return '';
+  if (month === 8) return `Frippery, ${year}`;
+  return `${day} ${m.name}, ${year}`;
+}
 
 const NexusWire = () => {
-  const [articles, setArticles] = useState<NewsArticle[]>([]);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [allArticles, setAllArticles] = useState<NewsArticle[]>([]);
+  const [gameDate, setGameDate] = useState<GameDate | null>(null);
   const [search, setSearch] = useState('');
   const [searchParams] = useSearchParams();
   const articleId = searchParams.get('article');
 
+  // Submit article dialog
+  const [submitOpen, setSubmitOpen] = useState(false);
+  const [newHeadline, setNewHeadline] = useState('');
+  const [newSummary, setNewSummary] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [newTagsInput, setNewTagsInput] = useState('');
+
   useEffect(() => {
-    loadArticles();
+    loadData();
   }, []);
 
-  const loadArticles = async () => {
-    const { data } = await supabase
-      .from('news_articles')
-      .select('*')
-      .eq('is_published', true)
-      .lte('publish_date', new Date().toISOString())
-      .order('publish_date', { ascending: false });
-    if (data) setArticles(data);
+  const loadData = async () => {
+    const [articlesRes, calRes] = await Promise.all([
+      supabase.from('news_articles').select('*').eq('is_published', true).order('created_at', { ascending: false }),
+      supabase.from('game_calendar').select('*').limit(1).single(),
+    ]);
+    if (articlesRes.data) setAllArticles(articlesRes.data as unknown as NewsArticle[]);
+    if (calRes.data) setGameDate({ day: calRes.data.current_day, month: calRes.data.current_month, year: calRes.data.current_year });
+  };
+
+  // Filter articles: only show those whose game publish date <= current game date
+  const articles = useMemo(() => {
+    if (!gameDate) return [];
+    return allArticles.filter(a => {
+      // If no game date set on article, show it (legacy or player-submitted)
+      if (!a.publish_day || !a.publish_month || !a.publish_year) return true;
+      return gameDateLte({ day: a.publish_day, month: a.publish_month, year: a.publish_year }, gameDate);
+    });
+  }, [allArticles, gameDate]);
+
+  const handleSubmitArticle = async () => {
+    if (!newHeadline.trim() || !user) return;
+    const tags = newTagsInput.split(',').map(t => t.trim()).filter(Boolean);
+    const { error } = await supabase.from('news_articles').insert({
+      headline: newHeadline.trim(),
+      summary: newSummary.trim() || null,
+      content: newContent.trim() || null,
+      tags,
+      is_published: true,
+      is_breaking: false,
+      user_id: user.id,
+      publish_day: gameDate?.day || null,
+      publish_month: gameDate?.month || null,
+      publish_year: gameDate?.year || null,
+    });
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Article Published' });
+      setSubmitOpen(false);
+      setNewHeadline('');
+      setNewSummary('');
+      setNewContent('');
+      setNewTagsInput('');
+      loadData();
+    }
   };
 
   const breakingArticle = articles.find(a => a.is_breaking);
@@ -120,9 +188,9 @@ const NexusWire = () => {
 
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">{selectedArticle.headline}</h1>
 
-          <div className="flex items-center gap-3 text-gray-400 text-sm mb-6">
+          <div className="flex items-center gap-3 text-gray-400 text-sm mb-6 flex-wrap">
             <Clock className="w-4 h-4" />
-            <span>{selectedArticle.publish_date ? timeAgo(selectedArticle.publish_date) : ''}</span>
+            <span>{formatGameDateShort(selectedArticle.publish_day, selectedArticle.publish_month, selectedArticle.publish_year)}</span>
             {(selectedArticle.tags || []).map(tag => (
               <Badge key={tag} variant="outline" className="border-blue-500/50 text-blue-400 text-xs">{tag}</Badge>
             ))}
@@ -165,7 +233,44 @@ const NexusWire = () => {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
             CVNews
           </h1>
-          <div className="w-20" />
+          <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="border-blue-500/50 text-blue-400 hover:bg-blue-900/30">
+                <Plus className="w-4 h-4 mr-1" />Submit Story
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Submit a News Story</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div>
+                  <Label>Headline *</Label>
+                  <Input value={newHeadline} onChange={e => setNewHeadline(e.target.value)} placeholder="Your headline..." className="bg-gray-900/50 border-gray-700 text-white" />
+                </div>
+                <div>
+                  <Label>Summary</Label>
+                  <Textarea value={newSummary} onChange={e => setNewSummary(e.target.value)} placeholder="Brief summary..." rows={2} className="bg-gray-900/50 border-gray-700 text-white" />
+                </div>
+                <div>
+                  <Label>Full Article</Label>
+                  <Textarea value={newContent} onChange={e => setNewContent(e.target.value)} placeholder="Full story..." rows={6} className="bg-gray-900/50 border-gray-700 text-white" />
+                </div>
+                <div>
+                  <Label>Tags (comma-separated)</Label>
+                  <Input value={newTagsInput} onChange={e => setNewTagsInput(e.target.value)} placeholder="Crime, Economy..." className="bg-gray-900/50 border-gray-700 text-white" />
+                </div>
+                {gameDate && (
+                  <p className="text-xs text-gray-400">
+                    Publishing on: {formatGameDateShort(gameDate.day, gameDate.month, gameDate.year)}
+                  </p>
+                )}
+                <Button onClick={handleSubmitArticle} className="w-full" disabled={!newHeadline.trim()}>
+                  Publish Story
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Breaking News Banner */}
@@ -215,7 +320,7 @@ const NexusWire = () => {
                       ))}
                       <span className="text-gray-400 text-xs flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {article.publish_date ? timeAgo(article.publish_date) : ''}
+                        {formatGameDateShort(article.publish_day, article.publish_month, article.publish_year)}
                       </span>
                       {article.is_breaking && (
                         <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
