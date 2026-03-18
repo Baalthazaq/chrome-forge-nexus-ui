@@ -1,17 +1,19 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, FastForward, Loader2, Calendar, ChevronDown, ChevronUp, Search, Pencil, Home } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, FastForward, Loader2, Calendar, ChevronDown, ChevronUp, Search, Pencil, Home, Clock, Timer } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MONTHS, DAY_NAMES, formatGameDate, isFrippery, getMonth, getBillingTriggers, getBillingDescription, advanceDay, type GameDate } from "@/lib/gameCalendar";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 
 interface CalendarEvent {
@@ -711,8 +713,74 @@ const TimestopAdmin = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        {/* Player Downtime Overview */}
+        <PlayerDowntimeSection profiles={profiles} />
       </div>
     </div>
+  );
+};
+
+const PlayerDowntimeSection = ({ profiles }: { profiles: any[] }) => {
+  const [balances, setBalances] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const [balRes, actRes] = await Promise.all([
+        supabase.from("downtime_balances").select("*"),
+        supabase.from("downtime_activities").select("*").order("created_at", { ascending: false }).limit(50),
+      ]);
+      setBalances(balRes.data || []);
+      setActivities(actRes.data || []);
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const getName = (userId: string) => profiles.find((p) => p.user_id === userId)?.character_name || "Unknown";
+
+  if (loading) return null;
+
+  return (
+    <Card className="bg-gray-900/40 border-cyan-500/30 p-4 mt-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Timer className="w-4 h-4 text-cyan-400" />
+        <h3 className="text-cyan-300 font-mono text-sm font-medium">Player Downtime</h3>
+      </div>
+
+      {/* Balances */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+        {balances.map((b) => (
+          <div key={b.id} className="p-2 rounded bg-gray-800/50 border border-gray-700/50">
+            <p className="text-xs text-gray-400">{getName(b.user_id)}</p>
+            <p className={`text-lg font-bold font-mono ${b.balance > 0 ? "text-cyan-400" : "text-red-400"}`}>{b.balance}h</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Recent Activities */}
+      <h4 className="text-gray-400 text-xs font-mono mb-2">Recent Activities</h4>
+      <div className="space-y-1 max-h-60 overflow-y-auto">
+        {activities.map((act) => {
+          const typeLabels: Record<string, string> = {
+            short_rest: "Short Rest", long_rest: "Long Rest",
+            commission: "Commission", full_time_deduction: "Full-Time",
+          };
+          return (
+            <div key={act.id} className="flex items-center justify-between p-2 rounded bg-gray-800/30 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-300 font-medium">{getName(act.user_id)}</span>
+                <Badge variant="outline" className="text-xs text-gray-400">{typeLabels[act.activity_type] || act.activity_type}</Badge>
+                {act.notes && <span className="text-gray-500 truncate max-w-[150px]">{act.notes}</span>}
+              </div>
+              <span className="text-red-400 font-mono">-{act.hours_spent}h</span>
+            </div>
+          );
+        })}
+        {activities.length === 0 && <p className="text-gray-600 text-xs">No activities yet.</p>}
+      </div>
+    </Card>
   );
 };
 

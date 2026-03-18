@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun } from "lucide-react";
 import { Link } from "react-router-dom";
+import RestDialog from "@/components/RestDialog";
 import { formatHexDenomination } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -70,6 +71,15 @@ const Questseek = () => {
   const [rollResult, setRollResult] = useState("");
   const [rollType, setRollType] = useState("");
   const [submitNotes, setSubmitNotes] = useState("");
+  const [restType, setRestType] = useState<"short" | "long">("short");
+  const [restOpen, setRestOpen] = useState(false);
+  const [gameDate, setGameDate] = useState<{ day: number; month: number; year: number } | undefined>();
+
+  useEffect(() => {
+    supabase.from("game_calendar").select("*").limit(1).single().then(({ data }) => {
+      if (data) setGameDate({ day: data.current_day, month: data.current_month, year: data.current_year });
+    });
+  }, []);
 
   useEffect(() => {
     if (effectiveUserId) {
@@ -275,18 +285,39 @@ const Questseek = () => {
           </div>
         )}
 
-        {/* Downtime Balance */}
+        {/* Downtime Balance + Rest Buttons */}
         <Card className="p-4 bg-gray-900/50 border-cyan-500/30 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Timer className="w-5 h-5 text-cyan-400" />
               <span className="text-white font-medium">Downtime Balance</span>
             </div>
-            <span className={`text-2xl font-bold ${downtimeBalance > 0 ? "text-cyan-400" : "text-red-400"}`}>
-              {downtimeBalance}h
-            </span>
+            <div className="flex items-center gap-3">
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" className="border-amber-600 text-amber-400 hover:bg-amber-900/30" onClick={() => { setRestType("short"); setRestOpen(true); }}>
+                  <Sun className="w-3 h-3 mr-1" /> Short Rest
+                </Button>
+                <Button size="sm" variant="outline" className="border-indigo-600 text-indigo-400 hover:bg-indigo-900/30" onClick={() => { setRestType("long"); setRestOpen(true); }}>
+                  <Moon className="w-3 h-3 mr-1" /> Long Rest
+                </Button>
+              </div>
+              <span className={`text-2xl font-bold ${downtimeBalance > 0 ? "text-cyan-400" : "text-red-400"}`}>
+                {downtimeBalance}h
+              </span>
+            </div>
           </div>
         </Card>
+
+        <RestDialog
+          type={restType}
+          open={restOpen}
+          onClose={() => setRestOpen(false)}
+          userId={effectiveUserId}
+          impersonatedUserId={impersonatedUser?.user_id}
+          currentBalance={downtimeBalance}
+          gameDate={gameDate}
+          onComplete={loadData}
+        />
 
         <Tabs defaultValue="commissions" className="space-y-6">
           <TabsList className="bg-gray-900/50 border border-gray-700/50">

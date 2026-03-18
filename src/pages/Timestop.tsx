@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, Search, ChevronDown, ChevronUp, Calendar, List, Home, Share2, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, Search, ChevronDown, ChevronUp, Calendar, List, Home, Share2, X, Moon, Sun, Timer, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +14,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MONTHS, DAY_NAMES, formatGameDate, isFrippery, getMonth, type GameDate } from "@/lib/gameCalendar";
 import { toast } from "@/hooks/use-toast";
 import ShareEventDialog from "@/components/ShareEventDialog";
+import RestDialog from "@/components/RestDialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { getMonth as getMonthInfo } from "@/lib/gameCalendar";
 
 interface CalendarEvent {
   id: string;
@@ -36,7 +40,7 @@ const Timestop = () => {
   const queryClient = useQueryClient();
   const [viewMonth, setViewMonth] = useState(1);
   const [viewYear, setViewYear] = useState(2626);
-  const [viewMode, setViewMode] = useState<"monthly" | "annual">("monthly");
+  const [viewMode, setViewMode] = useState<"monthly" | "annual" | "downtime">("monthly");
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventDesc, setNewEventDesc] = useState("");
@@ -47,6 +51,10 @@ const Timestop = () => {
   const [expandedHolidays, setExpandedHolidays] = useState<Set<string>>(new Set());
   const [shareEventId, setShareEventId] = useState<string | null>(null);
   const [shareEventTitle, setShareEventTitle] = useState("");
+  const [restType, setRestType] = useState<"short" | "long">("short");
+  const [restOpen, setRestOpen] = useState(false);
+  const [downtimeBalance, setDowntimeBalance] = useState(0);
+  const [downtimeActivities, setDowntimeActivities] = useState<any[]>([]);
 
   const { data: gameDate } = useQuery({
     queryKey: ["game-calendar"],
@@ -63,6 +71,28 @@ const Timestop = () => {
       setViewYear(gameDate.current_year);
     }
   }, [gameDate]);
+
+  // Load downtime
+  const loadDowntime = async () => {
+    if (!effectiveUserId) return;
+    const { data } = await supabase.functions.invoke("quest-operations", {
+      body: { operation: "get_downtime", targetUserId: impersonatedUser?.user_id },
+    });
+    if (data?.downtime) setDowntimeBalance(data.downtime.balance);
+  };
+
+  const loadDowntimeActivities = async () => {
+    if (!effectiveUserId) return;
+    const { data } = await supabase.functions.invoke("quest-operations", {
+      body: { operation: "get_downtime_activities", targetUserId: impersonatedUser?.user_id },
+    });
+    if (data?.activities) setDowntimeActivities(data.activities);
+  };
+
+  useEffect(() => {
+    loadDowntime();
+    loadDowntimeActivities();
+  }, [effectiveUserId]);
 
   const currentDate: GameDate = gameDate
     ? { day: gameDate.current_day, month: gameDate.current_month, year: gameDate.current_year }
@@ -431,12 +461,27 @@ const Timestop = () => {
               👁 Viewing as: {impersonatedUser.character_name}
             </p>
           )}
+          {/* Downtime + Rest */}
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <div className="flex items-center gap-1 text-cyan-400 text-xs font-mono">
+              <Timer className="w-3 h-3" /> {downtimeBalance}h
+            </div>
+            <Button size="sm" variant="ghost" className="text-amber-400 hover:text-amber-300 text-xs h-6 px-2" onClick={() => { setRestType("short"); setRestOpen(true); }}>
+              <Sun className="w-3 h-3 mr-1" /> Short Rest
+            </Button>
+            <Button size="sm" variant="ghost" className="text-indigo-400 hover:text-indigo-300 text-xs h-6 px-2" onClick={() => { setRestType("long"); setRestOpen(true); }}>
+              <Moon className="w-3 h-3 mr-1" /> Long Rest
+            </Button>
+          </div>
           <div className="flex justify-center gap-2 mt-3">
             <Button size="sm" variant={viewMode === "monthly" ? "default" : "ghost"} onClick={() => setViewMode("monthly")} className={viewMode === "monthly" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
               <Calendar className="w-3 h-3 mr-1" /> Monthly
             </Button>
             <Button size="sm" variant={viewMode === "annual" ? "default" : "ghost"} onClick={() => setViewMode("annual")} className={viewMode === "annual" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
               <List className="w-3 h-3 mr-1" /> Annual
+            </Button>
+            <Button size="sm" variant={viewMode === "downtime" ? "default" : "ghost"} onClick={() => { setViewMode("downtime"); loadDowntimeActivities(); }} className={viewMode === "downtime" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
+              <Clock className="w-3 h-3 mr-1" /> Downtime
             </Button>
           </div>
         </div>
@@ -609,7 +654,7 @@ const Timestop = () => {
               </Card>
             )}
           </>
-        ) : (
+        ) : viewMode === "annual" ? (
           /* Annual View */
           <div className="space-y-4">
             <div className="flex items-center justify-center gap-4 mb-4">
@@ -659,6 +704,63 @@ const Timestop = () => {
               );
             })}
           </div>
+        ) : (
+          /* Downtime View */
+          <div className="space-y-4">
+            <Card className="bg-gray-900/40 border-cyan-500/30 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-cyan-300 font-mono text-sm font-medium">Downtime Balance</h3>
+                <span className={`text-xl font-bold font-mono ${downtimeBalance > 0 ? "text-cyan-400" : "text-red-400"}`}>{downtimeBalance}h</span>
+              </div>
+              <p className="text-gray-500 text-xs">Cap: 100 hours</p>
+            </Card>
+
+            <h3 className="text-gray-300 font-mono text-sm font-medium">Activity Log</h3>
+            {downtimeActivities.length === 0 ? (
+              <Card className="bg-gray-900/40 border-gray-700/50 p-6 text-center text-gray-500 text-sm">
+                No downtime activities recorded yet.
+              </Card>
+            ) : (
+              downtimeActivities.map((act: any) => {
+                const actMonth = act.game_month ? getMonthInfo(act.game_month) : null;
+                const typeLabels: Record<string, string> = {
+                  short_rest: "Short Rest",
+                  long_rest: "Long Rest",
+                  commission: "Commission",
+                  full_time_deduction: "Full-Time Job",
+                };
+                const typeColors: Record<string, string> = {
+                  short_rest: "text-amber-400 border-amber-500/50",
+                  long_rest: "text-indigo-400 border-indigo-500/50",
+                  commission: "text-emerald-400 border-emerald-500/50",
+                  full_time_deduction: "text-cyan-400 border-cyan-500/50",
+                };
+                return (
+                  <Card key={act.id} className="bg-gray-900/40 border-gray-700/50 p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={`text-xs ${typeColors[act.activity_type] || "text-gray-400"}`}>
+                          {typeLabels[act.activity_type] || act.activity_type}
+                        </Badge>
+                        <span className="text-gray-500 text-xs font-mono">
+                          {act.game_day && actMonth ? `${act.game_day} of ${actMonth.name}, Year ${act.game_year}` : ""}
+                        </span>
+                      </div>
+                      <span className="text-red-400 text-sm font-mono">-{act.hours_spent}h</span>
+                    </div>
+                    {act.activities_chosen && act.activities_chosen.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {act.activities_chosen.map((a: string, i: number) => (
+                          <Badge key={i} variant="outline" className="text-xs text-gray-400 border-gray-600">{a}</Badge>
+                        ))}
+                      </div>
+                    )}
+                    {act.notes && <p className="text-gray-500 text-xs mt-1">{act.notes}</p>}
+                  </Card>
+                );
+              })
+            )}
+          </div>
         )}
 
         {/* Legend */}
@@ -672,6 +774,18 @@ const Timestop = () => {
           <p>Timestop™ • Chronomancy Co. • "Every second counts"</p>
         </div>
       </div>
+
+      {/* Rest Dialog */}
+      <RestDialog
+        type={restType}
+        open={restOpen}
+        onClose={() => setRestOpen(false)}
+        userId={effectiveUserId}
+        impersonatedUserId={impersonatedUser?.user_id}
+        currentBalance={downtimeBalance}
+        gameDate={gameDate ? { day: gameDate.current_day, month: gameDate.current_month, year: gameDate.current_year } : undefined}
+        onComplete={() => { loadDowntime(); loadDowntimeActivities(); }}
+      />
 
       {/* Share Event Dialog */}
       {shareEventId && (

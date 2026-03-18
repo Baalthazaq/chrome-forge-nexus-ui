@@ -610,21 +610,9 @@ const Vault = () => {
           </Card>
         </div>
 
-        {/* Income & Downtime Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Card className="bg-gray-900/50 border-cyan-700/50 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-cyan-400">Downtime</CardTitle>
-              <Clock className="h-4 w-4 text-cyan-400" />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${downtimeBalance > 0 ? "text-cyan-400" : "text-red-400"}`}>
-                {downtimeBalance}h
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Available hours for commissions</p>
-            </CardContent>
-          </Card>
-          {incomePayments.length > 0 && (
+        {/* Income Row */}
+        {incomePayments.length > 0 && (
+          <div className="grid grid-cols-1 gap-6 mb-8">
             <Card className="bg-gray-900/50 border-emerald-700/50 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-emerald-400">Job Income</CardTitle>
@@ -644,8 +632,8 @@ const Vault = () => {
                 </div>
               </CardContent>
             </Card>
-          )}
-        </div>
+          </div>
+        )}
 
         {bills.length > 0 && (
           <div className="mb-8">

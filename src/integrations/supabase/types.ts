@@ -518,6 +518,45 @@ export type Database = {
         }
         Relationships: []
       }
+      downtime_activities: {
+        Row: {
+          activities_chosen: Json | null
+          activity_type: string
+          created_at: string
+          game_day: number | null
+          game_month: number | null
+          game_year: number | null
+          hours_spent: number
+          id: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          activities_chosen?: Json | null
+          activity_type: string
+          created_at?: string
+          game_day?: number | null
+          game_month?: number | null
+          game_year?: number | null
+          hours_spent: number
+          id?: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          activities_chosen?: Json | null
+          activity_type?: string
+          created_at?: string
+          game_day?: number | null
+          game_month?: number | null
+          game_year?: number | null
+          hours_spent?: number
+          id?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       downtime_balances: {
         Row: {
           balance: number

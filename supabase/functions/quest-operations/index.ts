@@ -52,6 +52,10 @@ Deno.serve(async (req) => {
         return await getUserQuests(effectiveUserId)
       case 'get_downtime':
         return await getDowntime(effectiveUserId)
+      case 'log_rest':
+        return await logRest(effectiveUserId, params)
+      case 'get_downtime_activities':
+        return await getDowntimeActivities(effectiveUserId)
       default:
         return new Response(JSON.stringify({ error: 'Invalid operation' }), {
           status: 400,
@@ -75,7 +79,6 @@ async function getDowntime(userId: string) {
     .single()
 
   if (error && error.code === 'PGRST116') {
-    // No row yet, create one
     const { data: created, error: createErr } = await supabase
       .from('downtime_balances')
       .insert({ user_id: userId, balance: 0 })
@@ -89,6 +92,81 @@ async function getDowntime(userId: string) {
   if (error) throw error
 
   return new Response(JSON.stringify({ downtime: data }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function logRest(userId: string, params: any) {
+  const { activity_type, hours_spent, activities_chosen, notes, game_day, game_month, game_year } = params;
+
+  if (!activity_type || !hours_spent || hours_spent <= 0) {
+    return new Response(JSON.stringify({ error: 'activity_type and hours_spent required' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Get current balance
+  const { data: bal } = await supabase
+    .from('downtime_balances')
+    .select('*')
+    .eq('user_id', userId)
+    .single()
+
+  const currentBalance = bal?.balance || 0;
+
+  if (currentBalance < hours_spent) {
+    return new Response(JSON.stringify({ error: `Not enough downtime. Have ${currentBalance}h, need ${hours_spent}h.` }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Deduct balance
+  if (bal) {
+    await supabase
+      .from('downtime_balances')
+      .update({ balance: currentBalance - hours_spent, updated_at: new Date().toISOString() })
+      .eq('id', bal.id)
+  } else {
+    // Create with negative would be blocked, but shouldn't happen since we checked above
+    await supabase
+      .from('downtime_balances')
+      .insert({ user_id: userId, balance: -hours_spent })
+  }
+
+  // Insert activity record
+  const { error: insertErr } = await supabase
+    .from('downtime_activities')
+    .insert({
+      user_id: userId,
+      activity_type,
+      hours_spent,
+      activities_chosen: activities_chosen || [],
+      notes: notes || null,
+      game_day: game_day || null,
+      game_month: game_month || null,
+      game_year: game_year || null,
+    })
+
+  if (insertErr) throw insertErr
+
+  return new Response(JSON.stringify({ success: true, newBalance: currentBalance - hours_spent }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function getDowntimeActivities(userId: string) {
+  const { data, error } = await supabase
+    .from('downtime_activities')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  if (error) throw error
+
+  return new Response(JSON.stringify({ activities: data || [] }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })
 }
@@ -108,7 +186,6 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
     })
   }
 
-  // For commissions, check available quantity
   if (quest.job_type === 'commission' && quest.available_quantity !== null && quest.available_quantity <= 0) {
     return new Response(JSON.stringify({ error: 'No more slots available for this commission' }), {
       status: 400,
@@ -116,7 +193,6 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
     })
   }
 
-  // For full-time jobs, check if already holding one
   if (quest.job_type === 'full_time') {
     const { data: existing } = await supabase
       .from('quest_acceptances')
@@ -133,25 +209,19 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
       })
     }
 
-    // Create the acceptance
     const { error: acceptError } = await supabase
       .from('quest_acceptances')
-      .insert({
-        quest_id: questId,
-        user_id: userId,
-        status: 'accepted'
-      })
+      .insert({ quest_id: questId, user_id: userId, status: 'accepted' })
 
     if (acceptError) throw acceptError
 
-    // Create recurring payment for full-time job income
     const intervalType = quest.pay_interval || 'daily'
     const { error: rpError } = await supabase
       .from('recurring_payments')
       .insert({
         to_user_id: userId,
         from_user_id: null,
-        amount: quest.reward, // reward is used as the pay amount
+        amount: quest.reward,
         interval_type: intervalType,
         description: `Full-time job: ${quest.title}`,
         next_send_at: new Date().toISOString(),
@@ -167,8 +237,6 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
     })
   }
 
-  // For commissions (one-off or repeatable)
-  // Check if already has an active acceptance for this quest
   const { data: existing } = await supabase
     .from('quest_acceptances')
     .select('id')
@@ -186,11 +254,7 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
 
   const { error: acceptError } = await supabase
     .from('quest_acceptances')
-    .insert({
-      quest_id: questId,
-      user_id: userId,
-      status: 'accepted'
-    })
+    .insert({ quest_id: questId, user_id: userId, status: 'accepted' })
 
   if (acceptError) throw acceptError
 
@@ -200,7 +264,6 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
 }
 
 async function submitQuest(userId: string, { questId, notes, rollResult, rollType }: { questId: string, notes?: string, rollResult?: number, rollType?: string }) {
-  // Get the quest to check type
   const { data: quest } = await supabase
     .from('quests')
     .select('*')
@@ -214,7 +277,6 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
     })
   }
 
-  // Get user's downtime balance
   const { data: downtime } = await supabase
     .from('downtime_balances')
     .select('*')
@@ -223,7 +285,6 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
 
   const currentBalance = downtime?.balance || 0
 
-  // Check downtime cost
   if (quest.downtime_cost > 0 && currentBalance < quest.downtime_cost) {
     return new Response(JSON.stringify({ error: `Not enough downtime. Need ${quest.downtime_cost} hours, have ${currentBalance}.` }), {
       status: 400,
@@ -231,7 +292,6 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
     })
   }
 
-  // Deduct downtime
   if (quest.downtime_cost > 0) {
     await supabase
       .from('downtime_balances')
@@ -239,7 +299,6 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
       .eq('user_id', userId)
   }
 
-  // Update the acceptance
   const { error: updateError } = await supabase
     .from('quest_acceptances')
     .update({
@@ -255,7 +314,6 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
 
   if (updateError) throw updateError
 
-  // For commissions with quantity, decrement available_quantity
   if (quest.job_type === 'commission' && quest.available_quantity !== null) {
     await supabase
       .from('quests')
@@ -269,7 +327,6 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
 }
 
 async function resignQuest(userId: string, { questId }: { questId: string }) {
-  // Update acceptance to resigned
   const { error: updateError } = await supabase
     .from('quest_acceptances')
     .update({ status: 'resigned' })
@@ -279,7 +336,6 @@ async function resignQuest(userId: string, { questId }: { questId: string }) {
 
   if (updateError) throw updateError
 
-  // Remove associated recurring payment for full-time jobs
   await supabase
     .from('recurring_payments')
     .delete()
@@ -297,19 +353,9 @@ async function getUserQuests(userId: string) {
     .select(`
       *,
       quests (
-        id,
-        title,
-        description,
-        client,
-        reward,
-        reward_min,
-        difficulty,
-        time_limit,
-        tags,
-        job_type,
-        downtime_cost,
-        available_quantity,
-        pay_interval
+        id, title, description, client, reward, reward_min,
+        difficulty, time_limit, tags, job_type, downtime_cost,
+        available_quantity, pay_interval
       )
     `)
     .eq('user_id', userId)
