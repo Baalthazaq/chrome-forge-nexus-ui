@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapLocation, MapArea, MapLocationReview, useMazeData } from '@/hooks/useMazeData';
+import { MapLocation, MapArea, MapLocationReview, EnvironmentCard, useMazeData } from '@/hooks/useMazeData';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { X, Trash2, Move, Pencil, Star, Send } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { X, Trash2, Move, Pencil, Star, Send, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { LOCATION_ICON_TYPES, ICON_MAP, ICON_LABELS } from './InteractiveMap';
 
