@@ -158,6 +158,13 @@ export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRel
           </div>
         )}
 
+        {/* Environment cards from containing areas */}
+        {containingAreas.map(a => {
+          const card = a.environment_card;
+          if (!card || (!card.tier && !card.type && !card.features?.length)) return null;
+          return <EnvironmentCardDisplay key={a.id} card={card} areaName={a.name} isAdmin={false} />;
+        })}
+
         <MapNotes
           locationId={location.id}
           targetName={location.name}
@@ -165,6 +172,8 @@ export const LocationPanel = ({ location, areas, onClose, isAdmin = false, onRel
           locationDescription={location.description}
           locationImageUrl={location.image_url}
           containingAreas={containingAreas.map(a => a.name)}
+          environmentCards={containingAreas.filter(a => a.environment_card?.tier || a.environment_card?.type || a.environment_card?.features?.length).map(a => ({ areaName: a.name, card: a.environment_card }))}
+          reviews={reviews}
         />
 
         {/* Reviews */}
