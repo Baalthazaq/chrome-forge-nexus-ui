@@ -19,6 +19,8 @@ interface AreaPanelProps {
 
 export const AreaPanel = ({ area, onClose, isAdmin: isAdminProp = false }: AreaPanelProps) => {
   const { user } = useAuth();
+  const { impersonatedUser } = useAdmin();
+  const effectiveUserId = impersonatedUser?.user_id || user?.id;
   const { createReview, deleteReview } = useMazeData();
   const [rating, setRating] = useState(3);
   const [reviewContent, setReviewContent] = useState('');
