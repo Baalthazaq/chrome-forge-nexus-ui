@@ -1,44 +1,56 @@
+## Timestop: In-Game Calendar System
+
+This plan builds Timestop into a fully functional in-game calendar with a custom 364+1 day year, personal events, admin-managed universal events, and subscription billing integration tied to game ticks.
+
+---
+
+### The Calendar System
+
+**Year structure:**
+
+- 13 months of 28 days each (364 days), plus 1 special standalone day called the "Day of Frippery" (always a Sunday)
+- Each month starts on Sunday and ends on Saturday (28 days = exactly 4 weeks, so every month has the same layout)
+- Day of Frippery sits between the months Trade and Light. It is the middle day of the year. 
+
+**Seasons and Months (in order):**
 
 
-## Roldex Admin: Group by Sending Stone Groups
+| #   | Season | Month       | Key Holidays                                        |
+| --- | ------ | ----------- | --------------------------------------------------- |
+| 1   | Shield | Oath        | Day of First Promise (1st)                          |
+| 2   | Shield | Stern       | Days of Confession (All month)                      |
+| 3   | Shield | Engineer    | Day of the Mind (28th)                               |
+| 4   | Shield | Miner       | Day of the Body (1st)                               |
+| 5   | Shield | Retribution | Day of No Mask (11th), Day of Shield and Axe (28th) |
+| 6   | Axe    | Shackles    | Day of Shame (21st)                                 |
+| 7   | Axe    | Trade       | Day of Therin (25th)                                |
+| 8   | -      | Frippery    | Lie Day (standalone day)                            |
+| 9   | Axe    | Light       | Truth Day (1st)                                     |
+| 10  | Axe    | Navigator   | Finder's Day (any)                                  |
+| 11  | Hammer | Tryst       | Baubledays (unofficial, any)                        |
+| 12  | Hammer | Destiny     | Days of Ease (All month)                            |
+| 13  | Hammer | Groveling   | Grovellerday (4th)                                  |
+| 14  | Hammer | Negotiation | Therin's Reckondays (25th-28th)                     |
 
-### Overview
-Add a "Group by Sending Groups" mode to the Roldex Admin network view. When enabled, characters are visually clustered by their Sending Stone group chat memberships, with overlapping members (in multiple groups) handled via a layout algorithm.
 
-### Data Fetching
-- Load all **group stones** (`stones` where `is_group = true`) and their **active participants** (`stone_participants` where `left_at IS NULL`)
-- No database changes needed — all data already exists
+**Day of Frippery** is displayed as a 14th month, but with 27 out of 28 days blank, so effectively Sunday occurs twice in a row, but it does not distrub the layout. 
 
-### Grouping Logic
-1. Build a map: `groupId -> { name, memberUserIds[] }`
-2. Build a reverse map: `userId -> groupIds[]`
-3. Characters not in any group go into an "Ungrouped" bucket
+---
 
-### Layout & Visualization
-- Add a toggle button in the header: "Group by Sending Groups"
-- When enabled, use **ReactFlow group nodes** (parent nodes) to visually cluster characters:
-  - Each Sending group becomes a large translucent background node (a "group box") with a label (the stone name)
-  - Member nodes are positioned inside their group's bounding box
-  - **Overlap handling**: Characters in multiple groups are placed in the group with fewer members (or the first group), with colored badges on the node showing all their group memberships. Edges are drawn from the character to each group box they belong to, making cross-membership visible
-- Ungrouped characters are laid out separately at the bottom/right
-- When grouping is off, the existing contact-based layout remains unchanged
+### Status: ✅ IMPLEMENTED
 
-### UI Changes (RoldexAdmin.tsx only)
-1. **State**: Add `groupByStones` boolean toggle, `stones` and `stoneParticipants` data arrays
-2. **Header**: Add a toggle button next to the search bar
-3. **Node generation**: When `groupByStones` is true:
-   - Create parent group nodes (large, semi-transparent, labeled with stone name)
-   - Assign each character node a `parentId` to nest inside their primary group
-   - Add multi-group badges on nodes belonging to multiple groups
-   - Draw dashed edges from multi-group members to their secondary groups
-4. **Layout**: Circular arrangement of members within each group box; groups arranged in a grid
+**Database:** `game_calendar` and `calendar_events` tables created with RLS. Holidays seeded.
 
-### Technical Details
-- ReactFlow supports parent/child node nesting via `parentId` and `extent: 'parent'` on child nodes
-- Group nodes use `type: 'group'` with custom styling (colored border, translucent background, group name label)
-- Saved positions in localStorage are bypassed when grouping mode is active (positions are computed)
-- The existing contact-edge view and detail panel remain fully functional in grouped mode
+**Edge Function:** `advance-day` deployed — advances game date, triggers billing (daily/weekly/monthly/yearly).
 
-### Files Modified
-- `src/pages/RoldexAdmin.tsx` — all changes in this single file
+**Player UI:** `/timestop` — calendar grid with month nav, event dots, personal event CRUD, holiday display.
 
+**Admin UI:** `/admin/timestop` — shared calendar, advance day with billing preview, universal event management.
+
+**Calendar Utility:** `src/lib/gameCalendar.ts` — month/season data, date formatting, billing trigger logic.
+
+---
+
+### NPC stuff
+
+Remains scoped for Doppleganger admin as requested — not part of this implementation.
