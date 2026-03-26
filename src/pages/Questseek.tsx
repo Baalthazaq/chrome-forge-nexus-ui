@@ -8,10 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun, RotateCcw, CheckCircle, XCircle, HourglassIcon } from "lucide-react";
+import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun, RotateCcw, CheckCircle, XCircle, HourglassIcon, Plus, Check, X, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import RestDialog from "@/components/RestDialog";
-import { formatHexDenomination } from "@/lib/currency";
+import { formatHexDenomination, formatHex } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +32,7 @@ interface Quest {
   available_quantity: number | null;
   pay_interval: string | null;
   status: string | null;
+  posted_by_user_id?: string | null;
 }
 
 interface QuestAcceptance {
@@ -65,6 +66,10 @@ const Questseek = () => {
 
   const [quests, setQuests] = useState<Quest[]>([]);
   const [myQuests, setMyQuests] = useState<QuestAcceptance[]>([]);
+  const [communityQuests, setCommunityQuests] = useState<Quest[]>([]);
+  const [communityPosterMap, setCommunityPosterMap] = useState<Record<string, string>>({});
+  const [myPostedQuests, setMyPostedQuests] = useState<any[]>([]);
+  const [myPostedProfileMap, setMyPostedProfileMap] = useState<Record<string, string>>({});
   const [downtimeBalance, setDowntimeBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
@@ -75,6 +80,18 @@ const Questseek = () => {
   const [restType, setRestType] = useState<"short" | "long">("short");
   const [restOpen, setRestOpen] = useState(false);
   const [gameDate, setGameDate] = useState<{ day: number; month: number; year: number } | undefined>();
+
+  // Post job dialog
+  const [postJobOpen, setPostJobOpen] = useState(false);
+  const [postForm, setPostForm] = useState({
+    title: "", description: "", reward: 0, reward_min: 0, difficulty: "Low Risk",
+    downtime_cost: 0, available_quantity: "", tags: "", time_limit: "",
+  });
+
+  // Approve player quest dialog
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [approveTarget, setApproveTarget] = useState<any>(null);
+  const [approveFinalPayment, setApproveFinalPayment] = useState("");
 
   useEffect(() => {
     supabase.from("game_calendar").select("*").limit(1).single().then(({ data }) => {
@@ -91,7 +108,7 @@ const Questseek = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      await Promise.all([loadQuests(), loadMyQuests(), loadDowntime()]);
+      await Promise.all([loadQuests(), loadMyQuests(), loadDowntime(), loadCommunityQuests(), loadMyPostedQuests()]);
     } finally {
       setLoading(false);
     }
@@ -102,6 +119,7 @@ const Questseek = () => {
       .from("quests")
       .select("*")
       .eq("status", "active")
+      .is("posted_by_user_id", null)
       .order("created_at", { ascending: false });
     if (!error && data) setQuests(data as any);
   };
@@ -118,6 +136,26 @@ const Questseek = () => {
       body: { operation: "get_downtime", targetUserId: impersonatedUser?.user_id },
     });
     if (!error && data?.downtime) setDowntimeBalance(data.downtime.balance);
+  };
+
+  const loadCommunityQuests = async () => {
+    const { data, error } = await supabase.functions.invoke("quest-operations", {
+      body: { operation: "get_community_quests" },
+    });
+    if (!error && data?.quests) {
+      setCommunityQuests(data.quests);
+      if (data.posterMap) setCommunityPosterMap(data.posterMap);
+    }
+  };
+
+  const loadMyPostedQuests = async () => {
+    const { data, error } = await supabase.functions.invoke("quest-operations", {
+      body: { operation: "get_my_posted_quests", targetUserId: impersonatedUser?.user_id },
+    });
+    if (!error && data?.quests) {
+      setMyPostedQuests(data.quests);
+      if (data.profileMap) setMyPostedProfileMap(data.profileMap);
+    }
   };
 
   const acceptQuest = async (questId: string) => {
@@ -186,6 +224,65 @@ const Questseek = () => {
     }
   };
 
+  const postJob = async () => {
+    const { data, error } = await supabase.functions.invoke("quest-operations", {
+      body: {
+        operation: "create_player_quest",
+        targetUserId: impersonatedUser?.user_id,
+        ...postForm,
+      },
+    });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || "Failed to post job", variant: "destructive" });
+    } else {
+      toast({ title: "Job posted!" });
+      setPostJobOpen(false);
+      setPostForm({ title: "", description: "", reward: 0, reward_min: 0, difficulty: "Low Risk", downtime_cost: 0, available_quantity: "", tags: "", time_limit: "" });
+      loadData();
+    }
+  };
+
+  const openApproveDialog = (acceptance: any, quest: any) => {
+    setApproveTarget({ ...acceptance, quests: quest });
+    setApproveFinalPayment(quest.reward?.toString() || "0");
+    setApproveDialogOpen(true);
+  };
+
+  const approvePlayerSubmission = async () => {
+    if (!approveTarget) return;
+    const { data, error } = await supabase.functions.invoke("quest-operations", {
+      body: {
+        operation: "approve_player_quest",
+        acceptanceId: approveTarget.id,
+        finalPayment: parseInt(approveFinalPayment) || 0,
+        targetUserId: impersonatedUser?.user_id,
+      },
+    });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || "Failed to approve", variant: "destructive" });
+    } else {
+      toast({ title: `Paid ${formatHex(data.payment)} to the worker!` });
+      setApproveDialogOpen(false);
+      loadData();
+    }
+  };
+
+  const rejectPlayerSubmission = async (acceptanceId: string) => {
+    const { data, error } = await supabase.functions.invoke("quest-operations", {
+      body: {
+        operation: "reject_player_quest",
+        acceptanceId,
+        targetUserId: impersonatedUser?.user_id,
+      },
+    });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || "Failed", variant: "destructive" });
+    } else {
+      toast({ title: "Submission rejected" });
+      loadData();
+    }
+  };
+
   const commissions = quests.filter(q => q.job_type === "commission");
   const fullTimeJobs = quests.filter(q => q.job_type === "full_time");
   const activeAcceptances = myQuests.filter(q => q.status === "accepted");
@@ -194,20 +291,22 @@ const Questseek = () => {
   const completedQuests = myQuests.filter(q => q.status === "completed");
   const rejectedQuests = myQuests.filter(q => q.status === "rejected");
 
-  // Completed commissions that can be repeated (quest still active)
   const repeatableCompleted = completedQuests.filter(q => 
     q.quests?.job_type === "commission" && 
     q.quests?.status === "active" &&
     !myQuests.some(mq => mq.quest_id === q.quest_id && (mq.status === "accepted" || mq.status === "submitted"))
   );
 
-  // Unique repeatable (deduplicate by quest_id, show most recent)
   const uniqueRepeatables = repeatableCompleted.reduce((acc, q) => {
     if (!acc.find(a => a.quest_id === q.quest_id)) acc.push(q);
     return acc;
   }, [] as QuestAcceptance[]);
 
   const myJobsCount = activeAcceptances.length + pendingApproval.length + pendingSubmissions.length + uniqueRepeatables.length;
+
+  // Count pending submissions on my posted quests
+  const myPostedPendingCount = myPostedQuests.reduce((sum, q) => 
+    sum + (q.quest_acceptances?.filter((a: any) => a.status === 'submitted').length || 0), 0);
 
   const formatRewardRange = (quest: Quest) => {
     if (quest.reward_min > 0 && quest.reward_min !== quest.reward) {
@@ -216,10 +315,11 @@ const Questseek = () => {
     return formatHexDenomination(quest.reward);
   };
 
-  const QuestCard = ({ quest, showAccept = true }: { quest: Quest; showAccept?: boolean }) => {
+  const QuestCard = ({ quest, showAccept = true, posterName }: { quest: Quest; showAccept?: boolean; posterName?: string }) => {
     const isAlreadyAccepted = myQuests.some(
       mq => mq.quest_id === quest.id && (mq.status === "accepted" || mq.status === "submitted" || mq.status === "pending_approval")
     );
+    const isOwnQuest = quest.posted_by_user_id === effectiveUserId;
 
     return (
       <Card className="p-6 bg-gray-900/30 border-gray-700/50 hover:border-emerald-500/30 transition-all duration-300">
@@ -232,6 +332,11 @@ const Questseek = () => {
                   <User className="w-4 h-4" />
                   <span>{quest.client}</span>
                 </div>
+              )}
+              {posterName && (
+                <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
+                  <Users className="w-3 h-3 mr-1" /> Posted by {posterName}
+                </Badge>
               )}
               {quest.time_limit && (
                 <div className="flex items-center gap-1">
@@ -275,7 +380,7 @@ const Questseek = () => {
               </Badge>
             ))}
           </div>
-          {showAccept && !isAlreadyAccepted && (
+          {showAccept && !isAlreadyAccepted && !isOwnQuest && (
             <Button
               onClick={() => acceptQuest(quest.id)}
               className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
@@ -283,7 +388,10 @@ const Questseek = () => {
               {quest.job_type === "full_time" ? "Apply" : "Accept"}
             </Button>
           )}
-          {isAlreadyAccepted && (
+          {isOwnQuest && (
+            <Badge className="bg-amber-900/30 text-amber-400 border-amber-500/50">Your Job</Badge>
+          )}
+          {isAlreadyAccepted && !isOwnQuest && (
             <Badge className="bg-emerald-900/30 text-emerald-400 border-emerald-500/50">
               {myQuests.find(mq => mq.quest_id === quest.id && mq.status === "pending_approval") ? "Applied" : "In Progress"}
             </Badge>
@@ -318,7 +426,7 @@ const Questseek = () => {
           </div>
         )}
 
-        {/* Notification banners for recently resolved quests */}
+        {/* Notification banners */}
         {rejectedQuests.length > 0 && (
           <div className="mb-4 space-y-2">
             {rejectedQuests.slice(0, 5).map(rq => (
@@ -373,7 +481,15 @@ const Questseek = () => {
           <TabsList className="bg-gray-900/50 border border-gray-700/50">
             <TabsTrigger value="commissions">Commissions</TabsTrigger>
             <TabsTrigger value="full_time">Full-Time Jobs</TabsTrigger>
+            <TabsTrigger value="community">
+              Community Jobs {communityQuests.length > 0 && `(${communityQuests.length})`}
+            </TabsTrigger>
             <TabsTrigger value="my_quests">My Jobs ({myJobsCount})</TabsTrigger>
+            {myPostedQuests.length > 0 && (
+              <TabsTrigger value="my_posted">
+                My Posted {myPostedPendingCount > 0 && `(${myPostedPendingCount})`}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="commissions" className="space-y-4">
@@ -396,8 +512,26 @@ const Questseek = () => {
             )}
           </TabsContent>
 
+          {/* Community Jobs Tab */}
+          <TabsContent value="community" className="space-y-4">
+            <div className="flex justify-end mb-2">
+              <Button onClick={() => setPostJobOpen(true)} className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600">
+                <Plus className="w-4 h-4 mr-1" /> Post a Job
+              </Button>
+            </div>
+            {communityQuests.length === 0 ? (
+              <Card className="p-8 bg-gray-900/30 border-gray-700/50 text-center text-gray-400">
+                No community jobs posted yet. Be the first to post one!
+              </Card>
+            ) : (
+              communityQuests.map(q => (
+                <QuestCard key={q.id} quest={q} posterName={communityPosterMap[q.posted_by_user_id!]} />
+              ))
+            )}
+          </TabsContent>
+
           <TabsContent value="my_quests" className="space-y-6">
-            {/* Pending Approval (full-time applications) */}
+            {/* Pending Approval */}
             {pendingApproval.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold text-blue-400 mb-3 flex items-center gap-2">
@@ -443,6 +577,9 @@ const Questseek = () => {
                               {qa.quests?.job_type === "full_time" ? "Full-Time" : "Commission"}
                             </Badge>
                             {qa.quests?.client && <span>• {qa.quests.client}</span>}
+                            {qa.quests?.downtime_cost > 0 && (
+                              <span className="text-cyan-400">• {qa.quests.downtime_cost}h downtime on submit</span>
+                            )}
                             {qa.admin_notes && qa.quests?.job_type === "full_time" && (
                               <span className="text-emerald-400 text-xs">✓ {qa.admin_notes}</span>
                             )}
@@ -473,7 +610,7 @@ const Questseek = () => {
                 <h3 className="text-lg font-semibold text-yellow-400 mb-3">Awaiting Approval</h3>
                 <div className="space-y-3">
                   {pendingSubmissions.map(qa => (
-                    <Card key={qa.id} className="p-4 bg-yellow-900/10 border-yellow-500/30">
+                    <Card key={qa.id} className="p-4 bg-yellow-900/10 border-yellow-500/50">
                       <div className="flex justify-between items-center">
                         <div>
                           <h4 className="text-white font-medium">{qa.quests?.title}</h4>
@@ -548,6 +685,61 @@ const Questseek = () => {
               </Card>
             )}
           </TabsContent>
+
+          {/* My Posted Quests Tab */}
+          {myPostedQuests.length > 0 && (
+            <TabsContent value="my_posted" className="space-y-4">
+              {myPostedQuests.map(quest => {
+                const submissions = quest.quest_acceptances?.filter((a: any) => a.status === 'submitted') || [];
+                const accepted = quest.quest_acceptances?.filter((a: any) => a.status === 'accepted') || [];
+                const completed = quest.quest_acceptances?.filter((a: any) => a.status === 'completed') || [];
+                return (
+                  <Card key={quest.id} className="p-4 bg-gray-900/30 border-amber-500/20">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="text-white font-medium">{quest.title}</h4>
+                        <p className="text-sm text-gray-400">
+                          Reward: {formatRewardRange(quest)}
+                          {quest.status !== 'active' && <span className="text-red-400 ml-2">({quest.status})</span>}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
+                        {accepted.length} working • {submissions.length} submitted • {completed.length} done
+                      </Badge>
+                    </div>
+
+                    {/* Submissions needing review */}
+                    {submissions.length > 0 && (
+                      <div className="space-y-2 mt-3">
+                        {submissions.map((sub: any) => (
+                          <div key={sub.id} className="p-3 bg-yellow-900/10 border border-yellow-500/20 rounded-lg flex justify-between items-start">
+                            <div>
+                              <p className="text-sm text-white font-medium">{myPostedProfileMap[sub.user_id] || "Unknown"}</p>
+                              <div className="flex gap-2 mt-1 text-xs">
+                                {sub.roll_result != null && <Badge variant="outline" className="text-cyan-400 border-cyan-500/50">Roll: {sub.roll_result}</Badge>}
+                                {sub.roll_type && <Badge variant="outline" className="text-gray-400">{sub.roll_type}</Badge>}
+                              </div>
+                              {sub.notes && <p className="text-xs text-gray-400 mt-1 italic">"{sub.notes}"</p>}
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => openApproveDialog(sub, quest)}
+                                className="bg-gradient-to-r from-emerald-500 to-teal-500">
+                                <Check className="w-3 h-3 mr-1" /> Pay
+                              </Button>
+                              <Button size="sm" variant="outline" className="border-red-500/50 text-red-400 hover:bg-red-900/30"
+                                onClick={() => rejectPlayerSubmission(sub.id)}>
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
@@ -557,7 +749,8 @@ const Questseek = () => {
           <DialogHeader>
             <DialogTitle className="text-white">Mark Complete: {selectedQuest?.quests?.title}</DialogTitle>
             <DialogDescription className="text-gray-400">
-              Submit your completion details for admin review.
+              Submit your completion details for review.
+              {selectedQuest?.quests?.downtime_cost ? ` This will cost ${selectedQuest.quests.downtime_cost}h downtime.` : ""}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -599,6 +792,105 @@ const Questseek = () => {
             <Button variant="ghost" onClick={() => setSubmitDialogOpen(false)}>Cancel</Button>
             <Button onClick={submitQuest} className="bg-gradient-to-r from-emerald-500 to-teal-500">
               Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Post Job Dialog */}
+      <Dialog open={postJobOpen} onOpenChange={setPostJobOpen}>
+        <DialogContent className="bg-gray-900 border-gray-700 max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-white">Post a Community Job</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Hire someone to do work for you. You'll pay from your own credits when you approve completion.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-gray-300">Job Title *</Label>
+              <Input value={postForm.title} onChange={e => setPostForm(f => ({ ...f, title: e.target.value }))}
+                className="bg-gray-800 border-gray-600 text-white" placeholder="What needs doing?" />
+            </div>
+            <div>
+              <Label className="text-gray-300">Description</Label>
+              <Textarea value={postForm.description} onChange={e => setPostForm(f => ({ ...f, description: e.target.value }))}
+                className="bg-gray-800 border-gray-600 text-white" placeholder="Describe the job..." />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-gray-300">Reward Min (⏣)</Label>
+                <Input type="number" value={postForm.reward_min} onChange={e => setPostForm(f => ({ ...f, reward_min: parseInt(e.target.value) || 0 }))}
+                  className="bg-gray-800 border-gray-600 text-white" />
+              </div>
+              <div>
+                <Label className="text-gray-300">Reward Max (⏣)</Label>
+                <Input type="number" value={postForm.reward} onChange={e => setPostForm(f => ({ ...f, reward: parseInt(e.target.value) || 0 }))}
+                  className="bg-gray-800 border-gray-600 text-white" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-gray-300">Difficulty</Label>
+                <Select value={postForm.difficulty} onValueChange={v => setPostForm(f => ({ ...f, difficulty: v }))}>
+                  <SelectTrigger className="bg-gray-800 border-gray-600 text-white"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-600">
+                    <SelectItem value="Low Risk">Low Risk</SelectItem>
+                    <SelectItem value="Medium Risk">Medium Risk</SelectItem>
+                    <SelectItem value="High Risk">High Risk</SelectItem>
+                    <SelectItem value="Illegal">Illegal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-gray-300">Downtime Cost (hours)</Label>
+                <Input type="number" value={postForm.downtime_cost} onChange={e => setPostForm(f => ({ ...f, downtime_cost: parseInt(e.target.value) || 0 }))}
+                  className="bg-gray-800 border-gray-600 text-white" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-gray-300">Available Quantity (blank = unlimited)</Label>
+              <Input value={postForm.available_quantity} onChange={e => setPostForm(f => ({ ...f, available_quantity: e.target.value }))}
+                className="bg-gray-800 border-gray-600 text-white" placeholder="Leave blank for unlimited" />
+            </div>
+            <div>
+              <Label className="text-gray-300">Tags (comma-separated)</Label>
+              <Input value={postForm.tags} onChange={e => setPostForm(f => ({ ...f, tags: e.target.value }))}
+                className="bg-gray-800 border-gray-600 text-white" placeholder="Stealth, Hacking" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPostJobOpen(false)}>Cancel</Button>
+            <Button onClick={postJob} disabled={!postForm.title} className="bg-gradient-to-r from-amber-500 to-orange-500">
+              <Plus className="w-4 h-4 mr-1" /> Post Job
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Approve Player Quest Dialog */}
+      <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <DialogContent className="bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Pay Worker: {approveTarget?.quests?.title}</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Worker: {myPostedProfileMap[approveTarget?.user_id] || "Unknown"}
+              {approveTarget?.roll_result != null && ` • Roll: ${approveTarget.roll_result} (${approveTarget.roll_type})`}
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label className="text-gray-300">Payment Amount (⏣ Hex)</Label>
+            <Input type="number" value={approveFinalPayment} onChange={e => setApproveFinalPayment(e.target.value)}
+              className="bg-gray-800 border-gray-600 text-white" />
+            <p className="text-xs text-gray-500 mt-1">
+              Range: {formatHex(approveTarget?.quests?.reward_min || 0)} – {formatHex(approveTarget?.quests?.reward || 0)}
+              • This will be deducted from your credits.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setApproveDialogOpen(false)}>Cancel</Button>
+            <Button onClick={approvePlayerSubmission} className="bg-gradient-to-r from-emerald-500 to-teal-500">
+              <Check className="w-4 h-4 mr-1" /> Pay & Approve
             </Button>
           </DialogFooter>
         </DialogContent>

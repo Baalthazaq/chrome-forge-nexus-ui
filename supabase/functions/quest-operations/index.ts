@@ -58,6 +58,16 @@ Deno.serve(async (req) => {
         return await logRest(effectiveUserId, params)
       case 'get_downtime_activities':
         return await getDowntimeActivities(effectiveUserId)
+      case 'create_player_quest':
+        return await createPlayerQuest(effectiveUserId, params)
+      case 'get_community_quests':
+        return await getCommunityQuests()
+      case 'get_my_posted_quests':
+        return await getMyPostedQuests(effectiveUserId)
+      case 'approve_player_quest':
+        return await approvePlayerQuest(effectiveUserId, params)
+      case 'reject_player_quest':
+        return await rejectPlayerQuest(effectiveUserId, params)
       default:
         return new Response(JSON.stringify({ error: 'Invalid operation' }), {
           status: 400,
@@ -191,8 +201,15 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
     })
   }
 
+  // Don't allow accepting own posted quests
+  if (quest.posted_by_user_id && quest.posted_by_user_id === userId) {
+    return new Response(JSON.stringify({ error: 'You cannot accept your own posted job' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
   if (quest.job_type === 'full_time') {
-    // Check if already has an active or pending application
     const { data: existing } = await supabase
       .from('quest_acceptances')
       .select('id, status')
@@ -208,7 +225,6 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
       })
     }
 
-    // Full-time jobs go to pending_approval - admin must approve before recurring payment starts
     const { error: acceptError } = await supabase
       .from('quest_acceptances')
       .insert({ quest_id: questId, user_id: userId, status: 'pending_approval' })
@@ -248,7 +264,6 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
 }
 
 async function repeatQuest(userId: string, { questId }: { questId: string }) {
-  // Allow repeating a commission quest that was previously completed
   const { data: quest, error: questError } = await supabase
     .from('quests')
     .select('*')
@@ -277,7 +292,6 @@ async function repeatQuest(userId: string, { questId }: { questId: string }) {
     })
   }
 
-  // Check not already in progress
   const { data: active } = await supabase
     .from('quest_acceptances')
     .select('id')
@@ -318,26 +332,38 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
     })
   }
 
-  const { data: downtime } = await supabase
-    .from('downtime_balances')
-    .select('*')
-    .eq('user_id', userId)
-    .single()
-
-  const currentBalance = downtime?.balance || 0
-
-  if (quest.downtime_cost > 0 && currentBalance < quest.downtime_cost) {
-    return new Response(JSON.stringify({ error: `Not enough downtime. Need ${quest.downtime_cost} hours, have ${currentBalance}.` }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
-  }
-
+  // Check downtime cost
   if (quest.downtime_cost > 0) {
+    const { data: downtime } = await supabase
+      .from('downtime_balances')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
+
+    const currentBalance = downtime?.balance || 0
+
+    if (currentBalance < quest.downtime_cost) {
+      return new Response(JSON.stringify({ error: `Not enough downtime. Need ${quest.downtime_cost} hours, have ${currentBalance}.` }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Deduct downtime
     await supabase
       .from('downtime_balances')
       .update({ balance: currentBalance - quest.downtime_cost, updated_at: new Date().toISOString() })
       .eq('user_id', userId)
+
+    // Log the downtime activity
+    await supabase
+      .from('downtime_activities')
+      .insert({
+        user_id: userId,
+        activity_type: 'quest_work',
+        hours_spent: quest.downtime_cost,
+        notes: `Quest: ${quest.title}`,
+      })
   }
 
   const { error: updateError } = await supabase
@@ -396,7 +422,7 @@ async function getUserQuests(userId: string) {
       quests (
         id, title, description, client, reward, reward_min,
         difficulty, time_limit, tags, job_type, downtime_cost,
-        available_quantity, pay_interval, status
+        available_quantity, pay_interval, status, posted_by_user_id
       )
     `)
     .eq('user_id', userId)
@@ -405,6 +431,204 @@ async function getUserQuests(userId: string) {
   if (error) throw error
 
   return new Response(JSON.stringify({ quests }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+// --- Player-posted quests ---
+
+async function createPlayerQuest(userId: string, params: any) {
+  const { title, description, reward, reward_min, difficulty, downtime_cost, available_quantity, tags, time_limit } = params;
+
+  if (!title) {
+    return new Response(JSON.stringify({ error: 'Title is required' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Get poster's profile for the client name
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('character_name')
+    .eq('user_id', userId)
+    .single()
+
+  const { error } = await supabase.from('quests').insert({
+    title,
+    description: description || null,
+    client: profile?.character_name || 'Anonymous',
+    reward: reward || 0,
+    reward_min: reward_min || 0,
+    difficulty: difficulty || 'Low Risk',
+    job_type: 'commission',
+    downtime_cost: downtime_cost || 0,
+    available_quantity: available_quantity ? parseInt(available_quantity) : null,
+    tags: tags ? (Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim()).filter(Boolean)) : null,
+    time_limit: time_limit || null,
+    posted_by_user_id: userId,
+    status: 'active',
+  })
+
+  if (error) throw error
+
+  return new Response(JSON.stringify({ success: true }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function getCommunityQuests() {
+  const { data, error } = await supabase
+    .from('quests')
+    .select('*')
+    .eq('status', 'active')
+    .not('posted_by_user_id', 'is', null)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+
+  // Get poster names
+  const posterIds = [...new Set((data || []).map(q => q.posted_by_user_id).filter(Boolean))]
+  let posterMap: Record<string, string> = {}
+  if (posterIds.length > 0) {
+    const { data: profiles } = await supabase.from('profiles').select('user_id, character_name').in('user_id', posterIds)
+    profiles?.forEach(p => { posterMap[p.user_id] = p.character_name || 'Unknown' })
+  }
+
+  return new Response(JSON.stringify({ quests: data || [], posterMap }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function getMyPostedQuests(userId: string) {
+  const { data, error } = await supabase
+    .from('quests')
+    .select(`*, quest_acceptances (id, user_id, status, submitted_at, roll_result, roll_type, notes, final_payment, admin_notes)`)
+    .eq('posted_by_user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+
+  // Get worker names
+  const userIds = new Set<string>()
+  data?.forEach(q => q.quest_acceptances?.forEach((a: any) => userIds.add(a.user_id)))
+  let profileMap: Record<string, string> = {}
+  if (userIds.size > 0) {
+    const { data: profiles } = await supabase.from('profiles').select('user_id, character_name').in('user_id', [...userIds])
+    profiles?.forEach(p => { profileMap[p.user_id] = p.character_name || 'Unknown' })
+  }
+
+  return new Response(JSON.stringify({ quests: data || [], profileMap }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function approvePlayerQuest(posterId: string, { acceptanceId, finalPayment }: { acceptanceId: string, finalPayment: number }) {
+  // Get acceptance + quest
+  const { data: acceptance, error: getErr } = await supabase
+    .from('quest_acceptances')
+    .select(`*, quests (id, title, reward, posted_by_user_id)`)
+    .eq('id', acceptanceId)
+    .eq('status', 'submitted')
+    .single()
+
+  if (getErr || !acceptance) {
+    return new Response(JSON.stringify({ error: 'Submission not found' }), {
+      status: 404,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Verify the poster is the one approving
+  if (acceptance.quests.posted_by_user_id !== posterId) {
+    return new Response(JSON.stringify({ error: 'Only the job poster can approve this' }), {
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  const payment = finalPayment || acceptance.quests.reward || 0
+
+  // Check poster has enough credits
+  const { data: posterProfile } = await supabase.from('profiles').select('credits').eq('user_id', posterId).single()
+  if (!posterProfile) throw new Error('Poster profile not found')
+
+  const posterNewBalance = (posterProfile.credits || 0) - payment
+  if (posterNewBalance < -6000) {
+    return new Response(JSON.stringify({ error: 'Insufficient funds to pay the worker.' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Deduct from poster
+  await supabase.from('profiles').update({ credits: posterNewBalance }).eq('user_id', posterId)
+  await supabase.from('transactions').insert({
+    user_id: posterId,
+    transaction_type: 'quest_payment',
+    amount: -payment,
+    description: `Paid for job: ${acceptance.quests.title}`,
+    reference_id: acceptance.quest_id,
+    status: 'completed',
+  })
+
+  // Pay the worker
+  const { data: workerProfile } = await supabase.from('profiles').select('credits').eq('user_id', acceptance.user_id).single()
+  if (workerProfile) {
+    await supabase.from('profiles').update({ credits: (workerProfile.credits || 0) + payment }).eq('user_id', acceptance.user_id)
+    await supabase.from('transactions').insert({
+      user_id: acceptance.user_id,
+      transaction_type: 'quest_reward',
+      amount: payment,
+      description: `Quest completion: ${acceptance.quests.title}`,
+      reference_id: acceptance.quest_id,
+      status: 'completed',
+    })
+  }
+
+  // Update acceptance
+  await supabase.from('quest_acceptances').update({
+    status: 'completed',
+    completed_at: new Date().toISOString(),
+    final_payment: payment,
+    times_completed: (acceptance.times_completed || 0) + 1,
+    admin_notes: `Approved by poster. Paid ${payment}.`,
+  }).eq('id', acceptanceId)
+
+  return new Response(JSON.stringify({ success: true, payment }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function rejectPlayerQuest(posterId: string, { acceptanceId, notes }: { acceptanceId: string, notes?: string }) {
+  const { data: acceptance, error: getErr } = await supabase
+    .from('quest_acceptances')
+    .select(`*, quests (id, posted_by_user_id)`)
+    .eq('id', acceptanceId)
+    .eq('status', 'submitted')
+    .single()
+
+  if (getErr || !acceptance) {
+    return new Response(JSON.stringify({ error: 'Submission not found' }), {
+      status: 404,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  if (acceptance.quests.posted_by_user_id !== posterId) {
+    return new Response(JSON.stringify({ error: 'Only the job poster can reject this' }), {
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  await supabase.from('quest_acceptances').update({
+    status: 'rejected',
+    admin_notes: notes || 'Rejected by poster.',
+    completed_at: new Date().toISOString(),
+  }).eq('id', acceptanceId)
+
+  return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })
 }
