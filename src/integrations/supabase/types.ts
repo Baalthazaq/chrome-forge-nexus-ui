@@ -1221,6 +1221,7 @@ export type Database = {
           id: string
           job_type: string
           pay_interval: string | null
+          posted_by_user_id: string | null
           reward: number
           reward_min: number
           status: string | null
@@ -1239,6 +1240,7 @@ export type Database = {
           id?: string
           job_type?: string
           pay_interval?: string | null
+          posted_by_user_id?: string | null
           reward?: number
           reward_min?: number
           status?: string | null
@@ -1257,6 +1259,7 @@ export type Database = {
           id?: string
           job_type?: string
           pay_interval?: string | null
+          posted_by_user_id?: string | null
           reward?: number
           reward_min?: number
           status?: string | null
@@ -1759,6 +1762,59 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      wishlist_items: {
+        Row: {
+          admin_notes: string | null
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          price: number | null
+          shop_item_id: string | null
+          specifications: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          price?: number | null
+          shop_item_id?: string | null
+          specifications?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          price?: number | null
+          shop_item_id?: string | null
+          specifications?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_items_shop_item_id_fkey"
+            columns: ["shop_item_id"]
+            isOneToOne: false
+            referencedRelation: "shop_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
