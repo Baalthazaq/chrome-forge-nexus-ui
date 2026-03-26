@@ -52,6 +52,15 @@ export const useAppNotifications = () => {
         .lte("publish_date", new Date().toISOString());
       results["nexuswire"] = (breakingNews ?? 0) > 0;
 
+      // Questseek: recently rejected or completed quests (unacknowledged)
+      const { count: questUpdates } = await supabase
+        .from("quest_acceptances")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .in("status", ["completed", "rejected"])
+        .not("admin_notes", "is", null);
+      results["questseek"] = (questUpdates ?? 0) > 0;
+
       setNotifications(results);
     };
 

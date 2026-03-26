@@ -1153,6 +1153,7 @@ export type Database = {
       }
       quest_acceptances: {
         Row: {
+          admin_notes: string | null
           completed_at: string | null
           created_at: string
           final_payment: number | null
@@ -1168,6 +1169,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          admin_notes?: string | null
           completed_at?: string | null
           created_at?: string
           final_payment?: number | null
@@ -1183,6 +1185,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          admin_notes?: string | null
           completed_at?: string | null
           created_at?: string
           final_payment?: number | null

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun } from "lucide-react";
+import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun, RotateCcw, CheckCircle, XCircle, HourglassIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import RestDialog from "@/components/RestDialog";
 import { formatHexDenomination } from "@/lib/currency";
@@ -46,6 +46,7 @@ interface QuestAcceptance {
   completed_at: string | null;
   final_payment: number | null;
   times_completed: number;
+  admin_notes: string | null;
   quests: Quest;
 }
 
@@ -126,7 +127,20 @@ const Questseek = () => {
     if (error || data?.error) {
       toast({ title: "Error", description: data?.error || "Failed to accept quest", variant: "destructive" });
     } else {
-      toast({ title: "Quest accepted!" });
+      const msg = data?.status === 'pending_approval' ? "Application submitted! Awaiting admin approval." : "Quest accepted!";
+      toast({ title: msg });
+      loadData();
+    }
+  };
+
+  const repeatQuest = async (questId: string) => {
+    const { data, error } = await supabase.functions.invoke("quest-operations", {
+      body: { operation: "repeat_quest", questId, targetUserId: impersonatedUser?.user_id },
+    });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || "Failed to repeat quest", variant: "destructive" });
+    } else {
+      toast({ title: "Quest accepted again!" });
       loadData();
     }
   };
@@ -175,8 +189,25 @@ const Questseek = () => {
   const commissions = quests.filter(q => q.job_type === "commission");
   const fullTimeJobs = quests.filter(q => q.job_type === "full_time");
   const activeAcceptances = myQuests.filter(q => q.status === "accepted");
+  const pendingApproval = myQuests.filter(q => q.status === "pending_approval");
   const pendingSubmissions = myQuests.filter(q => q.status === "submitted");
   const completedQuests = myQuests.filter(q => q.status === "completed");
+  const rejectedQuests = myQuests.filter(q => q.status === "rejected");
+
+  // Completed commissions that can be repeated (quest still active)
+  const repeatableCompleted = completedQuests.filter(q => 
+    q.quests?.job_type === "commission" && 
+    q.quests?.status === "active" &&
+    !myQuests.some(mq => mq.quest_id === q.quest_id && (mq.status === "accepted" || mq.status === "submitted"))
+  );
+
+  // Unique repeatable (deduplicate by quest_id, show most recent)
+  const uniqueRepeatables = repeatableCompleted.reduce((acc, q) => {
+    if (!acc.find(a => a.quest_id === q.quest_id)) acc.push(q);
+    return acc;
+  }, [] as QuestAcceptance[]);
+
+  const myJobsCount = activeAcceptances.length + pendingApproval.length + pendingSubmissions.length + uniqueRepeatables.length;
 
   const formatRewardRange = (quest: Quest) => {
     if (quest.reward_min > 0 && quest.reward_min !== quest.reward) {
@@ -187,7 +218,7 @@ const Questseek = () => {
 
   const QuestCard = ({ quest, showAccept = true }: { quest: Quest; showAccept?: boolean }) => {
     const isAlreadyAccepted = myQuests.some(
-      mq => mq.quest_id === quest.id && (mq.status === "accepted" || mq.status === "submitted")
+      mq => mq.quest_id === quest.id && (mq.status === "accepted" || mq.status === "submitted" || mq.status === "pending_approval")
     );
 
     return (
@@ -253,7 +284,9 @@ const Questseek = () => {
             </Button>
           )}
           {isAlreadyAccepted && (
-            <Badge className="bg-emerald-900/30 text-emerald-400 border-emerald-500/50">In Progress</Badge>
+            <Badge className="bg-emerald-900/30 text-emerald-400 border-emerald-500/50">
+              {myQuests.find(mq => mq.quest_id === quest.id && mq.status === "pending_approval") ? "Applied" : "In Progress"}
+            </Badge>
           )}
         </div>
       </Card>
@@ -282,6 +315,23 @@ const Questseek = () => {
         {impersonatedUser && (
           <div className="mb-4 p-2 bg-yellow-900/30 border border-yellow-500/50 rounded text-yellow-400 text-sm text-center">
             Viewing as: {impersonatedUser.character_name}
+          </div>
+        )}
+
+        {/* Notification banners for recently resolved quests */}
+        {rejectedQuests.length > 0 && (
+          <div className="mb-4 space-y-2">
+            {rejectedQuests.slice(0, 5).map(rq => (
+              <div key={rq.id} className="p-3 bg-red-900/20 border border-red-500/30 rounded-lg flex items-start gap-3">
+                <XCircle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-red-300 font-medium text-sm">
+                    {rq.quests?.job_type === "full_time" ? "Application rejected" : "Submission rejected"}: {rq.quests?.title}
+                  </p>
+                  {rq.admin_notes && <p className="text-red-400/70 text-xs mt-1">{rq.admin_notes}</p>}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -323,7 +373,7 @@ const Questseek = () => {
           <TabsList className="bg-gray-900/50 border border-gray-700/50">
             <TabsTrigger value="commissions">Commissions</TabsTrigger>
             <TabsTrigger value="full_time">Full-Time Jobs</TabsTrigger>
-            <TabsTrigger value="my_quests">My Jobs ({activeAcceptances.length + pendingSubmissions.length})</TabsTrigger>
+            <TabsTrigger value="my_quests">My Jobs ({myJobsCount})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="commissions" className="space-y-4">
@@ -347,6 +397,37 @@ const Questseek = () => {
           </TabsContent>
 
           <TabsContent value="my_quests" className="space-y-6">
+            {/* Pending Approval (full-time applications) */}
+            {pendingApproval.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-blue-400 mb-3 flex items-center gap-2">
+                  <HourglassIcon className="w-5 h-5" /> Pending Approval
+                </h3>
+                <div className="space-y-3">
+                  {pendingApproval.map(qa => (
+                    <Card key={qa.id} className="p-4 bg-blue-900/10 border-blue-500/30">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h4 className="text-white font-medium">{qa.quests?.title}</h4>
+                          <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
+                            <Badge variant="outline" className="text-xs text-blue-400 border-blue-500/50">Full-Time Application</Badge>
+                            {qa.quests?.client && <span>• {qa.quests.client}</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-blue-900/30 text-blue-400 border-blue-500/50">Awaiting Response</Badge>
+                          <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300"
+                            onClick={() => resignQuest(qa.quest_id)}>
+                            Withdraw
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Active Jobs */}
             {activeAcceptances.length > 0 && (
               <div>
@@ -356,16 +437,19 @@ const Questseek = () => {
                     <Card key={qa.id} className="p-4 bg-gray-900/30 border-gray-700/50">
                       <div className="flex justify-between items-center">
                         <div>
-                          <h4 className="text-white font-medium">{qa.quests.title}</h4>
+                          <h4 className="text-white font-medium">{qa.quests?.title}</h4>
                           <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
                             <Badge variant="outline" className="text-xs">
-                              {qa.quests.job_type === "full_time" ? "Full-Time" : "Commission"}
+                              {qa.quests?.job_type === "full_time" ? "Full-Time" : "Commission"}
                             </Badge>
-                            {qa.quests.client && <span>• {qa.quests.client}</span>}
+                            {qa.quests?.client && <span>• {qa.quests.client}</span>}
+                            {qa.admin_notes && qa.quests?.job_type === "full_time" && (
+                              <span className="text-emerald-400 text-xs">✓ {qa.admin_notes}</span>
+                            )}
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          {qa.quests.job_type !== "full_time" && (
+                          {qa.quests?.job_type !== "full_time" && (
                             <Button size="sm" onClick={() => openSubmitDialog(qa)}
                               className="bg-gradient-to-r from-emerald-500 to-teal-500">
                               Mark Complete
@@ -373,7 +457,7 @@ const Questseek = () => {
                           )}
                           <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300"
                             onClick={() => resignQuest(qa.quest_id)}>
-                            {qa.quests.job_type === "full_time" ? "Quit" : "Abandon"}
+                            {qa.quests?.job_type === "full_time" ? "Quit" : "Abandon"}
                           </Button>
                         </div>
                       </div>
@@ -392,7 +476,7 @@ const Questseek = () => {
                     <Card key={qa.id} className="p-4 bg-yellow-900/10 border-yellow-500/30">
                       <div className="flex justify-between items-center">
                         <div>
-                          <h4 className="text-white font-medium">{qa.quests.title}</h4>
+                          <h4 className="text-white font-medium">{qa.quests?.title}</h4>
                           <div className="text-sm text-gray-400 mt-1">
                             {qa.roll_type && <span>Roll: {qa.roll_result} ({qa.roll_type})</span>}
                           </div>
@@ -400,6 +484,35 @@ const Questseek = () => {
                         <Badge className="bg-yellow-900/30 text-yellow-400 border-yellow-500/50">
                           Submitted
                         </Badge>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Repeatable Commissions */}
+            {uniqueRepeatables.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center gap-2">
+                  <RotateCcw className="w-5 h-5" /> Available to Repeat
+                </h3>
+                <div className="space-y-3">
+                  {uniqueRepeatables.map(qa => (
+                    <Card key={qa.id} className="p-4 bg-cyan-900/10 border-cyan-500/20">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h4 className="text-gray-300">{qa.quests?.title}</h4>
+                          <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                            <span>Completed {qa.times_completed}x</span>
+                            {qa.final_payment != null && <span>• Last pay: {formatHexDenomination(qa.final_payment)}</span>}
+                            {qa.quests?.downtime_cost > 0 && <span>• {qa.quests.downtime_cost}h downtime</span>}
+                          </div>
+                        </div>
+                        <Button size="sm" onClick={() => repeatQuest(qa.quest_id)}
+                          className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600">
+                          <RotateCcw className="w-3 h-3 mr-1" /> Repeat
+                        </Button>
                       </div>
                     </Card>
                   ))}
@@ -415,7 +528,10 @@ const Questseek = () => {
                   {completedQuests.slice(0, 10).map(qa => (
                     <Card key={qa.id} className="p-4 bg-emerald-900/10 border-emerald-500/20">
                       <div className="flex justify-between items-center">
-                        <h4 className="text-gray-300">{qa.quests.title}</h4>
+                        <div>
+                          <h4 className="text-gray-300">{qa.quests?.title}</h4>
+                          {qa.admin_notes && <p className="text-xs text-gray-500 mt-1">{qa.admin_notes}</p>}
+                        </div>
                         <span className="text-emerald-400 font-medium">
                           {qa.final_payment ? formatHexDenomination(qa.final_payment) : "—"}
                         </span>
@@ -426,7 +542,7 @@ const Questseek = () => {
               </div>
             )}
 
-            {activeAcceptances.length === 0 && pendingSubmissions.length === 0 && completedQuests.length === 0 && (
+            {myJobsCount === 0 && completedQuests.length === 0 && rejectedQuests.length === 0 && (
               <Card className="p-8 bg-gray-900/30 border-gray-700/50 text-center text-gray-400">
                 No jobs yet. Check the board!
               </Card>
@@ -439,7 +555,7 @@ const Questseek = () => {
       <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
         <DialogContent className="bg-gray-900 border-gray-700">
           <DialogHeader>
-            <DialogTitle className="text-white">Mark Complete: {selectedQuest?.quests.title}</DialogTitle>
+            <DialogTitle className="text-white">Mark Complete: {selectedQuest?.quests?.title}</DialogTitle>
             <DialogDescription className="text-gray-400">
               Submit your completion details for admin review.
             </DialogDescription>
