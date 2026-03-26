@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Check, RefreshCw, Settings, Package, Download, Upload } from "lucide-react";
+import { ArrowLeft, Plus, Check, X, RefreshCw, Settings, Package, Download, Upload, Briefcase } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatHexDenomination, formatHex } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,6 +24,7 @@ const QuestseekAdmin = () => {
 
   const [quests, setQuests] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
+  const [applications, setApplications] = useState<any[]>([]);
   const [profileMap, setProfileMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [downtimeConfig, setDowntimeConfig] = useState({ hours_per_day: 10 });
@@ -44,6 +45,12 @@ const QuestseekAdmin = () => {
   const [participants, setParticipants] = useState<string[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
 
+  // Reject dialog
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<any>(null);
+  const [rejectType, setRejectType] = useState<"commission" | "application">("commission");
+  const [rejectNotes, setRejectNotes] = useState("");
+
   // Replenish dialog
   const [replenishDialogOpen, setReplenishDialogOpen] = useState(false);
   const [replenishQuestId, setReplenishQuestId] = useState("");
@@ -60,15 +67,18 @@ const QuestseekAdmin = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [questRes, subRes, configRes] = await Promise.all([
+      const [questRes, subRes, appRes, configRes] = await Promise.all([
         supabase.functions.invoke("quest-admin", { body: { operation: "get_all_quests" } }),
         supabase.functions.invoke("quest-admin", { body: { operation: "get_submitted_quests" } }),
+        supabase.functions.invoke("quest-admin", { body: { operation: "get_pending_applications" } }),
         supabase.functions.invoke("quest-admin", { body: { operation: "get_downtime_config" } }),
       ]);
       if (questRes.data?.quests) setQuests(questRes.data.quests);
       if (questRes.data?.profileMap) setProfileMap(prev => ({ ...prev, ...questRes.data.profileMap }));
       if (subRes.data?.submissions) setSubmissions(subRes.data.submissions);
       if (subRes.data?.profileMap) setProfileMap(prev => ({ ...prev, ...subRes.data.profileMap }));
+      if (appRes.data?.applications) setApplications(appRes.data.applications);
+      if (appRes.data?.profileMap) setProfileMap(prev => ({ ...prev, ...appRes.data.profileMap }));
       if (configRes.data?.config) setDowntimeConfig(configRes.data.config);
     } finally {
       setLoading(false);
@@ -167,6 +177,40 @@ const QuestseekAdmin = () => {
     }
   };
 
+  const openRejectDialog = (target: any, type: "commission" | "application") => {
+    setRejectTarget(target);
+    setRejectType(type);
+    setRejectNotes("");
+    setRejectDialogOpen(true);
+  };
+
+  const confirmReject = async () => {
+    if (!rejectTarget) return;
+    const operation = rejectType === "application" ? "reject_application" : "reject_quest";
+    const { data, error } = await supabase.functions.invoke("quest-admin", {
+      body: { operation, acceptanceId: rejectTarget.id, adminNotes: rejectNotes || undefined },
+    });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || "Failed", variant: "destructive" });
+    } else {
+      toast({ title: rejectType === "application" ? "Application rejected" : "Submission rejected" });
+      setRejectDialogOpen(false);
+      loadData();
+    }
+  };
+
+  const approveApplication = async (app: any) => {
+    const { data, error } = await supabase.functions.invoke("quest-admin", {
+      body: { operation: "approve_application", acceptanceId: app.id },
+    });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || "Failed", variant: "destructive" });
+    } else {
+      toast({ title: "Application approved! Recurring payment created." });
+      loadData();
+    }
+  };
+
   const replenishQuest = async () => {
     const { data, error } = await supabase.functions.invoke("quest-admin", {
       body: { operation: "replenish_quest", questId: replenishQuestId, quantity: parseInt(replenishQty) || 0 },
@@ -201,22 +245,13 @@ const QuestseekAdmin = () => {
   const activeQuests = quests.filter(q => q.status === "active");
   const cancelledQuests = quests.filter(q => q.status === "cancelled");
 
-
   const exportQuests = () => {
     const rows = quests.map(q => ({
-      title: q.title,
-      description: q.description || "",
-      client: q.client || "",
-      job_type: q.job_type,
-      reward_min: q.reward_min || 0,
-      reward: q.reward || 0,
-      difficulty: q.difficulty || "",
-      downtime_cost: q.downtime_cost || 0,
-      available_quantity: q.available_quantity ?? "",
-      pay_interval: q.pay_interval || "",
-      tags: q.tags?.join(", ") || "",
-      time_limit: q.time_limit || "",
-      status: q.status || "active",
+      title: q.title, description: q.description || "", client: q.client || "",
+      job_type: q.job_type, reward_min: q.reward_min || 0, reward: q.reward || 0,
+      difficulty: q.difficulty || "", downtime_cost: q.downtime_cost || 0,
+      available_quantity: q.available_quantity ?? "", pay_interval: q.pay_interval || "",
+      tags: q.tags?.join(", ") || "", time_limit: q.time_limit || "", status: q.status || "active",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -253,7 +288,6 @@ const QuestseekAdmin = () => {
         };
         if (!payload.title) { errors++; continue; }
 
-        // Check if quest with same title exists
         const existing = quests.find(q => q.title.toLowerCase() === payload.title.toLowerCase());
         if (existing) {
           const { error } = await supabase.functions.invoke("quest-admin", {
@@ -274,6 +308,8 @@ const QuestseekAdmin = () => {
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
+
+  const reviewCount = submissions.length + applications.length;
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
@@ -301,58 +337,104 @@ const QuestseekAdmin = () => {
           </div>
         </div>
 
-
-
-
-        <Tabs defaultValue="submissions" className="space-y-6">
+        <Tabs defaultValue="review" className="space-y-6">
           <TabsList className="bg-gray-900/50 border border-gray-700/50">
-            <TabsTrigger value="submissions">
-              Submissions {submissions.length > 0 && `(${submissions.length})`}
+            <TabsTrigger value="review">
+              Review {reviewCount > 0 && `(${reviewCount})`}
             </TabsTrigger>
             <TabsTrigger value="quests">All Quests</TabsTrigger>
           </TabsList>
 
-          {/* Submissions Tab */}
-          <TabsContent value="submissions" className="space-y-4">
-            {submissions.length === 0 ? (
-              <Card className="p-8 bg-gray-900/30 border-gray-700/50 text-center text-gray-400">
-                No pending submissions.
-              </Card>
-            ) : (
-              submissions.map(sub => (
-                <Card key={sub.id} className="p-4 bg-yellow-900/10 border-yellow-500/30">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="text-white font-medium">{sub.quests?.title}</h4>
-                      <p className="text-sm text-gray-400">
-                        By: {profileMap[sub.user_id] || "Unknown"} • Reward range: {formatHex(sub.quests?.reward_min || 0)} – {formatHex(sub.quests?.reward || 0)}
-                      </p>
-                      <div className="flex gap-3 mt-2 text-sm">
-                        {sub.roll_result !== null && (
-                          <Badge variant="outline" className="text-cyan-400 border-cyan-500/50">
-                            Roll: {sub.roll_result}
-                          </Badge>
-                        )}
-                        {sub.roll_type && (
-                          <Badge variant="outline" className={
-                            sub.roll_type === "hope" ? "text-green-400 border-green-500/50" :
-                            sub.roll_type === "fear" ? "text-red-400 border-red-500/50" :
-                            sub.roll_type === "critical_success" ? "text-yellow-400 border-yellow-500/50" :
-                            "text-purple-400 border-purple-500/50"
-                          }>
-                            {sub.roll_type.replace("_", " ")}
-                          </Badge>
-                        )}
+          {/* Review Tab - combines submissions and applications */}
+          <TabsContent value="review" className="space-y-6">
+            {/* Full-time Applications */}
+            {applications.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-blue-400 mb-3 flex items-center gap-2">
+                  <Briefcase className="w-5 h-5" /> Job Applications ({applications.length})
+                </h3>
+                <div className="space-y-3">
+                  {applications.map(app => (
+                    <Card key={app.id} className="p-4 bg-blue-900/10 border-blue-500/30">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="text-white font-medium">{app.quests?.title}</h4>
+                          <p className="text-sm text-gray-400">
+                            Applicant: {profileMap[app.user_id] || "Unknown"} • Pay: {formatHex(app.quests?.reward || 0)} / {app.quests?.pay_interval || "daily"}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => approveApplication(app)}
+                            className="bg-gradient-to-r from-emerald-500 to-teal-500">
+                            <Check className="w-4 h-4 mr-1" /> Hire
+                          </Button>
+                          <Button size="sm" variant="outline" className="border-red-500/50 text-red-400 hover:bg-red-900/30"
+                            onClick={() => openRejectDialog(app, "application")}>
+                            <X className="w-4 h-4 mr-1" /> Reject
+                          </Button>
+                        </div>
                       </div>
-                      {sub.notes && <p className="text-sm text-gray-400 mt-1 italic">"{sub.notes}"</p>}
-                    </div>
-                    <Button size="sm" onClick={() => openCompleteDialog(sub)}
-                      className="bg-gradient-to-r from-emerald-500 to-teal-500">
-                      <Check className="w-4 h-4 mr-1" /> Approve
-                    </Button>
-                  </div>
-                </Card>
-              ))
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Commission Submissions */}
+            {submissions.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-yellow-400 mb-3">
+                  Commission Submissions ({submissions.length})
+                </h3>
+                <div className="space-y-3">
+                  {submissions.map(sub => (
+                    <Card key={sub.id} className="p-4 bg-yellow-900/10 border-yellow-500/30">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="text-white font-medium">{sub.quests?.title}</h4>
+                          <p className="text-sm text-gray-400">
+                            By: {profileMap[sub.user_id] || "Unknown"} • Range: {formatHex(sub.quests?.reward_min || 0)} – {formatHex(sub.quests?.reward || 0)}
+                          </p>
+                          <div className="flex gap-3 mt-2 text-sm">
+                            {sub.roll_result !== null && (
+                              <Badge variant="outline" className="text-cyan-400 border-cyan-500/50">
+                                Roll: {sub.roll_result}
+                              </Badge>
+                            )}
+                            {sub.roll_type && (
+                              <Badge variant="outline" className={
+                                sub.roll_type === "hope" ? "text-green-400 border-green-500/50" :
+                                sub.roll_type === "fear" ? "text-red-400 border-red-500/50" :
+                                sub.roll_type === "critical_success" ? "text-yellow-400 border-yellow-500/50" :
+                                "text-purple-400 border-purple-500/50"
+                              }>
+                                {sub.roll_type.replace("_", " ")}
+                              </Badge>
+                            )}
+                          </div>
+                          {sub.notes && <p className="text-sm text-gray-400 mt-1 italic">"{sub.notes}"</p>}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => openCompleteDialog(sub)}
+                            className="bg-gradient-to-r from-emerald-500 to-teal-500">
+                            <Check className="w-4 h-4 mr-1" /> Approve
+                          </Button>
+                          <Button size="sm" variant="outline" className="border-red-500/50 text-red-400 hover:bg-red-900/30"
+                            onClick={() => openRejectDialog(sub, "commission")}>
+                            <X className="w-4 h-4 mr-1" /> Reject
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {reviewCount === 0 && (
+              <Card className="p-8 bg-gray-900/30 border-gray-700/50 text-center text-gray-400">
+                No pending reviews.
+              </Card>
             )}
           </TabsContent>
 
@@ -384,9 +466,13 @@ const QuestseekAdmin = () => {
                       {quest.pay_interval && ` • Pays ${quest.pay_interval}`}
                     </p>
                     {quest.quest_acceptances?.length > 0 && (
-                      <div className="flex gap-1 mt-1">
+                      <div className="flex gap-1 mt-1 flex-wrap">
                         {quest.quest_acceptances.map((a: any) => (
-                          <Badge key={a.id} variant="outline" className="text-xs">
+                          <Badge key={a.id} variant="outline" className={`text-xs ${
+                            a.status === 'pending_approval' ? 'border-blue-500/50 text-blue-400' :
+                            a.status === 'rejected' ? 'border-red-500/50 text-red-400' :
+                            ''
+                          }`}>
                             {profileMap[a.user_id] || "?"} ({a.status})
                           </Badge>
                         ))}
@@ -554,6 +640,36 @@ const QuestseekAdmin = () => {
             <Button variant="ghost" onClick={() => setCompleteDialogOpen(false)}>Cancel</Button>
             <Button onClick={completeQuest} className="bg-gradient-to-r from-emerald-500 to-teal-500">
               <Check className="w-4 h-4 mr-1" /> Approve & Pay
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent className="bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              Reject: {rejectTarget?.quests?.title}
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              {rejectType === "application" ? "Reject job application from" : "Reject submission from"}{" "}
+              {profileMap[rejectTarget?.user_id] || "Unknown"}
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label className="text-gray-300">Reason (optional, visible to player)</Label>
+            <Textarea
+              value={rejectNotes}
+              onChange={e => setRejectNotes(e.target.value)}
+              placeholder="e.g. Not enough experience, try again later..."
+              className="bg-gray-800 border-gray-600 text-white"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRejectDialogOpen(false)}>Cancel</Button>
+            <Button onClick={confirmReject} className="bg-red-600 hover:bg-red-700">
+              <X className="w-4 h-4 mr-1" /> Reject
             </Button>
           </DialogFooter>
         </DialogContent>
