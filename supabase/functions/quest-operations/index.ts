@@ -48,6 +48,8 @@ Deno.serve(async (req) => {
         return await submitQuest(effectiveUserId, params)
       case 'resign_quest':
         return await resignQuest(effectiveUserId, params)
+      case 'repeat_quest':
+        return await repeatQuest(effectiveUserId, params)
       case 'get_user_quests':
         return await getUserQuests(effectiveUserId)
       case 'get_downtime':
@@ -106,7 +108,6 @@ async function logRest(userId: string, params: any) {
     })
   }
 
-  // Get current balance
   const { data: bal } = await supabase
     .from('downtime_balances')
     .select('*')
@@ -122,20 +123,17 @@ async function logRest(userId: string, params: any) {
     })
   }
 
-  // Deduct balance
   if (bal) {
     await supabase
       .from('downtime_balances')
       .update({ balance: currentBalance - hours_spent, updated_at: new Date().toISOString() })
       .eq('id', bal.id)
   } else {
-    // Create with negative would be blocked, but shouldn't happen since we checked above
     await supabase
       .from('downtime_balances')
       .insert({ user_id: userId, balance: -hours_spent })
   }
 
-  // Insert activity record
   const { error: insertErr } = await supabase
     .from('downtime_activities')
     .insert({
@@ -194,49 +192,35 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
   }
 
   if (quest.job_type === 'full_time') {
+    // Check if already has an active or pending application
     const { data: existing } = await supabase
       .from('quest_acceptances')
-      .select('id')
+      .select('id, status')
       .eq('quest_id', questId)
       .eq('user_id', userId)
-      .eq('status', 'accepted')
+      .in('status', ['accepted', 'pending_approval'])
       .single()
 
     if (existing) {
-      return new Response(JSON.stringify({ error: 'Already employed in this job' }), {
+      return new Response(JSON.stringify({ error: existing.status === 'pending_approval' ? 'Application already pending' : 'Already employed in this job' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
+    // Full-time jobs go to pending_approval - admin must approve before recurring payment starts
     const { error: acceptError } = await supabase
       .from('quest_acceptances')
-      .insert({ quest_id: questId, user_id: userId, status: 'accepted' })
+      .insert({ quest_id: questId, user_id: userId, status: 'pending_approval' })
 
     if (acceptError) throw acceptError
 
-    const intervalType = quest.pay_interval || 'daily'
-    const { error: rpError } = await supabase
-      .from('recurring_payments')
-      .insert({
-        to_user_id: userId,
-        from_user_id: null,
-        amount: quest.reward,
-        interval_type: intervalType,
-        description: `Full-time job: ${quest.title}`,
-        next_send_at: new Date().toISOString(),
-        status: 'active',
-        is_active: true,
-        metadata: { quest_id: questId, job_type: 'full_time' }
-      })
-
-    if (rpError) throw rpError
-
-    return new Response(JSON.stringify({ success: true, jobType: 'full_time' }), {
+    return new Response(JSON.stringify({ success: true, jobType: 'full_time', status: 'pending_approval' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }
 
+  // Commission quest
   const { data: existing } = await supabase
     .from('quest_acceptances')
     .select('id')
@@ -257,6 +241,63 @@ async function acceptQuest(userId: string, { questId }: { questId: string }) {
     .insert({ quest_id: questId, user_id: userId, status: 'accepted' })
 
   if (acceptError) throw acceptError
+
+  return new Response(JSON.stringify({ success: true }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function repeatQuest(userId: string, { questId }: { questId: string }) {
+  // Allow repeating a commission quest that was previously completed
+  const { data: quest, error: questError } = await supabase
+    .from('quests')
+    .select('*')
+    .eq('id', questId)
+    .eq('status', 'active')
+    .single()
+
+  if (questError || !quest) {
+    return new Response(JSON.stringify({ error: 'Quest not found or no longer active' }), {
+      status: 404,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  if (quest.job_type !== 'commission') {
+    return new Response(JSON.stringify({ error: 'Only commissions can be repeated' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  if (quest.available_quantity !== null && quest.available_quantity <= 0) {
+    return new Response(JSON.stringify({ error: 'No more slots available' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Check not already in progress
+  const { data: active } = await supabase
+    .from('quest_acceptances')
+    .select('id')
+    .eq('quest_id', questId)
+    .eq('user_id', userId)
+    .in('status', ['accepted', 'submitted'])
+    .single()
+
+  if (active) {
+    return new Response(JSON.stringify({ error: 'Already have this quest in progress' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  const { error: insertError } = await supabase
+    .from('quest_acceptances')
+    .insert({ quest_id: questId, user_id: userId, status: 'accepted' })
+
+  if (insertError) throw insertError
 
   return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -332,7 +373,7 @@ async function resignQuest(userId: string, { questId }: { questId: string }) {
     .update({ status: 'resigned' })
     .eq('quest_id', questId)
     .eq('user_id', userId)
-    .eq('status', 'accepted')
+    .in('status', ['accepted', 'pending_approval'])
 
   if (updateError) throw updateError
 
@@ -355,7 +396,7 @@ async function getUserQuests(userId: string) {
       quests (
         id, title, description, client, reward, reward_min,
         difficulty, time_limit, tags, job_type, downtime_cost,
-        available_quantity, pay_interval
+        available_quantity, pay_interval, status
       )
     `)
     .eq('user_id', userId)
