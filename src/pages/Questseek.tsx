@@ -337,9 +337,9 @@ const Questseek = () => {
 
   const myJobsCount = activeAcceptances.length + pendingApproval.length + pendingSubmissions.length + uniqueRepeatables.length;
 
-  // Count pending submissions on my posted quests
+  // Count pending submissions + pending applications on my posted quests
   const myPostedPendingCount = myPostedQuests.reduce((sum, q) => 
-    sum + (q.quest_acceptances?.filter((a: any) => a.status === 'submitted').length || 0), 0);
+    sum + (q.quest_acceptances?.filter((a: any) => a.status === 'submitted' || a.status === 'pending_approval').length || 0), 0);
 
   const formatRewardRange = (quest: Quest) => {
     if (quest.reward_min > 0 && quest.reward_min !== quest.reward) {
