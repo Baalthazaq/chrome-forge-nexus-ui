@@ -68,6 +68,10 @@ Deno.serve(async (req) => {
         return await approvePlayerQuest(effectiveUserId, params)
       case 'reject_player_quest':
         return await rejectPlayerQuest(effectiveUserId, params)
+      case 'approve_player_application':
+        return await approvePlayerApplication(effectiveUserId, params)
+      case 'reject_player_application':
+        return await rejectPlayerApplication(effectiveUserId, params)
       default:
         return new Response(JSON.stringify({ error: 'Invalid operation' }), {
           status: 400,
@@ -454,6 +458,9 @@ async function createPlayerQuest(userId: string, params: any) {
     .eq('user_id', userId)
     .single()
 
+  const jobType = params.job_type || 'commission';
+  const payInterval = params.pay_interval || 'daily';
+
   const { error } = await supabase.from('quests').insert({
     title,
     description: description || null,
@@ -461,11 +468,12 @@ async function createPlayerQuest(userId: string, params: any) {
     reward: reward || 0,
     reward_min: reward_min || 0,
     difficulty: difficulty || 'Low Risk',
-    job_type: 'commission',
+    job_type: jobType,
     downtime_cost: downtime_cost || 0,
-    available_quantity: available_quantity ? parseInt(available_quantity) : null,
+    available_quantity: jobType === 'full_time' ? null : (available_quantity ? parseInt(available_quantity) : null),
     tags: tags ? (Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim()).filter(Boolean)) : null,
     time_limit: time_limit || null,
+    pay_interval: jobType === 'full_time' ? payInterval : null,
     posted_by_user_id: userId,
     status: 'active',
   })
