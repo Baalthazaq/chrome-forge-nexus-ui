@@ -866,10 +866,35 @@ const Questseek = () => {
           <DialogHeader>
             <DialogTitle className="text-white">Post a Community Job</DialogTitle>
             <DialogDescription className="text-gray-400">
-              Hire someone to do work for you. You'll pay from your own credits when you approve completion.
+              {postForm.job_type === 'full_time'
+                ? "Hire someone full-time. This creates a recurring payment (subscription) in @tunes that you pay."
+                : "Hire someone to do work for you. You'll pay from your own credits when you approve completion."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <Label className="text-gray-300">Job Type</Label>
+              <Select value={postForm.job_type} onValueChange={v => setPostForm(f => ({ ...f, job_type: v }))}>
+                <SelectTrigger className="bg-gray-800 border-gray-600 text-white"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-gray-800 border-gray-600">
+                  <SelectItem value="commission">Commission (one-off / repeatable)</SelectItem>
+                  <SelectItem value="full_time">Full-Time (recurring payment)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {postForm.job_type === 'full_time' && (
+              <div>
+                <Label className="text-gray-300">Pay Interval</Label>
+                <Select value={postForm.pay_interval} onValueChange={v => setPostForm(f => ({ ...f, pay_interval: v }))}>
+                  <SelectTrigger className="bg-gray-800 border-gray-600 text-white"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-600">
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <Label className="text-gray-300">Job Title *</Label>
               <Input value={postForm.title} onChange={e => setPostForm(f => ({ ...f, title: e.target.value }))}
@@ -882,15 +907,24 @@ const Questseek = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-gray-300">Reward Min (⏣)</Label>
-                <Input type="number" value={postForm.reward_min} onChange={e => setPostForm(f => ({ ...f, reward_min: parseInt(e.target.value) || 0 }))}
+                <Label className="text-gray-300">{postForm.job_type === 'full_time' ? 'Pay Rate (⏣)' : 'Reward Min (⏣)'}</Label>
+                <Input type="number" value={postForm.job_type === 'full_time' ? postForm.reward : postForm.reward_min} onChange={e => {
+                  const val = parseInt(e.target.value) || 0;
+                  if (postForm.job_type === 'full_time') {
+                    setPostForm(f => ({ ...f, reward: val, reward_min: val }));
+                  } else {
+                    setPostForm(f => ({ ...f, reward_min: val }));
+                  }
+                }}
                   className="bg-gray-800 border-gray-600 text-white" />
               </div>
-              <div>
-                <Label className="text-gray-300">Reward Max (⏣)</Label>
-                <Input type="number" value={postForm.reward} onChange={e => setPostForm(f => ({ ...f, reward: parseInt(e.target.value) || 0 }))}
-                  className="bg-gray-800 border-gray-600 text-white" />
-              </div>
+              {postForm.job_type !== 'full_time' && (
+                <div>
+                  <Label className="text-gray-300">Reward Max (⏣)</Label>
+                  <Input type="number" value={postForm.reward} onChange={e => setPostForm(f => ({ ...f, reward: parseInt(e.target.value) || 0 }))}
+                    className="bg-gray-800 border-gray-600 text-white" />
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -911,11 +945,13 @@ const Questseek = () => {
                   className="bg-gray-800 border-gray-600 text-white" />
               </div>
             </div>
-            <div>
-              <Label className="text-gray-300">Available Quantity (blank = unlimited)</Label>
-              <Input value={postForm.available_quantity} onChange={e => setPostForm(f => ({ ...f, available_quantity: e.target.value }))}
-                className="bg-gray-800 border-gray-600 text-white" placeholder="Leave blank for unlimited" />
-            </div>
+            {postForm.job_type !== 'full_time' && (
+              <div>
+                <Label className="text-gray-300">Available Quantity (blank = unlimited)</Label>
+                <Input value={postForm.available_quantity} onChange={e => setPostForm(f => ({ ...f, available_quantity: e.target.value }))}
+                  className="bg-gray-800 border-gray-600 text-white" placeholder="Leave blank for unlimited" />
+              </div>
+            )}
             <div>
               <Label className="text-gray-300">Tags (comma-separated)</Label>
               <Input value={postForm.tags} onChange={e => setPostForm(f => ({ ...f, tags: e.target.value }))}
