@@ -724,6 +724,7 @@ const Questseek = () => {
             <TabsContent value="my_posted" className="space-y-4">
               {myPostedQuests.map(quest => {
                 const submissions = quest.quest_acceptances?.filter((a: any) => a.status === 'submitted') || [];
+                const pendingApps = quest.quest_acceptances?.filter((a: any) => a.status === 'pending_approval') || [];
                 const accepted = quest.quest_acceptances?.filter((a: any) => a.status === 'accepted') || [];
                 const completed = quest.quest_acceptances?.filter((a: any) => a.status === 'completed') || [];
                 return (
@@ -732,18 +733,47 @@ const Questseek = () => {
                       <div>
                         <h4 className="text-white font-medium">{quest.title}</h4>
                         <p className="text-sm text-gray-400">
+                          {quest.job_type === 'full_time' ? (
+                            <Badge variant="outline" className="text-xs text-purple-400 border-purple-500/50 mr-2">Full-Time • {quest.pay_interval}</Badge>
+                          ) : null}
                           Reward: {formatRewardRange(quest)}
                           {quest.status !== 'active' && <span className="text-red-400 ml-2">({quest.status})</span>}
                         </p>
                       </div>
                       <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
-                        {accepted.length} working • {submissions.length} submitted • {completed.length} done
+                        {pendingApps.length > 0 ? `${pendingApps.length} applicants • ` : ''}{accepted.length} working • {submissions.length} submitted • {completed.length} done
                       </Badge>
                     </div>
 
-                    {/* Submissions needing review */}
+                    {/* Pending applications (full-time) */}
+                    {pendingApps.length > 0 && (
+                      <div className="space-y-2 mt-3">
+                        <p className="text-xs text-blue-400 font-medium">Applications</p>
+                        {pendingApps.map((app: any) => (
+                          <div key={app.id} className="p-3 bg-blue-900/10 border border-blue-500/20 rounded-lg flex justify-between items-center">
+                            <div>
+                              <p className="text-sm text-white font-medium">{myPostedProfileMap[app.user_id] || "Unknown"}</p>
+                              <p className="text-xs text-gray-500">Wants to work this job</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => approvePlayerApplication(app.id)}
+                                className="bg-gradient-to-r from-emerald-500 to-teal-500">
+                                <Check className="w-3 h-3 mr-1" /> Hire
+                              </Button>
+                              <Button size="sm" variant="outline" className="border-red-500/50 text-red-400 hover:bg-red-900/30"
+                                onClick={() => rejectPlayerApplication(app.id)}>
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Submissions needing review (commissions) */}
                     {submissions.length > 0 && (
                       <div className="space-y-2 mt-3">
+                        <p className="text-xs text-yellow-400 font-medium">Submissions</p>
                         {submissions.map((sub: any) => (
                           <div key={sub.id} className="p-3 bg-yellow-900/10 border border-yellow-500/20 rounded-lg flex justify-between items-start">
                             <div>
