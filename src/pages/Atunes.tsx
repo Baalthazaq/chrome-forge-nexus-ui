@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Play, Pause, Hand, XCircle, CreditCard, AlertTriangle, Clock, Building2 } from "lucide-react";
+import { ArrowLeft, Play, Pause, Hand, XCircle, CreditCard, AlertTriangle, Clock, Building2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
