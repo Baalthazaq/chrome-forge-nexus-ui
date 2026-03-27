@@ -107,8 +107,7 @@ const apps = [
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/GMaps.gif?v=2",
     description: "Navigation",
     route: "/maze",
-    color: "from-teal-500 to-green-600",
-    openBeta: true
+    color: "from-teal-500 to-green-600"
   },
   {
     id: "succubus",
@@ -135,7 +134,7 @@ const apps = [
     description: "Notice Board",
     route: "/questseek",
     color: "from-emerald-400 to-teal-500",
-    comingSoon: true
+    openBeta: true
   }
 ];
 
