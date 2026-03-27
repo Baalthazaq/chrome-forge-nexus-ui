@@ -235,8 +235,8 @@ const Atunes = () => {
                             {itemName}
                           </CardTitle>
                           <div className="flex items-center gap-2 mt-1">
-                            <Building2 className="w-3 h-3 text-gray-500" />
-                            <span className="text-xs text-gray-400">{companyName}</span>
+                            {isPlayerJob ? <User className="w-3 h-3 text-gray-500" /> : <Building2 className="w-3 h-3 text-gray-500" />}
+                            <span className="text-xs text-gray-400">{isPlayerJob ? `Paying: ${companyName}` : companyName}</span>
                             {tier && (
                               <Badge variant="outline" className="text-xs border-gray-600 text-gray-400">
                                 Tier {tier}
