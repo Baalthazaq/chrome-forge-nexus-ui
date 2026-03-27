@@ -508,13 +508,43 @@ serve(async (req) => {
               continue;
             }
 
-            // Update user's credits
+            // Update user's credits (deduct from payer)
             const { error: updateError } = await supabase
               .from("profiles")
               .update({ credits: newBalance })
               .eq("user_id", payment.to_user_id);
 
             if (updateError) throw updateError;
+
+            // If from_user_id is set, credit that user (e.g., player-posted full-time jobs)
+            if (payment.from_user_id) {
+              const { data: recipientProfile } = await supabase
+                .from("profiles")
+                .select("credits")
+                .eq("user_id", payment.from_user_id)
+                .single();
+
+              if (recipientProfile) {
+                await supabase
+                  .from("profiles")
+                  .update({ credits: (recipientProfile.credits || 0) + payment.amount })
+                  .eq("user_id", payment.from_user_id);
+
+                // Transaction for the recipient
+                await supabase.from("transactions").insert({
+                  user_id: payment.from_user_id,
+                  transaction_type: "recurring_income",
+                  amount: payment.amount,
+                  description: `Income: ${payment.description}`,
+                  reference_id: payment.id,
+                  status: "completed",
+                  metadata: {
+                    recurring_payment_id: payment.id,
+                    from_user_id: payment.to_user_id,
+                  }
+                });
+              }
+            }
 
             // Update recurring payment
             const updates: any = {
@@ -538,7 +568,7 @@ serve(async (req) => {
 
             if (paymentUpdateError) throw paymentUpdateError;
 
-            // Create transaction record
+            // Create transaction record for the payer
             await supabase
               .from("transactions")
               .insert({

@@ -673,9 +673,11 @@ async function approvePlayerApplication(posterId: string, { acceptanceId }: { ac
   const intervalType = acceptance.quests.pay_interval || 'daily'
   const { data: posterProfile } = await supabase.from('profiles').select('character_name').eq('user_id', posterId).single()
 
+  const { data: workerProfile } = await supabase.from('profiles').select('character_name').eq('user_id', acceptance.user_id).single()
+
   const { error: rpError } = await supabase.from('recurring_payments').insert({
     to_user_id: posterId,
-    from_user_id: null,
+    from_user_id: acceptance.user_id,
     amount: acceptance.quests.reward,
     interval_type: intervalType,
     description: `Job: ${acceptance.quests.title}`,
@@ -686,7 +688,7 @@ async function approvePlayerApplication(posterId: string, { acceptanceId }: { ac
       quest_id: acceptance.quest_id,
       job_type: 'full_time',
       player_posted: true,
-      worker_user_id: acceptance.user_id,
+      worker_name: workerProfile?.character_name || 'Unknown',
       poster_name: posterProfile?.character_name || 'Unknown',
     }
   })
