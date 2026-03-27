@@ -284,6 +284,38 @@ const Questseek = () => {
     }
   };
 
+  const approvePlayerApplication = async (acceptanceId: string) => {
+    const { data, error } = await supabase.functions.invoke("quest-operations", {
+      body: {
+        operation: "approve_player_application",
+        acceptanceId,
+        targetUserId: impersonatedUser?.user_id,
+      },
+    });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || "Failed to approve", variant: "destructive" });
+    } else {
+      toast({ title: "Application approved! Recurring payment created in @tunes." });
+      loadData();
+    }
+  };
+
+  const rejectPlayerApplication = async (acceptanceId: string) => {
+    const { data, error } = await supabase.functions.invoke("quest-operations", {
+      body: {
+        operation: "reject_player_application",
+        acceptanceId,
+        targetUserId: impersonatedUser?.user_id,
+      },
+    });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || "Failed", variant: "destructive" });
+    } else {
+      toast({ title: "Application rejected" });
+      loadData();
+    }
+  };
+
   const commissions = quests.filter(q => q.job_type === "commission");
   const fullTimeJobs = quests.filter(q => q.job_type === "full_time");
   const activeAcceptances = myQuests.filter(q => q.status === "accepted");
