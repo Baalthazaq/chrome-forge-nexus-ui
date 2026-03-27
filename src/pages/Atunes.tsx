@@ -219,7 +219,8 @@ const Atunes = () => {
               const config = statusConfig[sub.status] || statusConfig.active;
               const StatusIcon = config.icon;
               const specs = sub.metadata as any;
-              const companyName = specs?.company || specs?.from_name || "Unknown";
+              const isPlayerJob = specs?.player_posted;
+              const companyName = isPlayerJob ? (specs?.worker_name || "Worker") : (specs?.company || specs?.from_name || "Unknown");
               const itemName = specs?.item_name || sub.description;
               const tier = specs?.tier;
 
