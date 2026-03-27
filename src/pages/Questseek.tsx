@@ -86,6 +86,7 @@ const Questseek = () => {
   const [postForm, setPostForm] = useState({
     title: "", description: "", reward: 0, reward_min: 0, difficulty: "Low Risk",
     downtime_cost: 0, available_quantity: "", tags: "", time_limit: "",
+    job_type: "commission", pay_interval: "daily",
   });
 
   // Approve player quest dialog
@@ -237,7 +238,7 @@ const Questseek = () => {
     } else {
       toast({ title: "Job posted!" });
       setPostJobOpen(false);
-      setPostForm({ title: "", description: "", reward: 0, reward_min: 0, difficulty: "Low Risk", downtime_cost: 0, available_quantity: "", tags: "", time_limit: "" });
+      setPostForm({ title: "", description: "", reward: 0, reward_min: 0, difficulty: "Low Risk", downtime_cost: 0, available_quantity: "", tags: "", time_limit: "", job_type: "commission", pay_interval: "daily" });
       loadData();
     }
   };
@@ -283,6 +284,38 @@ const Questseek = () => {
     }
   };
 
+  const approvePlayerApplication = async (acceptanceId: string) => {
+    const { data, error } = await supabase.functions.invoke("quest-operations", {
+      body: {
+        operation: "approve_player_application",
+        acceptanceId,
+        targetUserId: impersonatedUser?.user_id,
+      },
+    });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || "Failed to approve", variant: "destructive" });
+    } else {
+      toast({ title: "Application approved! Recurring payment created in @tunes." });
+      loadData();
+    }
+  };
+
+  const rejectPlayerApplication = async (acceptanceId: string) => {
+    const { data, error } = await supabase.functions.invoke("quest-operations", {
+      body: {
+        operation: "reject_player_application",
+        acceptanceId,
+        targetUserId: impersonatedUser?.user_id,
+      },
+    });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || "Failed", variant: "destructive" });
+    } else {
+      toast({ title: "Application rejected" });
+      loadData();
+    }
+  };
+
   const commissions = quests.filter(q => q.job_type === "commission");
   const fullTimeJobs = quests.filter(q => q.job_type === "full_time");
   const activeAcceptances = myQuests.filter(q => q.status === "accepted");
@@ -304,9 +337,9 @@ const Questseek = () => {
 
   const myJobsCount = activeAcceptances.length + pendingApproval.length + pendingSubmissions.length + uniqueRepeatables.length;
 
-  // Count pending submissions on my posted quests
+  // Count pending submissions + pending applications on my posted quests
   const myPostedPendingCount = myPostedQuests.reduce((sum, q) => 
-    sum + (q.quest_acceptances?.filter((a: any) => a.status === 'submitted').length || 0), 0);
+    sum + (q.quest_acceptances?.filter((a: any) => a.status === 'submitted' || a.status === 'pending_approval').length || 0), 0);
 
   const formatRewardRange = (quest: Quest) => {
     if (quest.reward_min > 0 && quest.reward_min !== quest.reward) {
@@ -691,6 +724,7 @@ const Questseek = () => {
             <TabsContent value="my_posted" className="space-y-4">
               {myPostedQuests.map(quest => {
                 const submissions = quest.quest_acceptances?.filter((a: any) => a.status === 'submitted') || [];
+                const pendingApps = quest.quest_acceptances?.filter((a: any) => a.status === 'pending_approval') || [];
                 const accepted = quest.quest_acceptances?.filter((a: any) => a.status === 'accepted') || [];
                 const completed = quest.quest_acceptances?.filter((a: any) => a.status === 'completed') || [];
                 return (
@@ -699,18 +733,47 @@ const Questseek = () => {
                       <div>
                         <h4 className="text-white font-medium">{quest.title}</h4>
                         <p className="text-sm text-gray-400">
+                          {quest.job_type === 'full_time' ? (
+                            <Badge variant="outline" className="text-xs text-purple-400 border-purple-500/50 mr-2">Full-Time • {quest.pay_interval}</Badge>
+                          ) : null}
                           Reward: {formatRewardRange(quest)}
                           {quest.status !== 'active' && <span className="text-red-400 ml-2">({quest.status})</span>}
                         </p>
                       </div>
                       <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
-                        {accepted.length} working • {submissions.length} submitted • {completed.length} done
+                        {pendingApps.length > 0 ? `${pendingApps.length} applicants • ` : ''}{accepted.length} working • {submissions.length} submitted • {completed.length} done
                       </Badge>
                     </div>
 
-                    {/* Submissions needing review */}
+                    {/* Pending applications (full-time) */}
+                    {pendingApps.length > 0 && (
+                      <div className="space-y-2 mt-3">
+                        <p className="text-xs text-blue-400 font-medium">Applications</p>
+                        {pendingApps.map((app: any) => (
+                          <div key={app.id} className="p-3 bg-blue-900/10 border border-blue-500/20 rounded-lg flex justify-between items-center">
+                            <div>
+                              <p className="text-sm text-white font-medium">{myPostedProfileMap[app.user_id] || "Unknown"}</p>
+                              <p className="text-xs text-gray-500">Wants to work this job</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => approvePlayerApplication(app.id)}
+                                className="bg-gradient-to-r from-emerald-500 to-teal-500">
+                                <Check className="w-3 h-3 mr-1" /> Hire
+                              </Button>
+                              <Button size="sm" variant="outline" className="border-red-500/50 text-red-400 hover:bg-red-900/30"
+                                onClick={() => rejectPlayerApplication(app.id)}>
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Submissions needing review (commissions) */}
                     {submissions.length > 0 && (
                       <div className="space-y-2 mt-3">
+                        <p className="text-xs text-yellow-400 font-medium">Submissions</p>
                         {submissions.map((sub: any) => (
                           <div key={sub.id} className="p-3 bg-yellow-900/10 border border-yellow-500/20 rounded-lg flex justify-between items-start">
                             <div>
@@ -803,10 +866,35 @@ const Questseek = () => {
           <DialogHeader>
             <DialogTitle className="text-white">Post a Community Job</DialogTitle>
             <DialogDescription className="text-gray-400">
-              Hire someone to do work for you. You'll pay from your own credits when you approve completion.
+              {postForm.job_type === 'full_time'
+                ? "Hire someone full-time. This creates a recurring payment (subscription) in @tunes that you pay."
+                : "Hire someone to do work for you. You'll pay from your own credits when you approve completion."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <Label className="text-gray-300">Job Type</Label>
+              <Select value={postForm.job_type} onValueChange={v => setPostForm(f => ({ ...f, job_type: v }))}>
+                <SelectTrigger className="bg-gray-800 border-gray-600 text-white"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-gray-800 border-gray-600">
+                  <SelectItem value="commission">Commission (one-off / repeatable)</SelectItem>
+                  <SelectItem value="full_time">Full-Time (recurring payment)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {postForm.job_type === 'full_time' && (
+              <div>
+                <Label className="text-gray-300">Pay Interval</Label>
+                <Select value={postForm.pay_interval} onValueChange={v => setPostForm(f => ({ ...f, pay_interval: v }))}>
+                  <SelectTrigger className="bg-gray-800 border-gray-600 text-white"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-600">
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <Label className="text-gray-300">Job Title *</Label>
               <Input value={postForm.title} onChange={e => setPostForm(f => ({ ...f, title: e.target.value }))}
@@ -819,15 +907,24 @@ const Questseek = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-gray-300">Reward Min (⏣)</Label>
-                <Input type="number" value={postForm.reward_min} onChange={e => setPostForm(f => ({ ...f, reward_min: parseInt(e.target.value) || 0 }))}
+                <Label className="text-gray-300">{postForm.job_type === 'full_time' ? 'Pay Rate (⏣)' : 'Reward Min (⏣)'}</Label>
+                <Input type="number" value={postForm.job_type === 'full_time' ? postForm.reward : postForm.reward_min} onChange={e => {
+                  const val = parseInt(e.target.value) || 0;
+                  if (postForm.job_type === 'full_time') {
+                    setPostForm(f => ({ ...f, reward: val, reward_min: val }));
+                  } else {
+                    setPostForm(f => ({ ...f, reward_min: val }));
+                  }
+                }}
                   className="bg-gray-800 border-gray-600 text-white" />
               </div>
-              <div>
-                <Label className="text-gray-300">Reward Max (⏣)</Label>
-                <Input type="number" value={postForm.reward} onChange={e => setPostForm(f => ({ ...f, reward: parseInt(e.target.value) || 0 }))}
-                  className="bg-gray-800 border-gray-600 text-white" />
-              </div>
+              {postForm.job_type !== 'full_time' && (
+                <div>
+                  <Label className="text-gray-300">Reward Max (⏣)</Label>
+                  <Input type="number" value={postForm.reward} onChange={e => setPostForm(f => ({ ...f, reward: parseInt(e.target.value) || 0 }))}
+                    className="bg-gray-800 border-gray-600 text-white" />
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -848,11 +945,13 @@ const Questseek = () => {
                   className="bg-gray-800 border-gray-600 text-white" />
               </div>
             </div>
-            <div>
-              <Label className="text-gray-300">Available Quantity (blank = unlimited)</Label>
-              <Input value={postForm.available_quantity} onChange={e => setPostForm(f => ({ ...f, available_quantity: e.target.value }))}
-                className="bg-gray-800 border-gray-600 text-white" placeholder="Leave blank for unlimited" />
-            </div>
+            {postForm.job_type !== 'full_time' && (
+              <div>
+                <Label className="text-gray-300">Available Quantity (blank = unlimited)</Label>
+                <Input value={postForm.available_quantity} onChange={e => setPostForm(f => ({ ...f, available_quantity: e.target.value }))}
+                  className="bg-gray-800 border-gray-600 text-white" placeholder="Leave blank for unlimited" />
+              </div>
+            )}
             <div>
               <Label className="text-gray-300">Tags (comma-separated)</Label>
               <Input value={postForm.tags} onChange={e => setPostForm(f => ({ ...f, tags: e.target.value }))}

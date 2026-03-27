@@ -68,6 +68,10 @@ Deno.serve(async (req) => {
         return await approvePlayerQuest(effectiveUserId, params)
       case 'reject_player_quest':
         return await rejectPlayerQuest(effectiveUserId, params)
+      case 'approve_player_application':
+        return await approvePlayerApplication(effectiveUserId, params)
+      case 'reject_player_application':
+        return await rejectPlayerApplication(effectiveUserId, params)
       default:
         return new Response(JSON.stringify({ error: 'Invalid operation' }), {
           status: 400,
@@ -454,6 +458,9 @@ async function createPlayerQuest(userId: string, params: any) {
     .eq('user_id', userId)
     .single()
 
+  const jobType = params.job_type || 'commission';
+  const payInterval = params.pay_interval || 'daily';
+
   const { error } = await supabase.from('quests').insert({
     title,
     description: description || null,
@@ -461,11 +468,12 @@ async function createPlayerQuest(userId: string, params: any) {
     reward: reward || 0,
     reward_min: reward_min || 0,
     difficulty: difficulty || 'Low Risk',
-    job_type: 'commission',
+    job_type: jobType,
     downtime_cost: downtime_cost || 0,
-    available_quantity: available_quantity ? parseInt(available_quantity) : null,
+    available_quantity: jobType === 'full_time' ? null : (available_quantity ? parseInt(available_quantity) : null),
     tags: tags ? (Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim()).filter(Boolean)) : null,
     time_limit: time_limit || null,
+    pay_interval: jobType === 'full_time' ? payInterval : null,
     posted_by_user_id: userId,
     status: 'active',
   })
@@ -625,6 +633,97 @@ async function rejectPlayerQuest(posterId: string, { acceptanceId, notes }: { ac
   await supabase.from('quest_acceptances').update({
     status: 'rejected',
     admin_notes: notes || 'Rejected by poster.',
+    completed_at: new Date().toISOString(),
+  }).eq('id', acceptanceId)
+
+  return new Response(JSON.stringify({ success: true }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function approvePlayerApplication(posterId: string, { acceptanceId }: { acceptanceId: string }) {
+  const { data: acceptance, error: getErr } = await supabase
+    .from('quest_acceptances')
+    .select(`*, quests (id, title, reward, pay_interval, posted_by_user_id, downtime_cost)`)
+    .eq('id', acceptanceId)
+    .eq('status', 'pending_approval')
+    .single()
+
+  if (getErr || !acceptance) {
+    return new Response(JSON.stringify({ error: 'Application not found or already processed' }), {
+      status: 404,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  if (acceptance.quests.posted_by_user_id !== posterId) {
+    return new Response(JSON.stringify({ error: 'Only the job poster can approve applications' }), {
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Update acceptance status
+  await supabase.from('quest_acceptances').update({
+    status: 'accepted',
+    admin_notes: 'Application approved by poster. Welcome aboard!',
+  }).eq('id', acceptanceId)
+
+  // Create recurring payment: poster pays worker
+  const intervalType = acceptance.quests.pay_interval || 'daily'
+  const { data: posterProfile } = await supabase.from('profiles').select('character_name').eq('user_id', posterId).single()
+
+  const { data: workerProfile } = await supabase.from('profiles').select('character_name').eq('user_id', acceptance.user_id).single()
+
+  const { error: rpError } = await supabase.from('recurring_payments').insert({
+    to_user_id: posterId,
+    from_user_id: acceptance.user_id,
+    amount: acceptance.quests.reward,
+    interval_type: intervalType,
+    description: `Job: ${acceptance.quests.title}`,
+    next_send_at: new Date().toISOString(),
+    status: 'active',
+    is_active: true,
+    metadata: {
+      quest_id: acceptance.quest_id,
+      job_type: 'full_time',
+      player_posted: true,
+      worker_name: workerProfile?.character_name || 'Unknown',
+      poster_name: posterProfile?.character_name || 'Unknown',
+    }
+  })
+  if (rpError) throw rpError
+
+  return new Response(JSON.stringify({ success: true }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function rejectPlayerApplication(posterId: string, { acceptanceId, notes }: { acceptanceId: string, notes?: string }) {
+  const { data: acceptance, error: getErr } = await supabase
+    .from('quest_acceptances')
+    .select(`*, quests (id, posted_by_user_id)`)
+    .eq('id', acceptanceId)
+    .eq('status', 'pending_approval')
+    .single()
+
+  if (getErr || !acceptance) {
+    return new Response(JSON.stringify({ error: 'Application not found' }), {
+      status: 404,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  if (acceptance.quests.posted_by_user_id !== posterId) {
+    return new Response(JSON.stringify({ error: 'Only the job poster can reject applications' }), {
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  await supabase.from('quest_acceptances').update({
+    status: 'rejected',
+    admin_notes: notes || 'Application rejected by poster.',
     completed_at: new Date().toISOString(),
   }).eq('id', acceptanceId)
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Play, Pause, Hand, XCircle, CreditCard, AlertTriangle, Clock, Building2 } from "lucide-react";
+import { ArrowLeft, Play, Pause, Hand, XCircle, CreditCard, AlertTriangle, Clock, Building2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -219,7 +219,8 @@ const Atunes = () => {
               const config = statusConfig[sub.status] || statusConfig.active;
               const StatusIcon = config.icon;
               const specs = sub.metadata as any;
-              const companyName = specs?.company || specs?.from_name || "Unknown";
+              const isPlayerJob = specs?.player_posted;
+              const companyName = isPlayerJob ? (specs?.worker_name || "Worker") : (specs?.company || specs?.from_name || "Unknown");
               const itemName = specs?.item_name || sub.description;
               const tier = specs?.tier;
 
@@ -234,8 +235,8 @@ const Atunes = () => {
                             {itemName}
                           </CardTitle>
                           <div className="flex items-center gap-2 mt-1">
-                            <Building2 className="w-3 h-3 text-gray-500" />
-                            <span className="text-xs text-gray-400">{companyName}</span>
+                            {isPlayerJob ? <User className="w-3 h-3 text-gray-500" /> : <Building2 className="w-3 h-3 text-gray-500" />}
+                            <span className="text-xs text-gray-400">{isPlayerJob ? `Paying: ${companyName}` : companyName}</span>
                             {tier && (
                               <Badge variant="outline" className="text-xs border-gray-600 text-gray-400">
                                 Tier {tier}
