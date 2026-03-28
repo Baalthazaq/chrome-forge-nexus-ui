@@ -265,6 +265,7 @@ const CVNewsAdmin = () => {
   };
 
 
+  const togglePublished = async (article: NewsArticle) => {
     const { error } = await supabase
       .from('news_articles')
       .update({ is_published: !article.is_published })
