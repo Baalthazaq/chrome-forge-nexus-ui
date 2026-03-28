@@ -115,6 +115,12 @@ const CVNewsAdmin = () => {
     setDialogOpen(true);
   };
 
+  const autoSummary = (text: string | null) => {
+    if (!text) return null;
+    const words = text.trim().split(/\s+/);
+    return words.slice(0, 20).join(' ') + (words.length > 20 ? '...' : '');
+  };
+
   const handleSave = async () => {
     if (!headline.trim()) {
       toast({ title: "Error", description: "Headline is required", variant: "destructive" });
@@ -122,9 +128,10 @@ const CVNewsAdmin = () => {
     }
 
     const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
+    const effectiveSummary = summary.trim() || autoSummary(content.trim()) || null;
     const rawData = {
       headline: headline.trim(),
-      summary: summary.trim() || null,
+      summary: effectiveSummary,
       content: content.trim() || null,
       image_url: imageUrl.trim() || null,
       tags,
@@ -186,7 +193,78 @@ const CVNewsAdmin = () => {
     }
   };
 
-  const togglePublished = async (article: NewsArticle) => {
+  // --- Export / Import ---
+  const exportArticles = () => {
+    const rows = articles.map(a => ({
+      id: a.id,
+      headline: a.headline,
+      summary: a.summary || '',
+      content: a.content || '',
+      image_url: a.image_url || '',
+      tags: (a.tags || []).join(', '),
+      is_breaking: a.is_breaking,
+      is_published: a.is_published,
+      publish_day: a.publish_day ?? '',
+      publish_month: a.publish_month ?? '',
+      publish_year: a.publish_year ?? '',
+      user_id: a.user_id || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'articles');
+    XLSX.writeFile(wb, `cvnews-articles-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast({ title: `Exported ${rows.length} articles` });
+  };
+
+  const importArticles = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls,.csv';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf);
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const items: any[] = XLSX.utils.sheet_to_json(ws);
+        if (!items.length) throw new Error('No rows found');
+        let created = 0, updated = 0;
+        for (const row of items) {
+          const contentText = row.content ? String(row.content).trim() : null;
+          const summaryText = row.summary ? String(row.summary).trim() : null;
+          const effectiveSummary = summaryText || autoSummary(contentText);
+          const articleData: any = {
+            headline: String(row.headline || ''),
+            summary: effectiveSummary,
+            content: contentText,
+            image_url: row.image_url ? String(row.image_url).trim() : null,
+            tags: row.tags ? String(row.tags).split(',').map((t: string) => t.trim()).filter(Boolean) : [],
+            is_breaking: row.is_breaking === true || row.is_breaking === 'true' || row.is_breaking === 'TRUE',
+            is_published: row.is_published === true || row.is_published === 'true' || row.is_published === 'TRUE',
+            publish_day: row.publish_day ? parseInt(String(row.publish_day)) : null,
+            publish_month: row.publish_month ? parseInt(String(row.publish_month)) : null,
+            publish_year: row.publish_year ? parseInt(String(row.publish_year)) : null,
+          };
+          const existing = row.id ? articles.find(a => a.id === row.id) : null;
+          if (existing) {
+            await supabase.from('news_articles').update(articleData).eq('id', existing.id);
+            updated++;
+          } else {
+            await supabase.from('news_articles').insert(articleData);
+            created++;
+          }
+        }
+        loadArticles();
+        toast({ title: `Import complete: ${created} created, ${updated} updated` });
+      } catch (err: any) {
+        toast({ title: "Import failed", description: err.message, variant: "destructive" });
+      }
+    };
+    input.click();
+  };
+
+
     const { error } = await supabase
       .from('news_articles')
       .update({ is_published: !article.is_published })
