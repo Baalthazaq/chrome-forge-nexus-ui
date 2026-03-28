@@ -148,7 +148,12 @@ const MazeAdmin = () => {
       return;
     }
     setMapMode('view');
-    setEditingArea({ polygon_points: drawingPolygon });
+    // If we're redrawing an existing area, keep the existing editingArea data and just update polygon
+    if (editingArea?.id) {
+      setEditingArea(prev => ({ ...prev, polygon_points: drawingPolygon }));
+    } else {
+      setEditingArea({ polygon_points: drawingPolygon });
+    }
   };
 
   const saveArea = async () => {
@@ -185,6 +190,15 @@ const MazeAdmin = () => {
     setEditingArea(area);
     setAreaForm({ name: area.name, description: area.description || '', image_url: area.image_url || '' });
     setEnvCard(area.environment_card || { visible_fields: { impulses: true, difficulty: true, adversaries: true, features: true } });
+  };
+
+  const startRedrawArea = (area: MapArea) => {
+    setMapMode('draw-polygon');
+    setDrawingPolygon([]);
+    setEditingArea(area);
+    setAreaForm({ name: area.name, description: area.description || '', image_url: area.image_url || '' });
+    setEnvCard(area.environment_card || { visible_fields: { impulses: true, difficulty: true, adversaries: true, features: true } });
+    toast.info(`Redrawing "${area.name}" — click points on the map, then close the polygon.`);
   };
 
   // --- Route Handlers ---
@@ -512,7 +526,8 @@ const MazeAdmin = () => {
                         <span className="truncate">{area.name}</span>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={() => startEditArea(area)} className="p-1 text-gray-400 hover:text-white"><Pencil className="w-3 h-3" /></button>
+                        <button onClick={() => startEditArea(area)} className="p-1 text-gray-400 hover:text-white" title="Edit"><Pencil className="w-3 h-3" /></button>
+                        <button onClick={() => startRedrawArea(area)} className="p-1 text-gray-400 hover:text-cyan-400" title="Redraw polygon"><Move className="w-3 h-3" /></button>
                         <button onClick={() => { maze.deleteArea.mutate(area.id); toast.success('Deleted'); }} className="p-1 text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
