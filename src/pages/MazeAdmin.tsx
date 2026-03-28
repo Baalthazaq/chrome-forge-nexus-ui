@@ -635,7 +635,7 @@ const MazeAdmin = () => {
       </Dialog>
 
       {/* Area Edit Dialog */}
-      <Dialog open={!!editingArea} onOpenChange={(open) => !open && setEditingArea(null)}>
+      <Dialog open={!!editingArea && mapMode !== 'draw-polygon'} onOpenChange={(open) => !open && setEditingArea(null)}>
         <DialogContent className="bg-gray-900 border-gray-700 text-gray-200 max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-teal-400">{editingArea?.id ? 'Edit' : 'New'} Area</DialogTitle>
