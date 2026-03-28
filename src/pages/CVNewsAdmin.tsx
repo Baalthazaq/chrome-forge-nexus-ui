@@ -378,6 +378,12 @@ const CVNewsAdmin = () => {
                 </div>
               </DialogContent>
             </Dialog>
+            <Button variant="outline" size="sm" onClick={exportArticles}>
+              <Download className="h-4 w-4 mr-2" />Export
+            </Button>
+            <Button variant="outline" size="sm" onClick={importArticles}>
+              <Upload className="h-4 w-4 mr-2" />Import
+            </Button>
             <Button variant="outline" onClick={() => navigate('/admin')}>
               <ArrowLeft className="h-4 w-4 mr-2" />Admin
             </Button>
