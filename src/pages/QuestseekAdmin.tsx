@@ -531,11 +531,13 @@ const QuestseekAdmin = () => {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-gray-300">Reward Min (⏣)</Label>
-                <Input type="number" value={questForm.reward_min} onChange={e => setQuestForm(f => ({ ...f, reward_min: parseInt(e.target.value) || 0 }))}
-                  className="bg-gray-800 border-gray-600 text-white" />
-              </div>
+              {questForm.job_type !== "full_time" && (
+                <div>
+                  <Label className="text-gray-300">Reward Min (⏣)</Label>
+                  <Input type="number" value={questForm.reward_min} onChange={e => setQuestForm(f => ({ ...f, reward_min: parseInt(e.target.value) || 0 }))}
+                    className="bg-gray-800 border-gray-600 text-white" />
+                </div>
+              )}
               <div>
                 <Label className="text-gray-300">Reward Max (⏣)</Label>
                 <Input type="number" value={questForm.reward} onChange={e => setQuestForm(f => ({ ...f, reward: parseInt(e.target.value) || 0 }))}
@@ -556,9 +558,16 @@ const QuestseekAdmin = () => {
                 </Select>
               </div>
               <div>
-                <Label className="text-gray-300">Downtime Cost (hours)</Label>
+                <Label className="text-gray-300">
+                  {questForm.job_type === "full_time" ? "Downtime per Pay Period (hours)" : "Downtime Cost (hours)"}
+                </Label>
                 <Input type="number" value={questForm.downtime_cost} onChange={e => setQuestForm(f => ({ ...f, downtime_cost: parseInt(e.target.value) || 0 }))}
                   className="bg-gray-800 border-gray-600 text-white" />
+                {questForm.job_type === "full_time" && questForm.downtime_cost > 0 && (
+                  <p className="text-xs text-cyan-400 mt-1">
+                    ≈ {Math.ceil(questForm.downtime_cost / (questForm.pay_interval === "weekly" ? 7 : questForm.pay_interval === "monthly" ? 28 : questForm.pay_interval === "yearly" ? 365 : 1))}h/day
+                  </p>
+                )}
               </div>
             </div>
             {questForm.job_type === "commission" && (
