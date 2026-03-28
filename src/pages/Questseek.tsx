@@ -940,9 +940,16 @@ const Questseek = () => {
                 </Select>
               </div>
               <div>
-                <Label className="text-gray-300">Downtime Cost (hours)</Label>
+                <Label className="text-gray-300">
+                  {postForm.job_type === "full_time" ? "Downtime per Pay Period (hours)" : "Downtime Cost (hours)"}
+                </Label>
                 <Input type="number" value={postForm.downtime_cost} onChange={e => setPostForm(f => ({ ...f, downtime_cost: parseInt(e.target.value) || 0 }))}
                   className="bg-gray-800 border-gray-600 text-white" />
+                {postForm.job_type === "full_time" && postForm.downtime_cost > 0 && (
+                  <p className="text-xs text-cyan-400 mt-1">
+                    ≈ {Math.ceil(postForm.downtime_cost / (postForm.pay_interval === "weekly" ? 7 : postForm.pay_interval === "monthly" ? 28 : postForm.pay_interval === "yearly" ? 365 : 1))}h/day
+                  </p>
+                )}
               </div>
             </div>
             {postForm.job_type !== 'full_time' && (
