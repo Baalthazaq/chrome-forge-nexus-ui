@@ -14,9 +14,10 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Edit, Trash2, Newspaper, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Newspaper, AlertTriangle, Eye, EyeOff, Download, Upload } from 'lucide-react';
 import { z } from 'zod';
 import { MONTHS, getMonth } from '@/lib/gameCalendar';
+import * as XLSX from 'xlsx';
 
 const articleSchema = z.object({
   headline: z.string().trim().min(1, 'Headline is required').max(300, 'Headline too long (max 300 chars)'),
