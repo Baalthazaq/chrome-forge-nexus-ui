@@ -306,7 +306,7 @@ const CVNewsAdmin = () => {
                     <Input value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Article headline..." />
                   </div>
                   <div>
-                    <Label>Summary (shown on front page)</Label>
+                    <Label>Summary (auto-generated from content if blank)</Label>
                     <Textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Brief summary..." rows={2} />
                   </div>
                   <div>
