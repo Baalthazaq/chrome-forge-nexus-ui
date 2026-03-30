@@ -39,6 +39,7 @@ import SuggestionAdmin from "./pages/SuggestionAdmin";
 import OrganizationsAdmin from "./pages/OrganizationsAdmin";
 import MazeAdmin from "./pages/MazeAdmin";
 import QuestseekAdmin from "./pages/QuestseekAdmin";
+import ToMeAdmin from "./pages/ToMeAdmin";
 import { CharacterTokensPage } from "./components/CharacterTokens";
 
 const queryClient = new QueryClient();
@@ -86,6 +87,7 @@ const App = () => (
             <Route path="/admin/organizations" element={<OrganizationsAdmin />} />
             <Route path="/admin/maze" element={<MazeAdmin />} />
             <Route path="/admin/questseek" element={<QuestseekAdmin />} />
+            <Route path="/admin/tome" element={<ToMeAdmin />} />
             <Route path="/admin/tokens" element={<CharacterTokensPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
