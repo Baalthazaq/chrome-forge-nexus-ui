@@ -446,10 +446,24 @@ const ToMe = () => {
     return chapters[chapterIndex].content || '';
   };
 
+  const PAGE_BREAK_MARKER = '---PAGE_BREAK---';
+
   const addChapter = () => {
-    const newChapters = [...newEntry.chapters, { title: `Page ${newEntry.chapters.length + 1}`, content: '' }];
+    const newChapters = [...newEntry.chapters, { title: `Chapter ${newEntry.chapters.length + 1}`, content: '' }];
     setNewEntry({ ...newEntry, chapters: newChapters });
     setCurrentChapter(newChapters.length - 1);
+  };
+
+  const insertPageBreak = () => {
+    const textarea = document.getElementById('page-content') as HTMLTextAreaElement;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const currentContent = newEntry.chapters[currentChapter]?.content || '';
+    const before = currentContent.substring(0, start);
+    const after = currentContent.substring(end);
+    const newContent = before + '\n' + PAGE_BREAK_MARKER + '\n' + after;
+    updateChapter(currentChapter, 'content', newContent);
   };
 
   const removeChapter = (chapterIndex: number) => {
