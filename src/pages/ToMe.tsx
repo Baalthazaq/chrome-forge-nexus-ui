@@ -1268,43 +1268,36 @@ const ToMe = () => {
             
             {(() => {
               const entry = tomeEntries.find(e => e.id === expandedTome);
-              let chapters;
+              let pages;
               try {
-                chapters = typeof entry?.content === 'string' 
+                pages = typeof entry?.content === 'string' 
                   ? JSON.parse(entry.content)
-                  : [{ title: 'Chapter 1', content: entry?.content || '' }];
+                  : [{ title: 'Page 1', content: entry?.content || '' }];
               } catch {
-                chapters = [{ title: 'Chapter 1', content: entry?.content || '' }];
+                pages = [{ title: 'Page 1', content: entry?.content || '' }];
               }
+              if (!Array.isArray(pages)) pages = [{ title: 'Page 1', content: entry?.content || '' }];
               
-              const currentChapterContent = chapters[currentChapter]?.content || '';
-              const totalPages = calculatePages(currentChapterContent);
+              // Build flat page list: each page entry is one page, but if content overflows 750 words, it splits
+              const flatPages: { title: string; content: string; pageIndex: number; subPage: number }[] = [];
+              pages.forEach((page, idx) => {
+                const content = page.content || '';
+                const subPageCount = calculatePages(content);
+                for (let sp = 0; sp < subPageCount; sp++) {
+                  flatPages.push({
+                    title: page.title,
+                    content: getPageContent(content, sp + 1),
+                    pageIndex: idx,
+                    subPage: sp,
+                  });
+                }
+              });
+              
+              const totalPages = flatPages.length;
               
               return (
                 <>
-                  <div className="flex items-center space-x-4">
-                    <h2 className="text-2xl font-bold text-white">{entry?.title}</h2>
-                    {chapters.length > 1 && (
-                      <Select value={currentChapter.toString()} onValueChange={(value) => {
-                        setCurrentChapter(parseInt(value));
-                        setCurrentPage(1);
-                      }}>
-                        <SelectTrigger className="w-[200px] bg-gray-800 border-gray-600 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-800 border-gray-600">
-                          {chapters.map((chapter, index) => (
-                            <SelectItem key={index} value={index.toString()} className="text-white hover:bg-gray-700">
-                              <div className="flex items-center space-x-2">
-                                <List className="w-4 h-4" />
-                                <span>{chapter.title}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
+                  <h2 className="text-2xl font-bold text-white">{entry?.title}</h2>
                   <div className="flex items-center space-x-4">
                     <Button
                       variant="ghost"
@@ -1338,29 +1331,45 @@ const ToMe = () => {
               const entry = tomeEntries.find(e => e.id === expandedTome);
               if (!entry) return null;
               
-              let chapters;
+              let pages;
               try {
-                chapters = typeof entry.content === 'string' 
+                pages = typeof entry.content === 'string' 
                   ? JSON.parse(entry.content)
-                  : [{ title: 'Chapter 1', content: entry.content || '' }];
+                  : [{ title: 'Page 1', content: entry.content || '' }];
               } catch {
-                chapters = [{ title: 'Chapter 1', content: entry.content || '' }];
+                pages = [{ title: 'Page 1', content: entry.content || '' }];
               }
+              if (!Array.isArray(pages)) pages = [{ title: 'Page 1', content: entry.content || '' }];
               
-              const currentChapterContent = chapters[currentChapter]?.content || '';
-              const pageContent = getPageContent(currentChapterContent, currentPage);
+              // Build flat page list
+              const flatPages: { title: string; content: string; pageIndex: number; subPage: number }[] = [];
+              pages.forEach((page, idx) => {
+                const content = page.content || '';
+                const subPageCount = calculatePages(content);
+                for (let sp = 0; sp < subPageCount; sp++) {
+                  flatPages.push({
+                    title: page.title,
+                    content: getPageContent(content, sp + 1),
+                    pageIndex: idx,
+                    subPage: sp,
+                  });
+                }
+              });
+              
+              const currentFlatPage = flatPages[currentPage - 1];
+              if (!currentFlatPage) return null;
               
               return (
                 <div className="max-w-4xl mx-auto">
                   <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-8">
-                    {chapters.length > 1 && (
+                    {currentFlatPage.title && (
                       <h3 className="text-xl font-semibold text-purple-400 mb-6 flex items-center">
                         <FileText className="w-5 h-5 mr-2" />
-                        {chapters[currentChapter]?.title}
+                        {currentFlatPage.title}
                       </h3>
                     )}
                     <div className="text-white text-lg leading-relaxed">
-                      {renderMarkdown(pageContent)}
+                      {renderMarkdown(currentFlatPage.content)}
                     </div>
                   </div>
                 </div>
