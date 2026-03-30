@@ -200,7 +200,7 @@ const ToMe = () => {
   const [isNewNoteOpen, setIsNewNoteOpen] = useState(false);
   
   // Form states
-  const [newEntry, setNewEntry] = useState({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }] });
+  const [newEntry, setNewEntry] = useState({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
   const [newNote, setNewNote] = useState({ content: '', color: 'from-blue-500 to-cyan-500', tags: '' });
   const [expandedTome, setExpandedTome] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -482,7 +482,7 @@ const ToMe = () => {
         return;
       }
       const allContent = newEntry.chapters.map(chapter => chapter.content).join('\n\n');
-      const pages = calculatePages(allContent);
+      const pages = newEntry.manualPages ? parseInt(newEntry.manualPages) : calculatePages(allContent);
       
       const { error } = await supabase
         .from('tome_entries')
@@ -496,7 +496,7 @@ const ToMe = () => {
 
       if (error) throw error;
 
-      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }] });
+      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
       setCurrentChapter(0);
       setIsNewEntryOpen(false);
       fetchData();
@@ -520,7 +520,7 @@ const ToMe = () => {
     try {
       const tagsArray = newEntry.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
       const allContent = newEntry.chapters.map(chapter => chapter.content).join('\n\n');
-      const pages = calculatePages(allContent);
+      const pages = newEntry.manualPages ? parseInt(newEntry.manualPages) : calculatePages(allContent);
       
       const { error } = await supabase
         .from('tome_entries')
@@ -534,7 +534,7 @@ const ToMe = () => {
 
       if (error) throw error;
 
-      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }] });
+      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
       setCurrentChapter(0);
       setEditingTome(null);
       setIsNewEntryOpen(false);
@@ -735,7 +735,7 @@ const ToMe = () => {
             if (!open) {
               setEditingTome(null);
               setCurrentChapter(0);
-              setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }] });
+              setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
             }
             } else {
               setIsNewNoteOpen(open);
@@ -786,6 +786,20 @@ const ToMe = () => {
                         onChange={(e) => setNewEntry({...newEntry, tags: e.target.value})}
                         className="bg-gray-800 border-gray-600 text-white"
                         placeholder="tag1, tag2, tag3..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="manual-pages" className="text-gray-300 mb-2 block">
+                        Pages <span className="text-gray-500 text-xs">(blank = auto-calculate)</span>
+                      </Label>
+                      <Input
+                        id="manual-pages"
+                        type="number"
+                        min="1"
+                        value={newEntry.manualPages}
+                        onChange={(e) => setNewEntry({...newEntry, manualPages: e.target.value})}
+                        className="bg-gray-800 border-gray-600 text-white"
+                        placeholder={`Auto: ${calculatePages(newEntry.chapters.map(c => c.content).join('\n\n'))}`}
                       />
                     </div>
                     <div>
@@ -1067,7 +1081,8 @@ const ToMe = () => {
                             title: entry.title,
                             content: entry.content || '',
                             tags: entry.tags?.join(', ') || '',
-                            chapters: chapters
+                            chapters: chapters,
+                            manualPages: entry.pages ? entry.pages.toString() : '',
                           });
                           setCurrentChapter(0);
                           setIsNewEntryOpen(true);
