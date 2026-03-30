@@ -200,7 +200,7 @@ const ToMe = () => {
   const [isNewNoteOpen, setIsNewNoteOpen] = useState(false);
   
   // Form states
-  const [newEntry, setNewEntry] = useState({ title: '', content: '', tags: '', chapters: [{ title: 'Page 1', content: '' }], manualPages: '' });
+  const [newEntry, setNewEntry] = useState({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
   const [newNote, setNewNote] = useState({ content: '', color: 'from-blue-500 to-cyan-500', tags: '' });
   const [expandedTome, setExpandedTome] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -510,7 +510,7 @@ const ToMe = () => {
 
       if (error) throw error;
 
-      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Page 1', content: '' }], manualPages: '' });
+      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
       setCurrentChapter(0);
       setIsNewEntryOpen(false);
       fetchData();
@@ -547,7 +547,7 @@ const ToMe = () => {
 
       if (error) throw error;
 
-      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Page 1', content: '' }], manualPages: '' });
+      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
       setCurrentChapter(0);
       setEditingTome(null);
       setIsNewEntryOpen(false);
@@ -748,7 +748,7 @@ const ToMe = () => {
             if (!open) {
               setEditingTome(null);
               setCurrentChapter(0);
-              setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Page 1', content: '' }], manualPages: '' });
+              setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
             }
             } else {
               setIsNewNoteOpen(open);
@@ -802,8 +802,8 @@ const ToMe = () => {
                       />
                     </div>
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-gray-300">Pages</Label>
+                    <div className="flex items-center justify-between mb-2">
+                        <Label className="text-gray-300">Chapters</Label>
                         <Button
                           type="button"
                           variant="outline"
@@ -812,7 +812,7 @@ const ToMe = () => {
                           className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white"
                         >
                           <Plus className="w-3 h-3 mr-1" />
-                          New Page
+                          New Chapter
                         </Button>
                       </div>
                       <div className="space-y-1 max-h-[200px] overflow-y-auto">
@@ -836,7 +836,7 @@ const ToMe = () => {
                     </div>
                     <div>
                       <Label htmlFor="page-title" className="text-gray-300 mb-2 block">
-                        Page Title
+                        Chapter Title
                       </Label>
                       <div className="flex gap-2">
                         <Input
@@ -844,7 +844,7 @@ const ToMe = () => {
                           value={newEntry.chapters[currentChapter]?.title || ''}
                           onChange={(e) => updateChapter(currentChapter, 'title', e.target.value)}
                           className="bg-gray-800 border-gray-600 text-white flex-1"
-                          placeholder="Enter page title..."
+                          placeholder="Enter chapter title..."
                         />
                         {newEntry.chapters.length > 1 && (
                           <AlertDialog>
@@ -861,7 +861,7 @@ const ToMe = () => {
                               <AlertDialogHeader>
                                 <AlertDialogTitle className="text-white">Are you sure?</AlertDialogTitle>
                                 <AlertDialogDescription className="text-gray-400">
-                                  This action cannot be undone. This will permanently delete the page "{newEntry.chapters[currentChapter]?.title}".
+                                  This action cannot be undone. This will permanently delete the chapter "{newEntry.chapters[currentChapter]?.title}".
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -872,7 +872,7 @@ const ToMe = () => {
                                   onClick={() => removeChapter(currentChapter)}
                                   className="bg-red-600 hover:bg-red-700"
                                 >
-                                  Delete Page
+                                  Delete Chapter
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -881,21 +881,33 @@ const ToMe = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="col-span-2">
+                  <div className="col-span-2 flex flex-col">
                     <div className="flex items-center justify-between mb-2">
                       <Label htmlFor="page-content" className="text-gray-300">
-                        Page Content
+                        Chapter Content
                       </Label>
-                      <span className="text-xs text-gray-500">
-                        {(newEntry.chapters[currentChapter]?.content || '').trim().split(/\s+/).filter(Boolean).length} / 750 words
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={insertPageBreak}
+                          className="border-indigo-500 text-indigo-400 hover:bg-indigo-500 hover:text-white text-xs"
+                        >
+                          <FileText className="w-3 h-3 mr-1" />
+                          Insert Page Break
+                        </Button>
+                        <span className="text-xs text-gray-500">
+                          {(newEntry.chapters[currentChapter]?.content || '').trim().split(/\s+/).filter(Boolean).length} words
+                        </span>
+                      </div>
                     </div>
                     <Textarea
                       id="page-content"
                       value={newEntry.chapters[currentChapter]?.content || ''}
                       onChange={(e) => updateChapter(currentChapter, 'content', e.target.value)}
-                      className="bg-gray-800 border-gray-600 text-white h-[calc(100vh-240px)] resize-none"
-                      placeholder="Write on this page..."
+                      className="bg-gray-800 border-gray-600 text-white flex-1 resize-none"
+                      placeholder="Write your chapter content... Use 'Insert Page Break' to force a new page."
                     />
                   </div>
                 </div>
@@ -1070,10 +1082,10 @@ const ToMe = () => {
                           try {
                             chapters = typeof entry.content === 'string' 
                               ? JSON.parse(entry.content)
-                              : [{ title: 'Page 1', content: entry.content || '' }];
-                            if (!Array.isArray(chapters)) chapters = [{ title: 'Page 1', content: entry.content || '' }];
+                              : [{ title: 'Chapter 1', content: entry.content || '' }];
+                            if (!Array.isArray(chapters)) chapters = [{ title: 'Chapter 1', content: entry.content || '' }];
                           } catch {
-                            chapters = [{ title: 'Page 1', content: entry.content || '' }];
+                            chapters = [{ title: 'Chapter 1', content: entry.content || '' }];
                           }
                           setNewEntry({
                             title: entry.title,
