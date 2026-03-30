@@ -1089,12 +1089,16 @@ const ToMe = () => {
               <span className="hidden sm:inline">Import</span> XML
             </Button>
           )}
-          <DialogTrigger asChild>
-            <Button size="sm" className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600">
-              <Plus className="w-4 h-4 mr-1" />
-              New {activeTab === "tome" ? "Entry" : "Note"}
-            </Button>
-          </DialogTrigger>
+          <Button size="sm" className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600" onClick={() => {
+            if (activeTab === "tome") {
+              setIsNewEntryOpen(true);
+            } else {
+              setIsNewNoteOpen(true);
+            }
+          }}>
+            <Plus className="w-4 h-4 mr-1" />
+            New {activeTab === "tome" ? "Entry" : "Note"}
+          </Button>
         </div>
 
         <Card className="p-4 bg-gray-900/50 border-purple-500/30 mb-8">
