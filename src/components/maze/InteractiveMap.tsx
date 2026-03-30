@@ -39,6 +39,7 @@ export const ICON_MAP: Record<string, typeof MapPin> = {
   book: BookOpen,
   airport: Plane,
   metro: TrainFront,
+  statue: PersonStanding,
 };
 
 export const ICON_LABELS: Record<string, string> = Object.fromEntries(
