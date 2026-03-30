@@ -454,6 +454,16 @@ const ToMe = () => {
     setCurrentChapter(newChapters.length - 1);
   };
 
+  const moveChapter = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= newEntry.chapters.length) return;
+    const reordered = [...newEntry.chapters];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    setNewEntry({ ...newEntry, chapters: reordered });
+    if (currentChapter === index) setCurrentChapter(newIndex);
+    else if (currentChapter === newIndex) setCurrentChapter(index);
+  };
+
   const insertPageBreak = () => {
     const textarea = document.getElementById('page-content') as HTMLTextAreaElement;
     if (!textarea) return;
