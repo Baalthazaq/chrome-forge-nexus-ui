@@ -496,7 +496,16 @@ const ToMe = () => {
         return;
       }
       const allContent = newEntry.chapters.map(chapter => chapter.content).join('\n\n');
-      const pages = newEntry.chapters.length;
+      // Count pages: each chapter's content split by page breaks, then by 750 words
+      let pages = 0;
+      newEntry.chapters.forEach(ch => {
+        const segments = (ch.content || '').split(PAGE_BREAK_MARKER);
+        segments.forEach(seg => {
+          const trimmed = seg.trim();
+          if (trimmed) pages += calculatePages(trimmed);
+          else pages += 1;
+        });
+      });
       
       const { error } = await supabase
         .from('tome_entries')
@@ -533,7 +542,16 @@ const ToMe = () => {
     
     try {
       const tagsArray = newEntry.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
-      const pages = newEntry.chapters.length;
+      // Count pages: each chapter's content split by page breaks, then by 750 words
+      let pages = 0;
+      newEntry.chapters.forEach(ch => {
+        const segments = (ch.content || '').split(PAGE_BREAK_MARKER);
+        segments.forEach(seg => {
+          const trimmed = seg.trim();
+          if (trimmed) pages += calculatePages(trimmed);
+          else pages += 1;
+        });
+      });
       
       const { error } = await supabase
         .from('tome_entries')
