@@ -1324,8 +1324,10 @@ const ToMe = () => {
               if (!Array.isArray(chapters)) chapters = [{ title: 'Chapter 1', content: entry?.content || '' }];
               
               // Build flat page list: split by PAGE_BREAK_MARKER first, then by 750 words
-              const flatPages: { title: string; content: string }[] = [];
-              chapters.forEach((chapter) => {
+              const flatPages: { title: string; content: string; chapterIndex: number }[] = [];
+              const chapterStartPages: { title: string; startPage: number }[] = [];
+              chapters.forEach((chapter, chIdx) => {
+                chapterStartPages.push({ title: chapter.title || `Chapter ${chIdx + 1}`, startPage: flatPages.length + 1 });
                 const segments = (chapter.content || '').split(PAGE_BREAK_MARKER);
                 segments.forEach((segment) => {
                   const trimmed = segment.trim();
@@ -1335,11 +1337,12 @@ const ToMe = () => {
                     flatPages.push({
                       title: chapter.title,
                       content: getPageContent(trimmed, sp + 1),
+                      chapterIndex: chIdx,
                     });
                   }
                 });
               });
-              if (flatPages.length === 0) flatPages.push({ title: '', content: '' });
+              if (flatPages.length === 0) flatPages.push({ title: '', content: '', chapterIndex: 0 });
               
               const totalPages = flatPages.length;
               
@@ -1347,6 +1350,21 @@ const ToMe = () => {
                 <>
                   <h2 className="text-2xl font-bold text-white">{entry?.title}</h2>
                   <div className="flex items-center space-x-4">
+                    {chapters.length > 1 && (
+                      <select
+                        value={flatPages[currentPage - 1]?.chapterIndex ?? 0}
+                        onChange={(e) => {
+                          const idx = parseInt(e.target.value);
+                          const target = chapterStartPages[idx];
+                          if (target) setCurrentPage(target.startPage);
+                        }}
+                        className="bg-gray-800 border border-gray-600 text-gray-300 rounded-md px-3 py-1.5 text-sm"
+                      >
+                        {chapterStartPages.map((ch, idx) => (
+                          <option key={idx} value={idx}>{ch.title}</option>
+                        ))}
+                      </select>
+                    )}
                     <Button
                       variant="ghost"
                       disabled={currentPage <= 1}
