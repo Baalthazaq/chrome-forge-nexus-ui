@@ -789,6 +789,20 @@ const ToMe = () => {
                       />
                     </div>
                     <div>
+                      <Label htmlFor="manual-pages" className="text-gray-300 mb-2 block">
+                        Pages <span className="text-gray-500 text-xs">(blank = auto-calculate)</span>
+                      </Label>
+                      <Input
+                        id="manual-pages"
+                        type="number"
+                        min="1"
+                        value={newEntry.manualPages}
+                        onChange={(e) => setNewEntry({...newEntry, manualPages: e.target.value})}
+                        className="bg-gray-800 border-gray-600 text-white"
+                        placeholder={`Auto: ${calculatePages(newEntry.chapters.map(c => c.content).join('\n\n'))}`}
+                      />
+                    </div>
+                    <div>
                       <div className="flex items-center justify-between mb-2">
                         <Label className="text-gray-300">Chapters</Label>
                         <Button
