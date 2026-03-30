@@ -788,22 +788,8 @@ const ToMe = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="manual-pages" className="text-gray-300 mb-2 block">
-                        Pages <span className="text-gray-500 text-xs">(blank = auto-calculate)</span>
-                      </Label>
-                      <Input
-                        id="manual-pages"
-                        type="number"
-                        min="1"
-                        value={newEntry.manualPages}
-                        onChange={(e) => setNewEntry({...newEntry, manualPages: e.target.value})}
-                        className="bg-gray-800 border-gray-600 text-white"
-                        placeholder={`Auto: ${calculatePages(newEntry.chapters.map(c => c.content).join('\n\n'))}`}
-                      />
-                    </div>
-                    <div>
                       <div className="flex items-center justify-between mb-2">
-                        <Label className="text-gray-300">Chapters</Label>
+                        <Label className="text-gray-300">Pages</Label>
                         <Button
                           type="button"
                           variant="outline"
@@ -812,33 +798,39 @@ const ToMe = () => {
                           className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white"
                         >
                           <Plus className="w-3 h-3 mr-1" />
-                          Add Chapter
+                          New Page
                         </Button>
                       </div>
-                      <Select value={currentChapter.toString()} onValueChange={(value) => setCurrentChapter(parseInt(value))}>
-                        <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
-                          <SelectValue placeholder="Select chapter" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-800 border-gray-600">
-                          {newEntry.chapters.map((chapter, index) => (
-                            <SelectItem key={index} value={index.toString()} className="text-white hover:bg-gray-700">
-                              {chapter.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                        {newEntry.chapters.map((chapter, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentChapter(index)}
+                            className={`w-full text-left px-3 py-2 rounded text-sm transition-colors flex items-center justify-between ${
+                              currentChapter === index
+                                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/50'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                            }`}
+                          >
+                            <span>{chapter.title}</span>
+                            <span className="text-xs text-gray-500">
+                              {chapter.content.trim().split(/\s+/).filter(Boolean).length}w
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <div>
-                      <Label htmlFor="chapter-title" className="text-gray-300 mb-2 block">
-                        Chapter Title
+                      <Label htmlFor="page-title" className="text-gray-300 mb-2 block">
+                        Page Title
                       </Label>
                       <div className="flex gap-2">
                         <Input
-                          id="chapter-title"
+                          id="page-title"
                           value={newEntry.chapters[currentChapter]?.title || ''}
                           onChange={(e) => updateChapter(currentChapter, 'title', e.target.value)}
                           className="bg-gray-800 border-gray-600 text-white flex-1"
-                          placeholder="Enter chapter title..."
+                          placeholder="Enter page title..."
                         />
                         {newEntry.chapters.length > 1 && (
                           <AlertDialog>
@@ -855,7 +847,7 @@ const ToMe = () => {
                               <AlertDialogHeader>
                                 <AlertDialogTitle className="text-white">Are you sure?</AlertDialogTitle>
                                 <AlertDialogDescription className="text-gray-400">
-                                  This action cannot be undone. This will permanently delete the chapter "{newEntry.chapters[currentChapter]?.title}".
+                                  This action cannot be undone. This will permanently delete the page "{newEntry.chapters[currentChapter]?.title}".
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -866,7 +858,7 @@ const ToMe = () => {
                                   onClick={() => removeChapter(currentChapter)}
                                   className="bg-red-600 hover:bg-red-700"
                                 >
-                                  Delete Chapter
+                                  Delete Page
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -876,15 +868,20 @@ const ToMe = () => {
                     </div>
                   </div>
                   <div className="col-span-2">
-                    <Label htmlFor="chapter-content" className="text-gray-300 mb-2 block">
-                      Chapter Content
-                    </Label>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="page-content" className="text-gray-300">
+                        Page Content
+                      </Label>
+                      <span className="text-xs text-gray-500">
+                        {(newEntry.chapters[currentChapter]?.content || '').trim().split(/\s+/).filter(Boolean).length} / 750 words
+                      </span>
+                    </div>
                     <Textarea
-                      id="chapter-content"
+                      id="page-content"
                       value={newEntry.chapters[currentChapter]?.content || ''}
                       onChange={(e) => updateChapter(currentChapter, 'content', e.target.value)}
                       className="bg-gray-800 border-gray-600 text-white h-[calc(100vh-240px)] resize-none"
-                      placeholder="Enter chapter content..."
+                      placeholder="Write on this page..."
                     />
                   </div>
                 </div>
