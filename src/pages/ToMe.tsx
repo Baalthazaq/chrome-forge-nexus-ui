@@ -1056,16 +1056,17 @@ const ToMe = () => {
                           try {
                             chapters = typeof entry.content === 'string' 
                               ? JSON.parse(entry.content)
-                              : [{ title: 'Chapter 1', content: entry.content || '' }];
+                              : [{ title: 'Page 1', content: entry.content || '' }];
+                            if (!Array.isArray(chapters)) chapters = [{ title: 'Page 1', content: entry.content || '' }];
                           } catch {
-                            chapters = [{ title: 'Chapter 1', content: entry.content || '' }];
+                            chapters = [{ title: 'Page 1', content: entry.content || '' }];
                           }
                           setNewEntry({
                             title: entry.title,
                             content: entry.content || '',
                             tags: entry.tags?.join(', ') || '',
                             chapters: chapters,
-                            manualPages: entry.pages ? entry.pages.toString() : '',
+                            manualPages: '',
                           });
                           setCurrentChapter(0);
                           setIsNewEntryOpen(true);
