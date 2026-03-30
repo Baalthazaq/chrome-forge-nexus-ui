@@ -481,6 +481,59 @@ const ToMe = () => {
     setNewEntry({ ...newEntry, chapters: newChapters });
   };
 
+  const importFromXML = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xml';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'application/xml');
+        const parseError = doc.querySelector('parsererror');
+        if (parseError) throw new Error('Invalid XML file');
+
+        const title = doc.querySelector('tome > title')?.textContent || 'Imported Tome';
+        const tagEls = doc.querySelectorAll('tome > tags > tag');
+        const tags = Array.from(tagEls).map(t => t.textContent || '').filter(Boolean);
+        const chapterEls = doc.querySelectorAll('tome > chapters > chapter');
+        const chapters = Array.from(chapterEls).map(ch => ({
+          title: ch.querySelector('title')?.textContent || '',
+          content: (ch.querySelector('content')?.textContent || '').replace(/&amp;/g, '&').replace(/&lt;/g, '<'),
+        }));
+        if (chapters.length === 0) chapters.push({ title: 'Chapter 1', content: '' });
+
+        if (!displayUser) return;
+        let pages = 0;
+        chapters.forEach(ch => {
+          const segments = (ch.content || '').split(PAGE_BREAK_MARKER);
+          segments.forEach(seg => {
+            const trimmed = seg.trim();
+            if (trimmed) pages += calculatePages(trimmed);
+            else pages += 1;
+          });
+        });
+
+        const { error } = await supabase.from('tome_entries').insert({
+          user_id: displayUser.user_id || displayUser.id,
+          title,
+          content: JSON.stringify(chapters),
+          tags,
+          pages,
+        });
+        if (error) throw error;
+        fetchData();
+        toast({ title: "Success", description: "Tome imported from XML" });
+      } catch (err) {
+        console.error('XML import error:', err);
+        toast({ title: "Error", description: "Failed to import XML file", variant: "destructive" });
+      }
+    };
+    input.click();
+  };
+
   const createTomeEntry = async () => {
     if (!displayUser) return;
     
