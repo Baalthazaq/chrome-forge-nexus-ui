@@ -1031,20 +1031,7 @@ const ToMe = () => {
                         <div className="flex items-center space-x-1">
                           <BookOpen className="w-4 h-4" />
                           <span>
-                            {entry.pages} pages
-                            {(() => {
-                              try {
-                                if (typeof entry.content === 'string') {
-                                  const parsed = JSON.parse(entry.content);
-                                  if (Array.isArray(parsed)) {
-                                    return ` • ${parsed.length} chapters`;
-                                  }
-                                }
-                                return ' • 1 chapter';
-                              } catch {
-                                return ' • 1 chapter';
-                              }
-                            })()}
+                            {entry.pages} {entry.pages === 1 ? 'page' : 'pages'}
                           </span>
                         </div>
                       </div>
