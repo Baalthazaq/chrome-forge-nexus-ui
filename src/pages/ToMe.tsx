@@ -735,7 +735,7 @@ const ToMe = () => {
             if (!open) {
               setEditingTome(null);
               setCurrentChapter(0);
-              setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }] });
+              setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
             }
             } else {
               setIsNewNoteOpen(open);
@@ -1067,7 +1067,8 @@ const ToMe = () => {
                             title: entry.title,
                             content: entry.content || '',
                             tags: entry.tags?.join(', ') || '',
-                            chapters: chapters
+                            chapters: chapters,
+                            manualPages: entry.pages ? entry.pages.toString() : '',
                           });
                           setCurrentChapter(0);
                           setIsNewEntryOpen(true);
