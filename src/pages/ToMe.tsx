@@ -892,20 +892,40 @@ const ToMe = () => {
                       </div>
                       <div className="space-y-1 max-h-[200px] overflow-y-auto">
                         {newEntry.chapters.map((chapter, index) => (
-                          <button
+                          <div
                             key={index}
-                            onClick={() => setCurrentChapter(index)}
-                            className={`w-full text-left px-3 py-2 rounded text-sm transition-colors flex items-center justify-between ${
+                            className={`flex items-center gap-1 rounded text-sm transition-colors ${
                               currentChapter === index
-                                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/50'
-                                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                ? 'bg-purple-500/20 border border-purple-500/50'
+                                : 'hover:bg-gray-800'
                             }`}
                           >
-                            <span>{chapter.title}</span>
-                            <span className="text-xs text-gray-500">
-                              {chapter.content.trim().split(/\s+/).filter(Boolean).length}w
-                            </span>
-                          </button>
+                            <div className="flex flex-col">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); moveChapter(index, 'up'); }}
+                                disabled={index === 0}
+                                className="px-1 py-0 text-gray-500 hover:text-white disabled:opacity-20 disabled:cursor-default text-xs leading-none"
+                              >▲</button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); moveChapter(index, 'down'); }}
+                                disabled={index === newEntry.chapters.length - 1}
+                                className="px-1 py-0 text-gray-500 hover:text-white disabled:opacity-20 disabled:cursor-default text-xs leading-none"
+                              >▼</button>
+                            </div>
+                            <button
+                              onClick={() => setCurrentChapter(index)}
+                              className={`flex-1 text-left px-2 py-2 flex items-center justify-between ${
+                                currentChapter === index ? 'text-purple-300' : 'text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              <span>{chapter.title}</span>
+                              <span className="text-xs text-gray-500">
+                                {chapter.content.trim().split(/\s+/).filter(Boolean).length}w
+                              </span>
+                            </button>
+                          </div>
                         ))}
                       </div>
                     </div>
