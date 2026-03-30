@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Search, BookOpen, StickyNote, Star, Clock, Edit3, Trash2, Pin, GripVertical, ChevronLeft, ChevronRight, X, FileText, List, Share2, Columns3 } from "lucide-react";
+import { ArrowLeft, Plus, Search, BookOpen, StickyNote, Star, Clock, Edit3, Trash2, Pin, GripVertical, ChevronLeft, ChevronRight, X, FileText, List, Share2, Columns3, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -1346,24 +1346,70 @@ const ToMe = () => {
               
               const totalPages = flatPages.length;
               
+              const exportAsXML = () => {
+                let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<tome>\n  <title>${entry?.title?.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</title>\n  <tags>${entry?.tags?.map(t => `<tag>${t.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</tag>`).join('') || ''}</tags>\n  <chapters>\n`;
+                chapters.forEach((ch, i) => {
+                  xml += `    <chapter index="${i + 1}">\n      <title>${(ch.title || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')}</title>\n      <content>${(ch.content || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')}</content>\n    </chapter>\n`;
+                });
+                xml += `  </chapters>\n</tome>`;
+                const blob = new Blob([xml], { type: 'application/xml' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${entry?.title || 'tome'}.xml`;
+                a.click();
+                URL.revokeObjectURL(url);
+              };
+
+              const exportAsPDF = () => {
+                const printWindow = window.open('', '_blank');
+                if (!printWindow) return;
+                let html = `<!DOCTYPE html><html><head><title>${entry?.title || 'Tome'}</title><style>
+                  body { font-family: Georgia, serif; max-width: 700px; margin: 40px auto; padding: 20px; color: #222; }
+                  h1 { text-align: center; margin-bottom: 30px; }
+                  h2 { margin-top: 40px; border-bottom: 1px solid #ccc; padding-bottom: 8px; }
+                  .page-break { page-break-before: always; }
+                  p { line-height: 1.8; margin: 8px 0; }
+                </style></head><body>`;
+                html += `<h1>${entry?.title || ''}</h1>`;
+                chapters.forEach((ch, i) => {
+                  if (i > 0) html += `<div class="page-break"></div>`;
+                  if (ch.title) html += `<h2>${ch.title}</h2>`;
+                  const segments = (ch.content || '').split(PAGE_BREAK_MARKER);
+                  segments.forEach((seg, si) => {
+                    if (si > 0) html += `<div class="page-break"></div>`;
+                    seg.trim().split('\n').forEach(line => {
+                      html += `<p>${line || '&nbsp;'}</p>`;
+                    });
+                  });
+                });
+                html += `</body></html>`;
+                printWindow.document.write(html);
+                printWindow.document.close();
+                printWindow.onload = () => { printWindow.print(); };
+              };
+
               return (
                 <>
                   <h2 className="text-2xl font-bold text-white">{entry?.title}</h2>
                   <div className="flex items-center space-x-4">
                     {chapters.length > 1 && (
-                      <select
-                        value={flatPages[currentPage - 1]?.chapterIndex ?? 0}
-                        onChange={(e) => {
-                          const idx = parseInt(e.target.value);
-                          const target = chapterStartPages[idx];
-                          if (target) setCurrentPage(target.startPage);
-                        }}
-                        className="bg-gray-800 border border-gray-600 text-gray-300 rounded-md px-3 py-1.5 text-sm"
-                      >
-                        {chapterStartPages.map((ch, idx) => (
-                          <option key={idx} value={idx}>{ch.title}</option>
-                        ))}
-                      </select>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-gray-400 text-sm">Chapter:</span>
+                        <select
+                          value={flatPages[currentPage - 1]?.chapterIndex ?? 0}
+                          onChange={(e) => {
+                            const idx = parseInt(e.target.value);
+                            const target = chapterStartPages[idx];
+                            if (target) setCurrentPage(target.startPage);
+                          }}
+                          className="bg-gray-800 border border-gray-600 text-gray-300 rounded-md px-3 py-1.5 text-sm"
+                        >
+                          {chapterStartPages.map((ch, idx) => (
+                            <option key={idx} value={idx}>{ch.title}</option>
+                          ))}
+                        </select>
+                      </div>
                     )}
                     <Button
                       variant="ghost"
@@ -1386,6 +1432,28 @@ const ToMe = () => {
                       Next
                       <ChevronRight className="w-5 h-5" />
                     </Button>
+                    <div className="border-l border-gray-600 pl-4 flex items-center space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={exportAsPDF}
+                        className="text-gray-400 hover:text-white"
+                        title="Export as PDF"
+                      >
+                        <Download className="w-4 h-4 mr-1" />
+                        PDF
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={exportAsXML}
+                        className="text-gray-400 hover:text-white"
+                        title="Export as XML"
+                      >
+                        <Download className="w-4 h-4 mr-1" />
+                        XML
+                      </Button>
+                    </div>
                   </div>
                 </>
               );
