@@ -1092,8 +1092,8 @@ const ToMe = () => {
                           // Try to parse as JSON first to check if it's chapter format
                           const parsed = JSON.parse(entry.content);
                           if (Array.isArray(parsed) && parsed[0]) {
-                            const chapterTitle = parsed[0].title ? `Chapter: ${parsed[0].title} | ` : '';
-                            return chapterTitle + (parsed[0].content || 'No content');
+                            const pageTitle = parsed[0].title ? `${parsed[0].title} | ` : '';
+                            return pageTitle + (parsed[0].content || 'No content');
                           }
                           return entry.content;
                         }
