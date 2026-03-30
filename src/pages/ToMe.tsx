@@ -1350,6 +1350,21 @@ const ToMe = () => {
                 <>
                   <h2 className="text-2xl font-bold text-white">{entry?.title}</h2>
                   <div className="flex items-center space-x-4">
+                    {chapters.length > 1 && (
+                      <select
+                        value={flatPages[currentPage - 1]?.chapterIndex ?? 0}
+                        onChange={(e) => {
+                          const idx = parseInt(e.target.value);
+                          const target = chapterStartPages[idx];
+                          if (target) setCurrentPage(target.startPage);
+                        }}
+                        className="bg-gray-800 border border-gray-600 text-gray-300 rounded-md px-3 py-1.5 text-sm"
+                      >
+                        {chapterStartPages.map((ch, idx) => (
+                          <option key={idx} value={idx}>{ch.title}</option>
+                        ))}
+                      </select>
+                    )}
                     <Button
                       variant="ghost"
                       disabled={currentPage <= 1}
