@@ -200,7 +200,7 @@ const ToMe = () => {
   const [isNewNoteOpen, setIsNewNoteOpen] = useState(false);
   
   // Form states
-  const [newEntry, setNewEntry] = useState({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
+  const [newEntry, setNewEntry] = useState({ title: '', content: '', tags: '', chapters: [{ title: 'Page 1', content: '' }], manualPages: '' });
   const [newNote, setNewNote] = useState({ content: '', color: 'from-blue-500 to-cyan-500', tags: '' });
   const [expandedTome, setExpandedTome] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -482,7 +482,7 @@ const ToMe = () => {
         return;
       }
       const allContent = newEntry.chapters.map(chapter => chapter.content).join('\n\n');
-      const pages = newEntry.manualPages ? parseInt(newEntry.manualPages) : calculatePages(allContent);
+      const pages = newEntry.chapters.length;
       
       const { error } = await supabase
         .from('tome_entries')
@@ -496,7 +496,7 @@ const ToMe = () => {
 
       if (error) throw error;
 
-      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
+      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Page 1', content: '' }], manualPages: '' });
       setCurrentChapter(0);
       setIsNewEntryOpen(false);
       fetchData();
@@ -519,8 +519,7 @@ const ToMe = () => {
     
     try {
       const tagsArray = newEntry.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
-      const allContent = newEntry.chapters.map(chapter => chapter.content).join('\n\n');
-      const pages = newEntry.manualPages ? parseInt(newEntry.manualPages) : calculatePages(allContent);
+      const pages = newEntry.chapters.length;
       
       const { error } = await supabase
         .from('tome_entries')
@@ -534,7 +533,7 @@ const ToMe = () => {
 
       if (error) throw error;
 
-      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
+      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Page 1', content: '' }], manualPages: '' });
       setCurrentChapter(0);
       setEditingTome(null);
       setIsNewEntryOpen(false);
@@ -735,7 +734,7 @@ const ToMe = () => {
             if (!open) {
               setEditingTome(null);
               setCurrentChapter(0);
-              setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
+              setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Page 1', content: '' }], manualPages: '' });
             }
             } else {
               setIsNewNoteOpen(open);
