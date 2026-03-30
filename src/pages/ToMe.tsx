@@ -1324,8 +1324,10 @@ const ToMe = () => {
               if (!Array.isArray(chapters)) chapters = [{ title: 'Chapter 1', content: entry?.content || '' }];
               
               // Build flat page list: split by PAGE_BREAK_MARKER first, then by 750 words
-              const flatPages: { title: string; content: string }[] = [];
-              chapters.forEach((chapter) => {
+              const flatPages: { title: string; content: string; chapterIndex: number }[] = [];
+              const chapterStartPages: { title: string; startPage: number }[] = [];
+              chapters.forEach((chapter, chIdx) => {
+                chapterStartPages.push({ title: chapter.title || `Chapter ${chIdx + 1}`, startPage: flatPages.length + 1 });
                 const segments = (chapter.content || '').split(PAGE_BREAK_MARKER);
                 segments.forEach((segment) => {
                   const trimmed = segment.trim();
@@ -1335,11 +1337,12 @@ const ToMe = () => {
                     flatPages.push({
                       title: chapter.title,
                       content: getPageContent(trimmed, sp + 1),
+                      chapterIndex: chIdx,
                     });
                   }
                 });
               });
-              if (flatPages.length === 0) flatPages.push({ title: '', content: '' });
+              if (flatPages.length === 0) flatPages.push({ title: '', content: '', chapterIndex: 0 });
               
               const totalPages = flatPages.length;
               
