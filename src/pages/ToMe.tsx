@@ -200,7 +200,7 @@ const ToMe = () => {
   const [isNewNoteOpen, setIsNewNoteOpen] = useState(false);
   
   // Form states
-  const [newEntry, setNewEntry] = useState({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
+  const [newEntry, setNewEntry] = useState({ title: '', content: '', tags: '', chapters: [{ title: 'Page 1', content: '' }], manualPages: '' });
   const [newNote, setNewNote] = useState({ content: '', color: 'from-blue-500 to-cyan-500', tags: '' });
   const [expandedTome, setExpandedTome] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -447,7 +447,7 @@ const ToMe = () => {
   };
 
   const addChapter = () => {
-    const newChapters = [...newEntry.chapters, { title: `Chapter ${newEntry.chapters.length + 1}`, content: '' }];
+    const newChapters = [...newEntry.chapters, { title: `Page ${newEntry.chapters.length + 1}`, content: '' }];
     setNewEntry({ ...newEntry, chapters: newChapters });
     setCurrentChapter(newChapters.length - 1);
   };
@@ -482,7 +482,7 @@ const ToMe = () => {
         return;
       }
       const allContent = newEntry.chapters.map(chapter => chapter.content).join('\n\n');
-      const pages = newEntry.manualPages ? parseInt(newEntry.manualPages) : calculatePages(allContent);
+      const pages = newEntry.chapters.length;
       
       const { error } = await supabase
         .from('tome_entries')
@@ -496,7 +496,7 @@ const ToMe = () => {
 
       if (error) throw error;
 
-      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
+      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Page 1', content: '' }], manualPages: '' });
       setCurrentChapter(0);
       setIsNewEntryOpen(false);
       fetchData();
@@ -519,8 +519,7 @@ const ToMe = () => {
     
     try {
       const tagsArray = newEntry.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
-      const allContent = newEntry.chapters.map(chapter => chapter.content).join('\n\n');
-      const pages = newEntry.manualPages ? parseInt(newEntry.manualPages) : calculatePages(allContent);
+      const pages = newEntry.chapters.length;
       
       const { error } = await supabase
         .from('tome_entries')
@@ -534,7 +533,7 @@ const ToMe = () => {
 
       if (error) throw error;
 
-      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
+      setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Page 1', content: '' }], manualPages: '' });
       setCurrentChapter(0);
       setEditingTome(null);
       setIsNewEntryOpen(false);
@@ -735,7 +734,7 @@ const ToMe = () => {
             if (!open) {
               setEditingTome(null);
               setCurrentChapter(0);
-              setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Chapter 1', content: '' }], manualPages: '' });
+              setNewEntry({ title: '', content: '', tags: '', chapters: [{ title: 'Page 1', content: '' }], manualPages: '' });
             }
             } else {
               setIsNewNoteOpen(open);
@@ -789,22 +788,8 @@ const ToMe = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="manual-pages" className="text-gray-300 mb-2 block">
-                        Pages <span className="text-gray-500 text-xs">(blank = auto-calculate)</span>
-                      </Label>
-                      <Input
-                        id="manual-pages"
-                        type="number"
-                        min="1"
-                        value={newEntry.manualPages}
-                        onChange={(e) => setNewEntry({...newEntry, manualPages: e.target.value})}
-                        className="bg-gray-800 border-gray-600 text-white"
-                        placeholder={`Auto: ${calculatePages(newEntry.chapters.map(c => c.content).join('\n\n'))}`}
-                      />
-                    </div>
-                    <div>
                       <div className="flex items-center justify-between mb-2">
-                        <Label className="text-gray-300">Chapters</Label>
+                        <Label className="text-gray-300">Pages</Label>
                         <Button
                           type="button"
                           variant="outline"
@@ -813,33 +798,39 @@ const ToMe = () => {
                           className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white"
                         >
                           <Plus className="w-3 h-3 mr-1" />
-                          Add Chapter
+                          New Page
                         </Button>
                       </div>
-                      <Select value={currentChapter.toString()} onValueChange={(value) => setCurrentChapter(parseInt(value))}>
-                        <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
-                          <SelectValue placeholder="Select chapter" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-800 border-gray-600">
-                          {newEntry.chapters.map((chapter, index) => (
-                            <SelectItem key={index} value={index.toString()} className="text-white hover:bg-gray-700">
-                              {chapter.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                        {newEntry.chapters.map((chapter, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentChapter(index)}
+                            className={`w-full text-left px-3 py-2 rounded text-sm transition-colors flex items-center justify-between ${
+                              currentChapter === index
+                                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/50'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                            }`}
+                          >
+                            <span>{chapter.title}</span>
+                            <span className="text-xs text-gray-500">
+                              {chapter.content.trim().split(/\s+/).filter(Boolean).length}w
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <div>
-                      <Label htmlFor="chapter-title" className="text-gray-300 mb-2 block">
-                        Chapter Title
+                      <Label htmlFor="page-title" className="text-gray-300 mb-2 block">
+                        Page Title
                       </Label>
                       <div className="flex gap-2">
                         <Input
-                          id="chapter-title"
+                          id="page-title"
                           value={newEntry.chapters[currentChapter]?.title || ''}
                           onChange={(e) => updateChapter(currentChapter, 'title', e.target.value)}
                           className="bg-gray-800 border-gray-600 text-white flex-1"
-                          placeholder="Enter chapter title..."
+                          placeholder="Enter page title..."
                         />
                         {newEntry.chapters.length > 1 && (
                           <AlertDialog>
@@ -856,7 +847,7 @@ const ToMe = () => {
                               <AlertDialogHeader>
                                 <AlertDialogTitle className="text-white">Are you sure?</AlertDialogTitle>
                                 <AlertDialogDescription className="text-gray-400">
-                                  This action cannot be undone. This will permanently delete the chapter "{newEntry.chapters[currentChapter]?.title}".
+                                  This action cannot be undone. This will permanently delete the page "{newEntry.chapters[currentChapter]?.title}".
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -867,7 +858,7 @@ const ToMe = () => {
                                   onClick={() => removeChapter(currentChapter)}
                                   className="bg-red-600 hover:bg-red-700"
                                 >
-                                  Delete Chapter
+                                  Delete Page
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -877,15 +868,20 @@ const ToMe = () => {
                     </div>
                   </div>
                   <div className="col-span-2">
-                    <Label htmlFor="chapter-content" className="text-gray-300 mb-2 block">
-                      Chapter Content
-                    </Label>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="page-content" className="text-gray-300">
+                        Page Content
+                      </Label>
+                      <span className="text-xs text-gray-500">
+                        {(newEntry.chapters[currentChapter]?.content || '').trim().split(/\s+/).filter(Boolean).length} / 750 words
+                      </span>
+                    </div>
                     <Textarea
-                      id="chapter-content"
+                      id="page-content"
                       value={newEntry.chapters[currentChapter]?.content || ''}
                       onChange={(e) => updateChapter(currentChapter, 'content', e.target.value)}
                       className="bg-gray-800 border-gray-600 text-white h-[calc(100vh-240px)] resize-none"
-                      placeholder="Enter chapter content..."
+                      placeholder="Write on this page..."
                     />
                   </div>
                 </div>
@@ -1035,20 +1031,7 @@ const ToMe = () => {
                         <div className="flex items-center space-x-1">
                           <BookOpen className="w-4 h-4" />
                           <span>
-                            {entry.pages} pages
-                            {(() => {
-                              try {
-                                if (typeof entry.content === 'string') {
-                                  const parsed = JSON.parse(entry.content);
-                                  if (Array.isArray(parsed)) {
-                                    return ` • ${parsed.length} chapters`;
-                                  }
-                                }
-                                return ' • 1 chapter';
-                              } catch {
-                                return ' • 1 chapter';
-                              }
-                            })()}
+                            {entry.pages} {entry.pages === 1 ? 'page' : 'pages'}
                           </span>
                         </div>
                       </div>
@@ -1073,16 +1056,17 @@ const ToMe = () => {
                           try {
                             chapters = typeof entry.content === 'string' 
                               ? JSON.parse(entry.content)
-                              : [{ title: 'Chapter 1', content: entry.content || '' }];
+                              : [{ title: 'Page 1', content: entry.content || '' }];
+                            if (!Array.isArray(chapters)) chapters = [{ title: 'Page 1', content: entry.content || '' }];
                           } catch {
-                            chapters = [{ title: 'Chapter 1', content: entry.content || '' }];
+                            chapters = [{ title: 'Page 1', content: entry.content || '' }];
                           }
                           setNewEntry({
                             title: entry.title,
                             content: entry.content || '',
                             tags: entry.tags?.join(', ') || '',
                             chapters: chapters,
-                            manualPages: entry.pages ? entry.pages.toString() : '',
+                            manualPages: '',
                           });
                           setCurrentChapter(0);
                           setIsNewEntryOpen(true);
@@ -1108,8 +1092,8 @@ const ToMe = () => {
                           // Try to parse as JSON first to check if it's chapter format
                           const parsed = JSON.parse(entry.content);
                           if (Array.isArray(parsed) && parsed[0]) {
-                            const chapterTitle = parsed[0].title ? `Chapter: ${parsed[0].title} | ` : '';
-                            return chapterTitle + (parsed[0].content || 'No content');
+                            const pageTitle = parsed[0].title ? `${parsed[0].title} | ` : '';
+                            return pageTitle + (parsed[0].content || 'No content');
                           }
                           return entry.content;
                         }
@@ -1285,43 +1269,36 @@ const ToMe = () => {
             
             {(() => {
               const entry = tomeEntries.find(e => e.id === expandedTome);
-              let chapters;
+              let pages;
               try {
-                chapters = typeof entry?.content === 'string' 
+                pages = typeof entry?.content === 'string' 
                   ? JSON.parse(entry.content)
-                  : [{ title: 'Chapter 1', content: entry?.content || '' }];
+                  : [{ title: 'Page 1', content: entry?.content || '' }];
               } catch {
-                chapters = [{ title: 'Chapter 1', content: entry?.content || '' }];
+                pages = [{ title: 'Page 1', content: entry?.content || '' }];
               }
+              if (!Array.isArray(pages)) pages = [{ title: 'Page 1', content: entry?.content || '' }];
               
-              const currentChapterContent = chapters[currentChapter]?.content || '';
-              const totalPages = calculatePages(currentChapterContent);
+              // Build flat page list: each page entry is one page, but if content overflows 750 words, it splits
+              const flatPages: { title: string; content: string; pageIndex: number; subPage: number }[] = [];
+              pages.forEach((page, idx) => {
+                const content = page.content || '';
+                const subPageCount = calculatePages(content);
+                for (let sp = 0; sp < subPageCount; sp++) {
+                  flatPages.push({
+                    title: page.title,
+                    content: getPageContent(content, sp + 1),
+                    pageIndex: idx,
+                    subPage: sp,
+                  });
+                }
+              });
+              
+              const totalPages = flatPages.length;
               
               return (
                 <>
-                  <div className="flex items-center space-x-4">
-                    <h2 className="text-2xl font-bold text-white">{entry?.title}</h2>
-                    {chapters.length > 1 && (
-                      <Select value={currentChapter.toString()} onValueChange={(value) => {
-                        setCurrentChapter(parseInt(value));
-                        setCurrentPage(1);
-                      }}>
-                        <SelectTrigger className="w-[200px] bg-gray-800 border-gray-600 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-800 border-gray-600">
-                          {chapters.map((chapter, index) => (
-                            <SelectItem key={index} value={index.toString()} className="text-white hover:bg-gray-700">
-                              <div className="flex items-center space-x-2">
-                                <List className="w-4 h-4" />
-                                <span>{chapter.title}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
+                  <h2 className="text-2xl font-bold text-white">{entry?.title}</h2>
                   <div className="flex items-center space-x-4">
                     <Button
                       variant="ghost"
@@ -1355,29 +1332,45 @@ const ToMe = () => {
               const entry = tomeEntries.find(e => e.id === expandedTome);
               if (!entry) return null;
               
-              let chapters;
+              let pages;
               try {
-                chapters = typeof entry.content === 'string' 
+                pages = typeof entry.content === 'string' 
                   ? JSON.parse(entry.content)
-                  : [{ title: 'Chapter 1', content: entry.content || '' }];
+                  : [{ title: 'Page 1', content: entry.content || '' }];
               } catch {
-                chapters = [{ title: 'Chapter 1', content: entry.content || '' }];
+                pages = [{ title: 'Page 1', content: entry.content || '' }];
               }
+              if (!Array.isArray(pages)) pages = [{ title: 'Page 1', content: entry.content || '' }];
               
-              const currentChapterContent = chapters[currentChapter]?.content || '';
-              const pageContent = getPageContent(currentChapterContent, currentPage);
+              // Build flat page list
+              const flatPages: { title: string; content: string; pageIndex: number; subPage: number }[] = [];
+              pages.forEach((page, idx) => {
+                const content = page.content || '';
+                const subPageCount = calculatePages(content);
+                for (let sp = 0; sp < subPageCount; sp++) {
+                  flatPages.push({
+                    title: page.title,
+                    content: getPageContent(content, sp + 1),
+                    pageIndex: idx,
+                    subPage: sp,
+                  });
+                }
+              });
+              
+              const currentFlatPage = flatPages[currentPage - 1];
+              if (!currentFlatPage) return null;
               
               return (
                 <div className="max-w-4xl mx-auto">
                   <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-8">
-                    {chapters.length > 1 && (
+                    {currentFlatPage.title && (
                       <h3 className="text-xl font-semibold text-purple-400 mb-6 flex items-center">
                         <FileText className="w-5 h-5 mr-2" />
-                        {chapters[currentChapter]?.title}
+                        {currentFlatPage.title}
                       </h3>
                     )}
                     <div className="text-white text-lg leading-relaxed">
-                      {renderMarkdown(pageContent)}
+                      {renderMarkdown(currentFlatPage.content)}
                     </div>
                   </div>
                 </div>
