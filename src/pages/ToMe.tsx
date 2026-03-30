@@ -829,18 +829,20 @@ const ToMe = () => {
               }
             }
           }}>
-            {activeTab === "tome" && (
-              <Button variant="outline" className="border-gray-600 text-gray-300 hover:text-white mr-2" onClick={(e) => { e.preventDefault(); importFromXML(); }}>
-                <Upload className="w-4 h-4 mr-2" />
-                Import XML
-              </Button>
-            )}
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600">
-                <Plus className="w-4 h-4 mr-2" />
-                New {activeTab === "tome" ? "Entry" : "Note"}
-              </Button>
-            </DialogTrigger>
+            <div className="flex gap-2 flex-wrap">
+              {activeTab === "tome" && (
+                <Button variant="outline" size="sm" className="border-gray-600 text-gray-300 hover:text-white" onClick={(e) => { e.preventDefault(); importFromXML(); }}>
+                  <Upload className="w-4 h-4 mr-1" />
+                  <span className="hidden sm:inline">Import</span> XML
+                </Button>
+              )}
+              <DialogTrigger asChild>
+                <Button size="sm" className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600">
+                  <Plus className="w-4 h-4 mr-1" />
+                  New {activeTab === "tome" ? "Entry" : "Note"}
+                </Button>
+              </DialogTrigger>
+            </div>
             
             {activeTab === "tome" ? (
               <DialogContent className="max-w-6xl w-[90vw] h-[90vh] bg-gray-900 border-gray-700">
