@@ -1295,30 +1295,33 @@ const ToMe = () => {
             
             {(() => {
               const entry = tomeEntries.find(e => e.id === expandedTome);
-              let pages;
+              let chapters;
               try {
-                pages = typeof entry?.content === 'string' 
+                chapters = typeof entry?.content === 'string' 
                   ? JSON.parse(entry.content)
-                  : [{ title: 'Page 1', content: entry?.content || '' }];
+                  : [{ title: 'Chapter 1', content: entry?.content || '' }];
               } catch {
-                pages = [{ title: 'Page 1', content: entry?.content || '' }];
+                chapters = [{ title: 'Chapter 1', content: entry?.content || '' }];
               }
-              if (!Array.isArray(pages)) pages = [{ title: 'Page 1', content: entry?.content || '' }];
+              if (!Array.isArray(chapters)) chapters = [{ title: 'Chapter 1', content: entry?.content || '' }];
               
-              // Build flat page list: each page entry is one page, but if content overflows 750 words, it splits
-              const flatPages: { title: string; content: string; pageIndex: number; subPage: number }[] = [];
-              pages.forEach((page, idx) => {
-                const content = page.content || '';
-                const subPageCount = calculatePages(content);
-                for (let sp = 0; sp < subPageCount; sp++) {
-                  flatPages.push({
-                    title: page.title,
-                    content: getPageContent(content, sp + 1),
-                    pageIndex: idx,
-                    subPage: sp,
-                  });
-                }
+              // Build flat page list: split by PAGE_BREAK_MARKER first, then by 750 words
+              const flatPages: { title: string; content: string }[] = [];
+              chapters.forEach((chapter) => {
+                const segments = (chapter.content || '').split(PAGE_BREAK_MARKER);
+                segments.forEach((segment) => {
+                  const trimmed = segment.trim();
+                  if (!trimmed) return;
+                  const subPageCount = calculatePages(trimmed);
+                  for (let sp = 0; sp < subPageCount; sp++) {
+                    flatPages.push({
+                      title: chapter.title,
+                      content: getPageContent(trimmed, sp + 1),
+                    });
+                  }
+                });
               });
+              if (flatPages.length === 0) flatPages.push({ title: '', content: '' });
               
               const totalPages = flatPages.length;
               
@@ -1358,30 +1361,33 @@ const ToMe = () => {
               const entry = tomeEntries.find(e => e.id === expandedTome);
               if (!entry) return null;
               
-              let pages;
+              let chapters;
               try {
-                pages = typeof entry.content === 'string' 
+                chapters = typeof entry.content === 'string' 
                   ? JSON.parse(entry.content)
-                  : [{ title: 'Page 1', content: entry.content || '' }];
+                  : [{ title: 'Chapter 1', content: entry.content || '' }];
               } catch {
-                pages = [{ title: 'Page 1', content: entry.content || '' }];
+                chapters = [{ title: 'Chapter 1', content: entry.content || '' }];
               }
-              if (!Array.isArray(pages)) pages = [{ title: 'Page 1', content: entry.content || '' }];
+              if (!Array.isArray(chapters)) chapters = [{ title: 'Chapter 1', content: entry.content || '' }];
               
               // Build flat page list
-              const flatPages: { title: string; content: string; pageIndex: number; subPage: number }[] = [];
-              pages.forEach((page, idx) => {
-                const content = page.content || '';
-                const subPageCount = calculatePages(content);
-                for (let sp = 0; sp < subPageCount; sp++) {
-                  flatPages.push({
-                    title: page.title,
-                    content: getPageContent(content, sp + 1),
-                    pageIndex: idx,
-                    subPage: sp,
-                  });
-                }
+              const flatPages: { title: string; content: string }[] = [];
+              chapters.forEach((chapter) => {
+                const segments = (chapter.content || '').split(PAGE_BREAK_MARKER);
+                segments.forEach((segment) => {
+                  const trimmed = segment.trim();
+                  if (!trimmed) return;
+                  const subPageCount = calculatePages(trimmed);
+                  for (let sp = 0; sp < subPageCount; sp++) {
+                    flatPages.push({
+                      title: chapter.title,
+                      content: getPageContent(trimmed, sp + 1),
+                    });
+                  }
+                });
               });
+              if (flatPages.length === 0) flatPages.push({ title: '', content: '' });
               
               const currentFlatPage = flatPages[currentPage - 1];
               if (!currentFlatPage) return null;
