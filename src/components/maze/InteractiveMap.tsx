@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect, useMemo, MouseEvent } from 'react';
 import { MapLocation, MapArea, MapRouteNode, MapRouteEdge } from '@/hooks/useMazeData';
-import { MapPin, Building, Building2, Store, Landmark, Home, Skull, Trees, Zap, Church, ShieldCheck, Eye, Crown, Waves, Factory, Warehouse, CircuitBoard, Wifi, Radio, Siren, Camera, Lock, KeyRound, Cpu, Monitor, Server, Crosshair, AlertTriangle, Cigarette, UtensilsCrossed, Wrench, BookOpen, Plane } from 'lucide-react';
+import { MapPin, Building, Building2, Store, Landmark, Home, Skull, Trees, Zap, Church, ShieldCheck, Eye, Crown, Waves, Factory, Warehouse, CircuitBoard, Wifi, Radio, Siren, Camera, Lock, KeyRound, Cpu, Monitor, Server, Crosshair, AlertTriangle, Cigarette, UtensilsCrossed, Wrench, BookOpen, Plane, TrainFront } from 'lucide-react';
 
 const MAP_URL = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/Map/RaccaDigitalMap.png';
 
@@ -38,6 +38,7 @@ export const ICON_MAP: Record<string, typeof MapPin> = {
   municipal: Building2,
   book: BookOpen,
   airport: Plane,
+  metro: TrainFront,
 };
 
 export const ICON_LABELS: Record<string, string> = Object.fromEntries(
