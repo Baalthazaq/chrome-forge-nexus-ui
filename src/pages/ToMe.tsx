@@ -829,6 +829,12 @@ const ToMe = () => {
               }
             }
           }}>
+            {activeTab === "tome" && (
+              <Button variant="outline" className="border-gray-600 text-gray-300 hover:text-white mr-2" onClick={(e) => { e.preventDefault(); importFromXML(); }}>
+                <Upload className="w-4 h-4 mr-2" />
+                Import XML
+              </Button>
+            )}
             <DialogTrigger asChild>
               <Button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600">
                 <Plus className="w-4 h-4 mr-2" />
