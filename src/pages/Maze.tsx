@@ -183,10 +183,24 @@ const Maze = () => {
           <Button onClick={handleFindRoute} disabled={!routeFrom || !routeTo} className="bg-teal-600 hover:bg-teal-700">
             <Navigation className="w-3 h-3 mr-1" /> Route
           </Button>
-          {routePath && (
+        {routePath && (
             <Button variant="ghost" size="sm" onClick={() => setRoutePath(null)} className="text-gray-400">Clear</Button>
           )}
         </div>
+        {routePath && routePath.length > 1 && (() => {
+          const nodes = routePath.length - 1;
+          const walkMin = nodes >= 1 ? 3 + Math.max(0, nodes - 1) * 12 : 0;
+          const driveMin = nodes >= 1 ? 6 + Math.max(0, nodes - 1) * 3 : 0;
+          const publicMin = nodes * 4;
+          const fmt = (m: number) => m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+          return (
+            <div className="flex gap-4 bg-gray-900/60 border border-gray-700/50 rounded-lg px-3 py-2 text-xs text-gray-300 font-mono">
+              <span>🚶 Walking: <span className="text-teal-400">{fmt(walkMin)}</span></span>
+              <span>🚌 Public: <span className="text-teal-400">{fmt(publicMin)}</span></span>
+              <span>🚗 Private: <span className="text-teal-400">{fmt(driveMin)}</span></span>
+            </div>
+          );
+        })()}
 
         {/* Map + Panel */}
         <div className="flex flex-col md:flex-row gap-4">
