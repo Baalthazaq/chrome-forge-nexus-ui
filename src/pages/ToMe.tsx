@@ -447,7 +447,7 @@ const ToMe = () => {
   };
 
   const addChapter = () => {
-    const newChapters = [...newEntry.chapters, { title: `Chapter ${newEntry.chapters.length + 1}`, content: '' }];
+    const newChapters = [...newEntry.chapters, { title: `Page ${newEntry.chapters.length + 1}`, content: '' }];
     setNewEntry({ ...newEntry, chapters: newChapters });
     setCurrentChapter(newChapters.length - 1);
   };
