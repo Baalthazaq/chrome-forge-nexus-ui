@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Search, BookOpen, StickyNote, Star, Clock, Edit3, Trash2, Pin, GripVertical, ChevronLeft, ChevronRight, X, FileText, List, Share2, Columns3, Download } from "lucide-react";
+import { ArrowLeft, Plus, Search, BookOpen, StickyNote, Star, Clock, Edit3, Trash2, Pin, GripVertical, ChevronLeft, ChevronRight, X, FileText, List, Share2, Columns3, Download, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -481,6 +481,59 @@ const ToMe = () => {
     setNewEntry({ ...newEntry, chapters: newChapters });
   };
 
+  const importFromXML = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xml';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'application/xml');
+        const parseError = doc.querySelector('parsererror');
+        if (parseError) throw new Error('Invalid XML file');
+
+        const title = doc.querySelector('tome > title')?.textContent || 'Imported Tome';
+        const tagEls = doc.querySelectorAll('tome > tags > tag');
+        const tags = Array.from(tagEls).map(t => t.textContent || '').filter(Boolean);
+        const chapterEls = doc.querySelectorAll('tome > chapters > chapter');
+        const chapters = Array.from(chapterEls).map(ch => ({
+          title: ch.querySelector('title')?.textContent || '',
+          content: (ch.querySelector('content')?.textContent || '').replace(/&amp;/g, '&').replace(/&lt;/g, '<'),
+        }));
+        if (chapters.length === 0) chapters.push({ title: 'Chapter 1', content: '' });
+
+        if (!displayUser) return;
+        let pages = 0;
+        chapters.forEach(ch => {
+          const segments = (ch.content || '').split(PAGE_BREAK_MARKER);
+          segments.forEach(seg => {
+            const trimmed = seg.trim();
+            if (trimmed) pages += calculatePages(trimmed);
+            else pages += 1;
+          });
+        });
+
+        const { error } = await supabase.from('tome_entries').insert({
+          user_id: displayUser.user_id || displayUser.id,
+          title,
+          content: JSON.stringify(chapters),
+          tags,
+          pages,
+        });
+        if (error) throw error;
+        fetchData();
+        toast({ title: "Success", description: "Tome imported from XML" });
+      } catch (err) {
+        console.error('XML import error:', err);
+        toast({ title: "Error", description: "Failed to import XML file", variant: "destructive" });
+      }
+    };
+    input.click();
+  };
+
   const createTomeEntry = async () => {
     if (!displayUser) return;
     
@@ -776,6 +829,12 @@ const ToMe = () => {
               }
             }
           }}>
+            {activeTab === "tome" && (
+              <Button variant="outline" className="border-gray-600 text-gray-300 hover:text-white mr-2" onClick={(e) => { e.preventDefault(); importFromXML(); }}>
+                <Upload className="w-4 h-4 mr-2" />
+                Import XML
+              </Button>
+            )}
             <DialogTrigger asChild>
               <Button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600">
                 <Plus className="w-4 h-4 mr-2" />
