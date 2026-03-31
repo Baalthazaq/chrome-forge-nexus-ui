@@ -48,6 +48,7 @@ interface QuestAcceptance {
   final_payment: number | null;
   times_completed: number;
   admin_notes: string | null;
+  hours_logged: number;
   quests: Quest;
 }
 
