@@ -343,9 +343,9 @@ const Questseek = () => {
 
   const formatRewardRange = (quest: Quest) => {
     if (quest.reward_min > 0 && quest.reward_min !== quest.reward) {
-      return `${formatHexDenomination(quest.reward_min)} – ${formatHexDenomination(quest.reward)}`;
+      return `${formatHexRounded(quest.reward_min, 'down')} – ${formatHexRounded(quest.reward, 'up')}`;
     }
-    return formatHexDenomination(quest.reward);
+    return formatHexRounded(quest.reward, 'nearest');
   };
 
   const QuestCard = ({ quest, showAccept = true, posterName }: { quest: Quest; showAccept?: boolean; posterName?: string }) => {
