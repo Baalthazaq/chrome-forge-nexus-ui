@@ -84,8 +84,8 @@ const Questseek = () => {
   // Post job dialog
   const [postJobOpen, setPostJobOpen] = useState(false);
   const [postForm, setPostForm] = useState({
-    title: "", description: "", reward: 0, reward_min: 0, difficulty: "Low Risk",
-    downtime_cost: 0, available_quantity: "", tags: "", time_limit: "",
+    title: "", description: "", reward: "" as string, reward_min: "" as string, difficulty: "Low Risk",
+    downtime_cost: "" as string, available_quantity: "", tags: "", time_limit: "",
     job_type: "commission", pay_interval: "daily",
   });
 
