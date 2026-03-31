@@ -338,38 +338,52 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
     })
   }
 
-  // Check downtime cost
+  // Check downtime cost (account for already-logged hours)
   if (quest.downtime_cost > 0) {
-    const { data: downtime } = await supabase
-      .from('downtime_balances')
-      .select('*')
+    // Get the acceptance to check hours_logged
+    const { data: acceptance } = await supabase
+      .from('quest_acceptances')
+      .select('hours_logged')
+      .eq('quest_id', questId)
       .eq('user_id', userId)
+      .eq('status', 'accepted')
       .single()
 
-    const currentBalance = downtime?.balance || 0
+    const hoursAlreadyLogged = acceptance?.hours_logged || 0
+    const remainingHours = Math.max(0, quest.downtime_cost - hoursAlreadyLogged)
 
-    if (currentBalance < quest.downtime_cost) {
-      return new Response(JSON.stringify({ error: `Not enough downtime. Need ${quest.downtime_cost} hours, have ${currentBalance}.` }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+    if (remainingHours > 0) {
+      const { data: downtime } = await supabase
+        .from('downtime_balances')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+
+      const currentBalance = downtime?.balance || 0
+
+      if (currentBalance < remainingHours) {
+        return new Response(JSON.stringify({ error: `Not enough downtime. Need ${remainingHours} more hours (${hoursAlreadyLogged}/${quest.downtime_cost} already logged), have ${currentBalance}.` }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      // Deduct remaining downtime
+      await supabase
+        .from('downtime_balances')
+        .update({ balance: currentBalance - remainingHours, updated_at: new Date().toISOString() })
+        .eq('user_id', userId)
+
+      // Log the downtime activity
+      await supabase
+        .from('downtime_activities')
+        .insert({
+          user_id: userId,
+          activity_type: 'quest_work',
+          hours_spent: remainingHours,
+          notes: `Quest: ${quest.title} (final ${remainingHours}h)`,
+        })
     }
-
-    // Deduct downtime
-    await supabase
-      .from('downtime_balances')
-      .update({ balance: currentBalance - quest.downtime_cost, updated_at: new Date().toISOString() })
-      .eq('user_id', userId)
-
-    // Log the downtime activity
-    await supabase
-      .from('downtime_activities')
-      .insert({
-        user_id: userId,
-        activity_type: 'quest_work',
-        hours_spent: quest.downtime_cost,
-        notes: `Quest: ${quest.title}`,
-      })
   }
 
   const { error: updateError } = await supabase
