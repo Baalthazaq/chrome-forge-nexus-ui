@@ -639,34 +639,55 @@ const Questseek = () => {
                 <div className="space-y-3">
                   {activeAcceptances.map(qa => (
                     <Card key={qa.id} className="p-4 bg-gray-900/30 border-gray-700/50">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h4 className="text-white font-medium">{qa.quests?.title}</h4>
-                          <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
-                            <Badge variant="outline" className="text-xs">
-                              {qa.quests?.job_type === "full_time" ? "Full-Time" : "Commission"}
-                            </Badge>
-                            {qa.quests?.client && <span>• {qa.quests.client}</span>}
-                            {qa.quests?.downtime_cost > 0 && (
-                              <span className="text-cyan-400">• {qa.quests.downtime_cost}h downtime on submit</span>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <h4 className="text-white font-medium">{qa.quests?.title}</h4>
+                            <div className="flex items-center gap-2 text-sm text-gray-400 mt-1 flex-wrap">
+                              <Badge variant="outline" className="text-xs">
+                                {qa.quests?.job_type === "full_time" ? "Full-Time" : "Commission"}
+                              </Badge>
+                              {qa.quests?.client && <span>• {qa.quests.client}</span>}
+                              {qa.quests?.downtime_cost > 0 && (
+                                <span className="text-cyan-400">• {qa.hours_logged || 0}/{qa.quests.downtime_cost}h logged</span>
+                              )}
+                              {qa.admin_notes && qa.quests?.job_type === "full_time" && (
+                                <span className="text-emerald-400 text-xs">✓ {qa.admin_notes}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0">
+                            {qa.quests?.job_type !== "full_time" && qa.quests?.downtime_cost > 0 && (qa.hours_logged || 0) < qa.quests.downtime_cost && (
+                              <Button size="sm" variant="outline" className="text-cyan-400 border-cyan-500/50"
+                                onClick={() => { setLogHoursTarget(qa); setLogHoursAmount(""); setLogHoursOpen(true); }}>
+                                <Clock className="w-3 h-3 mr-1" /> Log Hours
+                              </Button>
                             )}
-                            {qa.admin_notes && qa.quests?.job_type === "full_time" && (
-                              <span className="text-emerald-400 text-xs">✓ {qa.admin_notes}</span>
+                            {qa.quests?.job_type !== "full_time" && (
+                              <Button size="sm" onClick={() => openSubmitDialog(qa)}
+                                className="bg-gradient-to-r from-emerald-500 to-teal-500">
+                                Mark Complete
+                              </Button>
                             )}
+                            <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300"
+                              onClick={() => resignQuest(qa.quest_id)}>
+                              {qa.quests?.job_type === "full_time" ? "Quit" : "Abandon"}
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          {qa.quests?.job_type !== "full_time" && (
-                            <Button size="sm" onClick={() => openSubmitDialog(qa)}
-                              className="bg-gradient-to-r from-emerald-500 to-teal-500">
-                              Mark Complete
-                            </Button>
-                          )}
-                          <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300"
-                            onClick={() => resignQuest(qa.quest_id)}>
-                            {qa.quests?.job_type === "full_time" ? "Quit" : "Abandon"}
-                          </Button>
-                        </div>
+                        {qa.quests?.job_type !== "full_time" && qa.quests?.downtime_cost > 0 && (
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-gray-800 rounded-full h-2 overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-cyan-500 to-teal-500 transition-all"
+                                style={{ width: `${Math.min(100, ((qa.hours_logged || 0) / qa.quests.downtime_cost) * 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-gray-400 flex-shrink-0">
+                              {qa.hours_logged || 0}/{qa.quests.downtime_cost}h
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </Card>
                   ))}
