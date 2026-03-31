@@ -92,7 +92,7 @@ const QuestseekAdmin = () => {
 
   const openCreateDialog = () => {
     setEditingQuest(null);
-    setQuestForm({ title: "", description: "", client: "", reward: 0, reward_min: 0, difficulty: "Low Risk", job_type: "commission", downtime_cost: 0, available_quantity: "", pay_interval: "daily", tags: "", time_limit: "" });
+    setQuestForm({ title: "", description: "", client: "", reward: "", reward_min: "", difficulty: "Low Risk", job_type: "commission", downtime_cost: "", available_quantity: "", pay_interval: "daily", tags: "", time_limit: "" });
     setQuestDialogOpen(true);
   };
 
