@@ -1,0 +1,1 @@
+ALTER TABLE public.quest_acceptances ADD COLUMN hours_logged integer NOT NULL DEFAULT 0;

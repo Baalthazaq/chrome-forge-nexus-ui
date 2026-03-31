@@ -1157,6 +1157,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           final_payment: number | null
+          hours_logged: number
           id: string
           notes: string | null
           quest_id: string
@@ -1173,6 +1174,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           final_payment?: number | null
+          hours_logged?: number
           id?: string
           notes?: string | null
           quest_id: string
@@ -1189,6 +1191,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           final_payment?: number | null
+          hours_logged?: number
           id?: string
           notes?: string | null
           quest_id?: string

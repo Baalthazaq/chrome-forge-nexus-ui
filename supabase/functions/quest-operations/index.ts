@@ -72,6 +72,8 @@ Deno.serve(async (req) => {
         return await approvePlayerApplication(effectiveUserId, params)
       case 'reject_player_application':
         return await rejectPlayerApplication(effectiveUserId, params)
+      case 'log_quest_hours':
+        return await logQuestHours(effectiveUserId, params)
       default:
         return new Response(JSON.stringify({ error: 'Invalid operation' }), {
           status: 400,
@@ -336,38 +338,52 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
     })
   }
 
-  // Check downtime cost
+  // Check downtime cost (account for already-logged hours)
   if (quest.downtime_cost > 0) {
-    const { data: downtime } = await supabase
-      .from('downtime_balances')
-      .select('*')
+    // Get the acceptance to check hours_logged
+    const { data: acceptance } = await supabase
+      .from('quest_acceptances')
+      .select('hours_logged')
+      .eq('quest_id', questId)
       .eq('user_id', userId)
+      .eq('status', 'accepted')
       .single()
 
-    const currentBalance = downtime?.balance || 0
+    const hoursAlreadyLogged = acceptance?.hours_logged || 0
+    const remainingHours = Math.max(0, quest.downtime_cost - hoursAlreadyLogged)
 
-    if (currentBalance < quest.downtime_cost) {
-      return new Response(JSON.stringify({ error: `Not enough downtime. Need ${quest.downtime_cost} hours, have ${currentBalance}.` }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+    if (remainingHours > 0) {
+      const { data: downtime } = await supabase
+        .from('downtime_balances')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+
+      const currentBalance = downtime?.balance || 0
+
+      if (currentBalance < remainingHours) {
+        return new Response(JSON.stringify({ error: `Not enough downtime. Need ${remainingHours} more hours (${hoursAlreadyLogged}/${quest.downtime_cost} already logged), have ${currentBalance}.` }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      // Deduct remaining downtime
+      await supabase
+        .from('downtime_balances')
+        .update({ balance: currentBalance - remainingHours, updated_at: new Date().toISOString() })
+        .eq('user_id', userId)
+
+      // Log the downtime activity
+      await supabase
+        .from('downtime_activities')
+        .insert({
+          user_id: userId,
+          activity_type: 'quest_work',
+          hours_spent: remainingHours,
+          notes: `Quest: ${quest.title} (final ${remainingHours}h)`,
+        })
     }
-
-    // Deduct downtime
-    await supabase
-      .from('downtime_balances')
-      .update({ balance: currentBalance - quest.downtime_cost, updated_at: new Date().toISOString() })
-      .eq('user_id', userId)
-
-    // Log the downtime activity
-    await supabase
-      .from('downtime_activities')
-      .insert({
-        user_id: userId,
-        activity_type: 'quest_work',
-        hours_spent: quest.downtime_cost,
-        notes: `Quest: ${quest.title}`,
-      })
   }
 
   const { error: updateError } = await supabase
@@ -728,6 +744,105 @@ async function rejectPlayerApplication(posterId: string, { acceptanceId, notes }
   }).eq('id', acceptanceId)
 
   return new Response(JSON.stringify({ success: true }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function logQuestHours(userId: string, { questId, hours }: { questId: string, hours: number }) {
+  if (!questId || !hours || hours <= 0) {
+    return new Response(JSON.stringify({ error: 'questId and positive hours required' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Get quest and acceptance
+  const { data: acceptance, error: accErr } = await supabase
+    .from('quest_acceptances')
+    .select('id, hours_logged, quest_id')
+    .eq('quest_id', questId)
+    .eq('user_id', userId)
+    .eq('status', 'accepted')
+    .single()
+
+  if (accErr || !acceptance) {
+    return new Response(JSON.stringify({ error: 'No active acceptance found for this quest' }), {
+      status: 404,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  const { data: quest } = await supabase
+    .from('quests')
+    .select('downtime_cost, title')
+    .eq('id', questId)
+    .single()
+
+  if (!quest || quest.downtime_cost <= 0) {
+    return new Response(JSON.stringify({ error: 'Quest has no downtime cost' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  const remaining = quest.downtime_cost - (acceptance.hours_logged || 0)
+  const hoursToLog = Math.min(hours, remaining)
+
+  if (hoursToLog <= 0) {
+    return new Response(JSON.stringify({ error: 'All hours already logged for this quest' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Check downtime balance
+  const { data: downtime } = await supabase
+    .from('downtime_balances')
+    .select('*')
+    .eq('user_id', userId)
+    .single()
+
+  const currentBalance = downtime?.balance || 0
+
+  if (currentBalance < hoursToLog) {
+    return new Response(JSON.stringify({ error: `Not enough downtime. Have ${currentBalance}h, need ${hoursToLog}h.` }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Deduct downtime
+  if (downtime) {
+    await supabase
+      .from('downtime_balances')
+      .update({ balance: currentBalance - hoursToLog, updated_at: new Date().toISOString() })
+      .eq('id', downtime.id)
+  }
+
+  // Update hours_logged
+  await supabase
+    .from('quest_acceptances')
+    .update({ hours_logged: (acceptance.hours_logged || 0) + hoursToLog })
+    .eq('id', acceptance.id)
+
+  // Log downtime activity
+  await supabase
+    .from('downtime_activities')
+    .insert({
+      user_id: userId,
+      activity_type: 'quest_work',
+      hours_spent: hoursToLog,
+      notes: `Quest: ${quest.title} (${(acceptance.hours_logged || 0) + hoursToLog}/${quest.downtime_cost}h)`,
+    })
+
+  const newLogged = (acceptance.hours_logged || 0) + hoursToLog
+
+  return new Response(JSON.stringify({ 
+    success: true, 
+    hoursLogged: newLogged,
+    totalRequired: quest.downtime_cost,
+    newBalance: currentBalance - hoursToLog,
+  }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })
 }
