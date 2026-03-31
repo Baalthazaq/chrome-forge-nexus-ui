@@ -346,8 +346,20 @@ const Questseek = () => {
     }
   };
 
-  const commissions = quests.filter(q => q.job_type === "commission");
-  const fullTimeJobs = quests.filter(q => q.job_type === "full_time");
+  const filterQuests = (questList: Quest[]) => {
+    return questList.filter(q => {
+      const matchesSearch = !searchQuery || 
+        q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        q.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        q.client?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        q.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesDifficulty = difficultyFilter === "all" || q.difficulty === difficultyFilter;
+      return matchesSearch && matchesDifficulty;
+    });
+  };
+
+  const commissions = filterQuests(quests.filter(q => q.job_type === "commission"));
+  const fullTimeJobs = filterQuests(quests.filter(q => q.job_type === "full_time"));
   const activeAcceptances = myQuests.filter(q => q.status === "accepted");
   const pendingApproval = myQuests.filter(q => q.status === "pending_approval");
   const pendingSubmissions = myQuests.filter(q => q.status === "submitted");
