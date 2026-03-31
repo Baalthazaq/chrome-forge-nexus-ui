@@ -238,7 +238,7 @@ const Questseek = () => {
     } else {
       toast({ title: "Job posted!" });
       setPostJobOpen(false);
-      setPostForm({ title: "", description: "", reward: 0, reward_min: 0, difficulty: "Low Risk", downtime_cost: 0, available_quantity: "", tags: "", time_limit: "", job_type: "commission", pay_interval: "daily" });
+      setPostForm({ title: "", description: "", reward: "", reward_min: "", difficulty: "Low Risk", downtime_cost: "", available_quantity: "", tags: "", time_limit: "", job_type: "commission", pay_interval: "daily" });
       loadData();
     }
   };
