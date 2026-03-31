@@ -326,15 +326,17 @@ const QuestseekAdmin = () => {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
             Questseek Admin
           </h1>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={exportQuests} className="border-gray-700 text-gray-300 hover:text-white">
-              <Download className="w-4 h-4 mr-1" /> Export
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="border-gray-700 text-gray-300 hover:text-white">
-              <Upload className="w-4 h-4 mr-1" /> Import
-            </Button>
-            <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={importQuests} className="hidden" />
-          </div>
+          <div className="w-24" />
+        </div>
+
+        <div className="flex gap-2 mb-4">
+          <Button variant="outline" size="sm" onClick={exportQuests} className="border-emerald-700 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/30">
+            <Download className="w-4 h-4 mr-1" /> Export
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="border-teal-700 text-teal-400 hover:text-teal-300 hover:bg-teal-900/30">
+            <Upload className="w-4 h-4 mr-1" /> Import
+          </Button>
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={importQuests} className="hidden" />
         </div>
 
         <Tabs defaultValue="quests" className="space-y-6">
