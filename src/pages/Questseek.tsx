@@ -935,7 +935,6 @@ const Questseek = () => {
                     <SelectItem value="Low Risk">Low Risk</SelectItem>
                     <SelectItem value="Medium Risk">Medium Risk</SelectItem>
                     <SelectItem value="High Risk">High Risk</SelectItem>
-                    <SelectItem value="Illegal">Illegal</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -943,8 +942,8 @@ const Questseek = () => {
                 <Label className="text-gray-300">
                   {postForm.job_type === "full_time" ? "Downtime per Pay Period (hours)" : "Downtime Cost (hours)"}
                 </Label>
-                <Input type="number" value={postForm.downtime_cost} onChange={e => setPostForm(f => ({ ...f, downtime_cost: parseInt(e.target.value) || 0 }))}
-                  className="bg-gray-800 border-gray-600 text-white" />
+                <Input type="number" value={postForm.downtime_cost} onChange={e => setPostForm(f => ({ ...f, downtime_cost: e.target.value }))}
+                  className="bg-gray-800 border-gray-600 text-white" placeholder="0" />
                 {postForm.job_type === "full_time" && postForm.downtime_cost > 0 && (
                   <p className="text-xs text-cyan-400 mt-1">
                     ≈ {Math.ceil(postForm.downtime_cost / (postForm.pay_interval === "weekly" ? 7 : postForm.pay_interval === "monthly" ? 28 : postForm.pay_interval === "yearly" ? 365 : 1))}h/day
