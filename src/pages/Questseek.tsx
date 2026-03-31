@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun, RotateCcw, CheckCircle, XCircle, HourglassIcon, Plus, Check, X, Users } from "lucide-react";
+import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun, RotateCcw, CheckCircle, XCircle, HourglassIcon, Plus, Check, X, Users, Search, Filter } from "lucide-react";
 import { Link } from "react-router-dom";
 import RestDialog from "@/components/RestDialog";
 import { formatHexDenomination, formatHex, formatHexRounded } from "@/lib/currency";
@@ -99,6 +99,10 @@ const Questseek = () => {
   const [logHoursOpen, setLogHoursOpen] = useState(false);
   const [logHoursTarget, setLogHoursTarget] = useState<QuestAcceptance | null>(null);
   const [logHoursAmount, setLogHoursAmount] = useState("");
+
+  // Search & filter
+  const [searchQuery, setSearchQuery] = useState("");
+  const [difficultyFilter, setDifficultyFilter] = useState("all");
 
   useEffect(() => {
     supabase.from("game_calendar").select("*").limit(1).single().then(({ data }) => {
@@ -342,8 +346,20 @@ const Questseek = () => {
     }
   };
 
-  const commissions = quests.filter(q => q.job_type === "commission");
-  const fullTimeJobs = quests.filter(q => q.job_type === "full_time");
+  const filterQuests = (questList: Quest[]) => {
+    return questList.filter(q => {
+      const matchesSearch = !searchQuery || 
+        q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        q.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        q.client?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        q.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesDifficulty = difficultyFilter === "all" || q.difficulty === difficultyFilter;
+      return matchesSearch && matchesDifficulty;
+    });
+  };
+
+  const commissions = filterQuests(quests.filter(q => q.job_type === "commission"));
+  const fullTimeJobs = filterQuests(quests.filter(q => q.job_type === "full_time"));
   const activeAcceptances = myQuests.filter(q => q.status === "accepted");
   const pendingApproval = myQuests.filter(q => q.status === "pending_approval");
   const pendingSubmissions = myQuests.filter(q => q.status === "submitted");
@@ -547,6 +563,31 @@ const Questseek = () => {
           onComplete={loadData}
         />
 
+        {/* Search & Filter Bar */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Search jobs by title, description, client, or tags..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-10 bg-gray-900/50 border-gray-700 text-white placeholder:text-gray-500"
+            />
+          </div>
+          <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+            <SelectTrigger className="w-full sm:w-48 bg-gray-900/50 border-gray-700 text-white">
+              <Filter className="w-4 h-4 mr-2 text-gray-400" />
+              <SelectValue placeholder="Difficulty" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Difficulties</SelectItem>
+              <SelectItem value="Low Risk">Low Risk</SelectItem>
+              <SelectItem value="Medium Risk">Medium Risk</SelectItem>
+              <SelectItem value="High Risk">High Risk</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <Tabs defaultValue="commissions" className="space-y-6">
           <TabsList className="bg-gray-900/50 border border-gray-700/50">
             <TabsTrigger value="commissions">Commissions</TabsTrigger>
@@ -589,15 +630,18 @@ const Questseek = () => {
                 <Plus className="w-4 h-4 mr-1" /> Post a Job
               </Button>
             </div>
-            {communityQuests.length === 0 ? (
-              <Card className="p-8 bg-gray-900/30 border-gray-700/50 text-center text-gray-400">
-                No community jobs posted yet. Be the first to post one!
-              </Card>
-            ) : (
-              communityQuests.map(q => (
-                <QuestCard key={q.id} quest={q} posterName={communityPosterMap[q.posted_by_user_id!]} />
-              ))
-            )}
+            {(() => {
+              const filtered = filterQuests(communityQuests);
+              return filtered.length === 0 ? (
+                <Card className="p-8 bg-gray-900/30 border-gray-700/50 text-center text-gray-400">
+                  {communityQuests.length === 0 ? "No community jobs posted yet. Be the first to post one!" : "No jobs match your search."}
+                </Card>
+              ) : (
+                filtered.map(q => (
+                  <QuestCard key={q.id} quest={q} posterName={communityPosterMap[q.posted_by_user_id!]} />
+                ))
+              );
+            })()}
           </TabsContent>
 
           <TabsContent value="my_quests" className="space-y-6">
