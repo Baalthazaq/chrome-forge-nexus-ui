@@ -909,20 +909,20 @@ const Questseek = () => {
               <div>
                 <Label className="text-gray-300">{postForm.job_type === 'full_time' ? 'Pay Rate (⏣)' : 'Reward Min (⏣)'}</Label>
                 <Input type="number" value={postForm.job_type === 'full_time' ? postForm.reward : postForm.reward_min} onChange={e => {
-                  const val = parseInt(e.target.value) || 0;
+                  const val = e.target.value;
                   if (postForm.job_type === 'full_time') {
                     setPostForm(f => ({ ...f, reward: val, reward_min: val }));
                   } else {
                     setPostForm(f => ({ ...f, reward_min: val }));
                   }
                 }}
-                  className="bg-gray-800 border-gray-600 text-white" />
+                  className="bg-gray-800 border-gray-600 text-white" placeholder="0" />
               </div>
               {postForm.job_type !== 'full_time' && (
                 <div>
                   <Label className="text-gray-300">Reward Max (⏣)</Label>
-                  <Input type="number" value={postForm.reward} onChange={e => setPostForm(f => ({ ...f, reward: parseInt(e.target.value) || 0 }))}
-                    className="bg-gray-800 border-gray-600 text-white" />
+                  <Input type="number" value={postForm.reward} onChange={e => setPostForm(f => ({ ...f, reward: e.target.value }))}
+                    className="bg-gray-800 border-gray-600 text-white" placeholder="0" />
                 </div>
               )}
             </div>
