@@ -118,7 +118,7 @@ const Questseek = () => {
   const loadQuests = async () => {
     const { data, error } = await supabase
       .from("quests")
-      .select("*")
+      .select("*, quest_acceptances(id, status)")
       .eq("status", "active")
       .is("posted_by_user_id", null)
       .order("created_at", { ascending: false });
@@ -348,11 +348,12 @@ const Questseek = () => {
     return formatHexRounded(quest.reward, 'nearest');
   };
 
-  const QuestCard = ({ quest, showAccept = true, posterName }: { quest: Quest; showAccept?: boolean; posterName?: string }) => {
+  const QuestCard = ({ quest, showAccept = true, posterName }: { quest: Quest & { quest_acceptances?: any[] }; showAccept?: boolean; posterName?: string }) => {
     const isAlreadyAccepted = myQuests.some(
       mq => mq.quest_id === quest.id && (mq.status === "accepted" || mq.status === "submitted" || mq.status === "pending_approval")
     );
     const isOwnQuest = quest.posted_by_user_id === effectiveUserId;
+    const isPositionFilled = quest.job_type === "full_time" && quest.quest_acceptances?.some((a: any) => a.status === "accepted");
 
     return (
       <Card className="p-6 bg-gray-900/30 border-gray-700/50 hover:border-emerald-500/30 transition-all duration-300">
@@ -383,7 +384,7 @@ const Questseek = () => {
                   <span className="text-cyan-400">{quest.downtime_cost}h downtime</span>
                 </div>
               )}
-              {quest.available_quantity !== null && (
+              {quest.available_quantity !== null && quest.available_quantity > 0 && (
                 <div className="flex items-center gap-1">
                   <Package className="w-4 h-4 text-orange-400" />
                   <span className="text-orange-400">{quest.available_quantity} available</span>
@@ -400,6 +401,16 @@ const Questseek = () => {
                 {quest.difficulty}
               </Badge>
             )}
+            {quest.available_quantity !== null && quest.available_quantity <= 0 && quest.job_type === "commission" && (
+              <Badge className="bg-red-900/30 text-red-400 border border-red-500/50 mt-1">
+                Not Available
+              </Badge>
+            )}
+            {isPositionFilled && (
+              <Badge className="bg-blue-900/30 text-blue-400 border border-blue-500/50 mt-1">
+                Position Filled
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -413,7 +424,7 @@ const Questseek = () => {
               </Badge>
             ))}
           </div>
-          {showAccept && !isAlreadyAccepted && !isOwnQuest && (
+          {showAccept && !isAlreadyAccepted && !isOwnQuest && !isPositionFilled && !(quest.available_quantity !== null && quest.available_quantity <= 0) && (
             <Button
               onClick={() => acceptQuest(quest.id)}
               className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
