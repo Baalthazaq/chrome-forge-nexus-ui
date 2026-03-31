@@ -393,7 +393,7 @@ const QuestseekAdmin = () => {
                         <div>
                           <h4 className="text-white font-medium">{sub.quests?.title}</h4>
                           <p className="text-sm text-gray-400">
-                            By: {profileMap[sub.user_id] || "Unknown"} • Range: {formatHex(sub.quests?.reward_min || 0)} – {formatHex(sub.quests?.reward || 0)}
+                            By: {profileMap[sub.user_id] || "Unknown"} • Range: {formatHexRounded(sub.quests?.reward_min || 0, 'down')} – {formatHexRounded(sub.quests?.reward || 0, 'up')}
                           </p>
                           <div className="flex gap-3 mt-2 text-sm">
                             {sub.roll_result !== null && (
