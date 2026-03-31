@@ -944,9 +944,9 @@ const Questseek = () => {
                 </Label>
                 <Input type="number" value={postForm.downtime_cost} onChange={e => setPostForm(f => ({ ...f, downtime_cost: e.target.value }))}
                   className="bg-gray-800 border-gray-600 text-white" placeholder="0" />
-                {postForm.job_type === "full_time" && postForm.downtime_cost > 0 && (
+                {postForm.job_type === "full_time" && Number(postForm.downtime_cost) > 0 && (
                   <p className="text-xs text-cyan-400 mt-1">
-                    ≈ {Math.ceil(postForm.downtime_cost / (postForm.pay_interval === "weekly" ? 7 : postForm.pay_interval === "monthly" ? 28 : postForm.pay_interval === "yearly" ? 365 : 1))}h/day
+                    ≈ {Math.ceil(Number(postForm.downtime_cost) / (postForm.pay_interval === "weekly" ? 7 : postForm.pay_interval === "monthly" ? 28 : postForm.pay_interval === "yearly" ? 365 : 1))}h/day
                   </p>
                 )}
               </div>
