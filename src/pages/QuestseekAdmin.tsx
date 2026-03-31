@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Plus, Check, X, RefreshCw, Settings, Package, Download, Upload, Briefcase } from "lucide-react";
 import { Link } from "react-router-dom";
-import { formatHexDenomination, formatHex } from "@/lib/currency";
+import { formatHexDenomination, formatHex, formatHexRounded } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
@@ -360,7 +360,7 @@ const QuestseekAdmin = () => {
                         <div>
                           <h4 className="text-white font-medium">{app.quests?.title}</h4>
                           <p className="text-sm text-gray-400">
-                            Applicant: {profileMap[app.user_id] || "Unknown"} • Pay: {formatHex(app.quests?.reward || 0)} / {app.quests?.pay_interval || "daily"}
+                            Applicant: {profileMap[app.user_id] || "Unknown"} • Pay: {formatHexRounded(app.quests?.reward || 0)} / {app.quests?.pay_interval || "daily"}
                           </p>
                         </div>
                         <div className="flex gap-2">
@@ -393,7 +393,7 @@ const QuestseekAdmin = () => {
                         <div>
                           <h4 className="text-white font-medium">{sub.quests?.title}</h4>
                           <p className="text-sm text-gray-400">
-                            By: {profileMap[sub.user_id] || "Unknown"} • Range: {formatHex(sub.quests?.reward_min || 0)} – {formatHex(sub.quests?.reward || 0)}
+                            By: {profileMap[sub.user_id] || "Unknown"} • Range: {formatHexRounded(sub.quests?.reward_min || 0, 'down')} – {formatHexRounded(sub.quests?.reward || 0, 'up')}
                           </p>
                           <div className="flex gap-3 mt-2 text-sm">
                             {sub.roll_result !== null && (
@@ -460,7 +460,7 @@ const QuestseekAdmin = () => {
                       )}
                     </div>
                     <p className="text-sm text-gray-400">
-                      {quest.reward_min > 0 ? `${formatHex(quest.reward_min)} – ${formatHex(quest.reward)}` : formatHex(quest.reward)}
+                      {quest.reward_min > 0 ? `${formatHexRounded(quest.reward_min, 'down')} – ${formatHexRounded(quest.reward, 'up')}` : formatHexRounded(quest.reward)}
                       {quest.downtime_cost > 0 && ` • ${quest.downtime_cost}h downtime`}
                       {quest.available_quantity !== null && ` • ${quest.available_quantity} available`}
                       {quest.pay_interval && ` • Pays ${quest.pay_interval}`}
