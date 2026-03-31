@@ -348,11 +348,12 @@ const Questseek = () => {
     return formatHexRounded(quest.reward, 'nearest');
   };
 
-  const QuestCard = ({ quest, showAccept = true, posterName }: { quest: Quest; showAccept?: boolean; posterName?: string }) => {
+  const QuestCard = ({ quest, showAccept = true, posterName }: { quest: Quest & { quest_acceptances?: any[] }; showAccept?: boolean; posterName?: string }) => {
     const isAlreadyAccepted = myQuests.some(
       mq => mq.quest_id === quest.id && (mq.status === "accepted" || mq.status === "submitted" || mq.status === "pending_approval")
     );
     const isOwnQuest = quest.posted_by_user_id === effectiveUserId;
+    const isPositionFilled = quest.job_type === "full_time" && quest.quest_acceptances?.some((a: any) => a.status === "accepted");
 
     return (
       <Card className="p-6 bg-gray-900/30 border-gray-700/50 hover:border-emerald-500/30 transition-all duration-300">
