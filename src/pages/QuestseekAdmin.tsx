@@ -534,14 +534,14 @@ const QuestseekAdmin = () => {
               {questForm.job_type !== "full_time" && (
                 <div>
                   <Label className="text-gray-300">Reward Min (⏣)</Label>
-                  <Input type="number" value={questForm.reward_min} onChange={e => setQuestForm(f => ({ ...f, reward_min: parseInt(e.target.value) || 0 }))}
-                    className="bg-gray-800 border-gray-600 text-white" />
+                  <Input type="number" value={questForm.reward_min} onChange={e => setQuestForm(f => ({ ...f, reward_min: e.target.value }))}
+                    className="bg-gray-800 border-gray-600 text-white" placeholder="0" />
                 </div>
               )}
               <div>
                 <Label className="text-gray-300">Reward Max (⏣)</Label>
-                <Input type="number" value={questForm.reward} onChange={e => setQuestForm(f => ({ ...f, reward: parseInt(e.target.value) || 0 }))}
-                  className="bg-gray-800 border-gray-600 text-white" />
+                <Input type="number" value={questForm.reward} onChange={e => setQuestForm(f => ({ ...f, reward: e.target.value }))}
+                  className="bg-gray-800 border-gray-600 text-white" placeholder="0" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
