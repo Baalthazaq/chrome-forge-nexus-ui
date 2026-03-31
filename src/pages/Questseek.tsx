@@ -219,6 +219,26 @@ const Questseek = () => {
     }
   };
 
+  const logQuestHours = async () => {
+    if (!logHoursTarget) return;
+    const hours = parseInt(logHoursAmount);
+    if (!hours || hours <= 0) {
+      toast({ title: "Enter a valid number of hours", variant: "destructive" });
+      return;
+    }
+    const { data, error } = await supabase.functions.invoke("quest-operations", {
+      body: { operation: "log_quest_hours", questId: logHoursTarget.quest_id, hours, targetUserId: impersonatedUser?.user_id },
+    });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || "Failed to log hours", variant: "destructive" });
+    } else {
+      toast({ title: `Logged ${hours}h — ${data.hoursLogged}/${data.totalRequired}h complete` });
+      setLogHoursOpen(false);
+      setLogHoursAmount("");
+      loadData();
+    }
+  };
+
   const resignQuest = async (questId: string) => {
     const { data, error } = await supabase.functions.invoke("quest-operations", {
       body: { operation: "resign_quest", questId, targetUserId: impersonatedUser?.user_id },
