@@ -100,6 +100,10 @@ const Questseek = () => {
   const [logHoursTarget, setLogHoursTarget] = useState<QuestAcceptance | null>(null);
   const [logHoursAmount, setLogHoursAmount] = useState("");
 
+  // Search & filter
+  const [searchQuery, setSearchQuery] = useState("");
+  const [difficultyFilter, setDifficultyFilter] = useState("all");
+
   useEffect(() => {
     supabase.from("game_calendar").select("*").limit(1).single().then(({ data }) => {
       if (data) setGameDate({ day: data.current_day, month: data.current_month, year: data.current_year });
