@@ -118,7 +118,7 @@ const Questseek = () => {
   const loadQuests = async () => {
     const { data, error } = await supabase
       .from("quests")
-      .select("*")
+      .select("*, quest_acceptances(id, status)")
       .eq("status", "active")
       .is("posted_by_user_id", null)
       .order("created_at", { ascending: false });
