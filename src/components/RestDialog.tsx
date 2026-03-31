@@ -169,6 +169,7 @@ const RestDialog = ({
                   <Checkbox
                     checked={selectedActivities.includes(activity)}
                     onCheckedChange={() => toggleActivity(activity)}
+                    className="border-gray-400 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
                   />
                   <span className="text-sm text-gray-300">{activity}</span>
                 </label>
