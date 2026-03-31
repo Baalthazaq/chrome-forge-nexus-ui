@@ -33,8 +33,8 @@ const QuestseekAdmin = () => {
   const [questDialogOpen, setQuestDialogOpen] = useState(false);
   const [editingQuest, setEditingQuest] = useState<any>(null);
   const [questForm, setQuestForm] = useState({
-    title: "", description: "", client: "", reward: 0, reward_min: 0,
-    difficulty: "Low Risk", job_type: "commission", downtime_cost: 0,
+    title: "", description: "", client: "", reward: "" as string, reward_min: "" as string,
+    difficulty: "Low Risk", job_type: "commission", downtime_cost: "" as string,
     available_quantity: "", pay_interval: "daily", tags: "", time_limit: "",
   });
 
