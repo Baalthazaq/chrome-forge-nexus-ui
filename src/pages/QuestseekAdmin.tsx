@@ -553,7 +553,6 @@ const QuestseekAdmin = () => {
                     <SelectItem value="Low Risk">Low Risk</SelectItem>
                     <SelectItem value="Medium Risk">Medium Risk</SelectItem>
                     <SelectItem value="High Risk">High Risk</SelectItem>
-                    <SelectItem value="Illegal">Illegal</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -561,11 +560,11 @@ const QuestseekAdmin = () => {
                 <Label className="text-gray-300">
                   {questForm.job_type === "full_time" ? "Downtime per Pay Period (hours)" : "Downtime Cost (hours)"}
                 </Label>
-                <Input type="number" value={questForm.downtime_cost} onChange={e => setQuestForm(f => ({ ...f, downtime_cost: parseInt(e.target.value) || 0 }))}
-                  className="bg-gray-800 border-gray-600 text-white" />
-                {questForm.job_type === "full_time" && questForm.downtime_cost > 0 && (
+                <Input type="number" value={questForm.downtime_cost} onChange={e => setQuestForm(f => ({ ...f, downtime_cost: e.target.value }))}
+                  className="bg-gray-800 border-gray-600 text-white" placeholder="0" />
+                {questForm.job_type === "full_time" && Number(questForm.downtime_cost) > 0 && (
                   <p className="text-xs text-cyan-400 mt-1">
-                    ≈ {Math.ceil(questForm.downtime_cost / (questForm.pay_interval === "weekly" ? 7 : questForm.pay_interval === "monthly" ? 28 : questForm.pay_interval === "yearly" ? 365 : 1))}h/day
+                    ≈ {Math.ceil(Number(questForm.downtime_cost) / (questForm.pay_interval === "weekly" ? 7 : questForm.pay_interval === "monthly" ? 28 : questForm.pay_interval === "yearly" ? 365 : 1))}h/day
                   </p>
                 )}
               </div>
