@@ -100,7 +100,7 @@ const QuestseekAdmin = () => {
     setEditingQuest(quest);
     setQuestForm({
       title: quest.title, description: quest.description || "", client: quest.client || "",
-      reward: quest.reward, reward_min: quest.reward_min || 0, difficulty: quest.difficulty || "Low Risk",
+      reward: quest.reward?.toString() || "", reward_min: quest.reward_min?.toString() || "", difficulty: quest.difficulty || "Low Risk",
       job_type: quest.job_type, downtime_cost: quest.downtime_cost || 0,
       available_quantity: quest.available_quantity?.toString() || "",
       pay_interval: quest.pay_interval || "daily",
