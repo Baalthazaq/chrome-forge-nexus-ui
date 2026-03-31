@@ -406,6 +406,11 @@ const Questseek = () => {
                 Not Available
               </Badge>
             )}
+            {isPositionFilled && (
+              <Badge className="bg-blue-900/30 text-blue-400 border border-blue-500/50 mt-1">
+                Position Filled
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -419,7 +424,7 @@ const Questseek = () => {
               </Badge>
             ))}
           </div>
-          {showAccept && !isAlreadyAccepted && !isOwnQuest && (
+          {showAccept && !isAlreadyAccepted && !isOwnQuest && !isPositionFilled && !(quest.available_quantity !== null && quest.available_quantity <= 0) && (
             <Button
               onClick={() => acceptQuest(quest.id)}
               className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
