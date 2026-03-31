@@ -101,7 +101,7 @@ const QuestseekAdmin = () => {
     setQuestForm({
       title: quest.title, description: quest.description || "", client: quest.client || "",
       reward: quest.reward?.toString() || "", reward_min: quest.reward_min?.toString() || "", difficulty: quest.difficulty || "Low Risk",
-      job_type: quest.job_type, downtime_cost: quest.downtime_cost || 0,
+      job_type: quest.job_type, downtime_cost: quest.downtime_cost?.toString() || "",
       available_quantity: quest.available_quantity?.toString() || "",
       pay_interval: quest.pay_interval || "daily",
       tags: quest.tags?.join(", ") || "", time_limit: quest.time_limit || "",
