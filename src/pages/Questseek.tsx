@@ -383,7 +383,7 @@ const Questseek = () => {
                   <span className="text-cyan-400">{quest.downtime_cost}h downtime</span>
                 </div>
               )}
-              {quest.available_quantity !== null && (
+              {quest.available_quantity !== null && quest.available_quantity > 0 && (
                 <div className="flex items-center gap-1">
                   <Package className="w-4 h-4 text-orange-400" />
                   <span className="text-orange-400">{quest.available_quantity} available</span>

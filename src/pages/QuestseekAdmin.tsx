@@ -454,7 +454,7 @@ const QuestseekAdmin = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="text-white font-medium">{quest.title}</h4>
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className={`text-xs ${quest.job_type === "full_time" ? "border-blue-500/50 text-blue-400" : "border-amber-500/50 text-amber-400"}`}>
                         {quest.job_type === "full_time" ? "Full-Time" : "Commission"}
                       </Badge>
                       {quest.difficulty && (
