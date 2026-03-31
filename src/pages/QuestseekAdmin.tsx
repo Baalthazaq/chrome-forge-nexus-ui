@@ -337,7 +337,7 @@ const QuestseekAdmin = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="review" className="space-y-6">
+        <Tabs defaultValue="quests" className="space-y-6">
           <TabsList className="bg-gray-900/50 border border-gray-700/50">
             <TabsTrigger value="review">
               Review {reviewCount > 0 && `(${reviewCount})`}
