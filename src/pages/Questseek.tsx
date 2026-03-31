@@ -864,6 +864,41 @@ const Questseek = () => {
         </Tabs>
       </div>
 
+      {/* Log Hours Dialog */}
+      <Dialog open={logHoursOpen} onOpenChange={setLogHoursOpen}>
+        <DialogContent className="bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle>Log Hours</DialogTitle>
+            <DialogDescription>
+              {logHoursTarget?.quests?.title} — {logHoursTarget?.hours_logged || 0}/{logHoursTarget?.quests?.downtime_cost || 0}h completed
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Hours to log</Label>
+              <Input
+                type="number"
+                min="1"
+                max={(logHoursTarget?.quests?.downtime_cost || 0) - (logHoursTarget?.hours_logged || 0)}
+                value={logHoursAmount}
+                onChange={(e) => setLogHoursAmount(e.target.value)}
+                placeholder={`Max ${(logHoursTarget?.quests?.downtime_cost || 0) - (logHoursTarget?.hours_logged || 0)}h remaining`}
+                className="bg-gray-800 border-gray-600"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Available downtime: {downtimeBalance}h
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setLogHoursOpen(false)}>Cancel</Button>
+            <Button onClick={logQuestHours} className="bg-gradient-to-r from-cyan-500 to-teal-500">
+              Log Hours
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Submit Dialog */}
       <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
         <DialogContent className="bg-gray-900 border-gray-700">
