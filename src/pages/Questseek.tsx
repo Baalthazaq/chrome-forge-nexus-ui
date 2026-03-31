@@ -400,6 +400,11 @@ const Questseek = () => {
                 {quest.difficulty}
               </Badge>
             )}
+            {quest.available_quantity !== null && quest.available_quantity <= 0 && quest.job_type === "commission" && (
+              <Badge className="bg-red-900/30 text-red-400 border border-red-500/50 mt-1">
+                Not Available
+              </Badge>
+            )}
           </div>
         </div>
 
