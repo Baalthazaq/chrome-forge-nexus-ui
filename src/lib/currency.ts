@@ -143,6 +143,42 @@ export function getHexBreakdown(amount: number): {
   };
 }
 
+// Rounds to the nearest top-tier denomination
+// direction: 'down' rounds down, 'up' rounds up, 'nearest' rounds to nearest
+export function formatHexRounded(amount: number, direction: 'down' | 'up' | 'nearest' = 'nearest'): string {
+  if (amount === 0) return "⏣0";
+  
+  const absAmount = Math.abs(amount);
+  const isNegative = amount < 0;
+  const prefix = isNegative ? "-" : "";
+
+  const tiers = [
+    { unit: 6000, name: 'Chest', plural: 'Chests' },
+    { unit: 600, name: 'Bag', plural: 'Bags' },
+    { unit: 60, name: 'Handful', plural: 'Handfuls' },
+    { unit: 6, name: 'Coin', plural: 'Coins' },
+    { unit: 1, name: 'Hex', plural: 'Hex' },
+  ];
+
+  // Find the highest tier that fits
+  for (const tier of tiers) {
+    if (absAmount >= tier.unit) {
+      let count: number;
+      if (direction === 'down') {
+        count = Math.floor(absAmount / tier.unit);
+      } else if (direction === 'up') {
+        count = Math.ceil(absAmount / tier.unit);
+      } else {
+        count = Math.round(absAmount / tier.unit);
+      }
+      if (count === 0) count = 1; // at least 1
+      return `${prefix}${count} ${count !== 1 ? tier.plural : tier.name}`;
+    }
+  }
+
+  return `${prefix}${absAmount} Hex`;
+}
+
 export function parseHexInput(input: string): number {
   // Simple parser - just treat it as a number for now
   // Could be enhanced to parse "1 chest 2 bags" etc.

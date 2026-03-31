@@ -33,8 +33,8 @@ const QuestseekAdmin = () => {
   const [questDialogOpen, setQuestDialogOpen] = useState(false);
   const [editingQuest, setEditingQuest] = useState<any>(null);
   const [questForm, setQuestForm] = useState({
-    title: "", description: "", client: "", reward: 0, reward_min: 0,
-    difficulty: "Low Risk", job_type: "commission", downtime_cost: 0,
+    title: "", description: "", client: "", reward: "" as string, reward_min: "" as string,
+    difficulty: "Low Risk", job_type: "commission", downtime_cost: "" as string,
     available_quantity: "", pay_interval: "daily", tags: "", time_limit: "",
   });
 
@@ -92,7 +92,7 @@ const QuestseekAdmin = () => {
 
   const openCreateDialog = () => {
     setEditingQuest(null);
-    setQuestForm({ title: "", description: "", client: "", reward: 0, reward_min: 0, difficulty: "Low Risk", job_type: "commission", downtime_cost: 0, available_quantity: "", pay_interval: "daily", tags: "", time_limit: "" });
+    setQuestForm({ title: "", description: "", client: "", reward: "", reward_min: "", difficulty: "Low Risk", job_type: "commission", downtime_cost: "", available_quantity: "", pay_interval: "daily", tags: "", time_limit: "" });
     setQuestDialogOpen(true);
   };
 
@@ -100,8 +100,8 @@ const QuestseekAdmin = () => {
     setEditingQuest(quest);
     setQuestForm({
       title: quest.title, description: quest.description || "", client: quest.client || "",
-      reward: quest.reward, reward_min: quest.reward_min || 0, difficulty: quest.difficulty || "Low Risk",
-      job_type: quest.job_type, downtime_cost: quest.downtime_cost || 0,
+      reward: quest.reward?.toString() || "", reward_min: quest.reward_min?.toString() || "", difficulty: quest.difficulty || "Low Risk",
+      job_type: quest.job_type, downtime_cost: quest.downtime_cost?.toString() || "",
       available_quantity: quest.available_quantity?.toString() || "",
       pay_interval: quest.pay_interval || "daily",
       tags: quest.tags?.join(", ") || "", time_limit: quest.time_limit || "",
@@ -114,11 +114,11 @@ const QuestseekAdmin = () => {
       title: questForm.title,
       description: questForm.description || null,
       client: questForm.client || null,
-      reward: questForm.reward,
-      reward_min: questForm.reward_min,
+      reward: parseInt(questForm.reward as string) || 0,
+      reward_min: parseInt(questForm.reward_min as string) || 0,
       difficulty: questForm.difficulty,
       job_type: questForm.job_type,
-      downtime_cost: questForm.downtime_cost,
+      downtime_cost: parseInt(questForm.downtime_cost as string) || 0,
       available_quantity: questForm.available_quantity ? parseInt(questForm.available_quantity) : null,
       pay_interval: questForm.job_type === "full_time" ? questForm.pay_interval : null,
       tags: questForm.tags ? questForm.tags.split(",").map(t => t.trim()).filter(Boolean) : null,
@@ -534,14 +534,14 @@ const QuestseekAdmin = () => {
               {questForm.job_type !== "full_time" && (
                 <div>
                   <Label className="text-gray-300">Reward Min (⏣)</Label>
-                  <Input type="number" value={questForm.reward_min} onChange={e => setQuestForm(f => ({ ...f, reward_min: parseInt(e.target.value) || 0 }))}
-                    className="bg-gray-800 border-gray-600 text-white" />
+                  <Input type="number" value={questForm.reward_min} onChange={e => setQuestForm(f => ({ ...f, reward_min: e.target.value }))}
+                    className="bg-gray-800 border-gray-600 text-white" placeholder="0" />
                 </div>
               )}
               <div>
                 <Label className="text-gray-300">Reward Max (⏣)</Label>
-                <Input type="number" value={questForm.reward} onChange={e => setQuestForm(f => ({ ...f, reward: parseInt(e.target.value) || 0 }))}
-                  className="bg-gray-800 border-gray-600 text-white" />
+                <Input type="number" value={questForm.reward} onChange={e => setQuestForm(f => ({ ...f, reward: e.target.value }))}
+                  className="bg-gray-800 border-gray-600 text-white" placeholder="0" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -553,7 +553,6 @@ const QuestseekAdmin = () => {
                     <SelectItem value="Low Risk">Low Risk</SelectItem>
                     <SelectItem value="Medium Risk">Medium Risk</SelectItem>
                     <SelectItem value="High Risk">High Risk</SelectItem>
-                    <SelectItem value="Illegal">Illegal</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -561,11 +560,11 @@ const QuestseekAdmin = () => {
                 <Label className="text-gray-300">
                   {questForm.job_type === "full_time" ? "Downtime per Pay Period (hours)" : "Downtime Cost (hours)"}
                 </Label>
-                <Input type="number" value={questForm.downtime_cost} onChange={e => setQuestForm(f => ({ ...f, downtime_cost: parseInt(e.target.value) || 0 }))}
-                  className="bg-gray-800 border-gray-600 text-white" />
-                {questForm.job_type === "full_time" && questForm.downtime_cost > 0 && (
+                <Input type="number" value={questForm.downtime_cost} onChange={e => setQuestForm(f => ({ ...f, downtime_cost: e.target.value }))}
+                  className="bg-gray-800 border-gray-600 text-white" placeholder="0" />
+                {questForm.job_type === "full_time" && Number(questForm.downtime_cost) > 0 && (
                   <p className="text-xs text-cyan-400 mt-1">
-                    ≈ {Math.ceil(questForm.downtime_cost / (questForm.pay_interval === "weekly" ? 7 : questForm.pay_interval === "monthly" ? 28 : questForm.pay_interval === "yearly" ? 365 : 1))}h/day
+                    ≈ {Math.ceil(Number(questForm.downtime_cost) / (questForm.pay_interval === "weekly" ? 7 : questForm.pay_interval === "monthly" ? 28 : questForm.pay_interval === "yearly" ? 365 : 1))}h/day
                   </p>
                 )}
               </div>

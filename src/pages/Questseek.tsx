@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun, RotateCcw, CheckCircle, XCircle, HourglassIcon, Plus, Check, X, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import RestDialog from "@/components/RestDialog";
-import { formatHexDenomination, formatHex } from "@/lib/currency";
+import { formatHexDenomination, formatHex, formatHexRounded } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,8 +84,8 @@ const Questseek = () => {
   // Post job dialog
   const [postJobOpen, setPostJobOpen] = useState(false);
   const [postForm, setPostForm] = useState({
-    title: "", description: "", reward: 0, reward_min: 0, difficulty: "Low Risk",
-    downtime_cost: 0, available_quantity: "", tags: "", time_limit: "",
+    title: "", description: "", reward: "" as string, reward_min: "" as string, difficulty: "Low Risk",
+    downtime_cost: "" as string, available_quantity: "", tags: "", time_limit: "",
     job_type: "commission", pay_interval: "daily",
   });
 
@@ -238,7 +238,7 @@ const Questseek = () => {
     } else {
       toast({ title: "Job posted!" });
       setPostJobOpen(false);
-      setPostForm({ title: "", description: "", reward: 0, reward_min: 0, difficulty: "Low Risk", downtime_cost: 0, available_quantity: "", tags: "", time_limit: "", job_type: "commission", pay_interval: "daily" });
+      setPostForm({ title: "", description: "", reward: "", reward_min: "", difficulty: "Low Risk", downtime_cost: "", available_quantity: "", tags: "", time_limit: "", job_type: "commission", pay_interval: "daily" });
       loadData();
     }
   };
@@ -343,9 +343,9 @@ const Questseek = () => {
 
   const formatRewardRange = (quest: Quest) => {
     if (quest.reward_min > 0 && quest.reward_min !== quest.reward) {
-      return `${formatHexDenomination(quest.reward_min)} – ${formatHexDenomination(quest.reward)}`;
+      return `${formatHexRounded(quest.reward_min, 'down')} – ${formatHexRounded(quest.reward, 'up')}`;
     }
-    return formatHexDenomination(quest.reward);
+    return formatHexRounded(quest.reward, 'nearest');
   };
 
   const QuestCard = ({ quest, showAccept = true, posterName }: { quest: Quest; showAccept?: boolean; posterName?: string }) => {
@@ -909,20 +909,20 @@ const Questseek = () => {
               <div>
                 <Label className="text-gray-300">{postForm.job_type === 'full_time' ? 'Pay Rate (⏣)' : 'Reward Min (⏣)'}</Label>
                 <Input type="number" value={postForm.job_type === 'full_time' ? postForm.reward : postForm.reward_min} onChange={e => {
-                  const val = parseInt(e.target.value) || 0;
+                  const val = e.target.value;
                   if (postForm.job_type === 'full_time') {
                     setPostForm(f => ({ ...f, reward: val, reward_min: val }));
                   } else {
                     setPostForm(f => ({ ...f, reward_min: val }));
                   }
                 }}
-                  className="bg-gray-800 border-gray-600 text-white" />
+                  className="bg-gray-800 border-gray-600 text-white" placeholder="0" />
               </div>
               {postForm.job_type !== 'full_time' && (
                 <div>
                   <Label className="text-gray-300">Reward Max (⏣)</Label>
-                  <Input type="number" value={postForm.reward} onChange={e => setPostForm(f => ({ ...f, reward: parseInt(e.target.value) || 0 }))}
-                    className="bg-gray-800 border-gray-600 text-white" />
+                  <Input type="number" value={postForm.reward} onChange={e => setPostForm(f => ({ ...f, reward: e.target.value }))}
+                    className="bg-gray-800 border-gray-600 text-white" placeholder="0" />
                 </div>
               )}
             </div>
@@ -935,7 +935,6 @@ const Questseek = () => {
                     <SelectItem value="Low Risk">Low Risk</SelectItem>
                     <SelectItem value="Medium Risk">Medium Risk</SelectItem>
                     <SelectItem value="High Risk">High Risk</SelectItem>
-                    <SelectItem value="Illegal">Illegal</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -943,11 +942,11 @@ const Questseek = () => {
                 <Label className="text-gray-300">
                   {postForm.job_type === "full_time" ? "Downtime per Pay Period (hours)" : "Downtime Cost (hours)"}
                 </Label>
-                <Input type="number" value={postForm.downtime_cost} onChange={e => setPostForm(f => ({ ...f, downtime_cost: parseInt(e.target.value) || 0 }))}
-                  className="bg-gray-800 border-gray-600 text-white" />
-                {postForm.job_type === "full_time" && postForm.downtime_cost > 0 && (
+                <Input type="number" value={postForm.downtime_cost} onChange={e => setPostForm(f => ({ ...f, downtime_cost: e.target.value }))}
+                  className="bg-gray-800 border-gray-600 text-white" placeholder="0" />
+                {postForm.job_type === "full_time" && Number(postForm.downtime_cost) > 0 && (
                   <p className="text-xs text-cyan-400 mt-1">
-                    ≈ {Math.ceil(postForm.downtime_cost / (postForm.pay_interval === "weekly" ? 7 : postForm.pay_interval === "monthly" ? 28 : postForm.pay_interval === "yearly" ? 365 : 1))}h/day
+                    ≈ {Math.ceil(Number(postForm.downtime_cost) / (postForm.pay_interval === "weekly" ? 7 : postForm.pay_interval === "monthly" ? 28 : postForm.pay_interval === "yearly" ? 365 : 1))}h/day
                   </p>
                 )}
               </div>
