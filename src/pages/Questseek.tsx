@@ -630,15 +630,18 @@ const Questseek = () => {
                 <Plus className="w-4 h-4 mr-1" /> Post a Job
               </Button>
             </div>
-            {communityQuests.length === 0 ? (
-              <Card className="p-8 bg-gray-900/30 border-gray-700/50 text-center text-gray-400">
-                No community jobs posted yet. Be the first to post one!
-              </Card>
-            ) : (
-              communityQuests.map(q => (
-                <QuestCard key={q.id} quest={q} posterName={communityPosterMap[q.posted_by_user_id!]} />
-              ))
-            )}
+            {(() => {
+              const filtered = filterQuests(communityQuests);
+              return filtered.length === 0 ? (
+                <Card className="p-8 bg-gray-900/30 border-gray-700/50 text-center text-gray-400">
+                  {communityQuests.length === 0 ? "No community jobs posted yet. Be the first to post one!" : "No jobs match your search."}
+                </Card>
+              ) : (
+                filtered.map(q => (
+                  <QuestCard key={q.id} quest={q} posterName={communityPosterMap[q.posted_by_user_id!]} />
+                ))
+              );
+            })()}
           </TabsContent>
 
           <TabsContent value="my_quests" className="space-y-6">
