@@ -95,6 +95,11 @@ const Questseek = () => {
   const [approveTarget, setApproveTarget] = useState<any>(null);
   const [approveFinalPayment, setApproveFinalPayment] = useState("");
 
+  // Log hours dialog
+  const [logHoursOpen, setLogHoursOpen] = useState(false);
+  const [logHoursTarget, setLogHoursTarget] = useState<QuestAcceptance | null>(null);
+  const [logHoursAmount, setLogHoursAmount] = useState("");
+
   useEffect(() => {
     supabase.from("game_calendar").select("*").limit(1).single().then(({ data }) => {
       if (data) setGameDate({ day: data.current_day, month: data.current_month, year: data.current_year });
