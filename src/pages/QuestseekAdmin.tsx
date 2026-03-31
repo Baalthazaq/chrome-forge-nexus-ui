@@ -360,7 +360,7 @@ const QuestseekAdmin = () => {
                         <div>
                           <h4 className="text-white font-medium">{app.quests?.title}</h4>
                           <p className="text-sm text-gray-400">
-                            Applicant: {profileMap[app.user_id] || "Unknown"} • Pay: {formatHex(app.quests?.reward || 0)} / {app.quests?.pay_interval || "daily"}
+                            Applicant: {profileMap[app.user_id] || "Unknown"} • Pay: {formatHexRounded(app.quests?.reward || 0)} / {app.quests?.pay_interval || "daily"}
                           </p>
                         </div>
                         <div className="flex gap-2">
