@@ -1518,6 +1518,60 @@ export type Database = {
         }
         Relationships: []
       }
+      succubus_profiles: {
+        Row: {
+          age: number | null
+          ancestry: string | null
+          avatar_url: string | null
+          bio: string | null
+          character_name: string
+          community: string | null
+          compatibility: number | null
+          created_at: string
+          created_by: string
+          id: string
+          job: string | null
+          promoted_to_npc_id: string | null
+          search_purpose: string | null
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          age?: number | null
+          ancestry?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          character_name: string
+          community?: string | null
+          compatibility?: number | null
+          created_at?: string
+          created_by: string
+          id?: string
+          job?: string | null
+          promoted_to_npc_id?: string | null
+          search_purpose?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          age?: number | null
+          ancestry?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          character_name?: string
+          community?: string | null
+          compatibility?: number | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          job?: string | null
+          promoted_to_npc_id?: string | null
+          search_purpose?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       suggestions: {
         Row: {
           admin_notes: string | null
