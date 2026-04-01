@@ -193,12 +193,12 @@ const Succubus = () => {
                 </div>
                 <div>
                   <Label className="text-gray-400">Ancestry (optional)</Label>
-                  <Select value={filterAncestry} onValueChange={setFilterAncestry}>
+                  <Select value={filterAncestry || "any"} onValueChange={v => setFilterAncestry(v === "any" ? "" : v)}>
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
                       <SelectValue placeholder="Any" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any</SelectItem>
+                      <SelectItem value="any">Any</SelectItem>
                       {ANCESTRIES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
                     </SelectContent>
                   </Select>
