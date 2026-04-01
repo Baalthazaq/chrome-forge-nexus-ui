@@ -115,7 +115,8 @@ const apps = [
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Succubus.gif",
     description: "Social Connections",
     route: "/succubus",
-    color: "from-red-500 to-pink-500"
+    color: "from-red-500 to-pink-500",
+    comingSoon: true
   },
   {
     id: "charisma",
