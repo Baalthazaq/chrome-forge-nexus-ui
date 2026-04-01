@@ -16,6 +16,7 @@ import Sending from "./pages/Sending";
 import Vault from "./pages/Vault";
 import Questseek from "./pages/Questseek";
 import Succubus from "./pages/Succubus";
+import SuccubusAdmin from "./pages/SuccubusAdmin";
 import Doppleganger from "./pages/Doppleganger";
 import BHoldR from "./pages/BHoldR";
 import Atunes from "./pages/Atunes";
