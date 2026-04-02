@@ -66,9 +66,12 @@ export const TomeShareNotifications = ({ onTomeAdded }: TomeShareNotificationsPr
 
       if (error) throw error;
 
+      // Filter out shares where the tome entry couldn't be loaded (RLS)
+      const validShares = (data || []).filter((share: any) => share.tome_entries != null);
+
       // Fetch sender profiles separately
       const sharesWithProfiles = await Promise.all(
-        (data || []).map(async (share) => {
+        validShares.map(async (share) => {
           const { data: profile } = await supabase
             .from('profiles')
             .select('character_name')
