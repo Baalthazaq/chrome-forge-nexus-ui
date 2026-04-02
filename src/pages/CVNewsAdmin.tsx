@@ -246,12 +246,17 @@ const CVNewsAdmin = () => {
             publish_month: row.publish_month ? parseInt(String(row.publish_month)) : null,
             publish_year: row.publish_year ? parseInt(String(row.publish_year)) : null,
           };
-          const existing = row.id ? articles.find(a => a.id === row.id) : null;
-          if (existing) {
-            await supabase.from('news_articles').update(articleData).eq('id', existing.id);
-            updated++;
+          const rowId = row.id ? String(row.id).trim() : null;
+          if (rowId) {
+            // ID present — upsert: update if exists, insert with that ID if not
+            const { error } = await supabase.from('news_articles').upsert({ id: rowId, ...articleData });
+            if (error) throw error;
+            const wasExisting = articles.some(a => a.id === rowId);
+            if (wasExisting) updated++; else created++;
           } else {
-            await supabase.from('news_articles').insert(articleData);
+            // No ID — create fresh with auto-generated ID
+            const { error } = await supabase.from('news_articles').insert(articleData);
+            if (error) throw error;
             created++;
           }
         }
