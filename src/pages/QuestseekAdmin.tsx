@@ -56,6 +56,7 @@ const QuestseekAdmin = () => {
   const [replenishQuestId, setReplenishQuestId] = useState("");
   const [replenishQty, setReplenishQty] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [adminSearchQuery, setAdminSearchQuery] = useState("");
 
   useEffect(() => {
     if (isAdmin) {
