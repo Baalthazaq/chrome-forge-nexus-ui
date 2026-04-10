@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun, RotateCcw, CheckCircle, XCircle, HourglassIcon, Plus, Check, X, Users, Search, Filter } from "lucide-react";
+import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun, RotateCcw, CheckCircle, XCircle, HourglassIcon, Plus, Check, X, Users, Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import RestDialog from "@/components/RestDialog";
 import { formatHexDenomination, formatHex, formatHexRounded } from "@/lib/currency";
@@ -103,6 +103,12 @@ const Questseek = () => {
   // Search & filter
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState("all");
+
+  // Pagination
+  const ITEMS_PER_PAGE = 10;
+  const [commissionPage, setCommissionPage] = useState(1);
+  const [fullTimePage, setFullTimePage] = useState(1);
+  const [communityPage, setCommunityPage] = useState(1);
 
   useEffect(() => {
     supabase.from("game_calendar").select("*").limit(1).single().then(({ data }) => {
