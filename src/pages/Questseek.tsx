@@ -793,7 +793,7 @@ const Questseek = () => {
                               {qa.hours_logged || 0}/{qa.quests.downtime_cost}h
                             </span>
                           </div>
-                        )
+                        )}
                       </div>
                     </Card>
                   ))}
