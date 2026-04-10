@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Check, X, RefreshCw, Settings, Package, Download, Upload, Briefcase } from "lucide-react";
+import { ArrowLeft, Plus, Check, X, RefreshCw, Settings, Package, Download, Upload, Briefcase, Search, Filter } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatHexDenomination, formatHex, formatHexRounded } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
