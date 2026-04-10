@@ -364,8 +364,50 @@ const Questseek = () => {
     });
   };
 
-  const commissions = filterQuests(quests.filter(q => q.job_type === "commission"));
-  const fullTimeJobs = filterQuests(quests.filter(q => q.job_type === "full_time"));
+  // Shuffle helper (seeded by session to keep stable across re-renders but random per load)
+  const [shuffleSeed] = useState(() => Math.random());
+  const shuffleArray = <T,>(arr: T[]): T[] => {
+    const shuffled = [...arr];
+    let seed = shuffleSeed;
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      seed = (seed * 9301 + 49297) % 233280;
+      const j = Math.floor((seed / 233280) * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  const commissions = useMemo(() => shuffleArray(filterQuests(quests.filter(q => q.job_type === "commission"))), [quests, searchQuery, difficultyFilter, shuffleSeed]);
+  const fullTimeJobs = useMemo(() => shuffleArray(filterQuests(quests.filter(q => q.job_type === "full_time"))), [quests, searchQuery, difficultyFilter, shuffleSeed]);
+
+  // Reset pages when filters change
+  useEffect(() => { setCommissionPage(1); }, [searchQuery, difficultyFilter]);
+  useEffect(() => { setFullTimePage(1); }, [searchQuery, difficultyFilter]);
+  useEffect(() => { setCommunityPage(1); }, [searchQuery, difficultyFilter]);
+
+  const paginate = <T,>(items: T[], page: number) => {
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    return items.slice(start, start + ITEMS_PER_PAGE);
+  };
+
+  const PaginationControls = ({ totalItems, page, setPage }: { totalItems: number; page: number; setPage: (p: number) => void }) => {
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    if (totalPages <= 1) return null;
+    return (
+      <div className="flex items-center justify-center gap-3 mt-4">
+        <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}
+          className="border-gray-700 text-gray-400 hover:text-white">
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        <span className="text-sm text-gray-400">{page} / {totalPages}</span>
+        <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage(page + 1)}
+          className="border-gray-700 text-gray-400 hover:text-white">
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+    );
+  };
+
   const activeAcceptances = myQuests.filter(q => q.status === "accepted");
   const pendingApproval = myQuests.filter(q => q.status === "pending_approval");
   const pendingSubmissions = myQuests.filter(q => q.status === "submitted");
