@@ -15,7 +15,6 @@ const MONTHS = [
 ];
 
 const DOWNTIME_CAP = 100;
-const DOWNTIME_FLOOR = -48;
 
 function getMonthDays(monthNum: number): number {
   return MONTHS.find(m => m.number === monthNum)?.days || 28;
@@ -33,16 +32,6 @@ function getBillingTriggers(day: number, month: number) {
     monthly: !frippery && day === 14,
     yearly: month === 1 && day === 1,
   };
-}
-
-function intervalToDays(interval: string | null): number {
-  switch (interval) {
-    case "daily": return 1;
-    case "weekly": return 7;
-    case "monthly": return 28;
-    case "yearly": return 365;
-    default: return 1;
-  }
 }
 
 serve(async (req) => {
@@ -102,6 +91,7 @@ serve(async (req) => {
     let currentYear = cal.current_year;
     const billingSummary: string[] = [];
     const downtimeSummary: string[] = [];
+    const salarySummary: string[] = [];
 
     const { data: dtConfig } = await supabase
       .from("downtime_config").select("*").limit(1).single();
@@ -115,8 +105,7 @@ serve(async (req) => {
         if (currentMonth > 14) { currentMonth = 1; currentYear++; }
       }
 
-      // --- DOWNTIME PROCESSING ---
-      // 1. Grant downtime hours FIRST (capped at 100)
+      // --- DOWNTIME GRANT ---
       const { data: allBalances } = await supabase
         .from("downtime_balances").select("*");
 
@@ -131,10 +120,13 @@ serve(async (req) => {
         downtimeSummary.push(`Granted ${hoursPerDay}h to ${allBalances.length} players (cap ${DOWNTIME_CAP})`);
       }
 
-      // 2. Process full-time job downtime costs (re-fetch balances after grant)
+      // --- SALARY PROCESSING FOR FULL-TIME JOBS ---
+      const triggers = getBillingTriggers(currentDay, currentMonth);
+
+      // Get all active full-time job acceptances
       const { data: ftAcceptances } = await supabase
         .from("quest_acceptances")
-        .select(`id, user_id, quest_id, quests (id, downtime_cost, job_type, title, pay_interval)`)
+        .select(`id, user_id, quest_id, hours_logged, admin_notes, quests (id, title, reward, job_type, pay_interval, downtime_cost, posted_by_user_id)`)
         .eq("status", "accepted");
 
       const fullTimeAcceptances = ftAcceptances?.filter(
@@ -143,79 +135,87 @@ serve(async (req) => {
 
       for (const fta of fullTimeAcceptances) {
         const quest = fta.quests as any;
-        const totalCostPerInterval = quest.downtime_cost || 0;
-        if (totalCostPerInterval <= 0) continue;
+        const payInterval = quest.pay_interval || "daily";
 
-        // Calculate daily cost from the per-interval total
-        const days = intervalToDays(quest.pay_interval);
-        const dailyCost = Math.ceil(totalCostPerInterval / days);
+        // Check if today is payday for this job's pay_interval
+        const isPayday = triggers[payInterval as keyof typeof triggers] || false;
+        if (!isPayday) continue;
 
-        // Re-fetch current balance (after grant)
-        const { data: bal } = await supabase
-          .from("downtime_balances").select("*").eq("user_id", fta.user_id).single();
-        if (!bal) continue;
+        const requiredHours = quest.downtime_cost || 0;
+        const hoursLogged = fta.hours_logged || 0;
 
-        // Allow going negative down to DOWNTIME_FLOOR
-        if (bal.balance - dailyCost >= DOWNTIME_FLOOR) {
-          await supabase
-            .from("downtime_balances")
-            .update({ balance: bal.balance - dailyCost, updated_at: new Date().toISOString() })
-            .eq("id", bal.id);
+        if (hoursLogged >= requiredHours && requiredHours > 0) {
+          // --- PAYDAY: Pay the employee ---
+          const reward = quest.reward || 0;
 
-          // Log the deduction as an activity
-          await supabase.from("downtime_activities").insert({
-            user_id: fta.user_id,
-            activity_type: "full_time_deduction",
-            hours_spent: dailyCost,
-            activities_chosen: [],
-            notes: `Auto-deduction for ${quest.title} (${dailyCost}h/day from ${totalCostPerInterval}h/${quest.pay_interval || 'daily'})`,
-            game_day: currentDay,
-            game_month: currentMonth,
-            game_year: currentYear,
-          });
-        } else {
-          // Would go below floor - pause the recurring payment
-          await supabase
-            .from("recurring_payments")
-            .update({ status: "paused", is_active: false })
-            .filter("metadata->>quest_id", "eq", fta.quest_id)
-            .eq("to_user_id", fta.user_id);
+          // Credit employee
+          const { data: empProfile } = await supabase
+            .from("profiles").select("credits, character_name").eq("user_id", fta.user_id).single();
+          if (empProfile) {
+            await supabase.from("profiles")
+              .update({ credits: (empProfile.credits || 0) + reward })
+              .eq("user_id", fta.user_id);
 
-          downtimeSummary.push(`Paused ${quest.title} for user (balance would go below ${DOWNTIME_FLOOR})`);
-        }
-      }
+            // Log transaction
+            await supabase.from("transactions").insert({
+              user_id: fta.user_id,
+              transaction_type: "quest_salary",
+              amount: reward,
+              description: `Salary: ${quest.title}`,
+              reference_id: quest.id,
+              status: "completed",
+              metadata: {
+                quest_id: quest.id,
+                acceptance_id: fta.id,
+                pay_interval: payInterval,
+                hours_worked: hoursLogged,
+                hours_required: requiredHours,
+              },
+            });
 
-      // 3. Unpause full-time jobs where balance recovered
-      for (const fta of fullTimeAcceptances) {
-        const quest = fta.quests as any;
-        const totalCostPerInterval = quest.downtime_cost || 0;
-        const days = intervalToDays(quest.pay_interval);
-        const dailyCost = Math.ceil(totalCostPerInterval / days);
+            // If player-posted job, deduct from poster
+            if (quest.posted_by_user_id) {
+              const { data: posterProfile } = await supabase
+                .from("profiles").select("credits").eq("user_id", quest.posted_by_user_id).single();
+              if (posterProfile) {
+                await supabase.from("profiles")
+                  .update({ credits: (posterProfile.credits || 0) - reward })
+                  .eq("user_id", quest.posted_by_user_id);
 
-        const { data: bal } = await supabase
-          .from("downtime_balances").select("*").eq("user_id", fta.user_id).single();
+                await supabase.from("transactions").insert({
+                  user_id: quest.posted_by_user_id,
+                  transaction_type: "quest_payment",
+                  amount: -reward,
+                  description: `Salary paid: ${quest.title}`,
+                  reference_id: quest.id,
+                  status: "completed",
+                });
+              }
+            }
 
-        if (bal && bal.balance - dailyCost >= DOWNTIME_FLOOR) {
-          const { data: rp } = await supabase
-            .from("recurring_payments").select("*")
-            .filter("metadata->>quest_id", "eq", fta.quest_id)
-            .eq("to_user_id", fta.user_id)
-            .eq("status", "paused")
-            .single();
+            // Deduct required hours, leaving surplus banked
+            const surplus = hoursLogged - requiredHours;
+            await supabase.from("quest_acceptances")
+              .update({ hours_logged: surplus })
+              .eq("id", fta.id);
 
-          if (rp) {
-            await supabase
-              .from("recurring_payments")
-              .update({ status: "active", is_active: true })
-              .eq("id", rp.id);
-            downtimeSummary.push(`Resumed ${quest.title} for user (downtime recovered)`);
+            salarySummary.push(`Paid ${reward}⏣ to ${empProfile.character_name || "unknown"} for ${quest.title} (${hoursLogged}h worked, ${surplus}h banked)`);
           }
+        } else if (requiredHours > 0) {
+          // --- MISSED PAYMENT: Not enough hours ---
+          const existingNotes = fta.admin_notes || "";
+          const missedNote = `[MISSED PAY ${currentDay}/${currentMonth}/${currentYear}] ${hoursLogged}/${requiredHours}h worked`;
+          const newNotes = existingNotes ? `${existingNotes}\n${missedNote}` : missedNote;
+
+          await supabase.from("quest_acceptances")
+            .update({ admin_notes: newNotes })
+            .eq("id", fta.id);
+
+          salarySummary.push(`MISSED: ${quest.title} — ${hoursLogged}/${requiredHours}h (notified admin)`);
         }
       }
 
-      // --- BILLING PROCESSING ---
-      const triggers = getBillingTriggers(currentDay, currentMonth);
-
+      // --- BILLING PROCESSING (non-salary recurring payments, bills, etc.) ---
       for (const [interval, shouldTrigger] of Object.entries(triggers)) {
         if (!shouldTrigger) continue;
         try {
@@ -249,6 +249,7 @@ serve(async (req) => {
         daysAdvanced: advanceCount,
         billing: billingSummary,
         downtime: downtimeSummary,
+        salary: salarySummary,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

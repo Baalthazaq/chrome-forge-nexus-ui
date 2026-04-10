@@ -333,7 +333,7 @@ const Questseek = () => {
     if (error || data?.error) {
       toast({ title: "Error", description: data?.error || "Failed to approve", variant: "destructive" });
     } else {
-      toast({ title: "Application approved! Recurring payment created in @tunes." });
+      toast({ title: "Application approved! Employee can now work and earn salary." });
       loadData();
     }
   };
@@ -763,7 +763,7 @@ const Questseek = () => {
                             </div>
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
-                            {qa.quests?.downtime_cost > 0 && (qa.hours_logged || 0) < qa.quests.downtime_cost && (
+                            {qa.quests?.downtime_cost > 0 && (
                               <Button size="sm" variant="outline" className="text-emerald-400 border-emerald-500/50"
                                 onClick={() => { setLogHoursTarget(qa); setLogHoursAmount(""); setLogHoursOpen(true); }}>
                                 <Hammer className="w-3 h-3 mr-1" /> Work
@@ -781,15 +781,15 @@ const Questseek = () => {
                             </Button>
                           </div>
                         </div>
-                        {qa.quests?.job_type !== "full_time" && qa.quests?.downtime_cost > 0 && (
+                        {qa.quests?.downtime_cost > 0 && (
                           <div className="flex items-center gap-2">
                             <div className="flex-1 bg-gray-800 rounded-full h-2 overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-cyan-500 to-teal-500 transition-all"
+                                className={`h-full transition-all ${(qa.hours_logged || 0) >= qa.quests.downtime_cost ? "bg-gradient-to-r from-amber-500 to-yellow-500" : "bg-gradient-to-r from-cyan-500 to-teal-500"}`}
                                 style={{ width: `${Math.min(100, ((qa.hours_logged || 0) / qa.quests.downtime_cost) * 100)}%` }}
                               />
                             </div>
-                            <span className="text-xs text-gray-400 flex-shrink-0">
+                            <span className={`text-xs flex-shrink-0 ${(qa.hours_logged || 0) >= qa.quests.downtime_cost ? "text-amber-400" : "text-gray-400"}`}>
                               {qa.hours_logged || 0}/{qa.quests.downtime_cost}h
                             </span>
                           </div>
@@ -985,14 +985,13 @@ const Questseek = () => {
               <Input
                 type="number"
                 min="1"
-                max={(logHoursTarget?.quests?.downtime_cost || 0) - (logHoursTarget?.hours_logged || 0)}
                 value={logHoursAmount}
                 onChange={(e) => setLogHoursAmount(e.target.value)}
-                placeholder={`Max ${(logHoursTarget?.quests?.downtime_cost || 0) - (logHoursTarget?.hours_logged || 0)}h remaining`}
+                placeholder="Hours to work"
                 className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-500"
               />
               <p className="text-xs text-gray-400 mt-1">
-                Available downtime: {downtimeBalance}h
+                Available downtime: {downtimeBalance}h • Logged: {logHoursTarget?.hours_logged || 0}/{logHoursTarget?.quests?.downtime_cost || 0}h
               </p>
             </div>
           </div>
@@ -1015,9 +1014,9 @@ const Questseek = () => {
             </DialogDescription>
           </DialogHeader>
           {(() => {
-            const workableJobs = activeAcceptances.filter(qa => qa.quests?.downtime_cost > 0 && (qa.hours_logged || 0) < qa.quests.downtime_cost);
+            const workableJobs = activeAcceptances.filter(qa => qa.quests?.downtime_cost > 0);
             if (workableJobs.length === 0) {
-              return <p className="text-gray-400 text-sm py-4">No active jobs with remaining hours to work on.</p>;
+              return <p className="text-gray-400 text-sm py-4">No active jobs to work on.</p>;
             }
             return (
               <div className="space-y-3 max-h-60 overflow-y-auto">
@@ -1036,13 +1035,14 @@ const Questseek = () => {
                       <div>
                         <p className="text-white font-medium text-sm">{qa.quests?.title}</p>
                         <p className="text-gray-400 text-xs mt-1">
-                          {qa.hours_logged || 0}/{qa.quests?.downtime_cost}h completed
+                          {qa.hours_logged || 0}/{qa.quests?.downtime_cost}h logged
+                          {(qa.hours_logged || 0) >= (qa.quests?.downtime_cost || 0) && " ✓ Ready for payday"}
                           {qa.quests?.client && ` • ${qa.quests.client}`}
                         </p>
                       </div>
                       <div className="flex-shrink-0 ml-3">
                         <div className="w-16 bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                          <div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, ((qa.hours_logged || 0) / qa.quests!.downtime_cost) * 100)}%` }} />
+                          <div className={`h-full ${(qa.hours_logged || 0) >= qa.quests!.downtime_cost ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.min(100, ((qa.hours_logged || 0) / qa.quests!.downtime_cost) * 100)}%` }} />
                         </div>
                       </div>
                     </div>
