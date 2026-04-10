@@ -243,8 +243,20 @@ const QuestseekAdmin = () => {
     return <div className="min-h-screen bg-black flex items-center justify-center text-red-400">Admin access required</div>;
   }
 
-  const activeQuests = quests.filter(q => q.status === "active");
-  const cancelledQuests = quests.filter(q => q.status === "cancelled");
+  const filterAdminQuests = (questList: any[]) => {
+    if (!adminSearchQuery) return questList;
+    const q = adminSearchQuery.toLowerCase();
+    return questList.filter((quest: any) =>
+      quest.title?.toLowerCase().includes(q) ||
+      quest.description?.toLowerCase().includes(q) ||
+      quest.client?.toLowerCase().includes(q) ||
+      quest.tags?.some((t: string) => t.toLowerCase().includes(q)) ||
+      quest.difficulty?.toLowerCase().includes(q)
+    );
+  };
+
+  const activeQuests = filterAdminQuests(quests.filter(q => q.status === "active"));
+  const cancelledQuests = filterAdminQuests(quests.filter(q => q.status === "cancelled"));
 
   const exportQuests = () => {
     const rows = quests.map(q => ({
