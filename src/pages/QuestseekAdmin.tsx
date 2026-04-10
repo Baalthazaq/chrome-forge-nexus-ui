@@ -509,7 +509,7 @@ const QuestseekAdmin = () => {
                                     <Check className="w-3 h-3 mr-1" /> Hire
                                   </Button>
                                   <Button size="sm" variant="outline" className="h-6 px-2 text-xs border-red-500/50 text-red-400 hover:bg-red-900/30"
-                                    onClick={() => openRejectDialog(a, "application")}>
+                                    onClick={() => openRejectDialog({ ...a, quests: quest }, "application")}>
                                     <X className="w-3 h-3" />
                                   </Button>
                                 </div>
