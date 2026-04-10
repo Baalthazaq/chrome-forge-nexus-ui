@@ -119,7 +119,7 @@ const Timestop = () => {
     }
   };
 
-
+  const loadDowntimeActivities = async () => {
     if (!effectiveUserId) return;
     const { data } = await supabase.functions.invoke("quest-operations", {
       body: { operation: "get_downtime_activities", targetUserId: impersonatedUser?.user_id },
