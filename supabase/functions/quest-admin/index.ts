@@ -227,7 +227,7 @@ async function rejectQuest({ acceptanceId, adminNotes }: { acceptanceId: string,
 }
 
 async function approveApplication({ acceptanceId }: { acceptanceId: string }) {
-  // Approve a full-time job application
+  // Approve a full-time job application — salary is now handled by advance-day
   const { data: acceptance, error: getErr } = await supabase
     .from('quest_acceptances')
     .select(`*, quests (id, title, reward, pay_interval)`)
@@ -242,21 +242,6 @@ async function approveApplication({ acceptanceId }: { acceptanceId: string }) {
     status: 'accepted',
     admin_notes: 'Application approved. Welcome aboard!',
   }).eq('id', acceptanceId)
-
-  // Create recurring payment
-  const intervalType = acceptance.quests.pay_interval || 'daily'
-  const { error: rpError } = await supabase.from('recurring_payments').insert({
-    to_user_id: acceptance.user_id,
-    from_user_id: null,
-    amount: acceptance.quests.reward,
-    interval_type: intervalType,
-    description: `Full-time job: ${acceptance.quests.title}`,
-    next_send_at: new Date().toISOString(),
-    status: 'active',
-    is_active: true,
-    metadata: { quest_id: acceptance.quest_id, job_type: 'full_time' }
-  })
-  if (rpError) throw rpError
 
   return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }

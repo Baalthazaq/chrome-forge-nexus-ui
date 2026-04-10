@@ -658,6 +658,7 @@ async function rejectPlayerQuest(posterId: string, { acceptanceId, notes }: { ac
 }
 
 async function approvePlayerApplication(posterId: string, { acceptanceId }: { acceptanceId: string }) {
+  // Approve a player-posted full-time job application — salary is now handled by advance-day
   const { data: acceptance, error: getErr } = await supabase
     .from('quest_acceptances')
     .select(`*, quests (id, title, reward, pay_interval, posted_by_user_id, downtime_cost)`)
@@ -684,31 +685,6 @@ async function approvePlayerApplication(posterId: string, { acceptanceId }: { ac
     status: 'accepted',
     admin_notes: 'Application approved by poster. Welcome aboard!',
   }).eq('id', acceptanceId)
-
-  // Create recurring payment: poster pays worker
-  const intervalType = acceptance.quests.pay_interval || 'daily'
-  const { data: posterProfile } = await supabase.from('profiles').select('character_name').eq('user_id', posterId).single()
-
-  const { data: workerProfile } = await supabase.from('profiles').select('character_name').eq('user_id', acceptance.user_id).single()
-
-  const { error: rpError } = await supabase.from('recurring_payments').insert({
-    to_user_id: posterId,
-    from_user_id: acceptance.user_id,
-    amount: acceptance.quests.reward,
-    interval_type: intervalType,
-    description: `Job: ${acceptance.quests.title}`,
-    next_send_at: new Date().toISOString(),
-    status: 'active',
-    is_active: true,
-    metadata: {
-      quest_id: acceptance.quest_id,
-      job_type: 'full_time',
-      player_posted: true,
-      worker_name: workerProfile?.character_name || 'Unknown',
-      poster_name: posterProfile?.character_name || 'Unknown',
-    }
-  })
-  if (rpError) throw rpError
 
   return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -785,15 +761,8 @@ async function logQuestHours(userId: string, { questId, hours }: { questId: stri
     })
   }
 
-  const remaining = quest.downtime_cost - (acceptance.hours_logged || 0)
-  const hoursToLog = Math.min(hours, remaining)
-
-  if (hoursToLog <= 0) {
-    return new Response(JSON.stringify({ error: 'All hours already logged for this quest' }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
-  }
+  // Allow logging any number of hours (no cap) — surplus is banked for next pay cycle
+  const hoursToLog = hours
 
   // Check downtime balance
   const { data: downtime } = await supabase
@@ -820,9 +789,10 @@ async function logQuestHours(userId: string, { questId, hours }: { questId: stri
   }
 
   // Update hours_logged
+  const newLogged = (acceptance.hours_logged || 0) + hoursToLog
   await supabase
     .from('quest_acceptances')
-    .update({ hours_logged: (acceptance.hours_logged || 0) + hoursToLog })
+    .update({ hours_logged: newLogged })
     .eq('id', acceptance.id)
 
   // Log downtime activity
@@ -832,10 +802,8 @@ async function logQuestHours(userId: string, { questId, hours }: { questId: stri
       user_id: userId,
       activity_type: 'quest_work',
       hours_spent: hoursToLog,
-      notes: `Quest: ${quest.title} (${(acceptance.hours_logged || 0) + hoursToLog}/${quest.downtime_cost}h)`,
+      notes: `Quest: ${quest.title} (${newLogged}/${quest.downtime_cost}h)`,
     })
-
-  const newLogged = (acceptance.hours_logged || 0) + hoursToLog
 
   return new Response(JSON.stringify({ 
     success: true, 
