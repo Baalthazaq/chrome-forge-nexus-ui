@@ -110,6 +110,15 @@ const apps = [
     color: "from-teal-500 to-green-600"
   },
   {
+    id: "questseek",
+    name: "Questseek",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Questseek.gif",
+    description: "Notice Board",
+    route: "/questseek",
+    color: "from-emerald-400 to-teal-500",
+    openBeta: true
+  },
+  {
     id: "succubus",
     name: "Succubus",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Succubus.gif",
@@ -126,15 +135,6 @@ const apps = [
     route: "/charisma",
     color: "from-pink-500 to-purple-600",
     comingSoon: true
-  },
-  {
-    id: "questseek",
-    name: "Questseek",
-    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Questseek.gif",
-    description: "Notice Board",
-    route: "/questseek",
-    color: "from-emerald-400 to-teal-500",
-    openBeta: true
   }
 ];
 
