@@ -1005,7 +1005,61 @@ const Questseek = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Submit Dialog */}
+      {/* Work Dialog - pick a job to spend downtime on */}
+      <Dialog open={workDialogOpen} onOpenChange={setWorkDialogOpen}>
+        <DialogContent className="bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Work</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Choose an active job and spend downtime hours on it.
+            </DialogDescription>
+          </DialogHeader>
+          {(() => {
+            const workableJobs = activeAcceptances.filter(qa => qa.quests?.downtime_cost > 0 && (qa.hours_logged || 0) < qa.quests.downtime_cost);
+            if (workableJobs.length === 0) {
+              return <p className="text-gray-400 text-sm py-4">No active jobs with remaining hours to work on.</p>;
+            }
+            return (
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {workableJobs.map(qa => (
+                  <button
+                    key={qa.id}
+                    onClick={() => {
+                      setWorkDialogOpen(false);
+                      setLogHoursTarget(qa);
+                      setLogHoursAmount("");
+                      setLogHoursOpen(true);
+                    }}
+                    className={`w-full text-left p-3 rounded-lg border transition-all ${
+                      "bg-gray-800/50 border-gray-700 hover:border-emerald-500/50 hover:bg-gray-800"
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-white font-medium text-sm">{qa.quests?.title}</p>
+                        <p className="text-gray-400 text-xs mt-1">
+                          {qa.hours_logged || 0}/{qa.quests?.downtime_cost}h completed
+                          {qa.quests?.client && ` • ${qa.quests.client}`}
+                        </p>
+                      </div>
+                      <div className="flex-shrink-0 ml-3">
+                        <div className="w-16 bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                          <div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, ((qa.hours_logged || 0) / qa.quests!.downtime_cost) * 100)}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setWorkDialogOpen(false)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
         <DialogContent className="bg-gray-900 border-gray-700">
           <DialogHeader>
