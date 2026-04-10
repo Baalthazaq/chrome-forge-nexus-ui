@@ -2,8 +2,9 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, Search, ChevronDown, ChevronUp, Calendar, List, Home, Share2, X, Moon, Sun, Timer, Clock, Hammer } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -55,6 +56,11 @@ const Timestop = () => {
   const [restOpen, setRestOpen] = useState(false);
   const [downtimeBalance, setDowntimeBalance] = useState(0);
   const [downtimeActivities, setDowntimeActivities] = useState<any[]>([]);
+  const [workDialogOpen, setWorkDialogOpen] = useState(false);
+  const [workableJobs, setWorkableJobs] = useState<any[]>([]);
+  const [logHoursOpen, setLogHoursOpen] = useState(false);
+  const [logHoursTarget, setLogHoursTarget] = useState<any>(null);
+  const [logHoursAmount, setLogHoursAmount] = useState("");
 
   const { data: gameDate } = useQuery({
     queryKey: ["game-calendar"],
