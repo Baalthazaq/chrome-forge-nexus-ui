@@ -333,7 +333,7 @@ const Questseek = () => {
     if (error || data?.error) {
       toast({ title: "Error", description: data?.error || "Failed to approve", variant: "destructive" });
     } else {
-      toast({ title: "Application approved! Recurring payment created in @tunes." });
+      toast({ title: "Application approved! Employee can now work and earn salary." });
       loadData();
     }
   };
