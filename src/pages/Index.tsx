@@ -134,7 +134,7 @@ const apps = [
     description: "Notice Board",
     route: "/questseek",
     color: "from-emerald-400 to-teal-500",
-    comingSoon: true
+    openBeta: true
   }
 ];
 
