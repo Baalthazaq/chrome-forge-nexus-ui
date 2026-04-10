@@ -685,15 +685,18 @@ const Questseek = () => {
               </Button>
             </div>
             {(() => {
-              const filtered = filterQuests(communityQuests);
+              const filtered = shuffleArray(filterQuests(communityQuests));
               return filtered.length === 0 ? (
                 <Card className="p-8 bg-gray-900/30 border-gray-700/50 text-center text-gray-400">
                   {communityQuests.length === 0 ? "No community jobs posted yet. Be the first to post one!" : "No jobs match your search."}
                 </Card>
               ) : (
-                filtered.map(q => (
-                  <QuestCard key={q.id} quest={q} posterName={communityPosterMap[q.posted_by_user_id!]} />
-                ))
+                <>
+                  {paginate(filtered, communityPage).map(q => (
+                    <QuestCard key={q.id} quest={q} posterName={communityPosterMap[q.posted_by_user_id!]} />
+                  ))}
+                  <PaginationControls totalItems={filtered.length} page={communityPage} setPage={setCommunityPage} />
+                </>
               );
             })()}
           </TabsContent>
