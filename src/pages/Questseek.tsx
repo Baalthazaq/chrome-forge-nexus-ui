@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun, RotateCcw, CheckCircle, XCircle, HourglassIcon, Plus, Check, X, Users, Search, Filter } from "lucide-react";
+import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun, RotateCcw, CheckCircle, XCircle, HourglassIcon, Plus, Check, X, Users, Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import RestDialog from "@/components/RestDialog";
 import { formatHexDenomination, formatHex, formatHexRounded } from "@/lib/currency";
@@ -103,6 +103,12 @@ const Questseek = () => {
   // Search & filter
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState("all");
+
+  // Pagination
+  const ITEMS_PER_PAGE = 10;
+  const [commissionPage, setCommissionPage] = useState(1);
+  const [fullTimePage, setFullTimePage] = useState(1);
+  const [communityPage, setCommunityPage] = useState(1);
 
   useEffect(() => {
     supabase.from("game_calendar").select("*").limit(1).single().then(({ data }) => {
@@ -358,8 +364,50 @@ const Questseek = () => {
     });
   };
 
-  const commissions = filterQuests(quests.filter(q => q.job_type === "commission"));
-  const fullTimeJobs = filterQuests(quests.filter(q => q.job_type === "full_time"));
+  // Shuffle helper (seeded by session to keep stable across re-renders but random per load)
+  const [shuffleSeed] = useState(() => Math.random());
+  const shuffleArray = <T,>(arr: T[]): T[] => {
+    const shuffled = [...arr];
+    let seed = shuffleSeed;
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      seed = (seed * 9301 + 49297) % 233280;
+      const j = Math.floor((seed / 233280) * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  const commissions = useMemo(() => shuffleArray(filterQuests(quests.filter(q => q.job_type === "commission"))), [quests, searchQuery, difficultyFilter, shuffleSeed]);
+  const fullTimeJobs = useMemo(() => shuffleArray(filterQuests(quests.filter(q => q.job_type === "full_time"))), [quests, searchQuery, difficultyFilter, shuffleSeed]);
+
+  // Reset pages when filters change
+  useEffect(() => { setCommissionPage(1); }, [searchQuery, difficultyFilter]);
+  useEffect(() => { setFullTimePage(1); }, [searchQuery, difficultyFilter]);
+  useEffect(() => { setCommunityPage(1); }, [searchQuery, difficultyFilter]);
+
+  const paginate = <T,>(items: T[], page: number) => {
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    return items.slice(start, start + ITEMS_PER_PAGE);
+  };
+
+  const PaginationControls = ({ totalItems, page, setPage }: { totalItems: number; page: number; setPage: (p: number) => void }) => {
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    if (totalPages <= 1) return null;
+    return (
+      <div className="flex items-center justify-center gap-3 mt-4">
+        <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}
+          className="border-gray-700 text-gray-400 hover:text-white">
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        <span className="text-sm text-gray-400">{page} / {totalPages}</span>
+        <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage(page + 1)}
+          className="border-gray-700 text-gray-400 hover:text-white">
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+    );
+  };
+
   const activeAcceptances = myQuests.filter(q => q.status === "accepted");
   const pendingApproval = myQuests.filter(q => q.status === "pending_approval");
   const pendingSubmissions = myQuests.filter(q => q.status === "submitted");
@@ -609,7 +657,10 @@ const Questseek = () => {
                 No commissions available right now.
               </Card>
             ) : (
-              commissions.map(q => <QuestCard key={q.id} quest={q} />)
+              <>
+                {paginate(commissions, commissionPage).map(q => <QuestCard key={q.id} quest={q} />)}
+                <PaginationControls totalItems={commissions.length} page={commissionPage} setPage={setCommissionPage} />
+              </>
             )}
           </TabsContent>
 
@@ -619,7 +670,10 @@ const Questseek = () => {
                 No full-time positions available.
               </Card>
             ) : (
-              fullTimeJobs.map(q => <QuestCard key={q.id} quest={q} />)
+              <>
+                {paginate(fullTimeJobs, fullTimePage).map(q => <QuestCard key={q.id} quest={q} />)}
+                <PaginationControls totalItems={fullTimeJobs.length} page={fullTimePage} setPage={setFullTimePage} />
+              </>
             )}
           </TabsContent>
 
@@ -631,15 +685,18 @@ const Questseek = () => {
               </Button>
             </div>
             {(() => {
-              const filtered = filterQuests(communityQuests);
+              const filtered = shuffleArray(filterQuests(communityQuests));
               return filtered.length === 0 ? (
                 <Card className="p-8 bg-gray-900/30 border-gray-700/50 text-center text-gray-400">
                   {communityQuests.length === 0 ? "No community jobs posted yet. Be the first to post one!" : "No jobs match your search."}
                 </Card>
               ) : (
-                filtered.map(q => (
-                  <QuestCard key={q.id} quest={q} posterName={communityPosterMap[q.posted_by_user_id!]} />
-                ))
+                <>
+                  {paginate(filtered, communityPage).map(q => (
+                    <QuestCard key={q.id} quest={q} posterName={communityPosterMap[q.posted_by_user_id!]} />
+                  ))}
+                  <PaginationControls totalItems={filtered.length} page={communityPage} setPage={setCommunityPage} />
+                </>
               );
             })()}
           </TabsContent>

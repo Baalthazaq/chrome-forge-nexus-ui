@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Check, X, RefreshCw, Settings, Package, Download, Upload, Briefcase } from "lucide-react";
+import { ArrowLeft, Plus, Check, X, RefreshCw, Settings, Package, Download, Upload, Briefcase, Search, Filter } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatHexDenomination, formatHex, formatHexRounded } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,6 +56,7 @@ const QuestseekAdmin = () => {
   const [replenishQuestId, setReplenishQuestId] = useState("");
   const [replenishQty, setReplenishQty] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [adminSearchQuery, setAdminSearchQuery] = useState("");
 
   useEffect(() => {
     if (isAdmin) {
@@ -242,8 +243,20 @@ const QuestseekAdmin = () => {
     return <div className="min-h-screen bg-black flex items-center justify-center text-red-400">Admin access required</div>;
   }
 
-  const activeQuests = quests.filter(q => q.status === "active");
-  const cancelledQuests = quests.filter(q => q.status === "cancelled");
+  const filterAdminQuests = (questList: any[]) => {
+    if (!adminSearchQuery) return questList;
+    const q = adminSearchQuery.toLowerCase();
+    return questList.filter((quest: any) =>
+      quest.title?.toLowerCase().includes(q) ||
+      quest.description?.toLowerCase().includes(q) ||
+      quest.client?.toLowerCase().includes(q) ||
+      quest.tags?.some((t: string) => t.toLowerCase().includes(q)) ||
+      quest.difficulty?.toLowerCase().includes(q)
+    );
+  };
+
+  const activeQuests = filterAdminQuests(quests.filter(q => q.status === "active"));
+  const cancelledQuests = filterAdminQuests(quests.filter(q => q.status === "cancelled"));
 
   const exportQuests = () => {
     const rows = quests.map(q => ({
@@ -442,58 +455,84 @@ const QuestseekAdmin = () => {
 
           {/* Quests Tab */}
           <TabsContent value="quests" className="space-y-4">
-            <div className="flex justify-end">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Search quests by title, description, client, or tags..."
+                  value={adminSearchQuery}
+                  onChange={e => setAdminSearchQuery(e.target.value)}
+                  className="pl-10 bg-gray-900/50 border-gray-700 text-white placeholder:text-gray-500"
+                />
+              </div>
               <Button onClick={openCreateDialog} className="bg-gradient-to-r from-emerald-500 to-teal-500">
                 <Plus className="w-4 h-4 mr-1" /> New Quest
               </Button>
             </div>
 
-            {activeQuests.map(quest => (
-              <Card key={quest.id} className="p-4 bg-gray-900/30 border-gray-700/50">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="text-white font-medium">{quest.title}</h4>
-                      <Badge variant="outline" className={`text-xs ${quest.job_type === "full_time" ? "border-blue-500/50 text-blue-400" : "border-amber-500/50 text-amber-400"}`}>
-                        {quest.job_type === "full_time" ? "Full-Time" : "Commission"}
-                      </Badge>
-                      {quest.difficulty && (
-                        <Badge className="text-xs">{quest.difficulty}</Badge>
+            {activeQuests.map(quest => {
+              const pendingApps = quest.quest_acceptances?.filter((a: any) => a.status === 'pending_approval') || [];
+              return (
+                <Card key={quest.id} className="p-4 bg-gray-900/30 border-gray-700/50">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="text-white font-medium">{quest.title}</h4>
+                        <Badge variant="outline" className={`text-xs ${quest.job_type === "full_time" ? "border-blue-500/50 text-blue-400" : "border-amber-500/50 text-amber-400"}`}>
+                          {quest.job_type === "full_time" ? "Full-Time" : "Commission"}
+                        </Badge>
+                        {quest.difficulty && (
+                          <Badge className="text-xs">{quest.difficulty}</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-400">
+                        {quest.reward_min > 0 ? `${formatHexRounded(quest.reward_min, 'down')} – ${formatHexRounded(quest.reward, 'up')}` : formatHexRounded(quest.reward)}
+                        {quest.downtime_cost > 0 && ` • ${quest.downtime_cost}h downtime`}
+                        {quest.available_quantity !== null && ` • ${quest.available_quantity} available`}
+                        {quest.pay_interval && ` • Pays ${quest.pay_interval}`}
+                      </p>
+                      {quest.quest_acceptances?.length > 0 && (
+                        <div className="flex gap-1 mt-1 flex-wrap items-center">
+                          {quest.quest_acceptances.map((a: any) => (
+                            <div key={a.id} className="flex items-center gap-1">
+                              <Badge variant="outline" className={`text-xs ${
+                                a.status === 'pending_approval' ? 'border-blue-500/50 text-blue-400' :
+                                a.status === 'rejected' ? 'border-red-500/50 text-red-400' :
+                                ''
+                              }`}>
+                                {profileMap[a.user_id] || "?"} ({a.status})
+                              </Badge>
+                              {a.status === 'pending_approval' && (
+                                <div className="flex gap-1">
+                                  <Button size="sm" variant="outline" className="h-6 px-2 text-xs border-emerald-500/50 text-emerald-400 hover:bg-emerald-900/30"
+                                    onClick={() => approveApplication(a)}>
+                                    <Check className="w-3 h-3 mr-1" /> Hire
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="h-6 px-2 text-xs border-red-500/50 text-red-400 hover:bg-red-900/30"
+                                    onClick={() => openRejectDialog({ ...a, quests: quest }, "application")}>
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
-                    <p className="text-sm text-gray-400">
-                      {quest.reward_min > 0 ? `${formatHexRounded(quest.reward_min, 'down')} – ${formatHexRounded(quest.reward, 'up')}` : formatHexRounded(quest.reward)}
-                      {quest.downtime_cost > 0 && ` • ${quest.downtime_cost}h downtime`}
-                      {quest.available_quantity !== null && ` • ${quest.available_quantity} available`}
-                      {quest.pay_interval && ` • Pays ${quest.pay_interval}`}
-                    </p>
-                    {quest.quest_acceptances?.length > 0 && (
-                      <div className="flex gap-1 mt-1 flex-wrap">
-                        {quest.quest_acceptances.map((a: any) => (
-                          <Badge key={a.id} variant="outline" className={`text-xs ${
-                            a.status === 'pending_approval' ? 'border-blue-500/50 text-blue-400' :
-                            a.status === 'rejected' ? 'border-red-500/50 text-red-400' :
-                            ''
-                          }`}>
-                            {profileMap[a.user_id] || "?"} ({a.status})
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex gap-2">
+                      {quest.available_quantity !== null && (
+                        <Button size="sm" variant="outline" className="text-orange-400 border-orange-500/50"
+                          onClick={() => { setReplenishQuestId(quest.id); setReplenishQty("5"); setReplenishDialogOpen(true); }}>
+                          <Package className="w-4 h-4 mr-1" /> Replenish
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" className="text-gray-400" onClick={() => openEditDialog(quest)}>Edit</Button>
+                      <Button size="sm" variant="ghost" className="text-red-400" onClick={() => deleteQuest(quest.id)}>Cancel</Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    {quest.available_quantity !== null && (
-                      <Button size="sm" variant="outline" className="text-orange-400 border-orange-500/50"
-                        onClick={() => { setReplenishQuestId(quest.id); setReplenishQty("5"); setReplenishDialogOpen(true); }}>
-                        <Package className="w-4 h-4 mr-1" /> Replenish
-                      </Button>
-                    )}
-                    <Button size="sm" variant="ghost" className="text-gray-400" onClick={() => openEditDialog(quest)}>Edit</Button>
-                    <Button size="sm" variant="ghost" className="text-red-400" onClick={() => deleteQuest(quest.id)}>Cancel</Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </TabsContent>
         </Tabs>
       </div>
