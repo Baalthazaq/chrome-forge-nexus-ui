@@ -657,7 +657,10 @@ const Questseek = () => {
                 No commissions available right now.
               </Card>
             ) : (
-              commissions.map(q => <QuestCard key={q.id} quest={q} />)
+              <>
+                {paginate(commissions, commissionPage).map(q => <QuestCard key={q.id} quest={q} />)}
+                <PaginationControls totalItems={commissions.length} page={commissionPage} setPage={setCommissionPage} />
+              </>
             )}
           </TabsContent>
 
@@ -667,7 +670,10 @@ const Questseek = () => {
                 No full-time positions available.
               </Card>
             ) : (
-              fullTimeJobs.map(q => <QuestCard key={q.id} quest={q} />)
+              <>
+                {paginate(fullTimeJobs, fullTimePage).map(q => <QuestCard key={q.id} quest={q} />)}
+                <PaginationControls totalItems={fullTimeJobs.length} page={fullTimePage} setPage={setFullTimePage} />
+              </>
             )}
           </TabsContent>
 
