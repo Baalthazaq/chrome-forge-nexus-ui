@@ -781,19 +781,19 @@ const Questseek = () => {
                             </Button>
                           </div>
                         </div>
-                        {qa.quests?.job_type !== "full_time" && qa.quests?.downtime_cost > 0 && (
+                        {qa.quests?.downtime_cost > 0 && (
                           <div className="flex items-center gap-2">
                             <div className="flex-1 bg-gray-800 rounded-full h-2 overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-cyan-500 to-teal-500 transition-all"
+                                className={`h-full transition-all ${(qa.hours_logged || 0) >= qa.quests.downtime_cost ? "bg-gradient-to-r from-amber-500 to-yellow-500" : "bg-gradient-to-r from-cyan-500 to-teal-500"}`}
                                 style={{ width: `${Math.min(100, ((qa.hours_logged || 0) / qa.quests.downtime_cost) * 100)}%` }}
                               />
                             </div>
-                            <span className="text-xs text-gray-400 flex-shrink-0">
+                            <span className={`text-xs flex-shrink-0 ${(qa.hours_logged || 0) >= qa.quests.downtime_cost ? "text-amber-400" : "text-gray-400"}`}>
                               {qa.hours_logged || 0}/{qa.quests.downtime_cost}h
                             </span>
                           </div>
-                        )}
+                        )
                       </div>
                     </Card>
                   ))}
