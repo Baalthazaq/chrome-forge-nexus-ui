@@ -763,10 +763,10 @@ const Questseek = () => {
                             </div>
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
-                            {qa.quests?.job_type !== "full_time" && qa.quests?.downtime_cost > 0 && (qa.hours_logged || 0) < qa.quests.downtime_cost && (
-                              <Button size="sm" variant="outline" className="text-cyan-400 border-cyan-500/50"
+                            {qa.quests?.downtime_cost > 0 && (qa.hours_logged || 0) < qa.quests.downtime_cost && (
+                              <Button size="sm" variant="outline" className="text-emerald-400 border-emerald-500/50"
                                 onClick={() => { setLogHoursTarget(qa); setLogHoursAmount(""); setLogHoursOpen(true); }}>
-                                <Clock className="w-3 h-3 mr-1" /> Log Hours
+                                <Hammer className="w-3 h-3 mr-1" /> Work
                               </Button>
                             )}
                             {qa.quests?.job_type !== "full_time" && (
