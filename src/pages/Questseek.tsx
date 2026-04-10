@@ -585,12 +585,15 @@ const Questseek = () => {
               <span className="text-white font-medium">Downtime Balance</span>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline" className="border-amber-600 text-amber-400 hover:bg-amber-900/30" onClick={() => { setRestType("short"); setRestOpen(true); }}>
                   <Sun className="w-3 h-3 mr-1" /> Short Rest
                 </Button>
                 <Button size="sm" variant="outline" className="border-indigo-600 text-indigo-400 hover:bg-indigo-900/30" onClick={() => { setRestType("long"); setRestOpen(true); }}>
                   <Moon className="w-3 h-3 mr-1" /> Long Rest
+                </Button>
+                <Button size="sm" variant="outline" className="border-emerald-600 text-emerald-400 hover:bg-emerald-900/30" onClick={() => { setWorkDialogOpen(true); }}>
+                  <Hammer className="w-3 h-3 mr-1" /> Work
                 </Button>
               </div>
               <span className={`text-2xl font-bold ${downtimeBalance > 0 ? "text-cyan-400" : "text-red-400"}`}>
@@ -636,7 +639,7 @@ const Questseek = () => {
           </Select>
         </div>
 
-        <Tabs defaultValue="commissions" className="space-y-6">
+        <Tabs defaultValue="my_quests" className="space-y-6">
           <TabsList className="bg-gray-900/50 border border-gray-700/50">
             <TabsTrigger value="commissions">Commissions</TabsTrigger>
             <TabsTrigger value="full_time">Full-Time Jobs</TabsTrigger>
@@ -745,7 +748,7 @@ const Questseek = () => {
                           <div>
                             <h4 className="text-white font-medium">{qa.quests?.title}</h4>
                             <div className="flex items-center gap-2 text-sm text-gray-400 mt-1 flex-wrap">
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className={`text-xs ${qa.quests?.job_type === "full_time" ? "text-blue-400 border-blue-500/50" : "text-gray-300 border-gray-500/50"}`}>
                                 {qa.quests?.job_type === "full_time" ? "Full-Time" : "Commission"}
                               </Badge>
                               {qa.quests?.client && <span>• {qa.quests.client}</span>}
