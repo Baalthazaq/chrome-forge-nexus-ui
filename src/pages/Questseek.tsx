@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun, RotateCcw, CheckCircle, XCircle, HourglassIcon, Plus, Check, X, Users, Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun, RotateCcw, CheckCircle, XCircle, HourglassIcon, Plus, Check, X, Users, Search, Filter, ChevronLeft, ChevronRight, Hammer } from "lucide-react";
 import { Link } from "react-router-dom";
 import RestDialog from "@/components/RestDialog";
 import { formatHexDenomination, formatHex, formatHexRounded } from "@/lib/currency";
@@ -99,6 +99,8 @@ const Questseek = () => {
   const [logHoursOpen, setLogHoursOpen] = useState(false);
   const [logHoursTarget, setLogHoursTarget] = useState<QuestAcceptance | null>(null);
   const [logHoursAmount, setLogHoursAmount] = useState("");
+  const [workDialogOpen, setWorkDialogOpen] = useState(false);
+  const [workSelectedQuestId, setWorkSelectedQuestId] = useState("");
 
   // Search & filter
   const [searchQuery, setSearchQuery] = useState("");
@@ -585,12 +587,15 @@ const Questseek = () => {
               <span className="text-white font-medium">Downtime Balance</span>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline" className="border-amber-600 text-amber-400 hover:bg-amber-900/30" onClick={() => { setRestType("short"); setRestOpen(true); }}>
                   <Sun className="w-3 h-3 mr-1" /> Short Rest
                 </Button>
                 <Button size="sm" variant="outline" className="border-indigo-600 text-indigo-400 hover:bg-indigo-900/30" onClick={() => { setRestType("long"); setRestOpen(true); }}>
                   <Moon className="w-3 h-3 mr-1" /> Long Rest
+                </Button>
+                <Button size="sm" variant="outline" className="border-emerald-600 text-emerald-400 hover:bg-emerald-900/30" onClick={() => { setWorkDialogOpen(true); }}>
+                  <Hammer className="w-3 h-3 mr-1" /> Work
                 </Button>
               </div>
               <span className={`text-2xl font-bold ${downtimeBalance > 0 ? "text-cyan-400" : "text-red-400"}`}>
@@ -636,7 +641,7 @@ const Questseek = () => {
           </Select>
         </div>
 
-        <Tabs defaultValue="commissions" className="space-y-6">
+        <Tabs defaultValue="my_quests" className="space-y-6">
           <TabsList className="bg-gray-900/50 border border-gray-700/50">
             <TabsTrigger value="commissions">Commissions</TabsTrigger>
             <TabsTrigger value="full_time">Full-Time Jobs</TabsTrigger>
@@ -745,7 +750,7 @@ const Questseek = () => {
                           <div>
                             <h4 className="text-white font-medium">{qa.quests?.title}</h4>
                             <div className="flex items-center gap-2 text-sm text-gray-400 mt-1 flex-wrap">
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className={`text-xs ${qa.quests?.job_type === "full_time" ? "text-blue-400 border-blue-500/50" : "text-gray-300 border-gray-500/50"}`}>
                                 {qa.quests?.job_type === "full_time" ? "Full-Time" : "Commission"}
                               </Badge>
                               {qa.quests?.client && <span>• {qa.quests.client}</span>}
@@ -758,10 +763,10 @@ const Questseek = () => {
                             </div>
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
-                            {qa.quests?.job_type !== "full_time" && qa.quests?.downtime_cost > 0 && (qa.hours_logged || 0) < qa.quests.downtime_cost && (
-                              <Button size="sm" variant="outline" className="text-cyan-400 border-cyan-500/50"
+                            {qa.quests?.downtime_cost > 0 && (qa.hours_logged || 0) < qa.quests.downtime_cost && (
+                              <Button size="sm" variant="outline" className="text-emerald-400 border-emerald-500/50"
                                 onClick={() => { setLogHoursTarget(qa); setLogHoursAmount(""); setLogHoursOpen(true); }}>
-                                <Clock className="w-3 h-3 mr-1" /> Log Hours
+                                <Hammer className="w-3 h-3 mr-1" /> Work
                               </Button>
                             )}
                             {qa.quests?.job_type !== "full_time" && (
@@ -1000,7 +1005,61 @@ const Questseek = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Submit Dialog */}
+      {/* Work Dialog - pick a job to spend downtime on */}
+      <Dialog open={workDialogOpen} onOpenChange={setWorkDialogOpen}>
+        <DialogContent className="bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Work</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Choose an active job and spend downtime hours on it.
+            </DialogDescription>
+          </DialogHeader>
+          {(() => {
+            const workableJobs = activeAcceptances.filter(qa => qa.quests?.downtime_cost > 0 && (qa.hours_logged || 0) < qa.quests.downtime_cost);
+            if (workableJobs.length === 0) {
+              return <p className="text-gray-400 text-sm py-4">No active jobs with remaining hours to work on.</p>;
+            }
+            return (
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {workableJobs.map(qa => (
+                  <button
+                    key={qa.id}
+                    onClick={() => {
+                      setWorkDialogOpen(false);
+                      setLogHoursTarget(qa);
+                      setLogHoursAmount("");
+                      setLogHoursOpen(true);
+                    }}
+                    className={`w-full text-left p-3 rounded-lg border transition-all ${
+                      "bg-gray-800/50 border-gray-700 hover:border-emerald-500/50 hover:bg-gray-800"
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-white font-medium text-sm">{qa.quests?.title}</p>
+                        <p className="text-gray-400 text-xs mt-1">
+                          {qa.hours_logged || 0}/{qa.quests?.downtime_cost}h completed
+                          {qa.quests?.client && ` • ${qa.quests.client}`}
+                        </p>
+                      </div>
+                      <div className="flex-shrink-0 ml-3">
+                        <div className="w-16 bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                          <div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, ((qa.hours_logged || 0) / qa.quests!.downtime_cost) * 100)}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setWorkDialogOpen(false)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
         <DialogContent className="bg-gray-900 border-gray-700">
           <DialogHeader>
