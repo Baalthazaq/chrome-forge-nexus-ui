@@ -972,16 +972,16 @@ const Questseek = () => {
 
       {/* Log Hours Dialog */}
       <Dialog open={logHoursOpen} onOpenChange={setLogHoursOpen}>
-        <DialogContent className="bg-gray-900 border-gray-700">
+        <DialogContent className="bg-gray-900 border-gray-700 text-white">
           <DialogHeader>
-            <DialogTitle>Log Hours</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-white">Log Hours</DialogTitle>
+            <DialogDescription className="text-gray-400">
               {logHoursTarget?.quests?.title} — {logHoursTarget?.hours_logged || 0}/{logHoursTarget?.quests?.downtime_cost || 0}h completed
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Hours to log</Label>
+              <Label className="text-gray-300">Hours to log</Label>
               <Input
                 type="number"
                 min="1"
@@ -989,7 +989,7 @@ const Questseek = () => {
                 value={logHoursAmount}
                 onChange={(e) => setLogHoursAmount(e.target.value)}
                 placeholder={`Max ${(logHoursTarget?.quests?.downtime_cost || 0) - (logHoursTarget?.hours_logged || 0)}h remaining`}
-                className="bg-gray-800 border-gray-600"
+                className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-500"
               />
               <p className="text-xs text-gray-400 mt-1">
                 Available downtime: {downtimeBalance}h
@@ -997,8 +997,8 @@ const Questseek = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setLogHoursOpen(false)}>Cancel</Button>
-            <Button onClick={logQuestHours} className="bg-gradient-to-r from-cyan-500 to-teal-500">
+            <Button variant="ghost" className="text-gray-300 hover:text-white" onClick={() => setLogHoursOpen(false)}>Cancel</Button>
+            <Button onClick={logQuestHours} className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white">
               Log Hours
             </Button>
           </DialogFooter>
@@ -1030,9 +1030,7 @@ const Questseek = () => {
                       setLogHoursAmount("");
                       setLogHoursOpen(true);
                     }}
-                    className={`w-full text-left p-3 rounded-lg border transition-all ${
-                      "bg-gray-800/50 border-gray-700 hover:border-emerald-500/50 hover:bg-gray-800"
-                    }`}
+                    className="w-full text-left p-3 rounded-lg border transition-all bg-gray-800 border-gray-600 hover:border-emerald-500/50 hover:bg-gray-750"
                   >
                     <div className="flex justify-between items-center">
                       <div>
@@ -1054,7 +1052,7 @@ const Questseek = () => {
             );
           })()}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setWorkDialogOpen(false)}>Cancel</Button>
+            <Button variant="ghost" className="text-gray-300 hover:text-white" onClick={() => setWorkDialogOpen(false)}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
