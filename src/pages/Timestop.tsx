@@ -93,7 +93,8 @@ const Timestop = () => {
       body: { operation: "get_user_quests", targetUserId: impersonatedUser?.user_id },
     });
     if (data?.quests) {
-      setWorkableJobs(data.quests.filter((qa: any) => qa.status === "accepted" && qa.quests?.downtime_cost > 0 && (qa.hours_logged || 0) < qa.quests.downtime_cost));
+      // Show all accepted jobs with downtime_cost > 0 (full-time jobs are always workable)
+      setWorkableJobs(data.quests.filter((qa: any) => qa.status === "accepted" && qa.quests?.downtime_cost > 0));
     }
   };
 
@@ -849,7 +850,7 @@ const Timestop = () => {
             </DialogDescription>
           </DialogHeader>
           {workableJobs.length === 0 ? (
-            <p className="text-gray-400 text-sm py-4">No active jobs with remaining hours to work on.</p>
+            <p className="text-gray-400 text-sm py-4">No active jobs to work on.</p>
           ) : (
             <div className="space-y-3 max-h-60 overflow-y-auto">
               {workableJobs.map((qa: any) => (
@@ -867,13 +868,14 @@ const Timestop = () => {
                     <div>
                       <p className="text-white font-medium text-sm">{qa.quests?.title}</p>
                       <p className="text-gray-400 text-xs mt-1">
-                        {qa.hours_logged || 0}/{qa.quests?.downtime_cost}h completed
+                        {qa.hours_logged || 0}/{qa.quests?.downtime_cost}h logged
+                        {(qa.hours_logged || 0) >= qa.quests?.downtime_cost && " ✓ Ready for payday"}
                         {qa.quests?.client && ` • ${qa.quests.client}`}
                       </p>
                     </div>
                     <div className="flex-shrink-0 ml-3">
                       <div className="w-16 bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                        <div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, ((qa.hours_logged || 0) / qa.quests!.downtime_cost) * 100)}%` }} />
+                        <div className={`h-full ${(qa.hours_logged || 0) >= qa.quests!.downtime_cost ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.min(100, ((qa.hours_logged || 0) / qa.quests!.downtime_cost) * 100)}%` }} />
                       </div>
                     </div>
                   </div>
@@ -902,14 +904,13 @@ const Timestop = () => {
               <Input
                 type="number"
                 min="1"
-                max={(logHoursTarget?.quests?.downtime_cost || 0) - (logHoursTarget?.hours_logged || 0)}
                 value={logHoursAmount}
                 onChange={(e: any) => setLogHoursAmount(e.target.value)}
-                placeholder={`Max ${(logHoursTarget?.quests?.downtime_cost || 0) - (logHoursTarget?.hours_logged || 0)}h remaining`}
+                placeholder="Hours to work"
                 className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-500"
               />
               <p className="text-xs text-gray-400 mt-1">
-                Available downtime: {downtimeBalance}h
+                Available downtime: {downtimeBalance}h • Logged: {logHoursTarget?.hours_logged || 0}/{logHoursTarget?.quests?.downtime_cost || 0}h
               </p>
             </div>
           </div>
