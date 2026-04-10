@@ -514,7 +514,7 @@ const Questseek = () => {
               </Badge>
             ))}
           </div>
-          {showAccept && !isAlreadyAccepted && !isOwnQuest && !isPositionFilled && !(quest.available_quantity !== null && quest.available_quantity <= 0) && (
+          {showAccept && !isAlreadyAccepted && !isOwnQuest && !isPositionFilled && !(quest.job_type !== "full_time" && quest.available_quantity !== null && quest.available_quantity <= 0) && (
             <Button
               onClick={() => acceptQuest(quest.id)}
               className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
