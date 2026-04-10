@@ -99,6 +99,8 @@ const Questseek = () => {
   const [logHoursOpen, setLogHoursOpen] = useState(false);
   const [logHoursTarget, setLogHoursTarget] = useState<QuestAcceptance | null>(null);
   const [logHoursAmount, setLogHoursAmount] = useState("");
+  const [workDialogOpen, setWorkDialogOpen] = useState(false);
+  const [workSelectedQuestId, setWorkSelectedQuestId] = useState("");
 
   // Search & filter
   const [searchQuery, setSearchQuery] = useState("");
