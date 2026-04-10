@@ -423,12 +423,6 @@ async function resignQuest(userId: string, { questId }: { questId: string }) {
 
   if (updateError) throw updateError
 
-  await supabase
-    .from('recurring_payments')
-    .delete()
-    .eq('to_user_id', userId)
-    .filter('metadata->>quest_id', 'eq', questId)
-
   return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })
