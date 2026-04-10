@@ -87,7 +87,39 @@ const Timestop = () => {
     if (data?.downtime) setDowntimeBalance(data.downtime.balance);
   };
 
-  const loadDowntimeActivities = async () => {
+  const loadWorkableJobs = async () => {
+    if (!effectiveUserId) return;
+    const { data } = await supabase.functions.invoke("quest-operations", {
+      body: { operation: "get_user_quests", targetUserId: impersonatedUser?.user_id },
+    });
+    if (data?.quests) {
+      setWorkableJobs(data.quests.filter((qa: any) => qa.status === "accepted" && qa.quests?.downtime_cost > 0 && (qa.hours_logged || 0) < qa.quests.downtime_cost));
+    }
+  };
+
+  const logQuestHours = async () => {
+    if (!logHoursTarget) return;
+    const hours = parseInt(logHoursAmount);
+    if (!hours || hours <= 0) {
+      toast({ title: "Enter a valid number of hours", variant: "destructive" });
+      return;
+    }
+    const { data, error } = await supabase.functions.invoke("quest-operations", {
+      body: { operation: "log_quest_hours", questId: logHoursTarget.quest_id, hours, targetUserId: impersonatedUser?.user_id },
+    });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || "Failed to log hours", variant: "destructive" });
+    } else {
+      toast({ title: `Logged ${hours}h — ${data.hoursLogged}/${data.totalRequired}h complete` });
+      setLogHoursOpen(false);
+      setLogHoursAmount("");
+      loadDowntime();
+      loadDowntimeActivities();
+      loadWorkableJobs();
+    }
+  };
+
+
     if (!effectiveUserId) return;
     const { data } = await supabase.functions.invoke("quest-operations", {
       body: { operation: "get_downtime_activities", targetUserId: impersonatedUser?.user_id },
