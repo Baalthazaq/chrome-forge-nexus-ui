@@ -130,6 +130,7 @@ const Timestop = () => {
   useEffect(() => {
     loadDowntime();
     loadDowntimeActivities();
+    loadWorkableJobs();
   }, [effectiveUserId]);
 
   const currentDate: GameDate = gameDate
@@ -510,6 +511,9 @@ const Timestop = () => {
             <Button size="sm" variant="ghost" className="text-indigo-400 hover:text-indigo-300 text-xs h-6 px-2" onClick={() => { setRestType("long"); setRestOpen(true); }}>
               <Moon className="w-3 h-3 mr-1" /> Long Rest
             </Button>
+            <Button size="sm" variant="ghost" className="text-emerald-400 hover:text-emerald-300 text-xs h-6 px-2" onClick={() => { loadWorkableJobs(); setWorkDialogOpen(true); }}>
+              <Hammer className="w-3 h-3 mr-1" /> Work
+            </Button>
           </div>
           <div className="flex justify-center gap-2 mt-3">
             <Button size="sm" variant={viewMode === "monthly" ? "default" : "ghost"} onClick={() => setViewMode("monthly")} className={viewMode === "monthly" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
@@ -834,6 +838,90 @@ const Timestop = () => {
           eventTitle={shareEventTitle}
         />
       )}
+
+      {/* Work Dialog */}
+      <Dialog open={workDialogOpen} onOpenChange={setWorkDialogOpen}>
+        <DialogContent className="bg-gray-900 border-gray-700 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white">Work</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Choose an active job and spend downtime hours on it.
+            </DialogDescription>
+          </DialogHeader>
+          {workableJobs.length === 0 ? (
+            <p className="text-gray-400 text-sm py-4">No active jobs with remaining hours to work on.</p>
+          ) : (
+            <div className="space-y-3 max-h-60 overflow-y-auto">
+              {workableJobs.map((qa: any) => (
+                <button
+                  key={qa.id}
+                  onClick={() => {
+                    setWorkDialogOpen(false);
+                    setLogHoursTarget(qa);
+                    setLogHoursAmount("");
+                    setLogHoursOpen(true);
+                  }}
+                  className="w-full text-left p-3 rounded-lg border transition-all bg-gray-800 border-gray-600 hover:border-emerald-500/50"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-white font-medium text-sm">{qa.quests?.title}</p>
+                      <p className="text-gray-400 text-xs mt-1">
+                        {qa.hours_logged || 0}/{qa.quests?.downtime_cost}h completed
+                        {qa.quests?.client && ` • ${qa.quests.client}`}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0 ml-3">
+                      <div className="w-16 bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                        <div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, ((qa.hours_logged || 0) / qa.quests!.downtime_cost) * 100)}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" className="text-gray-300 hover:text-white" onClick={() => setWorkDialogOpen(false)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Log Hours Dialog (from Work) */}
+      <Dialog open={logHoursOpen} onOpenChange={setLogHoursOpen}>
+        <DialogContent className="bg-gray-900 border-gray-700 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white">Log Hours</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              {logHoursTarget?.quests?.title} — {logHoursTarget?.hours_logged || 0}/{logHoursTarget?.quests?.downtime_cost || 0}h completed
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-gray-300">Hours to log</Label>
+              <Input
+                type="number"
+                min="1"
+                max={(logHoursTarget?.quests?.downtime_cost || 0) - (logHoursTarget?.hours_logged || 0)}
+                value={logHoursAmount}
+                onChange={(e: any) => setLogHoursAmount(e.target.value)}
+                placeholder={`Max ${(logHoursTarget?.quests?.downtime_cost || 0) - (logHoursTarget?.hours_logged || 0)}h remaining`}
+                className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-500"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Available downtime: {downtimeBalance}h
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" className="text-gray-300 hover:text-white" onClick={() => setLogHoursOpen(false)}>Cancel</Button>
+            <Button onClick={logQuestHours} className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white">
+              Log Hours
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };
