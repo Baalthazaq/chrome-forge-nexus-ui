@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { AdminProvider } from "@/hooks/useAdmin";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import VaultAdmin from "./pages/VaultAdmin";
@@ -56,6 +57,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/sending" element={<SendingAdmin />} />
             <Route path="/admin/wyrmcart" element={<WyrmcartAdmin />} />
