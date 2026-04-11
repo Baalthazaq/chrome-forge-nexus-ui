@@ -76,6 +76,12 @@ const ResetPassword = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {!sessionReady ? (
+            <div className="text-center py-4">
+              <p className="text-muted-foreground text-sm">Verifying reset link...</p>
+              <p className="text-muted-foreground text-xs mt-2">If this takes too long, your link may have expired. Request a new one from the sign-in page.</p>
+            </div>
+          ) : (
           <form onSubmit={handleReset} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="new-password">New Password</Label>
