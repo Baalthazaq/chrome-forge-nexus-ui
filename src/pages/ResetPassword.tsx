@@ -120,6 +120,7 @@ const ResetPassword = () => {
               {isLoading ? "Updating..." : "Set New Password"}
             </Button>
           </form>
+          )}
         </CardContent>
       </Card>
     </div>
