@@ -57,6 +57,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/sending" element={<SendingAdmin />} />
             <Route path="/admin/wyrmcart" element={<WyrmcartAdmin />} />
