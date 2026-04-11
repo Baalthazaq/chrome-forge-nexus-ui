@@ -568,12 +568,22 @@ const Questseek = () => {
             {rejectedQuests.slice(0, 5).map(rq => (
               <div key={rq.id} className="p-3 bg-red-900/20 border border-red-500/30 rounded-lg flex items-start gap-3">
                 <XCircle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
-                <div>
+                <div className="flex-1">
                   <p className="text-red-300 font-medium text-sm">
                     {rq.quests?.job_type === "full_time" ? "Application rejected" : "Submission rejected"}: {rq.quests?.title}
                   </p>
                   {rq.admin_notes && <p className="text-red-400/70 text-xs mt-1">{rq.admin_notes}</p>}
                 </div>
+                <button
+                  onClick={async () => {
+                    await supabase.from("quest_acceptances").update({ status: "dismissed" }).eq("id", rq.id);
+                    loadData();
+                  }}
+                  className="text-red-400/50 hover:text-red-300 shrink-0"
+                  title="Dismiss"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
             ))}
           </div>
