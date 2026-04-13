@@ -65,6 +65,19 @@ const BestiaryAdmin = () => {
     }
   };
 
+  const seedEnvironments = async () => {
+    setSeedingEnvs(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('seed-environments');
+      if (error) throw error;
+      toast.success(`Seeded ${data.count} environments`);
+    } catch (e: any) {
+      toast.error('Failed to seed environments: ' + e.message);
+    } finally {
+      setSeedingEnvs(false);
+    }
+  };
+
   const deleteCreature = async (id: string) => {
     const { error } = await supabase.from('bestiary_creatures').delete().eq('id', id);
     if (error) {
