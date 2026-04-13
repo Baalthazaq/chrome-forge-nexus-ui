@@ -161,6 +161,10 @@ const Admin = () => {
                 <span className="font-semibold">Character Tokens</span>
                 <span className="text-xs text-muted-foreground">Token Generator</span>
               </Button>
+              <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => navigate('/admin/features')}>
+                <span className="font-semibold">Feature List</span>
+                <span className="text-xs text-muted-foreground">App Features</span>
+              </Button>
             </div>
           </CardContent>
         </Card>
