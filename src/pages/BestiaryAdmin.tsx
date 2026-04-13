@@ -20,6 +20,7 @@ const BestiaryAdmin = () => {
   const [creatures, setCreatures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [seedingEnvs, setSeedingEnvs] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -61,6 +62,19 @@ const BestiaryAdmin = () => {
       toast.error('Failed to seed: ' + e.message);
     } finally {
       setSeeding(false);
+    }
+  };
+
+  const seedEnvironments = async () => {
+    setSeedingEnvs(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('seed-environments');
+      if (error) throw error;
+      toast.success(`Seeded ${data.count} environments`);
+    } catch (e: any) {
+      toast.error('Failed to seed environments: ' + e.message);
+    } finally {
+      setSeedingEnvs(false);
     }
   };
 
@@ -137,7 +151,11 @@ const BestiaryAdmin = () => {
             </Button>
             <Button onClick={seedBestiary} disabled={seeding} variant="outline" size="sm">
               <RefreshCw className={`h-4 w-4 mr-1 ${seeding ? 'animate-spin' : ''}`} />
-              {seeding ? 'Seeding...' : 'Seed from Source'}
+              {seeding ? 'Seeding...' : 'Seed Adversaries'}
+            </Button>
+            <Button onClick={seedEnvironments} disabled={seedingEnvs} variant="outline" size="sm">
+              <RefreshCw className={`h-4 w-4 mr-1 ${seedingEnvs ? 'animate-spin' : ''}`} />
+              {seedingEnvs ? 'Seeding...' : 'Seed Environments'}
             </Button>
           </div>
         </div>
