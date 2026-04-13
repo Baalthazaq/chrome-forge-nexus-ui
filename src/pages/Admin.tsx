@@ -169,6 +169,10 @@ const Admin = () => {
                 <span className="font-semibold">Data Export</span>
                 <span className="text-xs text-muted-foreground">Export Tables</span>
               </Button>
+              <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => navigate('/admin/bestiary')}>
+                <span className="font-semibold">Bestiary</span>
+                <span className="text-xs text-muted-foreground">Adversary Cards</span>
+              </Button>
             </div>
           </CardContent>
         </Card>
