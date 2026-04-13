@@ -350,6 +350,14 @@ export function CardsSection({
                   })}
                 </SelectContent>
               </Select>
+              {selectedDomainId && (() => {
+                const card = getListForType().find(c => c.id === selectedDomainId);
+                return card?.content ? (
+                  <div className="mt-2 p-3 bg-gray-800/60 border border-gray-700 rounded-md text-sm text-gray-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                    {card.content}
+                  </div>
+                ) : null;
+              })()}
               {getListForType().length === 0 && (
                 <div className="text-gray-500 text-xs mt-1">
                   {addType === 'domain' && domains.length === 0
