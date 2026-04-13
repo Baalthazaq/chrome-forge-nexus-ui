@@ -4,7 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ArrowLeft, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+
+const FeatureList = () => {
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-background p-6">
