@@ -242,6 +242,45 @@ export type Database = {
         }
         Relationships: []
       }
+      bestiary_environments: {
+        Row: {
+          created_at: string
+          difficulty: string | null
+          environment_type: string
+          features: Json | null
+          id: string
+          impulses: string[] | null
+          name: string
+          potential_adversaries: string | null
+          tier: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          difficulty?: string | null
+          environment_type?: string
+          features?: Json | null
+          id?: string
+          impulses?: string[] | null
+          name: string
+          potential_adversaries?: string | null
+          tier?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          difficulty?: string | null
+          environment_type?: string
+          features?: Json | null
+          id?: string
+          impulses?: string[] | null
+          name?: string
+          potential_adversaries?: string | null
+          tier?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bills: {
         Row: {
           amount: number
