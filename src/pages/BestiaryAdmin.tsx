@@ -20,6 +20,7 @@ const BestiaryAdmin = () => {
   const [creatures, setCreatures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [seedingEnvs, setSeedingEnvs] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
