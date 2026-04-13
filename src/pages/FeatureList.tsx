@@ -4,9 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ArrowLeft, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { useAdmin } from "@/hooks/useAdmin";
-import { useEffect } from "react";
 
 const appFeatures = [
   {
@@ -258,23 +255,15 @@ const appFeatures = [
 
 const FeatureList = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { isAdmin, isLoading } = useAdmin();
-
-  useEffect(() => {
-    if (!isLoading && !isAdmin) navigate("/");
-  }, [isAdmin, isLoading, navigate]);
-
-  if (isLoading) return null;
 
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Feature List</h1>
-          <Button onClick={() => navigate("/admin")} variant="outline">
+          <Button onClick={() => navigate("/")} variant="outline">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Admin
+            Back
           </Button>
         </div>
 
