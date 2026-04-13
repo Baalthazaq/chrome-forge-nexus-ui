@@ -173,6 +173,10 @@ const Admin = () => {
                 <span className="font-semibold">Bestiary</span>
                 <span className="text-xs text-muted-foreground">Adversary Cards</span>
               </Button>
+              <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => navigate('/admin/environments')}>
+                <span className="font-semibold">Environments</span>
+                <span className="text-xs text-muted-foreground">Environment Cards</span>
+              </Button>
             </div>
           </CardContent>
         </Card>

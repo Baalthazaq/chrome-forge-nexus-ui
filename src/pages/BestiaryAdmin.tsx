@@ -21,7 +21,6 @@ const BestiaryAdmin = () => {
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
