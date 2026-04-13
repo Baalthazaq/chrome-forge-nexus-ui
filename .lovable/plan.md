@@ -1,24 +1,24 @@
 
 
-## Data Export Page
+## Make Card Descriptions Visible When Selecting Cards
 
-### What
-A new admin-only page at `/admin/data-export` that lists every Supabase table in the project and lets you export each one as a CSV file.
+### Problem
+When players use the "Add Card" dropdown (Domain, Open-Domain, Other), they only see the card name/label in the Select dropdown — no description or content is shown, making it hard to choose.
 
-### Approach
-1. **New page `src/pages/DataExport.tsx`**:
-   - Protected with `useAdmin()` hook (same pattern as other admin pages)
-   - Hardcoded list of all tables (since we know them from the schema): `profiles`, `character_sheets`, `contacts`, `contact_tags`, `quests`, `quest_acceptances`, `purchases`, `bills`, `recurring_payments`, `transactions`, `stones`, `casts`, `stone_participants`, `quick_notes`, `calendar_events`, `calendar_event_shares`, `downtime_activities`, `downtime_balances`, `downtime_config`, `game_calendar`, `game_cards`, `news_articles`, `organizations`, `beholdr_channels`, `beholdr_videos`, `beholdr_comments`, `beholdr_ratings`, `map_areas`, `map_locations`, `map_notes`, `map_location_reviews`, `map_area_reviews`, `map_route_nodes`, `map_route_edges`, `admin_sessions`, `user_roles`, `reputation_tags`
-   - Each table shown as a row with its name and an "Export CSV" button
-   - On click, queries `supabase.from(tableName).select('*')` and converts to CSV, triggering a browser download
-   - Show row count per table after initial load
+### Solution
+Replace the Select dropdown (for non-blank card types) with a scrollable list where each card shows its name as a header and its content/description as expandable text using a collapsible pattern.
 
-2. **Admin page button**: Add a "Data Export" button to the admin grid in `Admin.tsx`, navigating to `/admin/data-export`
+### Changes
 
-3. **Route**: Add `/admin/data-export` to `App.tsx`
+**File: `src/components/doppleganger/CardsSection.tsx`**
 
-### Technical details
-- CSV conversion done client-side using a simple utility (JSON to CSV with headers from object keys)
-- Uses the admin's authenticated session so RLS admin policies grant full SELECT access
-- No new database tables or migrations needed
+1. Add a preview area: when `selectedDomainId` is set, show the selected card's full description below the dropdown so players can read it before confirming. Additionally, replace the flat `SelectItem` list with grouped items that include a truncated description preview.
+
+2. Alternatively (cleaner UX): replace the Select with a scrollable card list where each card is a collapsible — click the card name to expand and see its full description, click a "Select" button to pick it.
+
+**Chosen approach**: Show a **preview panel** below the existing Select dropdown. When a card is selected in the dropdown, its full description appears below. This is the minimal change that solves the problem without replacing the existing dropdown pattern.
+
+### Technical detail
+- After the `<Select>` component (around line 352), add a conditional block: if `selectedDomainId` is set, find the card from `getListForType()` and render its `content` in a styled preview box.
+- This requires no new dependencies or state — just reading from the already-selected `selectedDomainId` and the existing card data.
 
