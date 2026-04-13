@@ -151,7 +151,11 @@ const BestiaryAdmin = () => {
             </Button>
             <Button onClick={seedBestiary} disabled={seeding} variant="outline" size="sm">
               <RefreshCw className={`h-4 w-4 mr-1 ${seeding ? 'animate-spin' : ''}`} />
-              {seeding ? 'Seeding...' : 'Seed from Source'}
+              {seeding ? 'Seeding...' : 'Seed Adversaries'}
+            </Button>
+            <Button onClick={seedEnvironments} disabled={seedingEnvs} variant="outline" size="sm">
+              <RefreshCw className={`h-4 w-4 mr-1 ${seedingEnvs ? 'animate-spin' : ''}`} />
+              {seedingEnvs ? 'Seeding...' : 'Seed Environments'}
             </Button>
           </div>
         </div>
