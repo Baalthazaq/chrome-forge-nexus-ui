@@ -94,7 +94,7 @@ const App = () => (
             <Route path="/admin/tome" element={<ToMeAdmin />} />
             <Route path="/admin/tokens" element={<CharacterTokensPage />} />
             <Route path="/admin/succubus" element={<SuccubusAdmin />} />
-            <Route path="/admin/features" element={<FeatureList />} />
+            <Route path="/features" element={<FeatureList />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
