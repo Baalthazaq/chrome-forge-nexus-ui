@@ -173,6 +173,75 @@ export type Database = {
           },
         ]
       }
+      bestiary_creatures: {
+        Row: {
+          attack_modifier: number | null
+          created_at: string
+          creature_type: string
+          damage: string | null
+          description: string | null
+          difficulty: number | null
+          experience: string | null
+          features: Json | null
+          horde_value: number | null
+          hp: number | null
+          id: string
+          is_custom: boolean | null
+          motives_tactics: string | null
+          name: string
+          stress: number | null
+          thresholds: Json | null
+          tier: number
+          updated_at: string
+          weapon_name: string | null
+          weapon_range: string | null
+        }
+        Insert: {
+          attack_modifier?: number | null
+          created_at?: string
+          creature_type?: string
+          damage?: string | null
+          description?: string | null
+          difficulty?: number | null
+          experience?: string | null
+          features?: Json | null
+          horde_value?: number | null
+          hp?: number | null
+          id?: string
+          is_custom?: boolean | null
+          motives_tactics?: string | null
+          name: string
+          stress?: number | null
+          thresholds?: Json | null
+          tier?: number
+          updated_at?: string
+          weapon_name?: string | null
+          weapon_range?: string | null
+        }
+        Update: {
+          attack_modifier?: number | null
+          created_at?: string
+          creature_type?: string
+          damage?: string | null
+          description?: string | null
+          difficulty?: number | null
+          experience?: string | null
+          features?: Json | null
+          horde_value?: number | null
+          hp?: number | null
+          id?: string
+          is_custom?: boolean | null
+          motives_tactics?: string | null
+          name?: string
+          stress?: number | null
+          thresholds?: Json | null
+          tier?: number
+          updated_at?: string
+          weapon_name?: string | null
+          weapon_range?: string | null
+        }
+        Relationships: []
+      }
       bills: {
         Row: {
           amount: number
