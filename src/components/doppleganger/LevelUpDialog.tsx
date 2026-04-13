@@ -317,6 +317,14 @@ export function LevelUpDialog({
               })()}
             </SelectContent>
           </Select>
+          {autoDomainCardId && (() => {
+            const card = availableDomainCards.find(c => c.id === autoDomainCardId);
+            return card?.content ? (
+              <div className="mt-2 p-3 bg-gray-800/60 border border-gray-700 rounded-md text-sm text-gray-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                {card.content}
+              </div>
+            ) : null;
+          })()}
         </div>
 
         {/* Tier-start Automatics */}
@@ -499,6 +507,14 @@ export function LevelUpDialog({
                           })()}
                         </SelectContent>
                     </Select>
+                    {domainCardPick && (() => {
+                      const card = availableDomainCards.find(c => c.id === domainCardPick);
+                      return card?.content ? (
+                        <div className="mt-2 p-3 bg-gray-800/60 border border-gray-700 rounded-md text-sm text-gray-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                          {card.content}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 )}
 
