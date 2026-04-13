@@ -165,6 +165,10 @@ const Admin = () => {
                 <span className="font-semibold">Feature List</span>
                 <span className="text-xs text-muted-foreground">App Features</span>
               </Button>
+              <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => navigate('/admin/data-export')}>
+                <span className="font-semibold">Data Export</span>
+                <span className="text-xs text-muted-foreground">Export Tables</span>
+              </Button>
             </div>
           </CardContent>
         </Card>
