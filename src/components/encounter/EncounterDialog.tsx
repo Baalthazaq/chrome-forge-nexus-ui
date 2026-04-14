@@ -238,11 +238,14 @@ export const EncounterDialog = ({ encounter, open, onClose, onSaved }: Encounter
                   </div>
                   <ScrollArea className="max-h-40">
                     <div className="space-y-1">
-                      {filteredPickerItems(availableEnvs).map(env => (
+                       {filteredPickerItems(availableEnvs).map(env => (
                         <div key={env.id} className="flex items-center justify-between p-1.5 rounded hover:bg-muted cursor-pointer text-sm" onClick={() => addEnvironment(env)}>
-                          <span>{env.name}</span>
+                          <span className="flex items-center gap-1">
+                            {env._source === 'maze' && <MapPin className="h-3 w-3 text-muted-foreground" />}
+                            {env.name}
+                          </span>
                           <div className="flex gap-1">
-                            <Badge variant="outline" className="text-xs">T{env.tier}</Badge>
+                            {env.tier && <Badge variant="outline" className="text-xs">T{env.tier}</Badge>}
                             <Badge variant="outline" className="text-xs">{env.environment_type}</Badge>
                           </div>
                         </div>
