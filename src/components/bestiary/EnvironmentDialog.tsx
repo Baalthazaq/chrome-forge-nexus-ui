@@ -285,7 +285,7 @@ export const EnvironmentDialog = ({ environment, open, onClose, onSaved }: Props
         </DialogContent>
       </Dialog>
 
-      <FeatureLibraryPicker open={showLibrary} onClose={() => setShowLibrary(false)} onSelect={addFromLibrary} />
+      <EnvironmentFeatureLibraryPicker open={showLibrary} onClose={() => setShowLibrary(false)} onSelect={addFromLibrary} />
     </>
   );
 };
