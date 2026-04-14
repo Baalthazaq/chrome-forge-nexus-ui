@@ -67,8 +67,21 @@ export const EncounterDialog = ({ encounter, open, onClose, onSaved }: Encounter
   }, [encounter]);
 
   const loadEnvs = async () => {
-    const { data } = await supabase.from('bestiary_environments').select('id, name, tier, environment_type').order('name');
-    setAvailableEnvs(data || []);
+    const [{ data: bestiaryEnvs }, { data: mapAreas }] = await Promise.all([
+      supabase.from('bestiary_environments').select('id, name, tier, environment_type').order('name'),
+      supabase.from('map_areas').select('id, name, environment_card').order('name'),
+    ]);
+    const mapped = (mapAreas || []).map(a => ({
+      id: `area:${a.id}`,
+      name: a.name,
+      tier: (a.environment_card as any)?.tier || null,
+      environment_type: (a.environment_card as any)?.type || 'Map Area',
+      _source: 'maze',
+    }));
+    setAvailableEnvs([
+      ...(bestiaryEnvs || []).map(e => ({ ...e, _source: 'bestiary' })),
+      ...mapped,
+    ]);
   };
 
   const loadNpcs = async () => {
