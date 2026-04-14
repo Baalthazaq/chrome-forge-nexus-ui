@@ -145,7 +145,7 @@ export const BestiaryCreatureDialog = ({ creature, open, onClose, onSaved }: Pro
         weapon_range: form.weapon_range,
         damage: form.damage,
         experience: form.experience,
-        features: features.filter(f => f.name.trim()),
+        features: features.filter(f => f.name.trim()) as unknown as any,
         horde_value: form.horde_value !== '' ? Number(form.horde_value) : null,
         is_custom: form.is_custom,
         image_url: form.image_url || null,
