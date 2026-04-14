@@ -186,6 +186,7 @@ export type Database = {
           horde_value: number | null
           hp: number | null
           id: string
+          image_url: string | null
           is_custom: boolean | null
           motives_tactics: string | null
           name: string
@@ -208,6 +209,7 @@ export type Database = {
           horde_value?: number | null
           hp?: number | null
           id?: string
+          image_url?: string | null
           is_custom?: boolean | null
           motives_tactics?: string | null
           name: string
@@ -230,6 +232,7 @@ export type Database = {
           horde_value?: number | null
           hp?: number | null
           id?: string
+          image_url?: string | null
           is_custom?: boolean | null
           motives_tactics?: string | null
           name?: string
@@ -277,6 +280,36 @@ export type Database = {
           name?: string
           potential_adversaries?: string | null
           tier?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bestiary_features: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          name: string
+          tier: number | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          name: string
+          tier?: number | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          tier?: number | null
+          type?: string
           updated_at?: string
         }
         Relationships: []
