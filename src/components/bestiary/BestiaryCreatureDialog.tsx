@@ -98,17 +98,18 @@ export const BestiaryCreatureDialog = ({ creature, open, onClose, onSaved }: Pro
 
   const saveFeatureToLibrary = async (feature: FeatureItem) => {
     if (!feature.name.trim()) return;
-    const { error } = await supabase.from('bestiary_features').upsert(
-      { name: feature.name, type: feature.type, description: feature.description },
-      { onConflict: 'name' }
-    );
-    if (error) {
-      // If upsert fails due to no unique constraint, just insert
+    // Check if already exists
+    const { data } = await supabase
+      .from('bestiary_features')
+      .select('id')
+      .eq('name', feature.name)
+      .maybeSingle();
+    if (!data) {
       await supabase.from('bestiary_features').insert({
         name: feature.name,
         type: feature.type,
         description: feature.description,
-      });
+      } as any);
     }
   };
 
