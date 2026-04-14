@@ -137,10 +137,6 @@ const BestiaryAdmin = () => {
             <Button onClick={() => setShowCreateDialog(true)} size="sm">
               <Plus className="h-4 w-4 mr-1" /> Add Creature
             </Button>
-            <Button onClick={seedBestiary} disabled={seeding} variant="outline" size="sm">
-              <RefreshCw className={`h-4 w-4 mr-1 ${seeding ? 'animate-spin' : ''}`} />
-              {seeding ? 'Seeding...' : 'Seed from Source'}
-            </Button>
           </div>
         </div>
 
