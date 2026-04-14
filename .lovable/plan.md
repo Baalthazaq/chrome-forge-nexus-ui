@@ -1,21 +1,16 @@
 
 
-## Add Missing Tier 3 Creatures to Bestiary Seed
+## Replace browser `confirm()` with AlertDialog
 
-### Problem
-The seed function only contains 6 of 23 Tier 3 creatures. 17 are missing because the original page fetch was truncated (dynamic rendering).
+The delete button currently uses a native browser `confirm()` dialog, which works but looks out of place. I'll replace it with the existing shadcn `AlertDialog` component for a styled, consistent confirmation modal.
 
-### Plan
+### Changes
 
-1. **Extract full stat blocks** for all 17 missing Tier 3 creatures from the live site using browser tools (scrolling through each creature card to capture difficulty, thresholds, HP, stress, attack, weapon, damage, experience, and features).
+**File: `src/pages/BestiaryAdmin.tsx`**
+- Add `AlertDialog` imports from `@/components/ui/alert-dialog`
+- Add state for `deleteTarget` (creature to potentially delete)
+- Replace the inline `confirm()` call with setting `deleteTarget`
+- Add an `AlertDialog` component at the bottom that shows the creature name, warns this action is irreversible, and provides Cancel/Delete buttons
 
-2. **Update `supabase/functions/seed-bestiary/index.ts`** to append all 17 missing Tier 3 creatures to the `creatures` array with complete data (stats + JSONB features).
-
-3. **Re-deploy the edge function** so clicking "Seed from Source" in the admin UI populates all 23 Tier 3 creatures.
-
-### Technical detail
-- Each creature entry follows the existing pattern in the seed file: `{ name, tier, creature_type, description, motives_tactics, difficulty, thresholds, hp, stress, attack_modifier, weapon_name, weapon_range, damage, experience, features, horde_value }`
-- Features are stored as JSONB arrays of `{ name, type, description }` objects
-- The seed function uses `upsert` with `onConflict: 'name'`, so re-seeding won't create duplicates
-- Multiple browser extract calls will be needed to capture all creature data from the dynamically-rendered page
+Single file change, straightforward swap.
 
