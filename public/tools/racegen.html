@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyberpunk Ancestry Node V3.2</title>
+    <style>
+        :root {
+            --bg-dark: #050505;
+            --bg-panel: #111116;
+            --text-main: #e0e0e0;
+            --text-dim: #888;
+            --neon-blue: #00f3ff;
+            --neon-green: #0aff0a;
+            --neon-pink: #ff00ff;
+            --neon-orange: #ff9d00;
+            --border-color: #333;
+        }
+
+        body {
+            font-family: "Courier New", Courier, monospace;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 { 
+            text-align: center; 
+            color: var(--neon-blue); 
+            text-transform: uppercase; 
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+        }
+        
+        /* CONTROLS */
+        .controls {
+            background: var(--bg-panel);
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+        
+        input[type="number"] {
+            background: #000;
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 8px;
+            font-family: inherit;
+            width: 60px;
+        }
+
+        button.action-btn {
+            padding: 12px 24px;
+            background-color: transparent;
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+            cursor: pointer;
+            font-weight: bold;
+            font-family: inherit;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            box-shadow: 0 0 5px var(--neon-green);
+        }
+        button.action-btn:hover { 
+            background-color: var(--neon-green); 
+            color: black;
+            box-shadow: 0 0 15px var(--neon-green);
+        }
+        
+        /* CARD STYLING */
+        .dna-card {
+            background: var(--bg-panel);
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-left: 4px solid #555;
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .dna-card.pure { border-left-color: var(--neon-blue); box-shadow: -2px 0 10px rgba(0, 243, 255, 0.1); }
+        .dna-card.harmonic { border-left-color: var(--neon-green); box-shadow: -2px 0 10px rgba(10, 255, 10, 0.1); }
+        .dna-card.hybrid { border-left-color: var(--neon-orange); box-shadow: -2px 0 10px rgba(255, 157, 0, 0.1); }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #222;
+            padding-bottom: 10px;
+        }
+
+        .identity-block h2 {
+            margin: 0;
+            font-size: 1.8rem;
+            color: var(--text-main);
+            letter-spacing: -1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .identity-block .sub-id {
+            color: var(--neon-blue);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+
+        .gender-icon-lg {
+            font-size: 1.4rem;
+        }
+
+        .mix-badge {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border: 1px solid currentColor;
+            margin-left: 10px;
+            vertical-align: middle;
+            letter-spacing: 1px;
+        }
+        .bg-harmonic { color: var(--neon-green); border-color: var(--neon-green); }
+        .bg-hybrid { color: var(--neon-orange); border-color: var(--neon-orange); }
+        
+        /* TRAIT GRID */
+        .trait-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+            background: #000;
+            padding: 10px;
+            border: 1px solid #333;
+        }
+        
+        .trait-box {
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .trait-label { display: block; font-size: 0.65rem; color: #555; text-transform: uppercase; margin-bottom: 2px; }
+        .trait-val { font-weight: bold; }
+        .t-pos { color: var(--neon-green); }
+        .t-neu { color: var(--neon-blue); }
+        .t-neg { color: var(--neon-pink); }
+
+        /* COMPOSITION BAR */
+        .composition-bar {
+            height: 12px;
+            width: 100%;
+            background: #000;
+            border: 1px solid #333;
+            display: flex;
+            margin-bottom: 15px;
+        }
+        .comp-segment { height: 100%; border-right: 1px solid #000; }
+
+        details { margin-bottom: 5px; border-bottom: 1px solid #222; }
+        
+        summary {
+            padding: 8px 5px;
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            font-weight: 500;
+            color: var(--text-main);
+            transition: color 0.2s;
+        }
+        
+        summary:hover { color: var(--neon-blue); }
+        summary::after { content: '[+]'; font-family: monospace; color: var(--text-dim); }
+        details[open] summary::after { content: '[-]'; }
+
+        .variant-list {
+            padding: 10px 15px;
+            background-color: rgba(255,255,255,0.03);
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            border-left: 1px dotted #444;
+        }
+        
+        .variant-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+        }
+
+        .pct {
+            background: #222;
+            padding: 2px 6px;
+            font-size: 0.75rem;
+            color: var(--neon-blue);
+            border: 1px solid #333;
+        }
+
+        /* --- TREE VISUALIZATION --- */
+        .tree-toggle-btn {
+            background: #222;
+            color: var(--text-dim);
+            border: 1px solid #444;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            margin-top: 15px;
+            width: 100%;
+            font-family: inherit;
+            text-transform: uppercase;
+        }
+        .tree-toggle-btn:hover { border-color: var(--neon-blue); color: var(--neon-blue); }
+
+        .tree-container {
+            display: none;
+            margin-top: 15px;
+            padding: 20px;
+            background: #080808;
+            border: 1px solid #333;
+            overflow-x: auto;
+            background-image: 
+                linear-gradient(rgba(20, 20, 20, 1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(20, 20, 20, 1) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .tree-container.active { display: block; }
+
+        .tree { width: max-content; margin: 0 auto; }
+        .tree ul { padding-top: 20px; position: relative; display: flex; }
+        .tree li { float: left; text-align: center; list-style-type: none; position: relative; padding: 20px 5px 0 5px; }
+
+        /* Tree Lines */
+        .tree li::before, .tree li::after {
+            content: ''; position: absolute; top: 0; right: 50%;
+            border-top: 1px solid #444; width: 50%; height: 20px;
+        }
+        .tree li::after { right: auto; left: 50%; border-left: 1px solid #444; }
+        .tree li:only-child::after, .tree li:only-child::before { display: none; }
+        .tree li:only-child { padding-top: 0; }
+        .tree li:first-child::before, .tree li:last-child::after { border: 0 none; }
+        .tree li:last-child::before { border-right: 1px solid #444; border-radius: 0 5px 0 0; }
+        .tree li:first-child::after { border-radius: 5px 0 0 0; }
+        .tree ul ul::before { content: ''; position: absolute; top: 0; left: 50%; border-left: 1px solid #444; width: 0; height: 20px; }
+
+        /* The Nodes */
+        .tree .node {
+            border: 1px solid #444;
+            padding: 5px 8px;
+            color: #aaa;
+            font-size: 10px;
+            display: inline-block;
+            background: #111;
+            min-width: 80px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.8);
+            position: relative;
+            z-index: 2;
+        }
+
+        .tree .node strong { display: block; font-size: 11px; color: #fff; margin-bottom: 2px; }
+        .tree .node span.variant { font-size: 9px; color: var(--neon-blue); display: block; }
+        
+        .gender-m { color: var(--neon-blue); font-weight: bold; margin-left: 4px; }
+        .gender-f { color: var(--neon-pink); font-weight: bold; margin-left: 4px; }
+
+        /* Node Coloring */
+        .node.mixed-harmonic { border-color: var(--neon-green); box-shadow: 0 0 5px rgba(10, 255, 10, 0.2); }
+        .node.mixed-hybrid { border-color: var(--neon-orange); box-shadow: 0 0 5px rgba(255, 157, 0, 0.2); }
+        .node.pure { border-color: var(--neon-blue); box-shadow: 0 0 5px rgba(0, 243, 255, 0.2); }
+
+    </style>
+</head>
+<body>
+
+    <h1>> Ancestry_Node_V3.2</h1>
+
+    <div class="controls">
+        <label for="count">BATCH_SIZE:</label>
+        <input type="number" id="count" value="3" min="1" max="50">
+        <button id="generate" class="action-btn">EXECUTE</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        // --- DATA ---
+        
+        // 1. RACES
+        const RACES = [
+            { name: "Aarakocra", family: "Avian", weight: 9, variants: ["Raptor","Sea","Waterfowl","Wader","Song","Game","Parrot","Ground","Noct"] },
+            { name: "Galapa", family: "Beastfolk", weight: 2, variants: ["Tortoise", "Turtle"] },
+            { name: "Loxodon", family: "Beastfolk", weight: 1, variants: ["Western", "Eastern"] },
+            { name: "Merfolk", family: "Beastfolk", weight: 1, variants: ["Mammalian", "Lake", "Sea", "Deep"] },
+            { name: "Ribbet", family: "Beastfolk", weight: 2, variants: ["Toad", "Pond", "Poison"] },
+            { name: "Firbolg", family: "Giant", weight: 2, variants: ["Bolgward", "Firward"] },
+            { name: "Spider", family: "Aberration", weight: 2, variants: ["Orbweaver", "Trapdoor", "Queen", "Tank", "Stalker", "Train", "Harvestman", "Frogseller"] },
+            { name: "Fungril", family: "Fey", weight: 2, variants: ["Parasitic", "Puff", "Toxic", "Coral", "Cap"] },
+            { name: "Simiah", family: "Beastfolk", weight: 2, variants: ["Great", "Canopy", "Band"] },
+            { name: "Aasimar", family: "Planar", weight: 1, variants: ["Protector", "Scourge", "Fallen"] },
+            { name: "Bugbear", family: "Goblinoid", weight: 1, variants: ["Common"] },
+            { name: "Centaur", family: "Fey", weight: 1, variants: ["Clydesdale","Friesian","Arabian"] },
+            { name: "Changeling", family: "Shapeshifter", weight: 1, variants: ["Doppleganger", "Common"] },
+            { name: "Dragonborn", family: "Draconic", weight: 11, variants: ["Gold","Red","Green","Blue","Black","White","Silver","Bronze","Brass","Copper","Steel"] },
+            { name: "Drow", family: "Elven", weight: 1, variants: ["Selunite", "Lolth-sworn", "Drider"] },
+            { name: "Duergar", family: "Dwarven", weight: 1, variants: ["Deep", "Surface"] },
+            { name: "Dwarf", family: "Dwarven", weight: 30, variants: ["Aquatic","Arctic","Desert","Dream","Earth","Exiled","Frost","Glacier","Gold","Gray","Hill","Jungle","Mountain","Sea","Seacliff"] },
+            { name: "Elf", family: "Elven", weight: 26, variants: ["Aquatic","Arctic","Desert","Fire","Ghost","Gray","High","Jungle","Painted","Snow","Umbragen","Wild","Wood"] },
+            { name: "Giant", family: "Giant", weight: 4, variants: ["Fire","Frost","Hill","Jungle","Sand","Stone","Cloud","Storm"] },
+            { name: "Goliath", family: "Giant", weight: 4, variants: ["Fire","Frost","Hill","Jungle","Sand","Stone","Cloud","Storm"] },
+            { name: "Ogre", family: "Giant", weight: 1, variants: ["Common", "Mage"] },
+            { name: "Troll", family: "Giant", weight: 2, variants: ["Crystalline", "Rock", "Sea", "Common"] },
+            { name: "Gnome", family: "Gnome", weight: 11, variants: ["Air","Aquatic","Arctic","Desert","Fire","Forest","Jungle","Rock","Techno","Wavecrest","Whisper"] },
+	    { name: "Exotic Aberration", family: "Aberration", weight: 1, variants: ["Death Slaad","Gray Slaad","Green Slaad","Githyanki","Githzerai", "Mindflayer", "Beholder"]},
+	    { name: "Exotic Construct", family: "Construct", weight: 1, variants: ["Clay Golem","Flesh Golem","Helmed Horror","Homunculus","Iron Golem","Scarecrow","Stone Golem","Colossus"]},
+	    { name: "Exotic Dragon", family: "Dragon", weight: 1, variants: ["Pseudodragon","Shadow Dragon","Black Dragon","Blue Dragon","Green Dragon","Red Dragon","White Dragon","Brass Dragon","Bronze Dragon","Copper Dragon","Gold Dragon","Silver Dragon"]},
+	    { name: "Exotic Fiend", family: "Planar", weight: 1, variants: ["Cambion","Incubus","Lamia","Larva","Night Hag","Nightmare","Oni","Succubus","Quasit","Imp"]},
+	    { name: "Monstrosity", family: "Monstrosity", weight: 1, variants: ["Doppelganger","Medusa","Peryton", "Lamplighter"]},
+	    { name: "Awakened Plant", family: "Plant", weight: 1, variants: ["Blight", "Treant", "Awakened Plant", "Dryad"]},
+	    { name: "Undead", family: "Undead", weight: 1, variants: ["Banshee","Crawling Claw","Dracolich","Flaming Skeleton","Ghost","Ghoul","Mummy","Poltergeist","Revenant","Skeleton","Vampire","Vampire Spawn","Will-o'-Wisp","Wraith","Zombie"]},
+	    { name: "Risen Beast", family: "Beastfolk", weight: 1, variants: ["Giant Eagle","Giant Elk","Giant Owl","Pegasus","Sphinx of Lore","Sphinx of Secrets","Sphinx of Valor","Sphinx of Wonder","Gnoll","Naga","Rakshasa", "Harpy", "Manticore", "Winter Wolf"]},
+            { name: "Svirfneblin", family: "Gnome", weight: 1, variants: ["Deep", "Slave", "Surface"] },
+            { name: "Goblin", family: "Goblinoid", weight: 8, variants: ["Air","Aquatic","Arctic","Desert","Forest","Jungle","Snow","Dungeon", "Hob"] },
+            { name: "Halfling", family: "Halfling", weight: 10, variants: ["Aquatic","Arctic","Desert","Jungle","Lightfoot","Shoal","Tallfellow","Tundra","Unsheltered","Water", "Kender"] },
+            { name: "Human", family: "Human", weight: 15, variants: ["Raccan", "Alaethean", "Golden", "Islander", "Mage-Touched", "Adamant", "Tomber", "Desert", "Gunner", "Short'r", "Tunnel", "Deep", "Columbus", "Atlassian"] },
+            { name: "Illumian", family: "Human", weight: 1, variants: ["Noble", "Unique", "Secret"] },
+            { name: "Kobold", family: "Draconic", weight: 3, variants: ["Aquatic","Arctic","Desert","Earth","Jungle"] },
+            { name: "Lizardfolk", family: "Reptilian", weight: 2, variants: ["Venomous", "Poisonous", "Non-Venomous"] },
+            { name: "Yuan-Ti", family: "Reptilian", weight: 1, variants: ["Pureblood", "Caste"] },
+            { name: "Elemental", family: "Planar", weight: 4, variants: ["Air","Earth","Fire","Water","Void"] },
+            { name: "Tiefling", family: "Planar", weight: 1, variants: ["Asmodean", "Dis", "Hag", "Hellfire", "Levistian", "Serpentine", "Slug", "Incestuous", "Abyssal", "Chthonic"] },
+            { name: "Mephling", family: "Planar", weight: 4, variants: ["Air","Earth","Fire","Water"] },
+            { name: "Orc", family: "Orcish", weight: 7, variants: ["Aquatic","Arctic","Desert","Jungle","ScabLands","Water"] },
+            { name: "Warforged", family: "Construct", weight: 3, variants: ["Charger","Scout","Titan", "Common"] },
+            { name: "Mixed", weight: 100, variants: [] },
+            { name: "Tabaxi", family: "Beastfolk", weight: 1, variants: ["Mainecoon", "Cheetah", "Leonid", "Tiger", "Jaguar", "Sphynx"] },
+            { name: "Kenku", family: "Avian", weight: 1, variants: ["Crow", "Raven", "Magpie", "Jay", "Jackdaw", "Rook"] },
+            { name: "Fairy", family: "Fey", weight: 1, variants: ["Tooth", "Trickster", "Dominion"] },
+            { name: "Satyr", family: "Fey", weight: 1, variants: ["Faun", "Pan"] },
+            { name: "Shifter", family: "Lycan", weight: 1, variants: ["Saurian","Mammalian","Avian"] },
+            { name: "Minotaur", family: "Beastfolk", weight: 1, variants: ["Maze", "Free"] }
+        ];
+
+
+        // 2. TRAITS
+        const TRAIT_DATA = {
+            pos: [
+                "Accessible", "Active", "Adaptable", "Admirable", "Adventurous", "Agreeable", "Alert", "Allocentric", "Amiable", "Anticipative", "Appreciative", "Articulate", "Aspiring", "Athletic", "Attractive", "Balanced", "Benevolent", "Brilliant", "Calm", "Capable", "Captivating", "Caring", "Challenging", "Charismatic", "Charming", "Cheerful", "Clean", "Clear-headed", "Clever", "Colorful", "Companionly", "Compassionate", "Conciliatory", "Confident", "Conscientious", "Considerate", "Constant", "Contemplative", "Cooperative", "Courageous", "Courteous", "Creative", "Cultured", "Curious", "Daring", "Debonair", "Decent", "Decisive", "Dedicated", "Deep", "Dignified", "Directed", "Disciplined", "Discreet", "Dramatic", "Dutiful", "Dynamic", "Earnest", "Ebullient", "Educated", "Efficient", "Elegant", "Eloquent", "Empathetic", "Energetic", "Enthusiastic", "Esthetic", "Exciting", "Extraordinary", "Fair", "Faithful", "Farsighted", "Felicific", "Firm", "Flexible", "Focused", "Forceful", "Forgiving", "Forthright", "Freethinking", "Friendly", "Fun-loving", "Gallant", "Generous", "Gentle", "Genuine", "Good-natured", "Gracious", "Hardworking", "Healthy", "Hearty", "Helpful", "Heroic", "High-minded", "Honest", "Honorable", "Humble", "Humorous", "Idealistic", "Imaginative", "Impressive", "Incisive", "Incorruptible", "Independent", "Individualistic", "Innovative", "Inoffensive", "Insightful", "Insouciant", "Intelligent", "Intuitive", "Invulnerable", "Kind", "Knowledge", "Leaderly", "Leisurely", "Liberal", "Logical", "Lovable", "Loyal", "Lyrical", "Magnanimous", "Many-sided", "Masculine (Manly)", "Mature", "Methodical", "Meticulous", "Moderate", "Modest", "Multi-leveled", "Neat", "Nonauthoritarian", "Objective", "Observant", "Open", "Optimistic", "Orderly", "Organized", "Original", "Painstaking", "Passionate", "Patient", "Patriotic", "Peaceful", "Perceptive", "Perfectionist", "Personable", "Persuasive", "Planful", "Playful", "Polished", "Popular", "Practical", "Precise", "Principled", "Profound", "Protean", "Protective", "Provident", "Prudent", "Punctual", "Purposeful", "Rational", "Realistic", "Reflective", "Relaxed", "Reliable", "Resourceful", "Respectful", "Responsible", "Responsive", "Reverential", "Romantic", "Rustic", "Sage", "Sane", "Scholarly", "Scrupulous", "Secure", "Selfless", "Self-critical", "Self-defacing", "Self-denying", "Self-reliant", "Self-sufficient", "Sensitive", "Sentimental", "Seraphic", "Serious", "Sexy", "Sharing", "Shrewd", "Simple", "Skillful", "Sober", "Sociable", "Solid", "Sophisticated", "Spontaneous", "Sporting", "Stable", "Steadfast", "Steady", "Stoic", "Strong", "Studious", "Suave", "Subtle", "Sweet", "Sympathetic", "Systematic", "Tasteful", "Teacherly", "Thorough", "Tidy", "Tolerant", "Tractable", "Trusting", "Uncomplaining", "Understanding", "Undogmatic", "Unfoolable", "Upright", "Urbane", "Venturesome", "Vivacious", "Well-bred", "Well-read", "Well-rounded", "Winning", "Wise", "Witty", "Youthful"
+            ],
+            neu: [
+                "Absentminded", "Aggressive", "Ambitious", "Amusing", "Artful", "Ascetic", "Authoritarian", "Big-thinking", "Boyish", "Breezy", "Businesslike", "Busy", "Casual", "Cerebral", "Chummy", "Circumspect", "Competitive", "Complex", "Confidential", "Conservative", "Contradictory", "Crisp", "Cute", "Deceptive", "Determined", "Dominating", "Dreamy", "Driving", "Droll", "Dry", "Earthy", "Effeminate", "Emotional", "Enigmatic", "Experimental", "Familial", "Folksy", "Formal", "Freewheeling", "Glamorous", "Guileless", "High-spirited", "Hurried", "Hypnotic", "Iconoclastic", "Idiosyncratic", "Impassive", "Impersonal", "Impressionable", "Intense", "Invisible", "Irreligious", "Irreverent", "Maternal", "Mellow", "Modern", "Moralistic", "Mystical", "Neutral", "Noncommittal", "Noncompetitive", "Obedient", "Old-fashioned", "Ordinary", "Outspoken", "Paternalistic", "Physical", "Placid", "Political", "Predictable", "Preoccupied", "Private", "Progressive", "Proud", "Pure", "Questioning", "Quiet", "Religious", "Reserved", "Restrained", "Retiring", "Sarcastic", "Self-conscious", "Sensual", "Skeptical", "Smooth", "Soft", "Solemn", "Solitary", "Stern", "Stolid", "Strict", "Stubborn", "Stylish", "Subjective", "Surprising", "Soft", "Tough", "Unaggressive", "Unambitious", "Unceremonious", "Unchanging", "Undemanding", "Unfathomable", "Unhurried", "Uninhibited", "Unpatriotic", "Unpredictable", "Unreligious", "Unsentimental", "Whimsical"
+            ],
+            neg: [
+                "Abrasive", "Abrupt", "Agonizing", "Aimless", "Airy", "Aloof", "Amoral", "Angry", "Anxious", "Apathetic", "Arbitrary", "Argumentative", "Arrogant", "Artificial", "Asocial", "Assertive", "Astigmatic", "Barbaric", "Bewildered", "Bizarre", "Bland", "Blunt", "Boisterous", "Brittle", "Brutal", "Calculating", "Callous", "Cantankerous", "Careless", "Cautious", "Charmless", "Childish", "Clumsy", "Coarse", "Cold", "Colorless", "Complacent", "Complaintive", "Compulsive", "Condemnatory", "Conformist", "Confused", "Contemptible", "Conventional", "Cowardly", "Crafty", "Crass", "Crazy", "Criminal", "Critical", "Crude", "Cruel", "Cynical", "Decadent", "Deceitful", "Delicate", "Demanding", "Dependent", "Desperate", "Destructive", "Devious", "Difficult", "Dirty", "Disconcerting", "Discontented", "Discouraging", "Discourteous", "Dishonest", "Disloyal", "Disobedient", "Disorderly", "Disorganized", "Disputatious", "Disrespectful", "Disruptive", "Dissolute", "Dissonant", "Distractible", "Disturbing", "Dogmatic", "Domineering", "Dull", "Easily Discouraged", "Egocentric", "Enervated", "Envious", "Erratic", "Escapist", "Excitable", "Expedient", "Extravagant", "Extreme", "Faithless", "False", "Fanatical", "Fanciful", "Fatalistic", "Fawning", "Fearful", "Fickle", "Fiery", "Fixed", "Flamboyant", "Foolish", "Forgetful", "Fraudulent", "Frightening", "Frivolous", "Gloomy", "Graceless", "Grand", "Greedy", "Grim", "Gullible", "Hateful", "Haughty", "Hedonistic", "Hesitant", "Hidebound", "High-handed", "Hostile", "Ignorant", "Imitative", "Impatient", "Impractical", "Imprudent", "Impulsive", "Inconsiderate", "Incurious", "Indecisive", "Indulgent", "Inert", "Inhibited", "Insecure", "Insensitive", "Insincere", "Insulting", "Intolerant", "Irascible", "Irrational", "Irresponsible", "Irritable", "Lazy", "Libidinous", "Loquacious", "Malicious", "Mannered", "Mannerless", "Mawkish", "Mealy-mouthed", "Mechanical", "Meddlesome", "Melancholic", "Meretricious", "Messy", "Miserable", "Miserly", "Misguided", "Mistaken", "Money-minded", "Monstrous", "Moody", "Morbid", "Muddle-headed", "Naive", "Narcissistic", "Narrow", "Narrow-minded", "Natty", "Negativistic", "Neglectful", "Neurotic", "Nihilistic", "Obnoxious", "Obsessive", "Obvious", "Odd", "Offhand", "One-dimensional", "One-sided", "Opinionated", "Opportunistic", "Oppressed", "Outrageous", "Overimaginative", "Paranoid", "Passive", "Pedantic", "Perverse", "Petty", "Pharisaical", "Phlegmatic", "Plodding", "Pompous", "Possessive", "Power-hungry", "Predatory", "Prejudiced", "Presumptuous", "Pretentious", "Prim", "Procrastinating", "Profligate", "Provocative", "Pugnacious", "Puritanical", "Quirky", "Reactionary", "Reactive", "Regimental", "Regretful", "Repentant", "Repressed", "Resentful", "Ridiculous", "Rigid", "Ritualistic", "Rowdy", "Ruined", "Sadistic", "Sanctimonious", "Scheming", "Scornful", "Secretive", "Sedentary", "Selfish", "Self-indulgent", "Shallow", "Shortsighted", "Shy", "Silly", "Single-minded", "Sloppy", "Slow", "Sly", "Small-thinking", "Softheaded", "Sordid", "Steely", "Stiff", "Strong-willed", "Stupid", "Submissive", "Superficial", "Superstitious", "Suspicious", "Tactless", "Tasteless", "Tense", "Thievish", "Thoughtless", "Timid", "Transparent", "Treacherous", "Trendy", "Troublesome", "Unappreciative", "Uncaring", "Uncharitable", "Unconvincing", "Uncooperative", "Uncreative", "Uncritical", "Unctuous", "Undisciplined", "Unfriendly", "Ungrateful", "Unhealthy", "Unimaginative", "Unimpressive", "Unlovable", "Unpolished", "Unprincipled", "Unrealistic", "Unreflective", "Unreliable", "Unrestrained", "Unself-critical", "Unstable", "Vacuous", "Vague", "Venal", "Venomous", "Vindictive", "Vulnerable", "Weak", "Weak-willed", "Well-meaning", "Willful", "Wishful", "Zany"
+            ]
+        };
+
+        // --- GENERATORS ---
+
+        function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+        function generateInitials() {
+            const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const r = Math.random();
+            let count = 2;
+            if (r > 0.9) count = 1;
+            if (r > 0.6 && r <= 0.9) count = 3;
+
+            let res = "";
+            for(let i=0; i<count; i++) {
+                res += letters[Math.floor(Math.random() * 26)] + ".";
+                if(i < count-1) res += " ";
+            }
+            return res;
+        }
+
+        function generateTraits() {
+            return {
+                pos: rand(TRAIT_DATA.pos),
+                neu: rand(TRAIT_DATA.neu),
+                neg: rand(TRAIT_DATA.neg)
+            };
+        }
+
+        // --- CORE LOGIC ---
+
+        const FAMILIES = [...new Set(RACES.map(r => r.family).filter(f => f))];
+
+        function randomWeighted(items) {
+            const total = items.reduce((sum, it) => sum + (it.weight || 1), 0);
+            let r = Math.random() * total;
+            for (const it of items) {
+                r -= (it.weight || 1);
+                if (r <= 0) return it;
+            }
+            return items[items.length - 1];
+        }
+
+        function rollRaceFromDef(def) {
+            const candidates = def.variants || [];
+            const variant = candidates.length ? rand(candidates) : null;
+            return {
+                kind: "race",
+                name: def.name,
+                family: def.family || "Unique",
+                variant: variant
+            };
+        }
+
+        function rollRecursive(depth = 0, filterFamily = null, excludeFamily = null) {
+            if (depth > 5) {
+                const pureRaces = RACES.filter(r => r.name !== "Mixed");
+                const def = randomWeighted(pureRaces);
+                return rollRaceFromDef(def);
+            }
+
+            let pool;
+
+            if (filterFamily) {
+                const familyRaces = RACES.filter(r => r.family === filterFamily);
+                const maxWeight = Math.max(...familyRaces.map(r => r.weight || 1));
+                const mixedEntry = RACES.find(r => r.name === "Mixed");
+                const cappedMixed = { ...mixedEntry, weight: maxWeight };
+                pool = [...familyRaces, cappedMixed];
+            } else if (excludeFamily) {
+                pool = RACES.filter(r => r.family !== excludeFamily);
+            } else {
+                pool = RACES;
+            }
+
+            const def = randomWeighted(pool);
+            
+            if (def.name === "Mixed") {
+                if (filterFamily) {
+                    return {
+                        kind: "mixed",
+                        variant: "Harmonic",
+                        p1: rollRecursive(depth + 1, filterFamily, null),
+                        p2: rollRecursive(depth + 1, filterFamily, null)
+                    };
+                }
+
+                const isHarmonic = Math.random() < 0.5;
+
+                if (isHarmonic) {
+                    const targetFamily = rand(FAMILIES);
+                    return {
+                        kind: "mixed",
+                        variant: "Harmonic",
+                        p1: rollRecursive(depth + 1, targetFamily, null),
+                        p2: rollRecursive(depth + 1, targetFamily, null)
+                    };
+                } else {
+                    const p1 = rollRecursive(depth + 1, null, null);
+                    const p1Family = p1.family || "Unique";
+                    return {
+                        kind: "mixed",
+                        variant: "Hybrid",
+                        p1: p1,
+                        p2: rollRecursive(depth + 1, null, p1Family)
+                    };
+                }
+            }
+            
+            return rollRaceFromDef(def);
+        }
+
+        function calculateDNA(entry, percentage = 100, results = {}) {
+            if (entry.kind === "mixed") {
+                calculateDNA(entry.p1, percentage / 2, results);
+                calculateDNA(entry.p2, percentage / 2, results);
+            } else {
+                const name = entry.name;
+                if (!results[name]) {
+                    results[name] = { total: 0, family: entry.family, variants: {} };
+                }
+                results[name].total += percentage;
+
+                const vName = entry.variant || "Standard";
+                if (!results[name].variants[vName]) {
+                    results[name].variants[vName] = 0;
+                }
+                results[name].variants[vName] += percentage;
+            }
+            return results;
+        }
+
+        // --- TREE GENERATION LOGIC ---
+        function generateTreeHTML(entry, gender = null) {
+            let html = '<li>';
+            
+            let label = "";
+            let cssClass = "";
+            let symbol = "";
+
+            if (gender === 'M') symbol = `<span class="gender-m">♂</span>`;
+            if (gender === 'F') symbol = `<span class="gender-f">♀</span>`;
+            // If random ('R') is still requested recursively, we resolve it here
+            if (gender === 'R') symbol = Math.random() < 0.5 ? `<span class="gender-m">♂</span>` : `<span class="gender-f">♀</span>`;
+
+            if (entry.kind === "mixed") {
+                label = `<strong>Mixed${symbol}</strong><span class="variant">${entry.variant}</span>`;
+                cssClass = entry.variant === "Harmonic" ? "mixed-harmonic" : "mixed-hybrid";
+            } else {
+                label = `<strong>${entry.name}${symbol}</strong><span class="variant">${entry.variant || "Standard"}</span>`;
+                cssClass = "pure";
+            }
+
+            html += `<div class="node ${cssClass}">${label}</div>`;
+
+            if (entry.kind === "mixed") {
+                html += '<ul>';
+                html += generateTreeHTML(entry.p1, 'M'); 
+                html += generateTreeHTML(entry.p2, 'F');
+                html += '</ul>';
+            }
+
+            html += '</li>';
+            return html;
+        }
+
+        // --- RENDERING ---
+        const COLORS = ["#ff00ff", "#00f3ff", "#0aff0a", "#bf00ff", "#ff9d00", "#ffff00"];
+
+        function renderResults(entries) {
+            const container = document.getElementById("results");
+            container.innerHTML = "";
+
+            entries.forEach((entry, idx) => {
+                const dna = calculateDNA(entry);
+                const sortedRaces = Object.entries(dna).sort((a, b) => b[1].total - a[1].total);
+                
+                const initials = generateInitials();
+                const traits = generateTraits();
+                // Determine gender for this person (Main Subject)
+                const gender = Math.random() < 0.5 ? 'M' : 'F';
+                const genderSymbol = gender === 'M' ? '♂' : '♀';
+                const genderClass = gender === 'M' ? 'gender-m' : 'gender-f';
+
+                const card = document.createElement("div");
+                card.className = "dna-card";
+
+                const titleStr = sortedRaces.slice(0, 2).map(([name]) => name).join(" / ");
+                
+                let badges = "";
+                let borderColorClass = "pure";
+
+                if (entry.kind === "mixed") {
+                    if (entry.variant === "Harmonic") {
+                        badges += `<span class="mix-badge bg-harmonic">Harmonic</span>`;
+                        borderColorClass = "harmonic";
+                    } else {
+                        badges += `<span class="mix-badge bg-hybrid">Hybrid</span>`;
+                        borderColorClass = "hybrid";
+                    }
+                }
+
+                card.classList.add(borderColorClass);
+
+                // --- HEADER WITH INITIALS & GENDER ---
+                const header = document.createElement("div");
+                header.className = "card-header";
+                header.innerHTML = `
+                    <div class="identity-block">
+                        <h2>
+                            ${initials} 
+                            <span class="${genderClass} gender-icon-lg">${genderSymbol}</span>
+                        </h2>
+                        <div class="sub-id">${titleStr} ${badges}</div>
+                    </div>
+                    <span style="font-family:monospace; color:#444;">ID:${Math.floor(Math.random()*9000)+1000}</span>
+                `;
+                card.appendChild(header);
+
+                // --- BAR ---
+                const bar = document.createElement("div");
+                bar.className = "composition-bar";
+                sortedRaces.forEach(([name, data], index) => {
+                    const seg = document.createElement("div");
+                    seg.className = "comp-segment";
+                    seg.style.width = data.total + "%";
+                    seg.style.backgroundColor = COLORS[index % COLORS.length];
+                    seg.style.boxShadow = `0 0 5px ${COLORS[index % COLORS.length]}`;
+                    bar.appendChild(seg);
+                });
+                card.appendChild(bar);
+                
+                // --- TRAIT GRID ---
+                const traitDiv = document.createElement("div");
+                traitDiv.className = "trait-grid";
+                traitDiv.innerHTML = `
+                    <div class="trait-box">
+                        <span class="trait-label">POSITIVE</span>
+                        <span class="trait-val t-pos">${traits.pos}</span>
+                    </div>
+                    <div class="trait-box">
+                        <span class="trait-label">NEUTRAL</span>
+                        <span class="trait-val t-neu">${traits.neu}</span>
+                    </div>
+                    <div class="trait-box">
+                        <span class="trait-label">NEGATIVE</span>
+                        <span class="trait-val t-neg">${traits.neg}</span>
+                    </div>
+                `;
+                card.appendChild(traitDiv);
+
+                // --- DNA LIST ---
+                sortedRaces.forEach(([raceName, data]) => {
+                    const details = document.createElement("details");
+                    const summary = document.createElement("summary");
+                    summary.innerHTML = `<span>${raceName}</span> <span class="pct">${parseFloat(data.total.toFixed(2))}%</span>`;
+                    details.appendChild(summary);
+
+                    const list = document.createElement("div");
+                    list.className = "variant-list";
+
+                    const sortedVariants = Object.entries(data.variants).sort((a,b) => b[1] - a[1]);
+                    
+                    sortedVariants.forEach(([vName, vPct]) => {
+                        const row = document.createElement("div");
+                        row.className = "variant-row";
+                        const displayName = vName === "Standard" ? "Base Ancestry" : vName;
+                        row.innerHTML = `<span>${displayName}</span> <span>${parseFloat(vPct.toFixed(2))}%</span>`;
+                        list.appendChild(row);
+                    });
+
+                    details.appendChild(list);
+                    card.appendChild(details);
+                });
+
+                // --- TREE ---
+                const treeBtn = document.createElement("button");
+                treeBtn.className = "tree-toggle-btn";
+                treeBtn.textContent = "> DECRYPT LINEAGE TREE";
+                
+                const treeDiv = document.createElement("div");
+                treeDiv.className = "tree-container";
+                // Pass the specific gender we rolled for the main subject so it matches the header
+                treeDiv.innerHTML = `<div class="tree"><ul>${generateTreeHTML(entry, gender)}</ul></div>`;
+
+                treeBtn.addEventListener("click", () => {
+                    if(treeDiv.style.display === "block") {
+                        treeDiv.style.display = "none";
+                        treeBtn.textContent = "> DECRYPT LINEAGE TREE";
+                    } else {
+                        treeDiv.style.display = "block";
+                        treeBtn.textContent = "< HIDE DATA";
+                    }
+                });
+
+                card.appendChild(treeBtn);
+                card.appendChild(treeDiv);
+                
+                container.appendChild(card);
+            });
+        }
+
+        document.getElementById("generate").addEventListener("click", () => {
+            const countInput = document.getElementById("count");
+            let count = parseInt(countInput.value, 10);
+            if (isNaN(count) || count < 1) count = 1;
+            
+            const rawEntries = [];
+            for(let i=0; i<count; i++) {
+                rawEntries.push(rollRecursive());
+            }
+            renderResults(rawEntries);
+        });
+
+        // Initial
+        const initial = [];
+        for(let i=0; i<3; i++) initial.push(rollRecursive());
+        renderResults(initial);
+
+    </script>
+</body>
+</html>
