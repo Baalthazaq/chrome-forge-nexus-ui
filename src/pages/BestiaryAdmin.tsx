@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Shield, ArrowLeft, Search, ChevronDown, Swords, Heart, Brain, Zap, RefreshCw, Plus } from 'lucide-react';
+import { Shield, ArrowLeft, Search, ChevronDown, Swords, Heart, Brain, Zap, RefreshCw, Plus, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { BestiaryCreatureDialog } from '@/components/bestiary/BestiaryCreatureDialog';
 
@@ -312,6 +312,12 @@ const BestiaryAdmin = () => {
                         <div className="flex gap-2 pt-2">
                           <Button size="sm" variant="outline" onClick={() => setEditCreature(creature)}>
                             Edit
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => {
+                            const { id, created_at, updated_at, ...rest } = creature;
+                            setEditCreature({ ...rest, name: `${rest.name} (Copy)`, is_custom: true, _isClone: true });
+                          }}>
+                            <Copy className="h-3 w-3 mr-1" /> Duplicate
                           </Button>
                           <Button
                             size="sm"

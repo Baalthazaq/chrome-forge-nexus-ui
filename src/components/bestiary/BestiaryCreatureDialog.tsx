@@ -29,7 +29,7 @@ const parseFeatures = (raw: any): FeatureItem[] => {
 };
 
 export const BestiaryCreatureDialog = ({ creature, open, onClose, onSaved }: Props) => {
-  const isEdit = !!creature;
+  const isEdit = !!creature && !!creature.id && !creature._isClone;
   const thresholds = typeof creature?.thresholds === 'string'
     ? JSON.parse(creature.thresholds)
     : creature?.thresholds || { major: '', severe: '' };
