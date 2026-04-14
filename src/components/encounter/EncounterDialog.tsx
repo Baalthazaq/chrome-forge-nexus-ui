@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Trash2, ChevronDown, TreePine, Users, Swords, Search } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, TreePine, Users, Swords, Search, MapPin } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface EncounterDialogProps {
@@ -67,8 +67,21 @@ export const EncounterDialog = ({ encounter, open, onClose, onSaved }: Encounter
   }, [encounter]);
 
   const loadEnvs = async () => {
-    const { data } = await supabase.from('bestiary_environments').select('id, name, tier, environment_type').order('name');
-    setAvailableEnvs(data || []);
+    const [{ data: bestiaryEnvs }, { data: mapAreas }] = await Promise.all([
+      supabase.from('bestiary_environments').select('id, name, tier, environment_type').order('name'),
+      supabase.from('map_areas').select('id, name, environment_card').order('name'),
+    ]);
+    const mapped = (mapAreas || []).map(a => ({
+      id: `area:${a.id}`,
+      name: a.name,
+      tier: (a.environment_card as any)?.tier || null,
+      environment_type: (a.environment_card as any)?.type || 'Map Area',
+      _source: 'maze',
+    }));
+    setAvailableEnvs([
+      ...(bestiaryEnvs || []).map(e => ({ ...e, _source: 'bestiary' })),
+      ...mapped,
+    ]);
   };
 
   const loadNpcs = async () => {
@@ -225,11 +238,14 @@ export const EncounterDialog = ({ encounter, open, onClose, onSaved }: Encounter
                   </div>
                   <ScrollArea className="max-h-40">
                     <div className="space-y-1">
-                      {filteredPickerItems(availableEnvs).map(env => (
+                       {filteredPickerItems(availableEnvs).map(env => (
                         <div key={env.id} className="flex items-center justify-between p-1.5 rounded hover:bg-muted cursor-pointer text-sm" onClick={() => addEnvironment(env)}>
-                          <span>{env.name}</span>
+                          <span className="flex items-center gap-1">
+                            {env._source === 'maze' && <MapPin className="h-3 w-3 text-muted-foreground" />}
+                            {env.name}
+                          </span>
                           <div className="flex gap-1">
-                            <Badge variant="outline" className="text-xs">T{env.tier}</Badge>
+                            {env.tier && <Badge variant="outline" className="text-xs">T{env.tier}</Badge>}
                             <Badge variant="outline" className="text-xs">{env.environment_type}</Badge>
                           </div>
                         </div>
