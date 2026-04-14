@@ -222,19 +222,26 @@ const Succubus = () => {
                   />
                 </div>
               </div>
-              <Button
-                onClick={generateProfile}
-                disabled={isGenerating}
-                className="mt-4 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600"
-              >
-                {isGenerating ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</>
-                ) : currentProfile ? (
-                  <><Sparkles className="w-4 h-4 mr-2" />Generate Another</>
-                ) : (
-                  <><Sparkles className="w-4 h-4 mr-2" />Find Someone</>
-                )}
-              </Button>
+              {isAdmin ? (
+                <Button
+                  onClick={generateProfile}
+                  disabled={isGenerating}
+                  className="mt-4 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600"
+                >
+                  {isGenerating ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</>
+                  ) : currentProfile ? (
+                    <><Sparkles className="w-4 h-4 mr-2" />Generate Another</>
+                  ) : (
+                    <><Sparkles className="w-4 h-4 mr-2" />Find Someone</>
+                  )}
+                </Button>
+              ) : (
+                <div className="mt-4 flex items-center gap-2 text-muted-foreground">
+                  <Lock className="w-4 h-4" />
+                  <span className="text-sm">Profile generation is currently admin-only.</span>
+                </div>
+              )}
             </Card>
 
             {/* Profile Card */}
