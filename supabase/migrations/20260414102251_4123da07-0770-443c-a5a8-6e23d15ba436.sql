@@ -1,0 +1,1 @@
+ALTER TABLE public.bestiary_environments ADD COLUMN image_url text DEFAULT NULL;

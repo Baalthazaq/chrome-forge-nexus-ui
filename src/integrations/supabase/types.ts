@@ -252,6 +252,7 @@ export type Database = {
           environment_type: string
           features: Json | null
           id: string
+          image_url: string | null
           impulses: string[] | null
           name: string
           potential_adversaries: string | null
@@ -264,6 +265,7 @@ export type Database = {
           environment_type?: string
           features?: Json | null
           id?: string
+          image_url?: string | null
           impulses?: string[] | null
           name: string
           potential_adversaries?: string | null
@@ -276,6 +278,7 @@ export type Database = {
           environment_type?: string
           features?: Json | null
           id?: string
+          image_url?: string | null
           impulses?: string[] | null
           name?: string
           potential_adversaries?: string | null
