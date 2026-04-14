@@ -740,6 +740,45 @@ export type Database = {
         }
         Relationships: []
       }
+      encounters: {
+        Row: {
+          created_at: string
+          creatures: Json
+          description: string | null
+          environments: Json
+          id: string
+          name: string
+          notes: string | null
+          npcs: Json
+          tier: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creatures?: Json
+          description?: string | null
+          environments?: Json
+          id?: string
+          name: string
+          notes?: string | null
+          npcs?: Json
+          tier?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creatures?: Json
+          description?: string | null
+          environments?: Json
+          id?: string
+          name?: string
+          notes?: string | null
+          npcs?: Json
+          tier?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       environment_features: {
         Row: {
           created_at: string

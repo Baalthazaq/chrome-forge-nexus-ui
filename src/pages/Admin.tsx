@@ -177,6 +177,10 @@ const Admin = () => {
                 <span className="font-semibold">Environments</span>
                 <span className="text-xs text-muted-foreground">Environment Cards</span>
               </Button>
+              <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => navigate('/admin/encounters')}>
+                <span className="font-semibold">Encounter Builder</span>
+                <span className="text-xs text-muted-foreground">Build Encounters</span>
+              </Button>
               <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => window.open('/tools/dice-roller.html', '_blank')}>
                 <span className="font-semibold">Dice Roller</span>
                 <span className="text-xs text-muted-foreground">Dice Tray Tool</span>
