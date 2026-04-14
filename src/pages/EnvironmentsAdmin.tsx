@@ -184,6 +184,9 @@ const EnvironmentsAdmin = () => {
             <Button onClick={() => setShowCreateDialog(true)} size="sm">
               <Plus className="h-4 w-4 mr-1" /> Add Environment
             </Button>
+            <Button onClick={importFromMaze} size="sm" variant="outline" disabled={importing}>
+              <MapPin className="h-4 w-4 mr-1" /> {importing ? 'Importing...' : 'Import from Maze'}
+            </Button>
           </div>
         </div>
 
