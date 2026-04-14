@@ -27,6 +27,7 @@ const BestiaryAdmin = () => {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [editCreature, setEditCreature] = useState<any | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
@@ -315,9 +316,7 @@ const BestiaryAdmin = () => {
                           <Button
                             size="sm"
                             variant="destructive"
-                            onClick={() => {
-                              if (confirm(`Delete ${creature.name}?`)) deleteCreature(creature.id);
-                            }}
+                            onClick={() => setDeleteTarget(creature)}
                           >
                             Delete
                           </Button>
@@ -351,6 +350,30 @@ const BestiaryAdmin = () => {
           onSaved={loadCreatures}
         />
       )}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this creature from the bestiary. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteTarget) deleteCreature(deleteTarget.id);
+                setDeleteTarget(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
