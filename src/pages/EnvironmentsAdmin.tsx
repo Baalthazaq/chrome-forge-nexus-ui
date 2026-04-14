@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Shield, ArrowLeft, ChevronDown, RefreshCw, TreePine, Plus, Search, Copy } from 'lucide-react';
+import { Shield, ArrowLeft, ChevronDown, RefreshCw, TreePine, Plus, Search, Copy, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { EnvironmentDialog } from '@/components/bestiary/EnvironmentDialog';
 
@@ -26,6 +26,7 @@ const EnvironmentsAdmin = () => {
   const [editEnvironment, setEditEnvironment] = useState<any | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
@@ -71,6 +72,51 @@ const EnvironmentsAdmin = () => {
     } else {
       toast.success('Environment deleted');
       loadEnvironments();
+    }
+  };
+
+  const importFromMaze = async () => {
+    setImporting(true);
+    try {
+      const { data: areas, error: areaError } = await supabase
+        .from('map_areas')
+        .select('id, name, description, image_url, environment_card')
+        .order('name');
+      if (areaError) throw areaError;
+
+      const { data: existing } = await supabase
+        .from('bestiary_environments')
+        .select('name');
+      const existingNames = new Set((existing || []).map((e: any) => e.name.toLowerCase()));
+
+      const toInsert = (areas || [])
+        .filter(a => !existingNames.has(a.name.toLowerCase()))
+        .map(a => {
+          const card = (a.environment_card || {}) as any;
+          return {
+            name: a.name,
+            tier: card.tier || 1,
+            environment_type: card.type || 'Exploration',
+            difficulty: card.difficulty || null,
+            impulses: card.impulses || [],
+            potential_adversaries: card.potential_adversaries || null,
+            features: card.features || [],
+            image_url: a.image_url || null,
+          };
+        });
+
+      if (toInsert.length === 0) {
+        toast.info('All Maze areas already exist as environments');
+      } else {
+        const { error } = await supabase.from('bestiary_environments').insert(toInsert);
+        if (error) throw error;
+        toast.success(`Imported ${toInsert.length} areas from Maze`);
+        loadEnvironments();
+      }
+    } catch (e: any) {
+      toast.error('Import failed: ' + e.message);
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -137,6 +183,9 @@ const EnvironmentsAdmin = () => {
           <div className="flex gap-2">
             <Button onClick={() => setShowCreateDialog(true)} size="sm">
               <Plus className="h-4 w-4 mr-1" /> Add Environment
+            </Button>
+            <Button onClick={importFromMaze} size="sm" variant="outline" disabled={importing}>
+              <MapPin className="h-4 w-4 mr-1" /> {importing ? 'Importing...' : 'Import from Maze'}
             </Button>
           </div>
         </div>
