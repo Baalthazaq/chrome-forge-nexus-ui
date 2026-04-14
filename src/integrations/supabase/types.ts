@@ -740,6 +740,36 @@ export type Database = {
         }
         Relationships: []
       }
+      environment_features: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          name: string
+          tier: number | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          name: string
+          tier?: number | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          tier?: number | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       game_calendar: {
         Row: {
           current_day: number
