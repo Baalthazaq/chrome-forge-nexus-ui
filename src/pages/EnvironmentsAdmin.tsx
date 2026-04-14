@@ -26,6 +26,7 @@ const EnvironmentsAdmin = () => {
   const [editEnvironment, setEditEnvironment] = useState<any | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
