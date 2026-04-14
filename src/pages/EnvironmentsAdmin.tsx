@@ -1,16 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Shield, ArrowLeft, ChevronDown, RefreshCw, TreePine } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Shield, ArrowLeft, ChevronDown, RefreshCw, TreePine, Plus, Search, Copy } from 'lucide-react';
 import { toast } from 'sonner';
-import { useEffect } from 'react';
+import { EnvironmentDialog } from '@/components/bestiary/EnvironmentDialog';
 
 const EnvironmentsAdmin = () => {
   const navigate = useNavigate();
@@ -20,7 +21,11 @@ const EnvironmentsAdmin = () => {
   const [seeding, setSeeding] = useState(false);
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [editEnvironment, setEditEnvironment] = useState<any | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
@@ -59,6 +64,16 @@ const EnvironmentsAdmin = () => {
     }
   };
 
+  const deleteEnvironment = async (id: string) => {
+    const { error } = await supabase.from('bestiary_environments').delete().eq('id', id);
+    if (error) {
+      toast.error('Failed to delete');
+    } else {
+      toast.success('Environment deleted');
+      loadEnvironments();
+    }
+  };
+
   const toggleExpanded = (id: string) => {
     setExpandedIds(prev => {
       const next = new Set(prev);
@@ -70,7 +85,11 @@ const EnvironmentsAdmin = () => {
   const filtered = environments.filter(e => {
     const matchTier = tierFilter === 'all' || e.tier === parseInt(tierFilter);
     const matchType = typeFilter === 'all' || e.environment_type === typeFilter;
-    return matchTier && matchType;
+    const matchSearch = !searchTerm ||
+      e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      e.environment_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      e.potential_adversaries?.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchTier && matchType && matchSearch;
   });
 
   const envTypes = [...new Set(environments.map(e => e.environment_type))].sort();
@@ -115,14 +134,28 @@ const EnvironmentsAdmin = () => {
             <h1 className="text-2xl font-bold">Environments</h1>
             <Badge variant="outline">{filtered.length} / {environments.length}</Badge>
           </div>
-          <Button onClick={seedEnvironments} disabled={seeding} variant="outline" size="sm">
-            <RefreshCw className={`h-4 w-4 mr-1 ${seeding ? 'animate-spin' : ''}`} />
-            {seeding ? 'Seeding...' : 'Seed from Source'}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowCreateDialog(true)} size="sm">
+              <Plus className="h-4 w-4 mr-1" /> Add Environment
+            </Button>
+            <Button onClick={seedEnvironments} disabled={seeding} variant="outline" size="sm">
+              <RefreshCw className={`h-4 w-4 mr-1 ${seeding ? 'animate-spin' : ''}`} />
+              {seeding ? 'Seeding...' : 'Seed from Source'}
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search environments..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
           <Select value={tierFilter} onValueChange={setTierFilter}>
             <SelectTrigger>
               <SelectValue placeholder="All Tiers" />
@@ -185,6 +218,11 @@ const EnvironmentsAdmin = () => {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <CardContent className="pt-0 pb-4 px-4 space-y-4">
+                      {/* Image */}
+                      {env.image_url && (
+                        <img src={env.image_url} alt={env.name} className="h-32 w-32 object-cover rounded-md border" />
+                      )}
+
                       {/* Impulses */}
                       {env.impulses && env.impulses.length > 0 && (
                         <div>
@@ -220,6 +258,22 @@ const EnvironmentsAdmin = () => {
                           ))}
                         </div>
                       )}
+
+                      {/* Actions */}
+                      <div className="flex gap-2 pt-2">
+                        <Button size="sm" variant="outline" onClick={() => setEditEnvironment(env)}>
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => {
+                          const { id, created_at, updated_at, ...rest } = env;
+                          setEditEnvironment({ ...rest, name: `${rest.name} (Copy)`, _isClone: true });
+                        }}>
+                          <Copy className="h-3 w-3 mr-1" /> Duplicate
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => setDeleteTarget(env)}>
+                          Delete
+                        </Button>
+                      </div>
                     </CardContent>
                   </CollapsibleContent>
                 </Card>
@@ -228,6 +282,50 @@ const EnvironmentsAdmin = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Dialog */}
+      {editEnvironment && (
+        <EnvironmentDialog
+          environment={editEnvironment}
+          open={!!editEnvironment}
+          onClose={() => setEditEnvironment(null)}
+          onSaved={loadEnvironments}
+        />
+      )}
+
+      {/* Create Dialog */}
+      {showCreateDialog && (
+        <EnvironmentDialog
+          environment={null}
+          open={showCreateDialog}
+          onClose={() => setShowCreateDialog(false)}
+          onSaved={loadEnvironments}
+        />
+      )}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this environment. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteTarget) deleteEnvironment(deleteTarget.id);
+                setDeleteTarget(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
