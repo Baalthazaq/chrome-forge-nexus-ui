@@ -75,6 +75,51 @@ const EnvironmentsAdmin = () => {
     }
   };
 
+  const importFromMaze = async () => {
+    setImporting(true);
+    try {
+      const { data: areas, error: areaError } = await supabase
+        .from('map_areas')
+        .select('id, name, description, image_url, environment_card')
+        .order('name');
+      if (areaError) throw areaError;
+
+      const { data: existing } = await supabase
+        .from('bestiary_environments')
+        .select('name');
+      const existingNames = new Set((existing || []).map((e: any) => e.name.toLowerCase()));
+
+      const toInsert = (areas || [])
+        .filter(a => !existingNames.has(a.name.toLowerCase()))
+        .map(a => {
+          const card = (a.environment_card || {}) as any;
+          return {
+            name: a.name,
+            tier: card.tier || 1,
+            environment_type: card.type || 'Exploration',
+            difficulty: card.difficulty || null,
+            impulses: card.impulses || [],
+            potential_adversaries: card.potential_adversaries || null,
+            features: card.features || [],
+            image_url: a.image_url || null,
+          };
+        });
+
+      if (toInsert.length === 0) {
+        toast.info('All Maze areas already exist as environments');
+      } else {
+        const { error } = await supabase.from('bestiary_environments').insert(toInsert);
+        if (error) throw error;
+        toast.success(`Imported ${toInsert.length} areas from Maze`);
+        loadEnvironments();
+      }
+    } catch (e: any) {
+      toast.error('Import failed: ' + e.message);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const toggleExpanded = (id: string) => {
     setExpandedIds(prev => {
       const next = new Set(prev);
