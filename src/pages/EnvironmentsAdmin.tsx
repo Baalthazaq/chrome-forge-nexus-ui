@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Shield, ArrowLeft, ChevronDown, RefreshCw, TreePine, Plus, Search, Copy } from 'lucide-react';
+import { Shield, ArrowLeft, ChevronDown, RefreshCw, TreePine, Plus, Search, Copy, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { EnvironmentDialog } from '@/components/bestiary/EnvironmentDialog';
 
