@@ -8,7 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Plus, Trash2, Library, Image, Link } from 'lucide-react';
-import { FeatureLibraryPicker, FeatureItem } from './FeatureLibraryPicker';
+import { FeatureItem } from './FeatureLibraryPicker';
+import { EnvironmentFeatureLibraryPicker } from './EnvironmentFeatureLibraryPicker';
 
 interface Props {
   environment: any | null;
@@ -84,16 +85,16 @@ export const EnvironmentDialog = ({ environment, open, onClose, onSaved }: Props
   const saveFeatureToLibrary = async (feature: FeatureItem) => {
     if (!feature.name.trim()) return;
     const { data } = await supabase
-      .from('bestiary_features')
+      .from('environment_features' as any)
       .select('id')
       .eq('name', feature.name)
       .maybeSingle();
     if (!data) {
-      await supabase.from('bestiary_features').insert({
+      await supabase.from('environment_features' as any).insert({
         name: feature.name,
         type: feature.type,
         description: feature.description,
-      } as any);
+      });
     }
   };
 
