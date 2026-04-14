@@ -47,6 +47,7 @@ import DataExport from "./pages/DataExport";
 import { CharacterTokensPage } from "./components/CharacterTokens";
 import BestiaryAdmin from "./pages/BestiaryAdmin";
 import EnvironmentsAdmin from "./pages/EnvironmentsAdmin";
+import EncounterBuilder from "./pages/EncounterBuilder";
 
 const queryClient = new QueryClient();
 
@@ -101,6 +102,7 @@ const App = () => (
             <Route path="/admin/data-export" element={<DataExport />} />
             <Route path="/admin/bestiary" element={<BestiaryAdmin />} />
             <Route path="/admin/environments" element={<EnvironmentsAdmin />} />
+            <Route path="/admin/encounters" element={<EncounterBuilder />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
