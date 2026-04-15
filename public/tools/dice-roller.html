@@ -535,14 +535,11 @@
       }
 
       function rollFromEquation(){
-        // Strip existing constant before rebuilding (bonus will be re-added by rebuildEquation)
+        // Absorb any constants typed directly in the equation into the bonus field
         const parsed = parseEquation(elEquation.value);
-        // Set bonus field from any typed constants + current bonus
-        const currentBonus = parseInt(elBonus.value || '0', 10) || 0;
-        const totalConst = parsed.constant;
-        // If user typed constants in the equation, absorb them into the bonus field
-        if (parsed.constant !== 0 && currentBonus === 0) {
-          elBonus.value = parsed.constant;
+        if (parsed.constant !== 0) {
+          const currentBonus = parseInt(elBonus.value || '0', 10) || 0;
+          elBonus.value = currentBonus + parsed.constant;
         }
         const formatted = rebuildEquation(elEquation.value); 
         elEquation.value = formatted;
