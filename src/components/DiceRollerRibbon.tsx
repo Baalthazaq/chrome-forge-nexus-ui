@@ -160,7 +160,7 @@ const DiceRollerRibbon: React.FC = () => {
 
   useEffect(() => { equationRef.current = equation; }, [equation]);
 
-  if (!user || location.pathname === '/auth') return null;
+  const shouldHide = !user || location.pathname === '/auth';
 
   const makeDie = useCallback((opts: { sides: number; sign?: number; flavor?: 'normal' | 'hope' | 'fear' }) => {
     const engine = engineRef.current;
@@ -460,6 +460,8 @@ const DiceRollerRibbon: React.FC = () => {
     { sides: 4, label: '-d4' }, { sides: 6, label: '-d6' }, { sides: 8, label: '-d8' },
     { sides: 10, label: '-d10' }, { sides: 12, label: '-d12' }, { sides: 20, label: '-d20' },
   ];
+
+  if (shouldHide) return null;
 
   return (
     <>
