@@ -48,6 +48,7 @@ import { CharacterTokensPage } from "./components/CharacterTokens";
 import BestiaryAdmin from "./pages/BestiaryAdmin";
 import EnvironmentsAdmin from "./pages/EnvironmentsAdmin";
 import EncounterBuilder from "./pages/EncounterBuilder";
+import DiceRollerRibbon from "./components/DiceRollerRibbon";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <DiceRollerRibbon />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
