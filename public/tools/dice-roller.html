@@ -587,7 +587,22 @@
         let v = +document.getElementById('customSides').value; 
         if (v) addTerm(Math.abs(v), v<0?-1:1); 
       };
-      elBonus.oninput = () => { lastBonusApplied = parseInt(elBonus.value || '0', 10) || 0; elEquation.value = rebuildEquation(elEquation.value); updateHUD(); };
+      // Equation input: user typing → sync bonus box to parsed constant
+      elEquation.addEventListener('input', () => {
+        lastEdited = 'equation';
+        const parsed = parseEquation(elEquation.value);
+        elBonus.value = parsed.constant;
+        updateHUD();
+      });
+
+      // Bonus input: user editing → rebuild equation with new constant
+      elBonus.oninput = () => {
+        lastEdited = 'bonus';
+        const parsed = parseEquation(elEquation.value);
+        const bonus = parseInt(elBonus.value || '0', 10) || 0;
+        elEquation.value = buildEquationString(parsed.diceTerms, bonus);
+        updateHUD();
+      };
 
       canvas.addEventListener('pointerdown', ev => {
          const r = canvas.getBoundingClientRect();
