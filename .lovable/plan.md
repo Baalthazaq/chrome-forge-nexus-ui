@@ -1,66 +1,47 @@
 
-Goal: make the equation field and bonus field stop fighting each other by using a simple “last edited control wins” rule.
 
-Proposed behavior
-- If the user types in the equation box last, the equation is authoritative.
-  - Example: typing `d%+4` sets the bonus box to `4`.
-  - Typing `d%-2` sets the bonus box to `-2`.
-  - Typing `d%` clears the bonus box back to `0`.
-- If the user edits the bonus box last, the bonus is authoritative.
-  - Example: if the equation is `d%+4` and the user changes bonus to `2`, the equation becomes `d%+2`.
-  - If they change bonus to `0`, the explicit constant is removed from the equation.
-- Rolling should never mutate the bonus unexpectedly. It should only roll what is currently shown.
+## Dice Roller as a Global Pop-out Ribbon
 
-Why the current approach breaks
-- The current logic tries to preserve both:
-  - the constant typed in the equation, and
-  - the value in the bonus box,
-- using `lastBonusApplied` math.
-- That creates ambiguous states, because both controls are trying to represent the same modifier.
+### What it does
+A small tab/ribbon fixed to the edge of the screen (e.g., right side) that, when clicked, slides out a dice roller panel. Dice physically roll across the actual page content area (not confined to the panel). Available on every page except `/auth`.
 
-Implementation approach
-1. Remove the `lastBonusApplied` reconciliation logic entirely.
-2. Add a small “last edited” state, e.g. `lastEdited = 'equation' | 'bonus'`.
-3. Equation input behavior:
-   - Parse the raw equation as the user types.
-   - Update the bonus box to match the parsed constant.
-   - Do not rewrite/reformat the equation while the user is typing.
-4. Bonus input behavior:
-   - Parse the current equation.
-   - Rebuild the equation from its dice terms plus the new bonus value.
-   - This makes the bonus visible in the equation exactly as requested.
-5. Roll behavior:
-   - Parse the displayed equation and roll from that.
-   - Do not auto-add, absorb, or merge constants during roll.
-6. Clear behavior:
-   - Reset both equation and bonus to empty/`0` consistently.
+### Architecture
 
-Rules to keep it predictable
-- There is only one modifier source at a time.
-- The two fields always sync to the same effective constant after each edit.
-- “Last edit wins” applies equally to positive and negative values.
+**1. New component: `src/components/DiceRollerRibbon.tsx`**
+- A fixed-position tab on the right edge of the screen labeled "🎲" or "DICE"
+- Clicking it toggles open a compact control panel (the UI portion: equation input, bonus, dice buttons, roll/clear)
+- The panel slides in from the right as a narrow sidebar (~320px)
+- The dice canvas overlay covers the full viewport behind/over the page content (with `pointer-events: none` except on the dice themselves)
 
-Examples after the fix
-```text
-Type equation: d%+4      => bonus shows 4
-Then change bonus to 1   => equation becomes d%+1
-Then type equation d%-3  => bonus shows -3
-Then type equation d%    => bonus shows 0
-```
+**2. Two layers:**
+- **Control panel** (right sidebar): Contains all the buttons, equation input, bonus field, result display. Styled to match the existing cyberpunk theme. Uses the same parsing/building logic from the HTML version.
+- **Dice canvas** (full-screen overlay): A transparent canvas (`position: fixed; inset: 0; z-index` high enough) where Matter.js dice are rendered. The canvas is transparent (no black background) so page content shows through. Walls are placed at viewport edges. `pointer-events: none` on the canvas, but individual dice clicks handled via a thin hit-test overlay.
 
-Technical detail
-- File to update: `public/tools/dice-roller.html`
-- Main functions likely affected:
-  - `rebuildEquation`
-  - `rollFromEquation`
-  - equation input handling
-  - bonus input handling
+**3. Integration in `App.tsx`**
+- Render `<DiceRollerRibbon />` inside the providers, outside `<Routes>`, so it appears on every page
+- Only render when user is authenticated (wrap in a small auth-aware check)
 
-Validation plan
-- Test typed constants: `d%+4`, `d%-2`, `2d6+3-1`
-- Test bonus edits after typed constants
-- Test repeated rolls to confirm no drift
-- Test button-added dice plus manual modifier edits
-- Test clearing back to zero
+**4. Port from HTML to React**
+- Convert the Matter.js physics, dice rendering, equation parsing into React hooks/refs
+- The canvas uses `useRef` + `useEffect` for the animation loop
+- Equation state managed with `useState`
+- Matter.js loaded via npm package (`matter-js`) instead of CDN
 
-If you approve this direction, I’ll implement the “last edited control wins” sync model and remove the current reconciliation logic entirely.
+### Key design decisions
+- **Transparent tray**: The dice roll over page content — canvas has no background fill, just the grid lines at very low opacity (or none)
+- **Collapsible**: The ribbon tab is always visible; the full panel only shows when toggled
+- **Non-blocking**: The canvas overlay uses `pointer-events: none` globally, with a small JS hit-test layer so users can still click dice to re-roll them, but clicks pass through to the page otherwise
+- **Z-index**: Canvas sits above page content but below modals/dialogs
+
+### Files to create/edit
+| File | Action |
+|------|--------|
+| `src/components/DiceRollerRibbon.tsx` | **Create** — Full component with Matter.js canvas, controls panel, ribbon tab |
+| `src/App.tsx` | **Edit** — Add `<DiceRollerRibbon />` after `<Sonner />` |
+| `package.json` | **Edit** — Add `matter-js` + `@types/matter-js` dependencies |
+
+### Ribbon behavior
+- **Closed state**: Small vertical tab on the right edge, ~40px wide, says "DICE" rotated vertically with a 🎲 icon
+- **Open state**: 320px panel slides out from right with all controls; full-screen transparent canvas activates for dice physics
+- **Close**: Click the tab again, or a close button on the panel; dice and canvas disappear
+
