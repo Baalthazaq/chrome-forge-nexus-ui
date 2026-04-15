@@ -313,7 +313,7 @@ Deno.serve(async (req) => {
     ];
 
     const { data, error } = await supabase
-      .from('bestiary_environments')
+      .from('environments')
       .upsert(environments, { onConflict: 'name' })
       .select();
 
