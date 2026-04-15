@@ -539,12 +539,14 @@
       }
 
       function rollFromEquation(){
-        lastBonusApplied = parseInt(elBonus.value || '0', 10) || 0;
-        const formatted = rebuildEquation(elEquation.value); 
-        elEquation.value = formatted;
-        const reparsed = parseEquation(formatted); 
+        // Parse what's currently displayed — no mutations to bonus
+        const parsed = parseEquation(elEquation.value);
+        // Normalize the display
+        elEquation.value = buildEquationString(parsed.diceTerms, parsed.constant);
+        elBonus.value = parsed.constant;
+        
         clearDice();
-        for (const t of reparsed.diceTerms){
+        for (const t of parsed.diceTerms){
           makeDie({ 
             sides: t.sides, 
             sign: t.sign, 
