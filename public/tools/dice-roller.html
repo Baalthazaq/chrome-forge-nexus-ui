@@ -292,7 +292,7 @@
       const MARGIN = 50, WALL_THICK = 100;
       let walls = [];
       const dice = [], dieByBodyId = new Map();
-      let lastBonusApplied = 0;
+      let lastEdited = 'bonus'; // 'equation' or 'bonus'
 
       // --- Resize Logic (Decoupled from tick loop) ---
       function handleResize(){
