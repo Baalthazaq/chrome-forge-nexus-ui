@@ -441,8 +441,7 @@
       function rebuildEquation(currentStr, newTerms = []){
         const parsed = parseEquation(currentStr);
         let terms = parsed.diceTerms;
-        let constant = parsed.constant;
-        newTerms.forEach(t => { if (t.type === 'constant') constant += t.val; else terms.push(t); });
+        newTerms.forEach(t => { if (t.type !== 'constant') terms.push(t); });
         
         const counts = new Map();
         let hCount = 0, fCount = 0;
@@ -467,10 +466,9 @@
            parts.push({ txt: `${qty}${label}`, val: key < 0 ? -1 : 1 });
         }
 
-        // Add bonus from the bonus field
+        // The bonus field is the source of truth for the constant
         const bonus = parseInt(elBonus.value || '0', 10) || 0;
-        const totalConstant = constant + bonus;
-        if (totalConstant !== 0) parts.push({ txt: Math.abs(totalConstant).toString(), val: totalConstant });
+        if (bonus !== 0) parts.push({ txt: Math.abs(bonus).toString(), val: bonus });
         
         let str = "";
         parts.forEach((p, idx) => {
