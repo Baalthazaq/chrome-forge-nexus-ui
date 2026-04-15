@@ -441,8 +441,7 @@
       function rebuildEquation(currentStr, newTerms = []){
         const parsed = parseEquation(currentStr);
         let terms = parsed.diceTerms;
-        let constant = parsed.constant;
-        newTerms.forEach(t => { if (t.type === 'constant') constant += t.val; else terms.push(t); });
+        newTerms.forEach(t => { if (t.type !== 'constant') terms.push(t); });
         
         const counts = new Map();
         let hCount = 0, fCount = 0;
@@ -466,7 +465,10 @@
            const qty = count > 1 ? count : '';
            parts.push({ txt: `${qty}${label}`, val: key < 0 ? -1 : 1 });
         }
-        if (constant !== 0) parts.push({ txt: Math.abs(constant).toString(), val: constant });
+
+        // The bonus field is the source of truth for the constant
+        const bonus = parseInt(elBonus.value || '0', 10) || 0;
+        if (bonus !== 0) parts.push({ txt: Math.abs(bonus).toString(), val: bonus });
         
         let str = "";
         parts.forEach((p, idx) => {
@@ -477,8 +479,10 @@
       }
 
       function computeResults(){
-        const bonus = parseInt(elBonus.value || '0', 10) || 0;
-        let sum = bonus; 
+        // Parse the equation to get the constant (which includes the bonus)
+        const parsed = parseEquation(elEquation.value);
+        const eqConst = parsed.constant;
+        let sum = eqConst; 
         let hasHope = false, hasFear = false;
         let maxHopeVal = -1, maxFearVal = -1;
         let critHopeDie = null, critFearDie = null;
@@ -502,7 +506,7 @@
           else if (maxHopeVal > maxFearVal) dualityState = 'hope';
           else dualityState = 'fear';
         }
-        return { sum, bonus, hasDuality: (hasHope && hasFear), dualityState, critHopeDie, critFearDie };
+        return { sum, hasDuality: (hasHope && hasFear), dualityState, critHopeDie, critFearDie };
       }
 
       function updateHUD(){
@@ -530,20 +534,24 @@
         }
       }
 
-      let eqConstant = 0;
       function rollFromEquation(){
+        // Absorb any constants typed directly in the equation into the bonus field
+        const parsed = parseEquation(elEquation.value);
+        if (parsed.constant !== 0) {
+          const currentBonus = parseInt(elBonus.value || '0', 10) || 0;
+          elBonus.value = currentBonus + parsed.constant;
+        }
         const formatted = rebuildEquation(elEquation.value); 
         elEquation.value = formatted;
-        const parsed = parseEquation(formatted); 
+        const reparsed = parseEquation(formatted); 
         clearDice();
-        for (const t of parsed.diceTerms){
+        for (const t of reparsed.diceTerms){
           makeDie({ 
             sides: t.sides, 
             sign: t.sign, 
             flavor: (t.flavor === 'hope' && t.sign===1) ? 'hope' : (t.flavor === 'fear' && t.sign===1) ? 'fear' : 'normal' 
           });
         }
-        eqConstant = parsed.constant; 
         updateHUD();
       }
 
@@ -555,7 +563,7 @@
       }
 
       document.getElementById('rollBtn').onclick = rollFromEquation;
-      document.getElementById('clearBtn').onclick = () => { elEquation.value=''; elBonus.value='0'; eqConstant=0; clearDice(); updateHUD(); };
+      document.getElementById('clearBtn').onclick = () => { elEquation.value=''; elBonus.value='0'; clearDice(); updateHUD(); };
       
       // Bind Buttons
       document.querySelectorAll('.dieBtn').forEach(b => b.onclick = () => addTerm(+b.dataset.sides, +b.dataset.sign||1));
@@ -578,7 +586,7 @@
         let v = +document.getElementById('customSides').value; 
         if (v) addTerm(Math.abs(v), v<0?-1:1); 
       };
-      elBonus.oninput = () => { updateHUD(); };
+      elBonus.oninput = () => { elEquation.value = rebuildEquation(elEquation.value); updateHUD(); };
 
       canvas.addEventListener('pointerdown', ev => {
          const r = canvas.getBoundingClientRect();
