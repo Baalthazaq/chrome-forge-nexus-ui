@@ -568,7 +568,7 @@
       }
 
       document.getElementById('rollBtn').onclick = rollFromEquation;
-      document.getElementById('clearBtn').onclick = () => { elEquation.value=''; elBonus.value='0'; eqConstant=0; clearDice(); updateHUD(); };
+      document.getElementById('clearBtn').onclick = () => { elEquation.value=''; elBonus.value='0'; clearDice(); updateHUD(); };
       
       // Bind Buttons
       document.querySelectorAll('.dieBtn').forEach(b => b.onclick = () => addTerm(+b.dataset.sides, +b.dataset.sign||1));
