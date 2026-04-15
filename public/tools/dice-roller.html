@@ -466,7 +466,11 @@
            const qty = count > 1 ? count : '';
            parts.push({ txt: `${qty}${label}`, val: key < 0 ? -1 : 1 });
         }
-        if (constant !== 0) parts.push({ txt: Math.abs(constant).toString(), val: constant });
+
+        // Add bonus from the bonus field
+        const bonus = parseInt(elBonus.value || '0', 10) || 0;
+        const totalConstant = constant + bonus;
+        if (totalConstant !== 0) parts.push({ txt: Math.abs(totalConstant).toString(), val: totalConstant });
         
         let str = "";
         parts.forEach((p, idx) => {
