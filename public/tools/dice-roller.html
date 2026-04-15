@@ -584,7 +584,7 @@
         let v = +document.getElementById('customSides').value; 
         if (v) addTerm(Math.abs(v), v<0?-1:1); 
       };
-      elBonus.oninput = () => { elEquation.value = rebuildEquation(elEquation.value); updateHUD(); };
+      elBonus.oninput = () => { lastBonusApplied = parseInt(elBonus.value || '0', 10) || 0; elEquation.value = rebuildEquation(elEquation.value); updateHUD(); };
 
       canvas.addEventListener('pointerdown', ev => {
          const r = canvas.getBoundingClientRect();
