@@ -536,20 +536,27 @@
         }
       }
 
-      let eqConstant = 0;
       function rollFromEquation(){
+        // Strip existing constant before rebuilding (bonus will be re-added by rebuildEquation)
+        const parsed = parseEquation(elEquation.value);
+        // Set bonus field from any typed constants + current bonus
+        const currentBonus = parseInt(elBonus.value || '0', 10) || 0;
+        const totalConst = parsed.constant;
+        // If user typed constants in the equation, absorb them into the bonus field
+        if (parsed.constant !== 0 && currentBonus === 0) {
+          elBonus.value = parsed.constant;
+        }
         const formatted = rebuildEquation(elEquation.value); 
         elEquation.value = formatted;
-        const parsed = parseEquation(formatted); 
+        const reparsed = parseEquation(formatted); 
         clearDice();
-        for (const t of parsed.diceTerms){
+        for (const t of reparsed.diceTerms){
           makeDie({ 
             sides: t.sides, 
             sign: t.sign, 
             flavor: (t.flavor === 'hope' && t.sign===1) ? 'hope' : (t.flavor === 'fear' && t.sign===1) ? 'fear' : 'normal' 
           });
         }
-        eqConstant = parsed.constant; 
         updateHUD();
       }
 
