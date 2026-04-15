@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Shield, ArrowLeft, ChevronDown, RefreshCw, TreePine, Plus, Search, Copy, MapPin } from 'lucide-react';
+import { Shield, ArrowLeft, ChevronDown, TreePine, Plus, Search, Copy, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { EnvironmentDialog } from '@/components/bestiary/EnvironmentDialog';
 
@@ -18,7 +19,6 @@ const EnvironmentsAdmin = () => {
   const { isAdmin, isLoading: adminLoading } = useAdmin();
   const [environments, setEnvironments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [seeding, setSeeding] = useState(false);
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,6 +27,7 @@ const EnvironmentsAdmin = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [importing, setImporting] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('specific');
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
@@ -49,20 +50,6 @@ const EnvironmentsAdmin = () => {
       setEnvironments(data || []);
     }
     setLoading(false);
-  };
-
-  const seedEnvironments = async () => {
-    setSeeding(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('seed-environments');
-      if (error) throw error;
-      toast.success(`Seeded ${data.count} environments`);
-      loadEnvironments();
-    } catch (e: any) {
-      toast.error('Failed to seed: ' + e.message);
-    } finally {
-      setSeeding(false);
-    }
   };
 
   const deleteEnvironment = async (id: string) => {
@@ -102,6 +89,7 @@ const EnvironmentsAdmin = () => {
             potential_adversaries: card.potential_adversaries || null,
             features: card.features || [],
             image_url: a.image_url || null,
+            is_specific: true,
           };
         });
 
@@ -128,15 +116,21 @@ const EnvironmentsAdmin = () => {
     });
   };
 
+  const isSpecificTab = activeTab === 'specific';
+
   const filtered = environments.filter(e => {
+    const matchTab = isSpecificTab ? e.is_specific === true : e.is_specific !== true;
     const matchTier = tierFilter === 'all' || e.tier === parseInt(tierFilter);
     const matchType = typeFilter === 'all' || e.environment_type === typeFilter;
     const matchSearch = !searchTerm ||
       e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.environment_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.potential_adversaries?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchTier && matchType && matchSearch;
+    return matchTab && matchTier && matchType && matchSearch;
   });
+
+  const specificCount = environments.filter(e => e.is_specific === true).length;
+  const generalCount = environments.filter(e => e.is_specific !== true).length;
 
   const envTypes = [...new Set(environments.map(e => e.environment_type))].sort();
 
@@ -167,6 +161,103 @@ const EnvironmentsAdmin = () => {
     );
   }
 
+  const renderEnvironmentList = () => {
+    if (loading) {
+      return <div className="text-center py-12 text-muted-foreground">Loading environments...</div>;
+    }
+    if (filtered.length === 0) {
+      return (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            {environments.length === 0
+              ? 'No environments yet.'
+              : 'No environments match the current filters.'}
+          </CardContent>
+        </Card>
+      );
+    }
+    return (
+      <div className="space-y-3">
+        {filtered.map(env => (
+          <Collapsible key={env.id} open={expandedIds.has(env.id)} onOpenChange={() => toggleExpanded(env.id)}>
+            <Card className="overflow-hidden">
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3 px-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="font-mono text-xs">T{env.tier}</Badge>
+                      <span className="font-semibold">{env.name}</span>
+                      <Badge className={`text-xs ${getTypeColor(env.environment_type)}`}>
+                        {env.environment_type}
+                      </Badge>
+                      {env.difficulty && (
+                        <span className="text-xs text-muted-foreground">
+                          Difficulty: {env.difficulty}
+                        </span>
+                      )}
+                    </div>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${expandedIds.has(env.id) ? 'rotate-180' : ''}`} />
+                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-0 pb-4 px-4 space-y-4">
+                  {env.image_url && (
+                    <img src={env.image_url} alt={env.name} className="h-32 w-32 object-cover rounded-md border" />
+                  )}
+                  {env.impulses && env.impulses.length > 0 && (
+                    <div>
+                      <span className="text-xs font-semibold text-muted-foreground">Impulses: </span>
+                      <span className="text-sm">{env.impulses.join(', ')}</span>
+                    </div>
+                  )}
+                  {env.potential_adversaries && (
+                    <div>
+                      <span className="text-xs font-semibold text-muted-foreground">Potential Adversaries: </span>
+                      <span className="text-sm">{env.potential_adversaries}</span>
+                    </div>
+                  )}
+                  {env.features && env.features.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold border-b border-border pb-1">Features</h4>
+                      {env.features.map((feat: any, i: number) => (
+                        <div key={i} className="bg-muted/30 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-sm">{feat.name}</span>
+                            {feat.type && (
+                              <Badge variant="outline" className={`text-xs ${getFeatureTypeColor(feat.type)}`}>
+                                {feat.type}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{feat.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2 pt-2">
+                    <Button size="sm" variant="outline" onClick={() => setEditEnvironment(env)}>
+                      Edit
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => {
+                      const { id, created_at, updated_at, ...rest } = env;
+                      setEditEnvironment({ ...rest, name: `${rest.name} (Copy)`, _isClone: true });
+                    }}>
+                      <Copy className="h-3 w-3 mr-1" /> Duplicate
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => setDeleteTarget(env)}>
+                      Delete
+                    </Button>
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -190,142 +281,56 @@ const EnvironmentsAdmin = () => {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search environments..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="specific">Specific ({specificCount})</TabsTrigger>
+            <TabsTrigger value="general">General ({generalCount})</TabsTrigger>
+          </TabsList>
+
+          {/* Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search environments..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={tierFilter} onValueChange={setTierFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Tiers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Tiers</SelectItem>
+                <SelectItem value="1">Tier 1</SelectItem>
+                <SelectItem value="2">Tier 2</SelectItem>
+                <SelectItem value="3">Tier 3</SelectItem>
+                <SelectItem value="4">Tier 4</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {envTypes.map(t => (
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={tierFilter} onValueChange={setTierFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Tiers" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Tiers</SelectItem>
-              <SelectItem value="1">Tier 1</SelectItem>
-              <SelectItem value="2">Tier 2</SelectItem>
-              <SelectItem value="3">Tier 3</SelectItem>
-              <SelectItem value="4">Tier 4</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {envTypes.map(t => (
-                <SelectItem key={t} value={t}>{t}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
 
-        {/* Environment List */}
-        {loading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading environments...</div>
-        ) : filtered.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              {environments.length === 0
-                ? 'No environments yet. Click "Seed from Source" to populate.'
-                : 'No environments match the current filters.'}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {filtered.map(env => (
-              <Collapsible key={env.id} open={expandedIds.has(env.id)} onOpenChange={() => toggleExpanded(env.id)}>
-                <Card className="overflow-hidden">
-                  <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3 px-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline" className="font-mono text-xs">T{env.tier}</Badge>
-                          <span className="font-semibold">{env.name}</span>
-                          <Badge className={`text-xs ${getTypeColor(env.environment_type)}`}>
-                            {env.environment_type}
-                          </Badge>
-                          {env.difficulty && (
-                            <span className="text-xs text-muted-foreground">
-                              Difficulty: {env.difficulty}
-                            </span>
-                          )}
-                        </div>
-                        <ChevronDown className={`h-4 w-4 transition-transform ${expandedIds.has(env.id) ? 'rotate-180' : ''}`} />
-                      </div>
-                    </CardHeader>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <CardContent className="pt-0 pb-4 px-4 space-y-4">
-                      {/* Image */}
-                      {env.image_url && (
-                        <img src={env.image_url} alt={env.name} className="h-32 w-32 object-cover rounded-md border" />
-                      )}
-
-                      {/* Impulses */}
-                      {env.impulses && env.impulses.length > 0 && (
-                        <div>
-                          <span className="text-xs font-semibold text-muted-foreground">Impulses: </span>
-                          <span className="text-sm">{env.impulses.join(', ')}</span>
-                        </div>
-                      )}
-
-                      {/* Potential Adversaries */}
-                      {env.potential_adversaries && (
-                        <div>
-                          <span className="text-xs font-semibold text-muted-foreground">Potential Adversaries: </span>
-                          <span className="text-sm">{env.potential_adversaries}</span>
-                        </div>
-                      )}
-
-                      {/* Features */}
-                      {env.features && env.features.length > 0 && (
-                        <div className="space-y-3">
-                          <h4 className="text-sm font-semibold border-b border-border pb-1">Features</h4>
-                          {env.features.map((feat: any, i: number) => (
-                            <div key={i} className="bg-muted/30 rounded-lg p-3">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-semibold text-sm">{feat.name}</span>
-                                {feat.type && (
-                                  <Badge variant="outline" className={`text-xs ${getFeatureTypeColor(feat.type)}`}>
-                                    {feat.type}
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{feat.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Actions */}
-                      <div className="flex gap-2 pt-2">
-                        <Button size="sm" variant="outline" onClick={() => setEditEnvironment(env)}>
-                          Edit
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => {
-                          const { id, created_at, updated_at, ...rest } = env;
-                          setEditEnvironment({ ...rest, name: `${rest.name} (Copy)`, _isClone: true });
-                        }}>
-                          <Copy className="h-3 w-3 mr-1" /> Duplicate
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => setDeleteTarget(env)}>
-                          Delete
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
-            ))}
-          </div>
-        )}
+          <TabsContent value="specific" className="mt-4">
+            {renderEnvironmentList()}
+          </TabsContent>
+          <TabsContent value="general" className="mt-4">
+            {renderEnvironmentList()}
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Edit Dialog */}
