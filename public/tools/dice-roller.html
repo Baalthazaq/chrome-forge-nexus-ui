@@ -538,6 +538,7 @@
       }
 
       function rollFromEquation(){
+        lastBonusApplied = parseInt(elBonus.value || '0', 10) || 0;
         const formatted = rebuildEquation(elEquation.value); 
         elEquation.value = formatted;
         const reparsed = parseEquation(formatted); 
