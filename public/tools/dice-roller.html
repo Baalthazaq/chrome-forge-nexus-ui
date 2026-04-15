@@ -467,7 +467,9 @@
            parts.push({ txt: `${qty}${label}`, val: key < 0 ? -1 : 1 });
         }
 
-        // The bonus field is the source of truth for the constant
+        const typedConstant = parsed.constant - lastBonusApplied;
+        if (typedConstant !== 0) parts.push({ txt: Math.abs(typedConstant).toString(), val: typedConstant });
+
         const bonus = parseInt(elBonus.value || '0', 10) || 0;
         if (bonus !== 0) parts.push({ txt: Math.abs(bonus).toString(), val: bonus });
         
