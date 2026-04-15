@@ -439,15 +439,12 @@
         return { diceTerms, constant };
       }
 
-      function rebuildEquation(currentStr, newTerms = []){
-        const parsed = parseEquation(currentStr);
-        let terms = parsed.diceTerms;
-        newTerms.forEach(t => { if (t.type !== 'constant') terms.push(t); });
-        
+      // Build equation string from dice terms + a single constant
+      function buildEquationString(diceTerms, constant){
         const counts = new Map();
         let hCount = 0, fCount = 0;
 
-        for (const t of terms){
+        for (const t of diceTerms){
           if (t.flavor === 'hope') { hCount++; continue; }
           if (t.flavor === 'fear') { fCount++; continue; }
           const key = t.sign * t.sides; 
@@ -467,11 +464,7 @@
            parts.push({ txt: `${qty}${label}`, val: key < 0 ? -1 : 1 });
         }
 
-        const typedConstant = parsed.constant - lastBonusApplied;
-        if (typedConstant !== 0) parts.push({ txt: Math.abs(typedConstant).toString(), val: typedConstant });
-
-        const bonus = parseInt(elBonus.value || '0', 10) || 0;
-        if (bonus !== 0) parts.push({ txt: Math.abs(bonus).toString(), val: bonus });
+        if (constant !== 0) parts.push({ txt: Math.abs(constant).toString(), val: constant });
         
         let str = "";
         parts.forEach((p, idx) => {
@@ -479,6 +472,14 @@
            str += op + p.txt;
         });
         return str;
+      }
+
+      // Used when adding dice via buttons — preserves current constant from equation
+      function rebuildEquation(currentStr, newTerms = []){
+        const parsed = parseEquation(currentStr);
+        let terms = parsed.diceTerms;
+        newTerms.forEach(t => { if (t.type !== 'constant') terms.push(t); });
+        return buildEquationString(terms, parsed.constant);
       }
 
       function computeResults(){
