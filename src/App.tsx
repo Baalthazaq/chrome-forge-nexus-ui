@@ -48,6 +48,7 @@ import { CharacterTokensPage } from "./components/CharacterTokens";
 import BestiaryAdmin from "./pages/BestiaryAdmin";
 import EnvironmentsAdmin from "./pages/EnvironmentsAdmin";
 import EncounterBuilder from "./pages/EncounterBuilder";
+import DiceRollerRibbon from "./components/DiceRollerRibbon";
 
 const queryClient = new QueryClient();
 
