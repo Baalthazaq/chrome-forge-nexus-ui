@@ -292,6 +292,7 @@
       const MARGIN = 50, WALL_THICK = 100;
       let walls = [];
       const dice = [], dieByBodyId = new Map();
+      let lastBonusApplied = 0;
 
       // --- Resize Logic (Decoupled from tick loop) ---
       function handleResize(){
@@ -466,7 +467,9 @@
            parts.push({ txt: `${qty}${label}`, val: key < 0 ? -1 : 1 });
         }
 
-        // The bonus field is the source of truth for the constant
+        const typedConstant = parsed.constant - lastBonusApplied;
+        if (typedConstant !== 0) parts.push({ txt: Math.abs(typedConstant).toString(), val: typedConstant });
+
         const bonus = parseInt(elBonus.value || '0', 10) || 0;
         if (bonus !== 0) parts.push({ txt: Math.abs(bonus).toString(), val: bonus });
         
@@ -535,6 +538,7 @@
       }
 
       function rollFromEquation(){
+        lastBonusApplied = parseInt(elBonus.value || '0', 10) || 0;
         const formatted = rebuildEquation(elEquation.value); 
         elEquation.value = formatted;
         const reparsed = parseEquation(formatted); 
@@ -580,7 +584,7 @@
         let v = +document.getElementById('customSides').value; 
         if (v) addTerm(Math.abs(v), v<0?-1:1); 
       };
-      elBonus.oninput = () => { elEquation.value = rebuildEquation(elEquation.value); updateHUD(); };
+      elBonus.oninput = () => { lastBonusApplied = parseInt(elBonus.value || '0', 10) || 0; elEquation.value = rebuildEquation(elEquation.value); updateHUD(); };
 
       canvas.addEventListener('pointerdown', ev => {
          const r = canvas.getBoundingClientRect();
