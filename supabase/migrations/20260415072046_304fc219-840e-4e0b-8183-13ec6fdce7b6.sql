@@ -1,0 +1,1 @@
+UPDATE public.environments SET is_specific = true WHERE lower(name) IN (SELECT lower(name) FROM public.map_areas);
