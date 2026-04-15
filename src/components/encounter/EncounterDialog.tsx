@@ -67,7 +67,7 @@ export const EncounterDialog = ({ encounter, open, onClose, onSaved }: Encounter
   }, [encounter]);
 
   const loadEnvs = async () => {
-    const { data } = await supabase.from('bestiary_environments').select('id, name, tier, environment_type').order('name');
+    const { data } = await supabase.from('environments').select('id, name, tier, environment_type').order('name');
     setAvailableEnvs(data || []);
   };
 

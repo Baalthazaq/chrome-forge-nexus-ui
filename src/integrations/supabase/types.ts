@@ -245,48 +245,6 @@ export type Database = {
         }
         Relationships: []
       }
-      bestiary_environments: {
-        Row: {
-          created_at: string
-          difficulty: string | null
-          environment_type: string
-          features: Json | null
-          id: string
-          image_url: string | null
-          impulses: string[] | null
-          name: string
-          potential_adversaries: string | null
-          tier: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          difficulty?: string | null
-          environment_type?: string
-          features?: Json | null
-          id?: string
-          image_url?: string | null
-          impulses?: string[] | null
-          name: string
-          potential_adversaries?: string | null
-          tier?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          difficulty?: string | null
-          environment_type?: string
-          features?: Json | null
-          id?: string
-          image_url?: string | null
-          impulses?: string[] | null
-          name?: string
-          potential_adversaries?: string | null
-          tier?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
       bestiary_features: {
         Row: {
           created_at: string
@@ -805,6 +763,48 @@ export type Database = {
           name?: string
           tier?: number | null
           type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      environments: {
+        Row: {
+          created_at: string
+          difficulty: string | null
+          environment_type: string
+          features: Json | null
+          id: string
+          image_url: string | null
+          impulses: string[] | null
+          name: string
+          potential_adversaries: string | null
+          tier: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          difficulty?: string | null
+          environment_type?: string
+          features?: Json | null
+          id?: string
+          image_url?: string | null
+          impulses?: string[] | null
+          name: string
+          potential_adversaries?: string | null
+          tier?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          difficulty?: string | null
+          environment_type?: string
+          features?: Json | null
+          id?: string
+          image_url?: string | null
+          impulses?: string[] | null
+          name?: string
+          potential_adversaries?: string | null
+          tier?: number
           updated_at?: string
         }
         Relationships: []
