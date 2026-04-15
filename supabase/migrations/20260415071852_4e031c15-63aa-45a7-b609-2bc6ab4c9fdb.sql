@@ -1,0 +1,1 @@
+ALTER TABLE public.environments ADD COLUMN is_specific boolean NOT NULL DEFAULT false;
