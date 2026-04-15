@@ -776,6 +776,7 @@ export type Database = {
           id: string
           image_url: string | null
           impulses: string[] | null
+          is_specific: boolean
           name: string
           potential_adversaries: string | null
           tier: number
@@ -789,6 +790,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           impulses?: string[] | null
+          is_specific?: boolean
           name: string
           potential_adversaries?: string | null
           tier?: number
@@ -802,6 +804,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           impulses?: string[] | null
+          is_specific?: boolean
           name?: string
           potential_adversaries?: string | null
           tier?: number
