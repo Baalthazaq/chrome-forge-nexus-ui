@@ -39,7 +39,7 @@ const EnvironmentsAdmin = () => {
   const loadEnvironments = async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .from('bestiary_environments')
+      .from('environments')
       .select('*')
       .order('tier')
       .order('name');
@@ -66,7 +66,7 @@ const EnvironmentsAdmin = () => {
   };
 
   const deleteEnvironment = async (id: string) => {
-    const { error } = await supabase.from('bestiary_environments').delete().eq('id', id);
+    const { error } = await supabase.from('environments').delete().eq('id', id);
     if (error) {
       toast.error('Failed to delete');
     } else {
@@ -85,7 +85,7 @@ const EnvironmentsAdmin = () => {
       if (areaError) throw areaError;
 
       const { data: existing } = await supabase
-        .from('bestiary_environments')
+        .from('environments')
         .select('name');
       const existingNames = new Set((existing || []).map((e: any) => e.name.toLowerCase()));
 
@@ -108,7 +108,7 @@ const EnvironmentsAdmin = () => {
       if (toInsert.length === 0) {
         toast.info('All Maze areas already exist as environments');
       } else {
-        const { error } = await supabase.from('bestiary_environments').insert(toInsert);
+        const { error } = await supabase.from('environments').insert(toInsert);
         if (error) throw error;
         toast.success(`Imported ${toInsert.length} areas from Maze`);
         loadEnvironments();

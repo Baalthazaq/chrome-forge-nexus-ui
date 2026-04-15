@@ -125,14 +125,14 @@ export const EnvironmentDialog = ({ environment, open, onClose, onSaved }: Props
 
       if (isEdit) {
         const { error } = await supabase
-          .from('bestiary_environments')
+          .from('environments')
           .update(payload)
           .eq('id', environment.id);
         if (error) throw error;
         toast.success('Environment updated');
       } else {
         const { error } = await supabase
-          .from('bestiary_environments')
+          .from('environments')
           .insert(payload);
         if (error) throw error;
         toast.success('Environment created');

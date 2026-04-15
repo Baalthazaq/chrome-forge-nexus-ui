@@ -32,7 +32,7 @@ export const EnvironmentFeatureLibraryPicker = ({ open, onClose, onSelect }: Pro
 
     // Also extract unique features from existing environments
     const { data: environments } = await supabase
-      .from('bestiary_environments')
+      .from('environments')
       .select('features, tier');
 
     const envFeatureMap = new Map<string, any>();
