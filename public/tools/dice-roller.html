@@ -481,8 +481,10 @@
       }
 
       function computeResults(){
-        const bonus = parseInt(elBonus.value || '0', 10) || 0;
-        let sum = bonus; 
+        // Parse the equation to get the constant (which includes the bonus)
+        const parsed = parseEquation(elEquation.value);
+        const eqConst = parsed.constant;
+        let sum = eqConst; 
         let hasHope = false, hasFear = false;
         let maxHopeVal = -1, maxFearVal = -1;
         let critHopeDie = null, critFearDie = null;
@@ -506,7 +508,7 @@
           else if (maxHopeVal > maxFearVal) dualityState = 'hope';
           else dualityState = 'fear';
         }
-        return { sum, bonus, hasDuality: (hasHope && hasFear), dualityState, critHopeDie, critFearDie };
+        return { sum, hasDuality: (hasHope && hasFear), dualityState, critHopeDie, critFearDie };
       }
 
       function updateHUD(){
