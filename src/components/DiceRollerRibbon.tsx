@@ -305,7 +305,7 @@ const DiceRollerRibbon: React.FC = () => {
     else body = Bodies.polygon(px, py, shape.verts, size * 0.55, physOpts);
     (body as any).isDie = true;
     const idx = dieIndexCounter.current++;
-    const initialValue = (flavor === 'hope' || flavor === 'fear') ? randInt(1, 3) : randInt(1, sides);
+    const initialValue = randInt(1, sides);
     const die: DieData = { sides, sign, flavor, value: initialValue, body, size, isEnlarged: false, isCrit: false, critPartner: null, color, index: idx };
     dieByBodyIdRef.current.set(body.id, die);
     diceRef.current.push(die);
@@ -506,7 +506,7 @@ const DiceRollerRibbon: React.FC = () => {
   const rerollDie = useCallback((dieIndex: number) => {
     const die = diceRef.current.find(d => d.index === dieIndex);
     if (!die) return;
-    die.value = (die.flavor === 'hope' || die.flavor === 'fear') ? randInt(1, 3) : randInt(1, die.sides);
+    die.value = randInt(1, die.sides);
     const angle = Math.random() * Math.PI * 2;
     Body.setVelocity(die.body, { x: Math.cos(angle) * 10, y: Math.sin(angle) * 10 });
     Body.setAngularVelocity(die.body, (Math.random() - 0.5) * 0.3);
@@ -611,7 +611,7 @@ const DiceRollerRibbon: React.FC = () => {
       if (hit) {
         const die = dieByBodyIdRef.current.get(hit.id);
         if (die) {
-          die.value = (die.flavor === 'hope' || die.flavor === 'fear') ? randInt(1, 3) : randInt(1, die.sides);
+          die.value = randInt(1, die.sides);
           const angle = Math.random() * Math.PI * 2;
           Body.setVelocity(die.body, { x: Math.cos(angle) * 10, y: Math.sin(angle) * 10 });
           Body.setAngularVelocity(die.body, (Math.random() - 0.5) * 0.3);
