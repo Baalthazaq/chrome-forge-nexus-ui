@@ -194,6 +194,9 @@ const Admin = () => {
           </CardContent>
         </Card>
 
+        {/* Dice Roll Log */}
+        <DiceRollLog />
+
 
         {/* User Management */}
         <Card>
