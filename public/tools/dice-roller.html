@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cyberpunk Dice Tray (Optimized)</title>
+  <title>Cyberpunk Dice Tray</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -105,7 +105,16 @@
       align-items: center;
       gap: 10px;
     }
-    .eqBox input[type="text"]{
+    .eqDisplay{
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      min-height: 20px;
+      cursor: text;
+      font-size: 14px;
+      font-family: var(--font-main);
+    }
+    .eqDisplay input[type="text"]{
       background: transparent;
       border: none;
       color: var(--ink);
@@ -154,6 +163,24 @@
       text-shadow: 0 0 5px rgba(255,255,255,0.5);
     }
 
+    .colorRow{
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 4px;
+    }
+    .colorRow .label{ font-size: 9px; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+    .colorSwatch{
+      width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+      border: 2px solid rgba(255,255,255,0.15);
+      transition: all 0.15s;
+    }
+    .colorSwatch.active{
+      border-color: #fff;
+      box-shadow: 0 0 8px rgba(255,255,255,0.4);
+      transform: scale(1.2);
+    }
+
     .diceGrid{ display: grid; grid-template-columns: repeat(9, 1fr); gap: 8px; }
 
     .chip{
@@ -194,16 +221,17 @@
     .chip.fearBtn { color: #ff2a6d; font-size: 14px; font-weight: 900;}
     .chip.fearBtn::before { background: linear-gradient(90deg, #ff2a6d, #7f2aff); }
 
-    .chip.duality{ grid-column: 9; grid-row: 1; font-weight: 900; color: #fff; }
+    .chip.duality{ font-weight: 900; color: #fff; }
     .chip.duality::before{ background: linear-gradient(90deg, #ffffff, #ffd700, #000000, #ff2a6d, #7f2aff); }
 
-    .customCell{ grid-column: 9; grid-row: 2; display: flex; gap: 4px; }
+    .chip.customBtn::before{ background: linear-gradient(90deg, #0066ff, #ff3b3b); }
+
+    .customCell{ display: flex; gap: 4px; }
     .customInput{
       width: 40px; background: #050711; border: 1px solid var(--line); border-radius: 6px;
       color: #fff; text-align: center; font-family: var(--font-main); font-size: 12px; outline: none;
     }
     .chip.customBtn{ flex: 1; height: 44px; }
-    .chip.customBtn::before{ background: linear-gradient(90deg, #0066ff, #ff3b3b); }
 
     .trayWrap{
       flex: 1;
@@ -230,36 +258,42 @@
             <div id="total" class="total">—</div>
           </div>
           <div class="eqBox">
-            <input id="equation" type="text" spellcheck="false" autocomplete="off" placeholder="Equation..." />
+            <div id="eqDisplay" class="eqDisplay">
+              <input id="equation" type="text" spellcheck="false" autocomplete="off" placeholder="Equation..." />
+            </div>
             <div class="bonusWrap"><label>Bonus</label><input id="bonus" type="number" value="0" step="1" /></div>
             <button id="clearBtn" class="btn">Clr</button>
             <button id="rollBtn" class="btn">ROLL</button>
           </div>
         </div>
+        <div class="colorRow" id="colorRow">
+          <span class="label">Color</span>
+        </div>
         <div class="diceGrid">
+          <!-- Row 1: DUAL, D?, then d4-d8 + Hope -->
+          <div class="chip duality" id="dualityBtn">DUAL</div>
+          <div class="customCell">
+            <input id="customSides" class="customInput" type="number" value="7" />
+            <div class="chip customBtn" id="customBtn">D?</div>
+          </div>
           <div class="chip dieBtn" data-sides="4">d4</div>
           <div class="chip dieBtn" data-sides="6">d6</div>
           <div class="chip dieBtn" data-sides="8">d8</div>
           <div class="chip dieBtn" data-sides="10">d10</div>
           <div class="chip dieBtn" data-sides="12">d12</div>
-          <div class="chip hopeBtn" id="addHBtn">H</div>
           <div class="chip dieBtn" data-sides="20">d20</div>
           <div class="chip" id="d100Btn">d%</div>
-          <div class="chip duality" id="dualityBtn">DUALITY</div>
 
+          <!-- Row 2: negatives + Fear -->
+          <div class="chip hopeBtn" id="addHBtn">H</div>
+          <div class="chip fearBtn" id="addFBtn">F</div>
           <div class="chip negative dieBtn" data-sides="4" data-sign="-1">-d4</div>
           <div class="chip negative dieBtn" data-sides="6" data-sign="-1">-d6</div>
           <div class="chip negative dieBtn" data-sides="8" data-sign="-1">-d8</div>
           <div class="chip negative dieBtn" data-sides="10" data-sign="-1">-d10</div>
           <div class="chip negative dieBtn" data-sides="12" data-sign="-1">-d12</div>
-          <div class="chip fearBtn negative" id="addFBtn">F</div>
           <div class="chip negative dieBtn" data-sides="20" data-sign="-1">-d20</div>
           <div class="chip negative" id="negD100Btn">-d%</div>
-          
-          <div class="customCell">
-            <input id="customSides" class="customInput" type="number" value="7" />
-            <div class="chip customBtn" id="customBtn">Add</div>
-          </div>
         </div>
       </div>
     </div>
@@ -272,9 +306,8 @@
       const { Engine, World, Bodies, Body, Query } = Matter;
       const trayWrap = document.getElementById('trayWrap');
       const canvas = document.getElementById('tray');
-      const ctx = canvas.getContext('2d', { alpha: false }); // Optimize for no transparency on main canvas
+      const ctx = canvas.getContext('2d', { alpha: false });
 
-      // Off-screen canvas for static background (Performance Optimization)
       const bgCanvas = document.createElement('canvas');
       const bgCtx = bgCanvas.getContext('2d');
 
@@ -292,30 +325,69 @@
       const MARGIN = 50, WALL_THICK = 100;
       let walls = [];
       const dice = [], dieByBodyId = new Map();
-      let lastEdited = 'bonus'; // 'equation' or 'bonus'
 
-      // --- Resize Logic (Decoupled from tick loop) ---
+      // --- Color Palette ---
+      const COLOR_PALETTE = [
+        { value: null, label: 'Default', css: 'linear-gradient(135deg, #00f5ff, #ff3b3b)' },
+        { value: '#00f5ff', label: 'Cyan', css: '#00f5ff' },
+        { value: '#ff3b3b', label: 'Red', css: '#ff3b3b' },
+        { value: '#39ff14', label: 'Green', css: '#39ff14' },
+        { value: '#7f2aff', label: 'Purple', css: '#7f2aff' },
+        { value: '#ff8c00', label: 'Orange', css: '#ff8c00' },
+        { value: '#ffffff', label: 'White', css: '#ffffff' },
+      ];
+      let activeColor = null;
+
+      // Build color swatches
+      const colorRow = document.getElementById('colorRow');
+      COLOR_PALETTE.forEach(c => {
+        const el = document.createElement('div');
+        el.className = 'colorSwatch' + (c.value === activeColor ? ' active' : '');
+        el.style.background = c.css;
+        el.title = c.label;
+        el.onclick = () => {
+          activeColor = c.value;
+          document.querySelectorAll('.colorSwatch').forEach(s => s.classList.remove('active'));
+          el.classList.add('active');
+          // Update chip border colors for normal dice buttons
+          updateChipColors();
+        };
+        colorRow.appendChild(el);
+      });
+
+      function updateChipColors() {
+        document.querySelectorAll('.dieBtn:not(.negative)').forEach(b => {
+          if (activeColor) {
+            b.style.color = activeColor;
+            b.style.setProperty('--chip-border', activeColor + '80');
+          } else {
+            b.style.color = '';
+            b.style.setProperty('--chip-border', '');
+          }
+        });
+        const customBtn = document.getElementById('customBtn');
+        if (activeColor) {
+          customBtn.style.color = activeColor;
+        } else {
+          customBtn.style.color = '';
+        }
+      }
+
+      // --- Resize Logic ---
       function handleResize(){
         const rect = trayWrap.getBoundingClientRect();
         const newW = Math.floor(rect.width);
         const newH = Math.floor(rect.height);
-        
         if (newW === W && newH === H) return;
         W = newW; H = newH;
-        
-        // Resize main canvas
         canvas.width = Math.floor(W * dpr);
         canvas.height = Math.floor(H * dpr);
         canvas.style.width = W + 'px';
         canvas.style.height = H + 'px';
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-        // Resize background canvas
         bgCanvas.width = canvas.width;
         bgCanvas.height = canvas.height;
-        renderStaticBackground(); // Draw grid once
-
-        // Rebuild Physics Walls
+        renderStaticBackground();
         World.remove(world, walls);
         walls = [];
         const opts = { isStatic: true, friction: 0.05, restitution: 0.5 };
@@ -324,8 +396,6 @@
         walls.push(Bodies.rectangle(W/2, MARGIN - WALL_THICK/2, W*2, WALL_THICK, opts));
         walls.push(Bodies.rectangle(W/2, H - MARGIN + WALL_THICK/2, W*2, WALL_THICK, opts));
         World.add(world, walls);
-
-        // Clamp Dice
         const safeXMin = MARGIN + 20, safeXMax = W - MARGIN - 20;
         const safeYMin = MARGIN + 20, safeYMax = H - MARGIN - 20;
         for (const d of dice){
@@ -338,13 +408,11 @@
       }
 
       function renderStaticBackground(){
-        // Draw the grid once to the offscreen canvas
         bgCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
         bgCtx.clearRect(0,0,W,H);
         bgCtx.globalAlpha = 0.1; 
         bgCtx.strokeStyle = '#00f5ff'; 
         bgCtx.lineWidth = 1;
-        
         bgCtx.beginPath();
         for(let x=0; x<=W; x+=50){ bgCtx.moveTo(x,0); bgCtx.lineTo(x,H); }
         for(let y=0; y<=H; y+=50){ bgCtx.moveTo(0,y); bgCtx.lineTo(W,y); }
@@ -364,11 +432,13 @@
         return { kind:'poly', verts: 4 };
       }
 
-      function makeDie({ sides, sign=+1, flavor='normal' }){
-        // Size calculation
-        const size = Math.max(36, Math.min(60, 30 + Math.sqrt(Math.max(1, sides)) * 3.5));
+      let dieIndexCounter = 0;
+
+      function makeDie({ sides, sign=+1, flavor='normal', color=null }){
+        let size = Math.max(36, Math.min(60, 30 + Math.sqrt(Math.max(1, sides)) * 3.5));
+        // Hope/Fear dice are slightly larger
+        if (flavor === 'hope' || flavor === 'fear') size *= 1.3;
         
-        // Spawn Point
         const buf = 150;
         const px = randInt(buf, W - buf);
         const py = randInt(buf, H - buf);
@@ -381,12 +451,15 @@
         else body = Bodies.polygon(px, py, shape.verts, size * 0.55, physOpts);
         body.isDie = true;
 
-        const die = { sides, sign, flavor, value: randInt(1, sides), body, size, isEnlarged: false, isCrit: false };
+        const die = { 
+          sides, sign, flavor, value: randInt(1, sides), body, size, 
+          isEnlarged: false, isCrit: false, critPartner: null, 
+          color: color, index: dieIndexCounter++ 
+        };
         dieByBodyId.set(body.id, die);
         dice.push(die);
         World.add(world, body);
         
-        // Impulse
         const angle = Math.random() * Math.PI * 2;
         const speed = 12 + Math.random() * 5;
         Body.setVelocity(body, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
@@ -398,6 +471,7 @@
       function clearDice(){
         for (const d of dice){ World.remove(world, d.body); dieByBodyId.delete(d.body.id); }
         dice.length = 0;
+        dieIndexCounter = 0;
       }
 
       // --- Equation & Logic ---
@@ -416,8 +490,8 @@
             const char = eqStr[i];
             if (char === 'd' || char === 'D'){
               i++;
-              let sides = 0, isPercent = false;
-              if (eqStr[i] === '%') { isPercent=true; i++; sides=100; }
+              let sides = 0;
+              if (eqStr[i] === '%') { i++; sides=100; }
               else {
                 let sidesStr = ''; while (i < eqStr.length && /[0-9]/.test(eqStr[i])) sidesStr += eqStr[i++];
                 sides = parseInt(sidesStr, 10);
@@ -433,13 +507,12 @@
               for (let k=0; k<count; k++) diceTerms.push({ sides: 12, sign, flavor });
             } else if (num !== null) {
               constant += sign * num;
-            } else { i++; } // skip unknown
+            } else { i++; }
           } else if (num !== null) { constant += sign * num; }
         }
         return { diceTerms, constant };
       }
 
-      // Build equation string from dice terms + a single constant
       function buildEquationString(diceTerms, constant){
         const counts = new Map();
         let hCount = 0, fCount = 0;
@@ -447,34 +520,31 @@
         for (const t of diceTerms){
           if (t.flavor === 'hope') { hCount++; continue; }
           if (t.flavor === 'fear') { fCount++; continue; }
-          const key = t.sign * t.sides; 
-          counts.set(key, (counts.get(key) || 0) + 1);
+          const key = `${t.sign}_${t.sides}_${t.color || 'def'}`;
+          const existing = counts.get(key);
+          if (existing) existing.count++;
+          else counts.set(key, { count: 1, sides: t.sides, sign: t.sign, color: t.color || null });
         }
 
         const parts = [];
-        if (hCount > 0) parts.push({ txt: hCount > 1 ? `${hCount}H` : 'H', val: 1 });
-        if (fCount > 0) parts.push({ txt: fCount > 1 ? `${fCount}F` : 'F', val: 1 });
+        if (hCount > 0) parts.push({ txt: hCount > 1 ? `${hCount}H` : 'H', val: 1, color: '#ffd700', flavor: 'hope' });
+        if (fCount > 0) parts.push({ txt: fCount > 1 ? `${fCount}F` : 'F', val: 1, color: '#ff2a6d', flavor: 'fear' });
         
-        const sortedKeys = Array.from(counts.keys()).sort((a,b) => Math.abs(b) - Math.abs(a));
-        for (const key of sortedKeys){
-           const count = counts.get(key);
-           const sides = Math.abs(key);
-           const label = sides === 100 ? 'd%' : `d${sides}`;
-           const qty = count > 1 ? count : '';
-           parts.push({ txt: `${qty}${label}`, val: key < 0 ? -1 : 1 });
+        const sortedEntries = Array.from(counts.values()).sort((a,b) => Math.abs(b.sides) - Math.abs(a.sides));
+        for (const entry of sortedEntries){
+           const label = entry.sides === 100 ? 'd%' : `d${entry.sides}`;
+           const qty = entry.count > 1 ? entry.count : '';
+           parts.push({ txt: `${qty}${label}`, val: entry.sign, color: entry.color, flavor: 'normal' });
         }
 
-        if (constant !== 0) parts.push({ txt: Math.abs(constant).toString(), val: constant });
+        if (constant !== 0) parts.push({ txt: Math.abs(constant).toString(), val: constant, color: null, flavor: 'normal' });
         
-        let str = "";
-        parts.forEach((p, idx) => {
-           const op = (p.val < 0) ? "-" : (idx === 0 ? "" : "+");
-           str += op + p.txt;
-        });
-        return str;
+        return { str: parts.map((p, idx) => {
+            const op = (p.val < 0) ? "-" : (idx === 0 ? "" : "+");
+            return op + p.txt;
+          }).join(''), parts };
       }
 
-      // Used when adding dice via buttons — preserves current constant from equation
       function rebuildEquation(currentStr, newTerms = []){
         const parsed = parseEquation(currentStr);
         let terms = parsed.diceTerms;
@@ -482,35 +552,141 @@
         return buildEquationString(terms, parsed.constant);
       }
 
+      // --- Colored equation display ---
+      function updateEquationDisplay(parts) {
+        const eqDisplay = document.getElementById('eqDisplay');
+        // When editing, show the input; otherwise show colored spans
+        if (document.activeElement === elEquation) return;
+        
+        if (!parts || parts.length === 0) {
+          elEquation.style.display = '';
+          // Clear any spans
+          const spans = eqDisplay.querySelectorAll('span');
+          spans.forEach(s => s.remove());
+          return;
+        }
+
+        // Hide input, show colored spans
+        elEquation.style.display = 'none';
+        // Remove old spans
+        const oldSpans = eqDisplay.querySelectorAll('span');
+        oldSpans.forEach(s => s.remove());
+
+        for (const p of parts) {
+          const span = document.createElement('span');
+          const op = (p.val < 0) ? "-" : (parts.indexOf(p) === 0 ? "" : "+");
+          span.textContent = op + p.txt;
+          span.style.color = p.flavor === 'hope' ? '#ffd700' : p.flavor === 'fear' ? '#ff2a6d' : (p.color || '#d6d9e6');
+          span.style.fontFamily = 'var(--font-main)';
+          span.style.fontSize = '14px';
+          eqDisplay.appendChild(span);
+        }
+      }
+
+      // When equation input is focused, show it; when blurred, show colored display
+      elEquation.addEventListener('focus', () => {
+        elEquation.style.display = '';
+        const spans = document.getElementById('eqDisplay').querySelectorAll('span');
+        spans.forEach(s => s.remove());
+      });
+      elEquation.addEventListener('blur', () => {
+        // Rebuild colored display from current dice
+        const result = buildEquationStringFromDice();
+        updateEquationDisplay(result.parts);
+      });
+
+      function buildEquationStringFromDice() {
+        // Build colored segments from actual dice array
+        const groups = [];
+        for (const d of dice) {
+          const existing = groups.find(g => g.sign === d.sign && g.sides === d.sides && g.color === d.color && g.flavor === d.flavor);
+          if (existing) existing.count++;
+          else groups.push({ sign: d.sign, sides: d.sides, color: d.color, flavor: d.flavor, count: 1 });
+        }
+
+        const parts = [];
+        const hopes = groups.filter(g => g.flavor === 'hope');
+        const fears = groups.filter(g => g.flavor === 'fear');
+        const normals = groups.filter(g => g.flavor === 'normal').sort((a, b) => Math.abs(b.sides) - Math.abs(a.sides));
+        const ordered = [...hopes, ...fears, ...normals];
+
+        ordered.forEach((g, idx) => {
+          let label;
+          if (g.flavor === 'hope') label = g.count > 1 ? `${g.count}H` : 'H';
+          else if (g.flavor === 'fear') label = g.count > 1 ? `${g.count}F` : 'F';
+          else {
+            const sideLabel = g.sides === 100 ? 'd%' : `d${g.sides}`;
+            label = (g.count > 1 ? g.count : '') + sideLabel;
+          }
+          parts.push({
+            txt: label,
+            val: g.sign,
+            color: g.flavor === 'hope' ? '#ffd700' : g.flavor === 'fear' ? '#ff2a6d' : g.color,
+            flavor: g.flavor
+          });
+        });
+
+        const parsed = parseEquation(elEquation.value);
+        if (parsed.constant !== 0) {
+          parts.push({ txt: Math.abs(parsed.constant).toString(), val: parsed.constant, color: null, flavor: 'normal' });
+        }
+
+        return { parts };
+      }
+
+      // --- Crit matching: ALL pairs ---
       function computeResults(){
-        // Parse the equation to get the constant (which includes the bonus)
         const parsed = parseEquation(elEquation.value);
         const eqConst = parsed.constant;
         let sum = eqConst; 
-        let hasHope = false, hasFear = false;
-        let maxHopeVal = -1, maxFearVal = -1;
-        let critHopeDie = null, critFearDie = null;
+        const hopeDice = [];
+        const fearDice = [];
 
         for (const d of dice){
           sum += d.value * d.sign;
-          if (d.sign === 1) {
-              if (d.flavor === 'hope') {
-                  hasHope = true;
-                  if (d.value > maxHopeVal) { maxHopeVal = d.value; critHopeDie = d; }
-              } else if (d.flavor === 'fear') {
-                  hasFear = true;
-                  if (d.value > maxFearVal) { maxFearVal = d.value; critFearDie = d; }
-              }
-          }
+          if (d.sign === 1 && d.flavor === 'hope') hopeDice.push(d);
+          else if (d.sign === 1 && d.flavor === 'fear') fearDice.push(d);
         }
         
-        let dualityState = 'none';
-        if (hasHope && hasFear){
-          if (maxHopeVal === maxFearVal) dualityState = 'crit';
-          else if (maxHopeVal > maxFearVal) dualityState = 'hope';
-          else dualityState = 'fear';
+        const hasHope = hopeDice.length > 0;
+        const hasFear = fearDice.length > 0;
+
+        // Clear all crit state
+        for (const d of dice) { d.isCrit = false; d.critPartner = null; }
+
+        // Pair ALL matching hope/fear dice by value
+        let hasCrit = false;
+        if (hasHope && hasFear) {
+          const usedFear = new Set();
+          for (const h of hopeDice) {
+            for (let fi = 0; fi < fearDice.length; fi++) {
+              if (!usedFear.has(fi) && fearDice[fi].value === h.value) {
+                h.isCrit = true;
+                h.critPartner = fearDice[fi];
+                fearDice[fi].isCrit = true;
+                fearDice[fi].critPartner = h;
+                usedFear.add(fi);
+                hasCrit = true;
+                break;
+              }
+            }
+          }
         }
-        return { sum, hasDuality: (hasHope && hasFear), dualityState, critHopeDie, critFearDie };
+
+        // Determine duality state
+        let dualityState = 'none';
+        if (hasHope && hasFear) {
+          if (hasCrit) {
+            dualityState = 'crit';
+          } else {
+            const maxH = Math.max(...hopeDice.map(d => d.value));
+            const maxF = Math.max(...fearDice.map(d => d.value));
+            if (maxH > maxF) dualityState = 'hope';
+            else dualityState = 'fear';
+          }
+        }
+
+        return { sum, hasDuality: (hasHope && hasFear), dualityState };
       }
 
       function updateHUD(){
@@ -526,31 +702,42 @@
         }
 
         // Apply Crit Scaling
-        for (const d of dice) d.isCrit = false;
-        if (r.dualityState === 'crit' && r.critHopeDie && r.critFearDie) {
-            r.critHopeDie.isCrit = true;
-            r.critFearDie.isCrit = true;
-        }
-
         for (const d of dice){
           if (d.isCrit && !d.isEnlarged) { Body.scale(d.body, 1.8, 1.8); d.size *= 1.8; d.isEnlarged = true; }
           else if (!d.isCrit && d.isEnlarged) { Body.scale(d.body, 0.555, 0.555); d.size /= 1.8; d.isEnlarged = false; }
         }
+
+        // Update colored equation display
+        const result = buildEquationStringFromDice();
+        updateEquationDisplay(result.parts);
       }
 
       function rollFromEquation(){
-        // Parse what's currently displayed — no mutations to bonus
+        // Preserve colors from existing dice before clearing
+        const existingDiceColors = dice.map(d => ({ sides: d.sides, sign: d.sign, flavor: d.flavor, color: d.color }));
         const parsed = parseEquation(elEquation.value);
-        // Normalize the display
-        elEquation.value = buildEquationString(parsed.diceTerms, parsed.constant);
+        const built = buildEquationString(parsed.diceTerms, parsed.constant);
+        elEquation.value = built.str;
         elBonus.value = parsed.constant;
         
         clearDice();
+        const colorPool = [...existingDiceColors];
         for (const t of parsed.diceTerms){
+          let dieColor = null;
+          if (t.flavor !== 'hope' && t.flavor !== 'fear') {
+            const matchIdx = colorPool.findIndex(c => c.sides === t.sides && c.sign === t.sign && c.flavor === t.flavor);
+            if (matchIdx >= 0) {
+              dieColor = colorPool[matchIdx].color;
+              colorPool.splice(matchIdx, 1);
+            } else {
+              dieColor = activeColor;
+            }
+          }
           makeDie({ 
             sides: t.sides, 
             sign: t.sign, 
-            flavor: (t.flavor === 'hope' && t.sign===1) ? 'hope' : (t.flavor === 'fear' && t.sign===1) ? 'fear' : 'normal' 
+            flavor: t.flavor,
+            color: dieColor
           });
         }
         updateHUD();
@@ -558,15 +745,24 @@
 
       // --- Interaction ---
       function addTerm(sides, sign=1, flavor='normal'){
-         elEquation.value = rebuildEquation(elEquation.value, [{ sides, sign, flavor, type: 'die' }]);
-         makeDie({ sides: (flavor==='hope'||flavor==='fear')?12:sides, sign, flavor });
+         const dieColor = (flavor === 'hope' || flavor === 'fear') ? null : activeColor;
+         const built = rebuildEquation(elEquation.value, [{ sides, sign, flavor, color: dieColor, type: 'die' }]);
+         elEquation.value = built.str;
+         makeDie({ sides: (flavor==='hope'||flavor==='fear')?12:sides, sign, flavor, color: dieColor });
          updateHUD();
       }
 
       document.getElementById('rollBtn').onclick = rollFromEquation;
-      document.getElementById('clearBtn').onclick = () => { elEquation.value=''; elBonus.value='0'; lastEdited='bonus'; clearDice(); updateHUD(); };
+      document.getElementById('clearBtn').onclick = () => { 
+        elEquation.value=''; elBonus.value='0'; 
+        clearDice(); 
+        updateHUD(); 
+        // Clear colored display
+        elEquation.style.display = '';
+        const spans = document.getElementById('eqDisplay').querySelectorAll('span');
+        spans.forEach(s => s.remove());
+      };
       
-      // Bind Buttons
       document.querySelectorAll('.dieBtn').forEach(b => b.onclick = () => addTerm(+b.dataset.sides, +b.dataset.sign||1));
       document.getElementById('d100Btn').onclick = () => addTerm(100, 1);
       document.getElementById('negD100Btn').onclick = () => addTerm(100, -1);
@@ -574,10 +770,11 @@
       document.getElementById('addFBtn').onclick = () => addTerm(12, 1, 'fear');
       
       document.getElementById('dualityBtn').onclick = () => {
-        elEquation.value = rebuildEquation(elEquation.value, [
+        const built = rebuildEquation(elEquation.value, [
           { sides:12, sign:1, flavor:'hope', type:'die' },
           { sides:12, sign:1, flavor:'fear', type:'die' }
         ]);
+        elEquation.value = built.str;
         makeDie({ sides:12, sign:1, flavor:'hope' }); 
         makeDie({ sides:12, sign:1, flavor:'fear' });
         updateHUD();
@@ -587,20 +784,18 @@
         let v = +document.getElementById('customSides').value; 
         if (v) addTerm(Math.abs(v), v<0?-1:1); 
       };
-      // Equation input: user typing → sync bonus box to parsed constant
+
       elEquation.addEventListener('input', () => {
-        lastEdited = 'equation';
         const parsed = parseEquation(elEquation.value);
         elBonus.value = parsed.constant;
         updateHUD();
       });
 
-      // Bonus input: user editing → rebuild equation with new constant
       elBonus.oninput = () => {
-        lastEdited = 'bonus';
         const parsed = parseEquation(elEquation.value);
         const bonus = parseInt(elBonus.value || '0', 10) || 0;
-        elEquation.value = buildEquationString(parsed.diceTerms, bonus);
+        const built = buildEquationString(parsed.diceTerms, bonus);
+        elEquation.value = built.str;
         updateHUD();
       };
 
@@ -623,7 +818,6 @@
         const ang = (timeMs * 0.0012) + (die.body.id * 0.37);
         const gx0 = Math.cos(ang) * (r * 0.75), gy0 = Math.sin(ang) * (r * 0.75);
         const grad = ctx.createLinearGradient(gx0, gy0, -gx0, -gy0);
-        // Corrected Tight Gradient
         grad.addColorStop(0.00, '#ffffff');
         grad.addColorStop(0.20, '#ffffff');
         grad.addColorStop(0.25, '#ffd700');
@@ -642,19 +836,39 @@
          const grad = ctx.createLinearGradient(gx, gy, -gx, -gy);
          
          if (die.flavor === 'hope' && die.sign === 1) {
-            grad.addColorStop(0, '#ffd700'); grad.addColorStop(0.4, '#ffffff'); grad.addColorStop(0.7, '#000000'); grad.addColorStop(1, '#000000');
+            // White one side, yellow the other, black core
+            grad.addColorStop(0.00, '#ffffff');
+            grad.addColorStop(0.25, '#ffffff');
+            grad.addColorStop(0.35, '#000000');
+            grad.addColorStop(0.65, '#000000');
+            grad.addColorStop(0.75, '#ffd700');
+            grad.addColorStop(1.00, '#ffd700');
          } else if (die.flavor === 'fear' && die.sign === 1) {
-            grad.addColorStop(0, '#ff2a6d'); grad.addColorStop(0.4, '#7f2aff'); grad.addColorStop(0.7, '#000000'); grad.addColorStop(1, '#000000');
+            // Purple one side, red the other, black core
+            grad.addColorStop(0.00, '#7f2aff');
+            grad.addColorStop(0.25, '#7f2aff');
+            grad.addColorStop(0.35, '#000000');
+            grad.addColorStop(0.65, '#000000');
+            grad.addColorStop(0.75, '#ff2a6d');
+            grad.addColorStop(1.00, '#ff2a6d');
+         } else if (die.color) {
+            grad.addColorStop(0, die.color); grad.addColorStop(0.30, die.color);
+            grad.addColorStop(0.42, '#000000'); grad.addColorStop(0.58, '#000000');
+            grad.addColorStop(0.70, die.color); grad.addColorStop(1, die.color);
          } else if (die.sign < 0) {
-            grad.addColorStop(0, '#ff3b3b'); grad.addColorStop(0.4, '#000000');
+            grad.addColorStop(0, '#ff3b3b'); grad.addColorStop(0.30, '#ff3b3b');
+            grad.addColorStop(0.42, '#000000'); grad.addColorStop(0.58, '#000000');
+            grad.addColorStop(0.70, '#ff3b3b'); grad.addColorStop(1, '#ff3b3b');
          } else {
-            grad.addColorStop(0, '#00f5ff'); grad.addColorStop(0.4, '#000000');
+            grad.addColorStop(0, '#00f5ff'); grad.addColorStop(0.30, '#00f5ff');
+            grad.addColorStop(0.42, '#000000'); grad.addColorStop(0.58, '#000000');
+            grad.addColorStop(0.70, '#00f5ff'); grad.addColorStop(1, '#00f5ff');
          }
          return grad;
       }
 
       // --- Main Loop ---
-      handleResize(); // Initial setup
+      handleResize();
       updateHUD();
 
       let last = performance.now();
@@ -664,14 +878,12 @@
 
         Engine.update(engine, dt);
 
-        // Safety floor check
         const floorY = H - MARGIN + WALL_THICK/2 + 20;
         for(const d of dice){
            if (d.body.position.y > floorY) {
              Body.setPosition(d.body, { x: W/2, y: H/2 });
              Body.setVelocity(d.body, {x:0, y:0});
            }
-           // Settle check
            if (Math.hypot(d.body.velocity.x, d.body.velocity.y) < 0.1 && Math.abs(d.body.angularVelocity) < 0.05) {
               Body.setVelocity(d.body, {x:0, y:0});
               Body.setAngularVelocity(d.body, 0);
@@ -680,7 +892,31 @@
 
         // Draw
         ctx.clearRect(0, 0, W, H);
-        ctx.drawImage(bgCanvas, 0, 0); // Fast background
+        ctx.drawImage(bgCanvas, 0, 0);
+
+        // Draw linking strings between paired crit dice
+        const drawnPairs = new Set();
+        for (const d of dice) {
+          if (d.isCrit && d.critPartner) {
+            const pairKey = [d.index, d.critPartner.index].sort().join('-');
+            if (drawnPairs.has(pairKey)) continue;
+            drawnPairs.add(pairKey);
+            const ax = d.body.position.x, ay = d.body.position.y;
+            const bx = d.critPartner.body.position.x, by = d.critPartner.body.position.y;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(bx, by);
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = 'rgba(255, 215, 0, 0.6)';
+            ctx.shadowBlur = 10;
+            ctx.setLineDash([6, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+          }
+        }
 
         for (const d of dice){
             const b = d.body; const x = b.position.x, y = b.position.y;
@@ -688,48 +924,39 @@
             ctx.translate(x, y);
             ctx.rotate(b.angle);
 
-            // Shape
             ctx.beginPath();
             const v = b.vertices;
             ctx.moveTo(v[0].x - x, v[0].y - y);
             for (let i=1; i<v.length; i++) ctx.lineTo(v[i].x - x, v[i].y - y);
             ctx.closePath();
 
-            // Fill
             ctx.fillStyle = '#070a12';
             ctx.fill();
 
-            // Stroke
             ctx.lineWidth = 4;
             if (d.isCrit) {
                ctx.strokeStyle = getCritGradient(ctx, d, d.size, now);
-               // Only crit dice get the heavy blur
                ctx.shadowColor = 'rgba(255,215,0,0.75)';
                ctx.shadowBlur = 35;
             } else {
                ctx.strokeStyle = getNormalGradient(ctx, d, d.size, now);
-               ctx.shadowBlur = 0; // Optimize: disable shadow for normal dice
+               ctx.shadowBlur = 0;
             }
             ctx.stroke();
 
-            // Inner Stroke
             if (!d.isCrit) {
                 ctx.lineWidth = 1.5; 
                 ctx.strokeStyle = 'rgba(0,0,0,0.6)'; 
                 ctx.stroke();
             }
 
-            // Text
             ctx.rotate(-b.angle);
             ctx.fillStyle = '#fff'; 
             ctx.font = '700 18px "Orbitron", sans-serif';
             ctx.textAlign = 'center'; 
             ctx.textBaseline = 'middle';
-            
-            // Text Shadow (reduced)
             ctx.shadowColor = 'rgba(0,0,0,0.8)'; 
             ctx.shadowBlur = 4;
-            
             ctx.fillText((d.sign < 0 ? '-' : '') + d.value, 0, 0);
             ctx.restore();
         }
