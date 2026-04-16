@@ -191,13 +191,20 @@ const Admin = () => {
                 <span className="font-semibold">Racegen</span>
                 <span className="text-xs text-muted-foreground">Ancestry Generator</span>
               </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10">
+                    <span className="font-semibold">Dice Roll Log</span>
+                    <span className="text-xs text-muted-foreground">View Roll History</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DiceRollLog />
+                </DialogContent>
+              </Dialog>
             </div>
           </CardContent>
         </Card>
-
-        {/* Dice Roll Log */}
-        <DiceRollLog />
-
 
         {/* User Management */}
         <Card>
