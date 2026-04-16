@@ -48,24 +48,24 @@ function parseEquation(str: string): { diceTerms: DiceTerm[]; constant: number }
 }
 
 function buildEquationString(diceTerms: DiceTerm[], constant: number): string {
-  const counts = new Map<number, number>();
+  const counts = new Map<string, { count: number; sides: number; sign: number; flavor: string; color: string | null }>();
   let hCount = 0, fCount = 0;
   for (const t of diceTerms) {
     if (t.flavor === 'hope') { hCount++; continue; }
     if (t.flavor === 'fear') { fCount++; continue; }
-    const key = t.sign * t.sides;
-    counts.set(key, (counts.get(key) || 0) + 1);
+    const key = `${t.sign}_${t.sides}_${t.color || 'def'}`;
+    const existing = counts.get(key);
+    if (existing) existing.count++;
+    else counts.set(key, { count: 1, sides: t.sides, sign: t.sign, flavor: 'normal', color: t.color || null });
   }
   const parts: { txt: string; val: number }[] = [];
   if (hCount > 0) parts.push({ txt: hCount > 1 ? `${hCount}H` : 'H', val: 1 });
   if (fCount > 0) parts.push({ txt: fCount > 1 ? `${fCount}F` : 'F', val: 1 });
-  const sortedKeys = Array.from(counts.keys()).sort((a, b) => Math.abs(b) - Math.abs(a));
-  for (const key of sortedKeys) {
-    const count = counts.get(key)!;
-    const sides = Math.abs(key);
-    const label = sides === 100 ? 'd%' : `d${sides}`;
-    const qty = count > 1 ? count : '';
-    parts.push({ txt: `${qty}${label}`, val: key < 0 ? -1 : 1 });
+  const sortedEntries = Array.from(counts.values()).sort((a, b) => Math.abs(b.sides) - Math.abs(a.sides));
+  for (const entry of sortedEntries) {
+    const label = entry.sides === 100 ? 'd%' : `d${entry.sides}`;
+    const qty = entry.count > 1 ? entry.count : '';
+    parts.push({ txt: `${qty}${label}`, val: entry.sign });
   }
   if (constant !== 0) parts.push({ txt: Math.abs(constant).toString(), val: constant });
   let str = '';
@@ -92,8 +92,8 @@ interface DieData {
   size: number;
   isEnlarged: boolean;
   isCrit: boolean;
-  color: string | null; // custom color, null = default
-  index: number; // index in dice array for results bar
+  color: string | null;
+  index: number;
 }
 
 interface DieResult {
@@ -139,9 +139,25 @@ function getNormalGradient(ctx: CanvasRenderingContext2D, die: DieData, r: numbe
   const gx = Math.cos(ang) * r9, gy = Math.sin(ang) * r9;
   const grad = ctx.createLinearGradient(gx, gy, -gx, -gy);
   if (die.flavor === 'hope' && die.sign === 1) {
-    grad.addColorStop(0, '#ffd700'); grad.addColorStop(0.25, '#ffffff'); grad.addColorStop(0.40, '#000000'); grad.addColorStop(0.60, '#000000'); grad.addColorStop(0.75, '#ffffff'); grad.addColorStop(1, '#ffd700');
+    // Crit-style yellow/white split across both sides of black
+    grad.addColorStop(0.00, '#ffffff');
+    grad.addColorStop(0.15, '#ffffff');
+    grad.addColorStop(0.22, '#ffd700');
+    grad.addColorStop(0.35, '#000000');
+    grad.addColorStop(0.65, '#000000');
+    grad.addColorStop(0.78, '#ffd700');
+    grad.addColorStop(0.85, '#ffffff');
+    grad.addColorStop(1.00, '#ffffff');
   } else if (die.flavor === 'fear' && die.sign === 1) {
-    grad.addColorStop(0, '#ff2a6d'); grad.addColorStop(0.25, '#7f2aff'); grad.addColorStop(0.40, '#000000'); grad.addColorStop(0.60, '#000000'); grad.addColorStop(0.75, '#7f2aff'); grad.addColorStop(1, '#ff2a6d');
+    // Crit-style purple/red split across both sides of black
+    grad.addColorStop(0.00, '#ff2a6d');
+    grad.addColorStop(0.15, '#ff2a6d');
+    grad.addColorStop(0.22, '#7f2aff');
+    grad.addColorStop(0.35, '#000000');
+    grad.addColorStop(0.65, '#000000');
+    grad.addColorStop(0.78, '#7f2aff');
+    grad.addColorStop(0.85, '#ff2a6d');
+    grad.addColorStop(1.00, '#ff2a6d');
   } else if (die.color) {
     grad.addColorStop(0, die.color); grad.addColorStop(0.30, die.color); grad.addColorStop(0.42, '#000000'); grad.addColorStop(0.58, '#000000'); grad.addColorStop(0.70, die.color); grad.addColorStop(1, die.color);
   } else if (die.sign < 0) {
@@ -163,6 +179,53 @@ const COLOR_PALETTE = [
   { value: '#ffffff', label: 'White', css: '#ffffff' },
 ];
 
+// --- Colored equation segments ---
+interface EqSegment {
+  text: string;
+  color: string | null;
+  flavor: 'normal' | 'hope' | 'fear';
+}
+
+function buildColoredSegments(dice: DieData[], constant: number): EqSegment[] {
+  // Group dice by (sign, sides, color, flavor) preserving insertion order
+  const groups: { sign: number; sides: number; color: string | null; flavor: string; count: number }[] = [];
+  for (const d of dice) {
+    const existing = groups.find(g => g.sign === d.sign && g.sides === d.sides && g.color === d.color && g.flavor === d.flavor);
+    if (existing) existing.count++;
+    else groups.push({ sign: d.sign, sides: d.sides, color: d.color, flavor: d.flavor as string, count: 1 });
+  }
+
+  const segments: EqSegment[] = [];
+  // Hope first, then fear, then normals sorted by sides desc
+  const hopes = groups.filter(g => g.flavor === 'hope');
+  const fears = groups.filter(g => g.flavor === 'fear');
+  const normals = groups.filter(g => g.flavor === 'normal').sort((a, b) => Math.abs(b.sides) - Math.abs(a.sides));
+  const ordered = [...hopes, ...fears, ...normals];
+
+  ordered.forEach((g, idx) => {
+    const op = g.sign < 0 ? '-' : idx === 0 ? '' : '+';
+    let label: string;
+    if (g.flavor === 'hope') label = g.count > 1 ? `${g.count}H` : 'H';
+    else if (g.flavor === 'fear') label = g.count > 1 ? `${g.count}F` : 'F';
+    else {
+      const sideLabel = g.sides === 100 ? 'd%' : `d${g.sides}`;
+      label = (g.count > 1 ? g.count : '') + sideLabel;
+    }
+    segments.push({
+      text: op + label,
+      color: g.flavor === 'hope' ? '#ffd700' : g.flavor === 'fear' ? '#ff2a6d' : g.color,
+      flavor: g.flavor as 'normal' | 'hope' | 'fear',
+    });
+  });
+
+  if (constant !== 0) {
+    const op = constant < 0 ? '-' : segments.length === 0 ? '' : '+';
+    segments.push({ text: op + Math.abs(constant), color: null, flavor: 'normal' });
+  }
+
+  return segments;
+}
+
 // --- Component ---
 const DiceRollerRibbon: React.FC = () => {
   const { user } = useAuth();
@@ -177,6 +240,8 @@ const DiceRollerRibbon: React.FC = () => {
   const [activeColor, setActiveColor] = useState<string | null>(null);
   const [dieResults, setDieResults] = useState<DieResult[]>([]);
   const [lastResult, setLastResult] = useState<{ total: string; duality: 'none' | 'hope' | 'fear' | 'crit' } | null>(null);
+  const [isEditingEquation, setIsEditingEquation] = useState(false);
+  const [coloredSegments, setColoredSegments] = useState<EqSegment[]>([]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -203,6 +268,9 @@ const DiceRollerRibbon: React.FC = () => {
       index: d.index,
     }));
     setDieResults(results);
+    // Update colored segments from actual dice
+    const parsed = parseEquation(equationRef.current);
+    setColoredSegments(buildColoredSegments(diceRef.current, parsed.constant));
   }, []);
 
   const logRoll = useCallback(async (eq: string, total: number, dice: DieResult[]) => {
@@ -302,7 +370,7 @@ const DiceRollerRibbon: React.FC = () => {
 
   const addTerm = useCallback((sides: number, sign = 1, flavor: 'normal' | 'hope' | 'fear' = 'normal') => {
     const dieColor = (flavor === 'hope' || flavor === 'fear') ? null : activeColor;
-    const newEq = rebuildEquation(equationRef.current, [{ sides, sign, flavor }]);
+    const newEq = rebuildEquation(equationRef.current, [{ sides, sign, flavor, color: dieColor }]);
     setEquation(newEq);
     equationRef.current = newEq;
     const newBonus = parseEquation(newEq).constant;
@@ -319,9 +387,10 @@ const DiceRollerRibbon: React.FC = () => {
     setBonus(String(parsed.constant));
     clearDice();
     for (const t of parsed.diceTerms) {
-      const dieColor = (t.flavor === 'hope' || t.flavor === 'fear') ? null : activeColor;
+      const dieColor = (t.flavor === 'hope' || t.flavor === 'fear') ? null : (t.color || activeColor);
       makeDie({ sides: t.sides, sign: t.sign, flavor: t.flavor, color: dieColor });
     }
+    setIsEditingEquation(false);
     const result = computeAndUpdateHUD();
     if (result && diceRef.current.length > 0) {
       const results: DieResult[] = diceRef.current.map(d => ({
@@ -341,6 +410,8 @@ const DiceRollerRibbon: React.FC = () => {
     setDualityState('none');
     setHasDuality(false);
     setDieResults([]);
+    setColoredSegments([]);
+    setIsEditingEquation(false);
   }, [clearDice]);
 
   const handleClose = useCallback(() => {
@@ -401,10 +472,8 @@ const DiceRollerRibbon: React.FC = () => {
     }
   }, [computeAndUpdateHUD, logRoll]);
 
-  // Also log when dice are added via buttons (not just ROLL)
   const addTermAndLog = useCallback((sides: number, sign = 1, flavor: 'normal' | 'hope' | 'fear' = 'normal') => {
     addTerm(sides, sign, flavor);
-    // Log after a brief delay to capture updated state
     setTimeout(() => {
       if (diceRef.current.length > 0) {
         const parsed = parseEquation(equationRef.current);
@@ -438,7 +507,6 @@ const DiceRollerRibbon: React.FC = () => {
     if (!isOpen) {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (engineRef.current) {
-        // Don't clear dice on toggle close - state persists
         World.clear(engineRef.current.world, false);
         Engine.clear(engineRef.current);
         engineRef.current = null;
@@ -587,7 +655,6 @@ const DiceRollerRibbon: React.FC = () => {
       cancelAnimationFrame(animFrameRef.current);
       resizeObs.disconnect();
       canvas.removeEventListener('pointerdown', handleCanvasClick);
-      // Don't clear dice - persist state
       if (engineRef.current) {
         World.clear(engine.world, false);
         Engine.clear(engine);
@@ -595,15 +662,6 @@ const DiceRollerRibbon: React.FC = () => {
       }
     };
   }, [isOpen, computeAndUpdateHUD]);
-
-  const diceButtons = [
-    { sides: 4, label: 'd4' }, { sides: 6, label: 'd6' }, { sides: 8, label: 'd8' },
-    { sides: 10, label: 'd10' }, { sides: 12, label: 'd12' }, { sides: 20, label: 'd20' },
-  ];
-  const negDiceButtons = [
-    { sides: 4, label: '-d4' }, { sides: 6, label: '-d6' }, { sides: 8, label: '-d8' },
-    { sides: 10, label: '-d10' }, { sides: 12, label: '-d12' }, { sides: 20, label: '-d20' },
-  ];
 
   if (shouldHide) return null;
 
@@ -616,7 +674,7 @@ const DiceRollerRibbon: React.FC = () => {
 
   function getDieResultColor(d: DieResult): string | undefined {
     if (d.color) return d.color;
-    return undefined; // default text color
+    return undefined;
   }
 
   return (
@@ -696,16 +754,33 @@ const DiceRollerRibbon: React.FC = () => {
 
             {/* Equation + bonus */}
             <div className="rounded-xl p-2 flex flex-col gap-1.5" style={{ background: '#070911', border: '1px solid #141a2c' }}>
-              <input
-                type="text"
-                value={equation}
-                onChange={e => handleEquationChange(e.target.value)}
-                placeholder="Equation..."
-                spellCheck={false}
-                autoComplete="off"
-                className="bg-transparent border-none text-xs w-full outline-none"
-                style={{ color: '#d6d9e6', fontFamily: '"Orbitron", sans-serif' }}
-              />
+              {/* Colored equation display or editable input */}
+              {!isEditingEquation && coloredSegments.length > 0 ? (
+                <div
+                  className="text-xs w-full min-h-[20px] flex flex-wrap items-center gap-0 cursor-text"
+                  onClick={() => setIsEditingEquation(true)}
+                  style={{ fontFamily: '"Orbitron", sans-serif' }}
+                  title="Click to edit"
+                >
+                  {coloredSegments.map((seg, i) => (
+                    <span key={i} style={{ color: seg.color || '#d6d9e6' }}>{seg.text}</span>
+                  ))}
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={equation}
+                  onChange={e => handleEquationChange(e.target.value)}
+                  onBlur={() => setIsEditingEquation(false)}
+                  onFocus={() => setIsEditingEquation(true)}
+                  placeholder="Equation..."
+                  spellCheck={false}
+                  autoComplete="off"
+                  autoFocus={isEditingEquation}
+                  className="bg-transparent border-none text-xs w-full outline-none"
+                  style={{ color: activeColor || '#d6d9e6', fontFamily: '"Orbitron", sans-serif' }}
+                />
+              )}
               <div className="flex items-center gap-2 text-xs uppercase" style={{ color: '#8b92b3' }}>
                 <label className="text-[10px]">Bonus</label>
                 <input
@@ -754,22 +829,9 @@ const DiceRollerRibbon: React.FC = () => {
               ))}
             </div>
 
-            {/* Dice buttons - 4 rows */}
+            {/* Dice buttons - reordered: DUAL, D?, then d4-d20, d%, HOPE, negatives, FEAR */}
             <div className="grid grid-cols-4 gap-1">
-              {diceButtons.map(d => (
-                <button key={d.label} onClick={() => addTermAndLog(d.sides, 1)}
-                  className="h-7 rounded-md text-[9px] font-bold"
-                  style={chipStyle(activeColor ? 'custom' : undefined, activeColor)}>{d.label}</button>
-              ))}
-              {negDiceButtons.map(d => (
-                <button key={d.label} onClick={() => addTermAndLog(d.sides, -1)}
-                  className="h-7 rounded-md text-[9px] font-bold"
-                  style={chipStyle('negative')}>{d.label}</button>
-              ))}
-              <button onClick={() => addTermAndLog(100, 1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle(activeColor ? 'custom' : undefined, activeColor)}>d%</button>
-              <button onClick={() => addTermAndLog(100, -1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle('negative')}>-d%</button>
-              <button onClick={() => addTermAndLog(12, 1, 'hope')} className="h-7 rounded-md text-[9px] font-black" style={chipStyle('hope')}>HOPE</button>
-              <button onClick={() => addTermAndLog(12, 1, 'fear')} className="h-7 rounded-md text-[9px] font-black" style={chipStyle('fear')}>FEAR</button>
+              {/* Row 1: DUAL + custom D? */}
               <button onClick={handleDualityAndLog} className="h-7 rounded-md text-[9px] font-black text-white col-span-2" style={chipStyle('duality')}>DUAL</button>
               <div className="flex gap-0.5 col-span-2">
                 <input type="number" value={customSides} onChange={e => setCustomSides(e.target.value)}
@@ -777,8 +839,28 @@ const DiceRollerRibbon: React.FC = () => {
                   style={{ background: '#050711', border: '1px solid #141a2c', fontFamily: '"Orbitron", sans-serif' }} />
                 <button onClick={() => { const v = +customSides; if (v) addTermAndLog(Math.abs(v), v < 0 ? -1 : 1); }}
                   className="flex-1 h-7 rounded-md text-[9px] font-bold"
-                  style={chipStyle(activeColor ? 'custom' : undefined, activeColor)}>Add</button>
+                  style={chipStyle(activeColor ? 'custom' : undefined, activeColor)}>D?</button>
               </div>
+              {/* Row 2: d4, d6, d8, d10 */}
+              <button onClick={() => addTermAndLog(4, 1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle(activeColor ? 'custom' : undefined, activeColor)}>d4</button>
+              <button onClick={() => addTermAndLog(6, 1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle(activeColor ? 'custom' : undefined, activeColor)}>d6</button>
+              <button onClick={() => addTermAndLog(8, 1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle(activeColor ? 'custom' : undefined, activeColor)}>d8</button>
+              <button onClick={() => addTermAndLog(10, 1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle(activeColor ? 'custom' : undefined, activeColor)}>d10</button>
+              {/* Row 3: d12, d20, d%, HOPE */}
+              <button onClick={() => addTermAndLog(12, 1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle(activeColor ? 'custom' : undefined, activeColor)}>d12</button>
+              <button onClick={() => addTermAndLog(20, 1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle(activeColor ? 'custom' : undefined, activeColor)}>d20</button>
+              <button onClick={() => addTermAndLog(100, 1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle(activeColor ? 'custom' : undefined, activeColor)}>d%</button>
+              <button onClick={() => addTermAndLog(12, 1, 'hope')} className="h-7 rounded-md text-[9px] font-black" style={chipStyle('hope')}>HOPE</button>
+              {/* Row 4: -d4, -d6, -d8, -d10 */}
+              <button onClick={() => addTermAndLog(4, -1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle('negative')}>-d4</button>
+              <button onClick={() => addTermAndLog(6, -1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle('negative')}>-d6</button>
+              <button onClick={() => addTermAndLog(8, -1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle('negative')}>-d8</button>
+              <button onClick={() => addTermAndLog(10, -1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle('negative')}>-d10</button>
+              {/* Row 5: -d12, -d20, -d%, FEAR */}
+              <button onClick={() => addTermAndLog(12, -1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle('negative')}>-d12</button>
+              <button onClick={() => addTermAndLog(20, -1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle('negative')}>-d20</button>
+              <button onClick={() => addTermAndLog(100, -1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle('negative')}>-d%</button>
+              <button onClick={() => addTermAndLog(12, 1, 'fear')} className="h-7 rounded-md text-[9px] font-black" style={chipStyle('fear')}>FEAR</button>
             </div>
           </div>
 
