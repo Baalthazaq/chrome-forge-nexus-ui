@@ -113,6 +113,7 @@
       cursor: text;
       font-size: 14px;
       font-family: var(--font-main);
+      flex: 1;
     }
     .eqDisplay input[type="text"]{
       background: transparent;
@@ -789,6 +790,23 @@
         const parsed = parseEquation(elEquation.value);
         elBonus.value = parsed.constant;
         updateHUD();
+      });
+
+      elEquation.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          rollFromEquation();
+        }
+      });
+
+      // Click on the colored display to focus the equation input
+      document.getElementById('eqDisplay').addEventListener('click', (e) => {
+        if (e.target !== elEquation) {
+          elEquation.style.display = '';
+          const spans = document.getElementById('eqDisplay').querySelectorAll('span');
+          spans.forEach(s => s.remove());
+          elEquation.focus();
+        }
       });
 
       elBonus.oninput = () => {
