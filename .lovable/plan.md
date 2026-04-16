@@ -1,47 +1,83 @@
+## Dice Roller Enhancements
+
+This is a substantial set of changes to the DiceRollerRibbon component plus a new admin logging feature. Here is the breakdown:
+
+### 1. Individual Dice Results Bar
+
+Add a results section below the total showing each die individually (e.g., `d6:4  d20:17  H:9`). Each die is clickable to reroll just that one. Colored dice display in their assigned color.
+
+### 2. Dice Roll Inside the Panel
+
+Remove the full-screen canvas overlay. Instead, embed the Matter.js canvas within the panel itself, in the blank space below the buttons (~300px tall area). Walls constrain dice to that region. This fixes the mobile occlusion problem entirely.
+
+### 3. Smaller Buttons + "Dual" Rename
+
+- Reduce button height from `h-10` to `h-8`
+- Rename "DUALITY" to "DUAL"
+- Tighten padding/gaps throughout to maximize canvas space
+
+### 4. Color Picker for Dice
+
+Add a row of color swatches (e.g., default, cyan. red, green, purple, orange, white) above the dice buttons. Selecting one sets the "active color" for subsequent dice rolls. This color replaces the non-black stop in the normal gradient. Hope, Fear, and Dual buttons ignore the color picker and always use their default gradients. Default needs to be independent, because the normal behaviour is that negatives are red, hope is yellow, fear is red, positives are cyan, etc, whereas setting it to cyan would mean all are cyan except hope/fear.
+
+### 5. Colored Font in Results & Equation
+
+- In the individual results bar, non-default-colored dice show their value in their custom color
+- In the equation string display, dice terms with custom colors render in that color (requires switching from a plain `<input>` to a styled display with per-term coloring, or a hybrid approach)
+
+### 6. Close vs Toggle Behavior
+
+- **X button**: Clears all dice, resets equation/bonus/results, closes panel
+- **Tab click**: Toggles panel open/closed without clearing state. Results persist for the session.
+
+### 7. Tab Shows Last Result
+
+Display the last total roll value on the physical tab itself, below or beside the 🎲 icon (e.g., small number like "23" with H for Hope, F for Fear or ! for crit).
+
+### 8. Admin Roll Log
+
+- **New Supabase table** `dice_roll_log`: `id`, `user_id`, `equation`, `result`, `individual_dice` (jsonb), `rolled_at`
+- On every roll in the ribbon, insert a log entry
+- **New section on Admin page** (or a dedicated admin sub-page): Table showing all rolls with player name, equation, result, timestamp, filterable/searchable
+
+---
+
+### Technical Details
+
+**Files to create/edit:**
 
 
-## Dice Roller as a Global Pop-out Ribbon
+| File                                  | Action                                                                                                      |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `src/components/DiceRollerRibbon.tsx` | Major rewrite: embed canvas in panel, add results bar, color picker, close/toggle logic, tab result display |
+| `src/pages/Admin.tsx`                 | Add dice roll log section or link to dedicated page                                                         |
+| Supabase migration                    | New `dice_roll_log` table with RLS (admin can read all, users can insert own)                               |
 
-### What it does
-A small tab/ribbon fixed to the edge of the screen (e.g., right side) that, when clicked, slides out a dice roller panel. Dice physically roll across the actual page content area (not confined to the panel). Available on every page except `/auth`.
 
-### Architecture
+**DieData changes:**
 
-**1. New component: `src/components/DiceRollerRibbon.tsx`**
-- A fixed-position tab on the right edge of the screen labeled "🎲" or "DICE"
-- Clicking it toggles open a compact control panel (the UI portion: equation input, bonus, dice buttons, roll/clear)
-- The panel slides in from the right as a narrow sidebar (~320px)
-- The dice canvas overlay covers the full viewport behind/over the page content (with `pointer-events: none` except on the dice themselves)
+- Add `color?: string` field to track custom color per die
+- Gradient functions accept optional color override
 
-**2. Two layers:**
-- **Control panel** (right sidebar): Contains all the buttons, equation input, bonus field, result display. Styled to match the existing cyberpunk theme. Uses the same parsing/building logic from the HTML version.
-- **Dice canvas** (full-screen overlay): A transparent canvas (`position: fixed; inset: 0; z-index` high enough) where Matter.js dice are rendered. The canvas is transparent (no black background) so page content shows through. Walls are placed at viewport edges. `pointer-events: none` on the canvas, but individual dice clicks handled via a thin hit-test overlay.
+**Color picker implementation:**
 
-**3. Integration in `App.tsx`**
-- Render `<DiceRollerRibbon />` inside the providers, outside `<Routes>`, so it appears on every page
-- Only render when user is authenticated (wrap in a small auth-aware check)
+- State: `activeColor: string | null` (null = default)
+- Palette: ~6 preset colors rendered as small circles
+- When a color is active, new normal dice use it; Hope/Fear/Dual ignore it
 
-**4. Port from HTML to React**
-- Convert the Matter.js physics, dice rendering, equation parsing into React hooks/refs
-- The canvas uses `useRef` + `useEffect` for the animation loop
-- Equation state managed with `useState`
-- Matter.js loaded via npm package (`matter-js`) instead of CDN
+**Results bar:**
 
-### Key design decisions
-- **Transparent tray**: The dice roll over page content — canvas has no background fill, just the grid lines at very low opacity (or none)
-- **Collapsible**: The ribbon tab is always visible; the full panel only shows when toggled
-- **Non-blocking**: The canvas overlay uses `pointer-events: none` globally, with a small JS hit-test layer so users can still click dice to re-roll them, but clicks pass through to the page otherwise
-- **Z-index**: Canvas sits above page content but below modals/dialogs
+- Array of `{ sides, value, sign, flavor, color }` rendered as clickable chips
+- Click triggers reroll of that specific die (new random value, brief physics kick)
+- Font color matches die color (default = current text color)
 
-### Files to create/edit
-| File | Action |
-|------|--------|
-| `src/components/DiceRollerRibbon.tsx` | **Create** — Full component with Matter.js canvas, controls panel, ribbon tab |
-| `src/App.tsx` | **Edit** — Add `<DiceRollerRibbon />` after `<Sonner />` |
-| `package.json` | **Edit** — Add `matter-js` + `@types/matter-js` dependencies |
+**Equation display:**
 
-### Ribbon behavior
-- **Closed state**: Small vertical tab on the right edge, ~40px wide, says "DICE" rotated vertically with a 🎲 icon
-- **Open state**: 320px panel slides out from right with all controls; full-screen transparent canvas activates for dice physics
-- **Close**: Click the tab again, or a close button on the panel; dice and canvas disappear
+- Replace plain text input with a rich display when showing results (per-term `<span>` with color)
+- Keep editable input for typing; switch to colored display after rolling
 
+**Canvas relocation:**
+
+- Canvas becomes a `<canvas>` element inside the panel div, sized to fill remaining vertical space
+- Walls match canvas bounds, not viewport
+- Remove the full-screen fixed canvas entirely
