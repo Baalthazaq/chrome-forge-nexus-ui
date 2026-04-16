@@ -620,6 +620,33 @@ export type Database = {
         }
         Relationships: []
       }
+      dice_roll_log: {
+        Row: {
+          equation: string
+          id: string
+          individual_dice: Json
+          result: number
+          rolled_at: string
+          user_id: string
+        }
+        Insert: {
+          equation?: string
+          id?: string
+          individual_dice?: Json
+          result?: number
+          rolled_at?: string
+          user_id: string
+        }
+        Update: {
+          equation?: string
+          id?: string
+          individual_dice?: Json
+          result?: number
+          rolled_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       downtime_activities: {
         Row: {
           activities_chosen: Json | null
