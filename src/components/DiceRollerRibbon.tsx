@@ -659,6 +659,30 @@ const DiceRollerRibbon: React.FC = () => {
       ctx.stroke();
       ctx.globalAlpha = 1;
 
+      // Draw linking strings between paired crit dice
+      const drawnPairs = new Set<string>();
+      for (const d of diceRef.current) {
+        if (d.isCrit && d.critPartner) {
+          const pairKey = [d.index, d.critPartner.index].sort().join('-');
+          if (drawnPairs.has(pairKey)) continue;
+          drawnPairs.add(pairKey);
+          const ax = d.body.position.x, ay = d.body.position.y;
+          const bx = d.critPartner.body.position.x, by = d.critPartner.body.position.y;
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(ax, ay);
+          ctx.lineTo(bx, by);
+          ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = 'rgba(255, 215, 0, 0.6)';
+          ctx.shadowBlur = 10;
+          ctx.setLineDash([6, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
+      }
+
       for (const d of diceRef.current) {
         const b = d.body;
         const x = b.position.x, y = b.position.y;
