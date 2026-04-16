@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { User, Shield, Eye, Settings, Search } from 'lucide-react';
+import { User, Shield, Eye, Settings, Search, Dice5 } from 'lucide-react';
 import { NPCDialog } from '@/components/NPCDialog';
 import DiceRollLog from '@/components/DiceRollLog';
 
