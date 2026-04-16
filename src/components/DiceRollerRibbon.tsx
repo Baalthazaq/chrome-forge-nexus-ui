@@ -306,7 +306,7 @@ const DiceRollerRibbon: React.FC = () => {
     (body as any).isDie = true;
     const idx = dieIndexCounter.current++;
     const initialValue = (flavor === 'hope' || flavor === 'fear') ? randInt(1, 3) : randInt(1, sides);
-    const die: DieData = { sides, sign, flavor, value: initialValue, body, size, isEnlarged: false, isCrit: false, color, index: idx };
+    const die: DieData = { sides, sign, flavor, value: initialValue, body, size, isEnlarged: false, isCrit: false, critPartner: null, color, index: idx };
     dieByBodyIdRef.current.set(body.id, die);
     diceRef.current.push(die);
     World.add(engine.world, body);
