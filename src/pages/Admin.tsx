@@ -4,12 +4,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { User, Shield, Eye, Settings, Search } from 'lucide-react';
+import { User, Shield, Eye, Settings, Search, Dice5 } from 'lucide-react';
 import { NPCDialog } from '@/components/NPCDialog';
 import DiceRollLog from '@/components/DiceRollLog';
 
@@ -190,13 +191,20 @@ const Admin = () => {
                 <span className="font-semibold">Racegen</span>
                 <span className="text-xs text-muted-foreground">Ancestry Generator</span>
               </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10">
+                    <span className="font-semibold">Dice Roll Log</span>
+                    <span className="text-xs text-muted-foreground">View Roll History</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DiceRollLog />
+                </DialogContent>
+              </Dialog>
             </div>
           </CardContent>
         </Card>
-
-        {/* Dice Roll Log */}
-        <DiceRollLog />
-
 
         {/* User Management */}
         <Card>
