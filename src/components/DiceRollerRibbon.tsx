@@ -139,24 +139,20 @@ function getNormalGradient(ctx: CanvasRenderingContext2D, die: DieData, r: numbe
   const gx = Math.cos(ang) * r9, gy = Math.sin(ang) * r9;
   const grad = ctx.createLinearGradient(gx, gy, -gx, -gy);
   if (die.flavor === 'hope' && die.sign === 1) {
-    // Crit-style yellow/white split across both sides of black
+    // White one side, yellow the other, black core
     grad.addColorStop(0.00, '#ffffff');
-    grad.addColorStop(0.15, '#ffffff');
-    grad.addColorStop(0.22, '#ffd700');
+    grad.addColorStop(0.25, '#ffffff');
     grad.addColorStop(0.35, '#000000');
     grad.addColorStop(0.65, '#000000');
-    grad.addColorStop(0.78, '#ffd700');
-    grad.addColorStop(0.85, '#ffffff');
-    grad.addColorStop(1.00, '#ffffff');
+    grad.addColorStop(0.75, '#ffd700');
+    grad.addColorStop(1.00, '#ffd700');
   } else if (die.flavor === 'fear' && die.sign === 1) {
-    // Crit-style purple/red split across both sides of black
-    grad.addColorStop(0.00, '#ff2a6d');
-    grad.addColorStop(0.15, '#ff2a6d');
-    grad.addColorStop(0.22, '#7f2aff');
+    // Purple one side, red the other, black core
+    grad.addColorStop(0.00, '#7f2aff');
+    grad.addColorStop(0.25, '#7f2aff');
     grad.addColorStop(0.35, '#000000');
     grad.addColorStop(0.65, '#000000');
-    grad.addColorStop(0.78, '#7f2aff');
-    grad.addColorStop(0.85, '#ff2a6d');
+    grad.addColorStop(0.75, '#ff2a6d');
     grad.addColorStop(1.00, '#ff2a6d');
   } else if (die.color) {
     grad.addColorStop(0, die.color); grad.addColorStop(0.30, die.color); grad.addColorStop(0.42, '#000000'); grad.addColorStop(0.58, '#000000'); grad.addColorStop(0.70, die.color); grad.addColorStop(1, die.color);
@@ -292,7 +288,9 @@ const DiceRollerRibbon: React.FC = () => {
     const container = canvasContainerRef.current;
     if (!engine || !container) return null;
     const { sides, sign = 1, flavor = 'normal', color = null } = opts;
-    const size = Math.max(28, Math.min(48, 24 + Math.sqrt(Math.max(1, sides)) * 3));
+    let size = Math.max(28, Math.min(48, 24 + Math.sqrt(Math.max(1, sides)) * 3));
+    // Hope/Fear dice are slightly larger
+    if (flavor === 'hope' || flavor === 'fear') size *= 1.3;
     const rect = container.getBoundingClientRect();
     const W = rect.width;
     const H = rect.height;
@@ -380,14 +378,27 @@ const DiceRollerRibbon: React.FC = () => {
   }, [makeDie, computeAndUpdateHUD, activeColor]);
 
   const rollFromEquation = useCallback(() => {
+    // Preserve colors from existing dice before clearing
+    const existingDiceColors = diceRef.current.map(d => ({ sides: d.sides, sign: d.sign, flavor: d.flavor, color: d.color }));
     const parsed = parseEquation(equationRef.current);
     const normalizedEq = buildEquationString(parsed.diceTerms, parsed.constant);
     setEquation(normalizedEq);
     equationRef.current = normalizedEq;
     setBonus(String(parsed.constant));
     clearDice();
+    // Match parsed terms to existing dice colors by consuming them in order
+    const colorPool = [...existingDiceColors];
     for (const t of parsed.diceTerms) {
-      const dieColor = (t.flavor === 'hope' || t.flavor === 'fear') ? null : (t.color || activeColor);
+      let dieColor: string | null = null;
+      if (t.flavor !== 'hope' && t.flavor !== 'fear') {
+        const matchIdx = colorPool.findIndex(c => c.sides === t.sides && c.sign === t.sign && c.flavor === t.flavor);
+        if (matchIdx >= 0) {
+          dieColor = colorPool[matchIdx].color;
+          colorPool.splice(matchIdx, 1);
+        } else {
+          dieColor = t.color || activeColor;
+        }
+      }
       makeDie({ sides: t.sides, sign: t.sign, flavor: t.flavor, color: dieColor });
     }
     setIsEditingEquation(false);
