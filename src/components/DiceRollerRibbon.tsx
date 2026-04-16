@@ -92,6 +92,7 @@ interface DieData {
   size: number;
   isEnlarged: boolean;
   isCrit: boolean;
+  critPartner: DieData | null;
   color: string | null;
   index: number;
 }
@@ -305,7 +306,7 @@ const DiceRollerRibbon: React.FC = () => {
     (body as any).isDie = true;
     const idx = dieIndexCounter.current++;
     const initialValue = (flavor === 'hope' || flavor === 'fear') ? randInt(1, 3) : randInt(1, sides);
-    const die: DieData = { sides, sign, flavor, value: initialValue, body, size, isEnlarged: false, isCrit: false, color, index: idx };
+    const die: DieData = { sides, sign, flavor, value: initialValue, body, size, isEnlarged: false, isCrit: false, critPartner: null, color, index: idx };
     dieByBodyIdRef.current.set(body.id, die);
     diceRef.current.push(die);
     World.add(engine.world, body);
@@ -331,31 +332,65 @@ const DiceRollerRibbon: React.FC = () => {
     const parsed = parseEquation(equationRef.current);
     const eqConst = parsed.constant;
     let sum = eqConst;
-    let hasHopeD = false, hasFearD = false;
-    let maxHopeVal = -1, maxFearVal = -1;
-    let critHopeDie: DieData | null = null, critFearDie: DieData | null = null;
+    const hopeDice: DieData[] = [];
+    const fearDice: DieData[] = [];
     for (const d of diceRef.current) {
       sum += d.value * d.sign;
-      if (d.sign === 1) {
-        if (d.flavor === 'hope') { hasHopeD = true; if (d.value > maxHopeVal) { maxHopeVal = d.value; critHopeDie = d; } }
-        else if (d.flavor === 'fear') { hasFearD = true; if (d.value > maxFearVal) { maxFearVal = d.value; critFearDie = d; } }
+      if (d.sign === 1 && d.flavor === 'hope') hopeDice.push(d);
+      else if (d.sign === 1 && d.flavor === 'fear') fearDice.push(d);
+    }
+    const hasHopeD = hopeDice.length > 0;
+    const hasFearD = fearDice.length > 0;
+
+    // Clear all crit state
+    for (const d of diceRef.current) { d.isCrit = false; d.critPartner = null; }
+
+    // Pair ALL matching hope/fear dice by value
+    let hasCrit = false;
+    if (hasHopeD && hasFearD) {
+      const usedFear = new Set<number>();
+      for (const h of hopeDice) {
+        for (let fi = 0; fi < fearDice.length; fi++) {
+          if (!usedFear.has(fi) && fearDice[fi].value === h.value) {
+            h.isCrit = true;
+            h.critPartner = fearDice[fi];
+            fearDice[fi].isCrit = true;
+            fearDice[fi].critPartner = h;
+            usedFear.add(fi);
+            hasCrit = true;
+            break;
+          }
+        }
       }
     }
+
+    // Determine overall duality state
     let ds: 'none' | 'hope' | 'fear' | 'crit' = 'none';
     if (hasHopeD && hasFearD) {
-      if (maxHopeVal === maxFearVal) ds = 'crit';
-      else if (maxHopeVal > maxFearVal) ds = 'hope';
-      else ds = 'fear';
+      if (hasCrit) {
+        // Check if ALL duality dice are crits, or if some unpaired remain
+        const unpairedHope = hopeDice.filter(d => !d.isCrit);
+        const unpairedFear = fearDice.filter(d => !d.isCrit);
+        const maxUnpairedHope = unpairedHope.length > 0 ? Math.max(...unpairedHope.map(d => d.value)) : -1;
+        const maxUnpairedFear = unpairedFear.length > 0 ? Math.max(...unpairedFear.map(d => d.value)) : -1;
+        if (maxUnpairedHope > maxUnpairedFear) ds = 'hope';
+        else if (maxUnpairedFear > maxUnpairedHope) ds = 'fear';
+        // If equal or no unpaired, it's pure crit
+        ds = hasCrit ? 'crit' : ds;
+        // Actually: crit takes precedence if any pair matched
+      }
+      else {
+        const maxH = Math.max(...hopeDice.map(d => d.value));
+        const maxF = Math.max(...fearDice.map(d => d.value));
+        if (maxH > maxF) ds = 'hope';
+        else ds = 'fear';
+      }
     }
+
     const totalStr = diceRef.current.length > 0 && Number.isFinite(sum) ? String(sum) : '—';
     setTotalDisplay(totalStr);
     setDualityState(ds);
     setHasDuality(hasHopeD && hasFearD);
-    for (const d of diceRef.current) d.isCrit = false;
-    if (ds === 'crit' && critHopeDie && critFearDie) {
-      critHopeDie.isCrit = true;
-      critFearDie.isCrit = true;
-    }
     for (const d of diceRef.current) {
       if (d.isCrit && !d.isEnlarged) { Body.scale(d.body, 1.8, 1.8); d.size *= 1.8; d.isEnlarged = true; }
       else if (!d.isCrit && d.isEnlarged) { Body.scale(d.body, 0.555, 0.555); d.size /= 1.8; d.isEnlarged = false; }
@@ -623,6 +658,30 @@ const DiceRollerRibbon: React.FC = () => {
       for (let y = 0; y <= H; y += 40) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
       ctx.stroke();
       ctx.globalAlpha = 1;
+
+      // Draw linking strings between paired crit dice
+      const drawnPairs = new Set<string>();
+      for (const d of diceRef.current) {
+        if (d.isCrit && d.critPartner) {
+          const pairKey = [d.index, d.critPartner.index].sort().join('-');
+          if (drawnPairs.has(pairKey)) continue;
+          drawnPairs.add(pairKey);
+          const ax = d.body.position.x, ay = d.body.position.y;
+          const bx = d.critPartner.body.position.x, by = d.critPartner.body.position.y;
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(ax, ay);
+          ctx.lineTo(bx, by);
+          ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = 'rgba(255, 215, 0, 0.6)';
+          ctx.shadowBlur = 10;
+          ctx.setLineDash([6, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
+      }
 
       for (const d of diceRef.current) {
         const b = d.body;
