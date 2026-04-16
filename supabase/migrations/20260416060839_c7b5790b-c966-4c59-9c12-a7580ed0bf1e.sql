@@ -1,0 +1,1 @@
+CREATE POLICY "Admins can delete rolls" ON public.dice_roll_log FOR DELETE TO public USING (has_role(auth.uid(), 'admin'::app_role));
