@@ -35,7 +35,7 @@ const DiceRollLog = () => {
     if (!data) { setLoading(false); return; }
 
     // Fetch profile names
-    const userIds = [...new Set(data.map((r: any) => r.user_id))];
+    const userIds = [...new Set(data.map((r: any) => r.user_id))] as string[];
     const { data: profiles } = await supabase
       .from('profiles')
       .select('user_id, character_name')
