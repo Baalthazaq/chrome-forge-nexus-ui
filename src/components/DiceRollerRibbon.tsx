@@ -139,16 +139,15 @@ function getNormalGradient(ctx: CanvasRenderingContext2D, die: DieData, r: numbe
   const gx = Math.cos(ang) * r9, gy = Math.sin(ang) * r9;
   const grad = ctx.createLinearGradient(gx, gy, -gx, -gy);
   if (die.flavor === 'hope' && die.sign === 1) {
-    grad.addColorStop(0, '#ffd700'); grad.addColorStop(0.4, '#ffffff'); grad.addColorStop(0.7, '#000000'); grad.addColorStop(1, '#000000');
+    grad.addColorStop(0, '#ffd700'); grad.addColorStop(0.25, '#ffffff'); grad.addColorStop(0.40, '#000000'); grad.addColorStop(0.60, '#000000'); grad.addColorStop(0.75, '#ffffff'); grad.addColorStop(1, '#ffd700');
   } else if (die.flavor === 'fear' && die.sign === 1) {
-    grad.addColorStop(0, '#ff2a6d'); grad.addColorStop(0.4, '#7f2aff'); grad.addColorStop(0.7, '#000000'); grad.addColorStop(1, '#000000');
+    grad.addColorStop(0, '#ff2a6d'); grad.addColorStop(0.25, '#7f2aff'); grad.addColorStop(0.40, '#000000'); grad.addColorStop(0.60, '#000000'); grad.addColorStop(0.75, '#7f2aff'); grad.addColorStop(1, '#ff2a6d');
   } else if (die.color) {
-    // Custom color replaces the non-black color
-    grad.addColorStop(0, die.color); grad.addColorStop(0.4, '#000000');
+    grad.addColorStop(0, die.color); grad.addColorStop(0.30, die.color); grad.addColorStop(0.42, '#000000'); grad.addColorStop(0.58, '#000000'); grad.addColorStop(0.70, die.color); grad.addColorStop(1, die.color);
   } else if (die.sign < 0) {
-    grad.addColorStop(0, '#ff3b3b'); grad.addColorStop(0.4, '#000000');
+    grad.addColorStop(0, '#ff3b3b'); grad.addColorStop(0.30, '#ff3b3b'); grad.addColorStop(0.42, '#000000'); grad.addColorStop(0.58, '#000000'); grad.addColorStop(0.70, '#ff3b3b'); grad.addColorStop(1, '#ff3b3b');
   } else {
-    grad.addColorStop(0, '#00f5ff'); grad.addColorStop(0.4, '#000000');
+    grad.addColorStop(0, '#00f5ff'); grad.addColorStop(0.30, '#00f5ff'); grad.addColorStop(0.42, '#000000'); grad.addColorStop(0.58, '#000000'); grad.addColorStop(0.70, '#00f5ff'); grad.addColorStop(1, '#00f5ff');
   }
   return grad;
 }
@@ -755,33 +754,29 @@ const DiceRollerRibbon: React.FC = () => {
               ))}
             </div>
 
-            {/* Dice buttons - positive */}
-            <div className="grid grid-cols-3 gap-1">
+            {/* Dice buttons - 4 rows */}
+            <div className="grid grid-cols-4 gap-1">
               {diceButtons.map(d => (
                 <button key={d.label} onClick={() => addTermAndLog(d.sides, 1)}
-                  className="h-8 rounded-md text-[10px] font-bold"
+                  className="h-7 rounded-md text-[9px] font-bold"
                   style={chipStyle(activeColor ? 'custom' : undefined, activeColor)}>{d.label}</button>
               ))}
-              <button onClick={() => addTermAndLog(12, 1, 'hope')} className="h-8 rounded-md text-xs font-black" style={chipStyle('hope')}>H</button>
-              <button onClick={() => addTermAndLog(100, 1)} className="h-8 rounded-md text-[10px] font-bold" style={chipStyle(activeColor ? 'custom' : undefined, activeColor)}>d%</button>
-              <button onClick={handleDualityAndLog} className="h-8 rounded-md text-[10px] font-black text-white" style={chipStyle('duality')}>DUAL</button>
-            </div>
-
-            {/* Dice buttons - negative */}
-            <div className="grid grid-cols-3 gap-1">
               {negDiceButtons.map(d => (
                 <button key={d.label} onClick={() => addTermAndLog(d.sides, -1)}
-                  className="h-8 rounded-md text-[10px] font-bold"
+                  className="h-7 rounded-md text-[9px] font-bold"
                   style={chipStyle('negative')}>{d.label}</button>
               ))}
-              <button onClick={() => addTermAndLog(12, 1, 'fear')} className="h-8 rounded-md text-xs font-black" style={chipStyle('fear')}>F</button>
-              <button onClick={() => addTermAndLog(100, -1)} className="h-8 rounded-md text-[10px] font-bold" style={chipStyle('negative')}>-d%</button>
-              <div className="flex gap-0.5">
+              <button onClick={() => addTermAndLog(100, 1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle(activeColor ? 'custom' : undefined, activeColor)}>d%</button>
+              <button onClick={() => addTermAndLog(100, -1)} className="h-7 rounded-md text-[9px] font-bold" style={chipStyle('negative')}>-d%</button>
+              <button onClick={() => addTermAndLog(12, 1, 'hope')} className="h-7 rounded-md text-[9px] font-black" style={chipStyle('hope')}>HOPE</button>
+              <button onClick={() => addTermAndLog(12, 1, 'fear')} className="h-7 rounded-md text-[9px] font-black" style={chipStyle('fear')}>FEAR</button>
+              <button onClick={handleDualityAndLog} className="h-7 rounded-md text-[9px] font-black text-white col-span-2" style={chipStyle('duality')}>DUAL</button>
+              <div className="flex gap-0.5 col-span-2">
                 <input type="number" value={customSides} onChange={e => setCustomSides(e.target.value)}
-                  className="w-9 text-center rounded-md text-white text-[10px] outline-none"
+                  className="w-9 text-center rounded-md text-white text-[9px] outline-none"
                   style={{ background: '#050711', border: '1px solid #141a2c', fontFamily: '"Orbitron", sans-serif' }} />
                 <button onClick={() => { const v = +customSides; if (v) addTermAndLog(Math.abs(v), v < 0 ? -1 : 1); }}
-                  className="flex-1 h-8 rounded-md text-[10px] font-bold"
+                  className="flex-1 h-7 rounded-md text-[9px] font-bold"
                   style={chipStyle(activeColor ? 'custom' : undefined, activeColor)}>Add</button>
               </div>
             </div>
@@ -839,7 +834,7 @@ const DiceRollerRibbon: React.FC = () => {
                 color: lastResult.duality === 'hope' ? '#ffd700' :
                        lastResult.duality === 'fear' ? '#ff2a6d' : '#fff',
               }}>
-                {lastResult.duality === 'hope' ? 'H' : lastResult.duality === 'fear' ? 'F' : '!'}
+                {lastResult.duality === 'hope' ? 'H' : lastResult.duality === 'fear' ? 'F' : 'C'}
               </span>
             )}
           </div>
