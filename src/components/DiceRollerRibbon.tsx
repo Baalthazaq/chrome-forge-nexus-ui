@@ -224,10 +224,14 @@ function buildColoredSegments(dice: DieData[], constant: number): EqSegment[] {
 }
 
 // --- Component ---
-const DiceRollerRibbon: React.FC = () => {
+interface DiceRollerRibbonProps {
+  embedded?: boolean;
+}
+
+const DiceRollerRibbon: React.FC<DiceRollerRibbonProps> = ({ embedded = false }) => {
   const { user } = useAuth();
   const location = useLocation();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(embedded);
   const [equation, setEquation] = useState('');
   const [bonus, setBonus] = useState('0');
   const [totalDisplay, setTotalDisplay] = useState('—');
