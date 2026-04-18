@@ -527,6 +527,13 @@ const QuestseekAdmin = () => {
                                   </Button>
                                 </div>
                               )}
+                              {(a.status === 'rejected' || a.status === 'cancelled' || a.status === 'completed') && (
+                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-400 hover:bg-red-900/30"
+                                  title="Permanently delete this record"
+                                  onClick={() => deleteAcceptance(a.id)}>
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              )}
                             </div>
                           ))}
                         </div>
