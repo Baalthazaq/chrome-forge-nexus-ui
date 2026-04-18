@@ -227,10 +227,11 @@ async function rejectQuest({ acceptanceId, adminNotes }: { acceptanceId: string,
 }
 
 async function approveApplication({ acceptanceId }: { acceptanceId: string }) {
-  // Approve a full-time job application — salary is now handled by advance-day
+  // Approve a full-time job application — salary is paid via advance-day; we also
+  // create a recurring_payments row so the job appears in @tunes.
   const { data: acceptance, error: getErr } = await supabase
     .from('quest_acceptances')
-    .select(`*, quests (id, title, reward, pay_interval)`)
+    .select(`*, quests (id, title, reward, pay_interval, posted_by_user_id, downtime_cost)`)
     .eq('id', acceptanceId)
     .eq('status', 'pending_approval')
     .single()
@@ -243,9 +244,78 @@ async function approveApplication({ acceptanceId }: { acceptanceId: string }) {
     admin_notes: 'Application approved. Welcome aboard!',
   }).eq('id', acceptanceId)
 
+  await ensureFullTimeSubscription(acceptance)
+
   return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })
+}
+
+// Create or revive a recurring_payments row mirroring this full-time job so it
+// shows up in @tunes. For admin-posted jobs (no employer), the row sits on the
+// employee side as informational income; for player-posted jobs, the employer
+// is on the hook.
+async function ensureFullTimeSubscription(acceptance: any) {
+  const quest = acceptance.quests
+  if (!quest) return
+
+  // Fetch employee character name for nicer labels
+  const { data: empProfile } = await supabase
+    .from('profiles').select('character_name').eq('user_id', acceptance.user_id).single()
+  const workerName = empProfile?.character_name || 'Worker'
+
+  const isPlayerPosted = !!quest.posted_by_user_id
+  const toUserId = isPlayerPosted ? quest.posted_by_user_id : acceptance.user_id
+  const fromUserId = isPlayerPosted ? acceptance.user_id : null
+
+  // Check if a row already exists for this acceptance
+  const { data: existing } = await supabase
+    .from('recurring_payments')
+    .select('id')
+    .eq('to_user_id', toUserId)
+    .filter('metadata->>acceptance_id', 'eq', acceptance.id)
+    .maybeSingle()
+
+  const nextDate = new Date()
+  nextDate.setDate(nextDate.getDate() + 1)
+
+  const payload = {
+    to_user_id: toUserId,
+    from_user_id: fromUserId,
+    amount: quest.reward || 0,
+    description: `${quest.title} (full-time)`,
+    interval_type: quest.pay_interval || 'daily',
+    next_send_at: nextDate.toISOString(),
+    is_active: true,
+    status: 'active',
+    metadata: {
+      acceptance_id: acceptance.id,
+      quest_id: quest.id,
+      item_name: quest.title,
+      worker_name: workerName,
+      player_posted: isPlayerPosted,
+      pay_interval: quest.pay_interval || 'daily',
+      hours_required: quest.downtime_cost || 0,
+      source: 'questseek_full_time',
+    },
+  }
+
+  if (existing) {
+    await supabase.from('recurring_payments').update({
+      ...payload,
+      // don't reset accumulated/total counters on revive
+    }).eq('id', existing.id)
+  } else {
+    await supabase.from('recurring_payments').insert(payload)
+  }
+}
+
+// Cancel any recurring_payments row tied to this acceptance (resign/reject/quit).
+async function cancelFullTimeSubscription(acceptanceId: string) {
+  await supabase
+    .from('recurring_payments')
+    .update({ status: 'cancelled', is_active: false })
+    .filter('metadata->>acceptance_id', 'eq', acceptanceId)
 }
 
 async function rejectApplication({ acceptanceId, adminNotes }: { acceptanceId: string, adminNotes?: string }) {
@@ -260,6 +330,8 @@ async function rejectApplication({ acceptanceId, adminNotes }: { acceptanceId: s
     .eq('status', 'pending_approval')
 
   if (error) throw error
+
+  await cancelFullTimeSubscription(acceptanceId)
 
   return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
