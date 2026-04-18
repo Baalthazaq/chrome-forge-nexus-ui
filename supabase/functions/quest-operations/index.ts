@@ -786,6 +786,8 @@ async function rejectPlayerApplication(posterId: string, { acceptanceId, notes }
     completed_at: new Date().toISOString(),
   }).eq('id', acceptanceId)
 
+  await cancelFullTimeSubscription(acceptanceId)
+
   return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })
