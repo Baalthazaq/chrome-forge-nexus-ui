@@ -49,6 +49,7 @@ import BestiaryAdmin from "./pages/BestiaryAdmin";
 import EnvironmentsAdmin from "./pages/EnvironmentsAdmin";
 import EncounterBuilder from "./pages/EncounterBuilder";
 import DiceRollerRibbon from "./components/DiceRollerRibbon";
+import DiceRoller from "./pages/DiceRoller";
 
 const queryClient = new QueryClient();
 
@@ -105,6 +106,7 @@ const App = () => (
             <Route path="/admin/bestiary" element={<BestiaryAdmin />} />
             <Route path="/admin/environments" element={<EnvironmentsAdmin />} />
             <Route path="/admin/encounters" element={<EncounterBuilder />} />
+            <Route path="/admin/dice-roller" element={<DiceRoller />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
