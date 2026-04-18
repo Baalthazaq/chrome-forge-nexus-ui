@@ -755,28 +755,34 @@ const DiceRollerRibbon: React.FC<DiceRollerRibbonProps> = ({ embedded = false })
   return (
     <>
       <div
-        className={`fixed top-0 right-0 h-full z-[9999] transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-        style={{ width: 320 }}
+        className={
+          embedded
+            ? 'w-full h-full'
+            : `fixed top-0 right-0 h-full z-[9999] transition-transform duration-300 ease-in-out ${
+                isOpen ? 'translate-x-0' : 'translate-x-full'
+              }`
+        }
+        style={embedded ? undefined : { width: 320 }}
       >
         <div className="h-full flex flex-col"
           style={{
             background: 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)) , #0a0c12',
-            borderLeft: '1px solid #141a2c',
+            borderLeft: embedded ? 'none' : '1px solid #141a2c',
             fontFamily: '"Orbitron", sans-serif',
             color: '#d6d9e6',
             letterSpacing: '1px',
           }}
         >
-          {/* Close button */}
-          <button
-            onClick={handleClose}
-            className="absolute top-2 right-2 text-white/60 hover:text-white text-xl z-10"
-            style={{ fontFamily: '"Orbitron", sans-serif' }}
-          >
-            ✕
-          </button>
+          {/* Close button (hidden when embedded) */}
+          {!embedded && (
+            <button
+              onClick={handleClose}
+              className="absolute top-2 right-2 text-white/60 hover:text-white text-xl z-10"
+              style={{ fontFamily: '"Orbitron", sans-serif' }}
+            >
+              ✕
+            </button>
+          )}
 
           {/* Controls section */}
           <div className="p-3 flex flex-col gap-2 pt-8 shrink-0">
