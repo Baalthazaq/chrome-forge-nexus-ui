@@ -414,6 +414,14 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
 }
 
 async function resignQuest(userId: string, { questId }: { questId: string }) {
+  // Find affected acceptances first so we can cancel any linked subscription
+  const { data: affected } = await supabase
+    .from('quest_acceptances')
+    .select('id')
+    .eq('quest_id', questId)
+    .eq('user_id', userId)
+    .in('status', ['accepted', 'pending_approval'])
+
   const { error: updateError } = await supabase
     .from('quest_acceptances')
     .update({ status: 'resigned' })
@@ -422,6 +430,10 @@ async function resignQuest(userId: string, { questId }: { questId: string }) {
     .in('status', ['accepted', 'pending_approval'])
 
   if (updateError) throw updateError
+
+  for (const a of affected ?? []) {
+    await cancelFullTimeSubscription(a.id)
+  }
 
   return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -652,7 +664,9 @@ async function rejectPlayerQuest(posterId: string, { acceptanceId, notes }: { ac
 }
 
 async function approvePlayerApplication(posterId: string, { acceptanceId }: { acceptanceId: string }) {
-  // Approve a player-posted full-time job application — salary is now handled by advance-day
+  // Approve a player-posted full-time job application — salary is paid via
+  // advance-day; we also create a recurring_payments row so the job appears in
+  // the employer's @tunes.
   const { data: acceptance, error: getErr } = await supabase
     .from('quest_acceptances')
     .select(`*, quests (id, title, reward, pay_interval, posted_by_user_id, downtime_cost)`)
@@ -674,15 +688,74 @@ async function approvePlayerApplication(posterId: string, { acceptanceId }: { ac
     })
   }
 
-  // Update acceptance status
   await supabase.from('quest_acceptances').update({
     status: 'accepted',
     admin_notes: 'Application approved by poster. Welcome aboard!',
   }).eq('id', acceptanceId)
 
+  await ensureFullTimeSubscription(acceptance)
+
   return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })
+}
+
+// Mirror helpers from quest-admin so player-facing approval / resignation keeps @tunes in sync.
+async function ensureFullTimeSubscription(acceptance: any) {
+  const quest = acceptance.quests
+  if (!quest) return
+
+  const { data: empProfile } = await supabase
+    .from('profiles').select('character_name').eq('user_id', acceptance.user_id).single()
+  const workerName = empProfile?.character_name || 'Worker'
+
+  const isPlayerPosted = !!quest.posted_by_user_id
+  const toUserId = isPlayerPosted ? quest.posted_by_user_id : acceptance.user_id
+  const fromUserId = isPlayerPosted ? acceptance.user_id : null
+
+  const { data: existing } = await supabase
+    .from('recurring_payments')
+    .select('id')
+    .eq('to_user_id', toUserId)
+    .filter('metadata->>acceptance_id', 'eq', acceptance.id)
+    .maybeSingle()
+
+  const nextDate = new Date()
+  nextDate.setDate(nextDate.getDate() + 1)
+
+  const payload = {
+    to_user_id: toUserId,
+    from_user_id: fromUserId,
+    amount: quest.reward || 0,
+    description: `${quest.title} (full-time)`,
+    interval_type: quest.pay_interval || 'daily',
+    next_send_at: nextDate.toISOString(),
+    is_active: true,
+    status: 'active',
+    metadata: {
+      acceptance_id: acceptance.id,
+      quest_id: quest.id,
+      item_name: quest.title,
+      worker_name: workerName,
+      player_posted: isPlayerPosted,
+      pay_interval: quest.pay_interval || 'daily',
+      hours_required: quest.downtime_cost || 0,
+      source: 'questseek_full_time',
+    },
+  }
+
+  if (existing) {
+    await supabase.from('recurring_payments').update(payload).eq('id', existing.id)
+  } else {
+    await supabase.from('recurring_payments').insert(payload)
+  }
+}
+
+async function cancelFullTimeSubscription(acceptanceId: string) {
+  await supabase
+    .from('recurring_payments')
+    .update({ status: 'cancelled', is_active: false })
+    .filter('metadata->>acceptance_id', 'eq', acceptanceId)
 }
 
 async function rejectPlayerApplication(posterId: string, { acceptanceId, notes }: { acceptanceId: string, notes?: string }) {
