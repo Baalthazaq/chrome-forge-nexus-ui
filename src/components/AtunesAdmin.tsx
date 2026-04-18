@@ -188,6 +188,31 @@ const AtunesAdmin = () => {
             <Card key={sub.id} className="border">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-2 gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <StatusIcon className={`w-4 h-4 shrink-0 ${color}`} />
+                    <div className="min-w-0">
+                      <p className={`font-medium ${color}`}>{sub.description}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <User className="w-3 h-3 text-muted-foreground shrink-0" />
+                        <span className="text-xs text-muted-foreground truncate">{userName}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant="outline" className="text-xs">{sub.status}</Badge>
+                    <Badge variant="outline" className="text-xs">{sub.interval_type}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => void deleteSubscription(sub)}
+                      disabled={deletingId === sub.id}
+                      aria-label={`Delete ${sub.description}`}
+                      title="Delete subscription completely"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-3 text-xs">
                   <div>
