@@ -956,53 +956,55 @@ const DiceRollerRibbon: React.FC<DiceRollerRibbonProps> = ({ embedded = false })
         </div>
       </div>
 
-      {/* Tab */}
-      <button
-        onClick={handleToggle}
-        className={`fixed z-[10000] flex flex-col items-center justify-center transition-all duration-300 ${
-          isOpen ? 'right-[320px]' : 'right-0'
-        }`}
-        style={{
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: 40,
-          height: lastResult ? 140 : 120,
-          background: 'linear-gradient(180deg, #0a0c12, #070911)',
-          border: '1px solid #141a2c',
-          borderRight: isOpen ? '1px solid #141a2c' : 'none',
-          borderRadius: '8px 0 0 8px',
-          fontFamily: '"Orbitron", sans-serif',
-          color: '#d6d9e6',
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: 2,
-          cursor: 'pointer',
-          boxShadow: '-4px 0 15px rgba(0,0,0,0.4)',
-          padding: '8px 0',
-        }}
-      >
-        <span style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>🎲 DICE</span>
-        {lastResult && (
-          <div className="mt-1 flex flex-col items-center gap-0.5">
-            <span className="text-[10px] font-black" style={{
-              color: lastResult.duality === 'hope' ? '#ffd700' :
-                     lastResult.duality === 'fear' ? '#ff2a6d' :
-                     lastResult.duality === 'crit' ? '#fff' : '#00f5ff',
-              textShadow: lastResult.duality === 'crit' ? '0 0 6px #ffd700' : 'none',
-            }}>
-              {lastResult.total}
-            </span>
-            {lastResult.duality !== 'none' && (
-              <span className="text-[8px]" style={{
+      {/* Tab (hidden when embedded) */}
+      {!embedded && (
+        <button
+          onClick={handleToggle}
+          className={`fixed z-[10000] flex flex-col items-center justify-center transition-all duration-300 ${
+            isOpen ? 'right-[320px]' : 'right-0'
+          }`}
+          style={{
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 40,
+            height: lastResult ? 140 : 120,
+            background: 'linear-gradient(180deg, #0a0c12, #070911)',
+            border: '1px solid #141a2c',
+            borderRight: isOpen ? '1px solid #141a2c' : 'none',
+            borderRadius: '8px 0 0 8px',
+            fontFamily: '"Orbitron", sans-serif',
+            color: '#d6d9e6',
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: 2,
+            cursor: 'pointer',
+            boxShadow: '-4px 0 15px rgba(0,0,0,0.4)',
+            padding: '8px 0',
+          }}
+        >
+          <span style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>🎲 DICE</span>
+          {lastResult && (
+            <div className="mt-1 flex flex-col items-center gap-0.5">
+              <span className="text-[10px] font-black" style={{
                 color: lastResult.duality === 'hope' ? '#ffd700' :
-                       lastResult.duality === 'fear' ? '#ff2a6d' : '#fff',
+                       lastResult.duality === 'fear' ? '#ff2a6d' :
+                       lastResult.duality === 'crit' ? '#fff' : '#00f5ff',
+                textShadow: lastResult.duality === 'crit' ? '0 0 6px #ffd700' : 'none',
               }}>
-                {lastResult.duality === 'hope' ? 'H' : lastResult.duality === 'fear' ? 'F' : 'C'}
+                {lastResult.total}
               </span>
-            )}
-          </div>
-        )}
-      </button>
+              {lastResult.duality !== 'none' && (
+                <span className="text-[8px]" style={{
+                  color: lastResult.duality === 'hope' ? '#ffd700' :
+                         lastResult.duality === 'fear' ? '#ff2a6d' : '#fff',
+                }}>
+                  {lastResult.duality === 'hope' ? 'H' : lastResult.duality === 'fear' ? 'F' : 'C'}
+                </span>
+              )}
+            </div>
+          )}
+        </button>
+      )}
     </>
   );
 };
