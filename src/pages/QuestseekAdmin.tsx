@@ -212,6 +212,19 @@ const QuestseekAdmin = () => {
     }
   };
 
+  const deleteAcceptance = async (acceptanceId: string) => {
+    if (!confirm("Permanently delete this job record? This also removes its @tunes entry.")) return;
+    const { data, error } = await supabase.functions.invoke("quest-admin", {
+      body: { operation: "delete_acceptance", acceptanceId },
+    });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || "Failed", variant: "destructive" });
+    } else {
+      toast({ title: "Job record deleted" });
+      loadData();
+    }
+  };
+
   const replenishQuest = async () => {
     const { data, error } = await supabase.functions.invoke("quest-admin", {
       body: { operation: "replenish_quest", questId: replenishQuestId, quantity: parseInt(replenishQty) || 0 },
