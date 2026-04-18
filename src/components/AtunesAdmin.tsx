@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { formatHex } from "@/lib/currency";
-import { Search, AlertTriangle, Clock, Play, Pause, Hand, XCircle, Building2, User } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Search, AlertTriangle, Play, Pause, Hand, XCircle, User, Trash2 } from "lucide-react";
 
 interface AdminSubscription {
   id: string;
@@ -46,9 +48,11 @@ const statusColors: Record<string, string> = {
 };
 
 const AtunesAdmin = () => {
+  const { toast } = useToast();
   const [subscriptions, setSubscriptions] = useState<AdminSubscription[]>([]);
   const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [owedFilter, setOwedFilter] = useState("all");
@@ -77,6 +81,35 @@ const AtunesAdmin = () => {
     }
   };
 
+  const deleteSubscription = async (subscription: AdminSubscription) => {
+    if (!confirm(`Permanently delete "${subscription.description}"? This cannot be undone.`)) return;
+
+    setDeletingId(subscription.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-financial", {
+        body: {
+          operation: "delete_recurring_payment",
+          recurring_payment_id: subscription.id,
+        },
+      });
+
+      if (error || data?.error) {
+        throw new Error(data?.error || error?.message || "Failed to delete subscription");
+      }
+
+      toast({ title: "Deleted", description: "The subscription was removed from @tunes." });
+      await loadData();
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description: error instanceof Error ? error.message : "Failed to delete subscription",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const filtered = subscriptions.filter((sub) => {
     const userName = profiles[sub.to_user_id] || "";
     const matchesSearch = !searchTerm ||
@@ -96,7 +129,6 @@ const AtunesAdmin = () => {
 
   return (
     <div className="space-y-6">
-      {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card className="bg-muted/30"><CardContent className="p-3 text-center">
           <p className="text-xl font-bold">{subscriptions.length}</p>
@@ -120,7 +152,6 @@ const AtunesAdmin = () => {
         </CardContent></Card>
       </div>
 
-      {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -146,33 +177,17 @@ const AtunesAdmin = () => {
         </Select>
       </div>
 
-      {/* Results */}
       <p className="text-sm text-muted-foreground">{filtered.length} subscriptions</p>
       <div className="space-y-3">
         {filtered.map((sub) => {
           const StatusIcon = statusIcons[sub.status] || Play;
           const color = statusColors[sub.status] || "text-muted-foreground";
           const userName = profiles[sub.to_user_id] || "Unknown User";
-          const specs = sub.metadata as any;
 
           return (
             <Card key={sub.id} className="border">
               <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <StatusIcon className={`w-4 h-4 ${color}`} />
-                    <div>
-                      <p className={`font-medium ${color}`}>{sub.description}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <User className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">{userName}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">{sub.status}</Badge>
-                    <Badge variant="outline" className="text-xs">{sub.interval_type}</Badge>
-                  </div>
+                <div className="flex items-start justify-between mb-2 gap-3">
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-3 text-xs">
                   <div>
