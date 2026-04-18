@@ -184,24 +184,13 @@ const Admin = () => {
                 <span className="text-xs text-muted-foreground">Build Encounters</span>
               </Button>
               <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => navigate('/admin/dice-roller')}>
-                <span className="font-semibold">Dice Roller</span>
-                <span className="text-xs text-muted-foreground">Dice Tray Tool</span>
+                <span className="font-semibold">Dice Roller & Log</span>
+                <span className="text-xs text-muted-foreground">Roll Dice + History</span>
               </Button>
               <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => window.open('/tools/racegen.html', '_blank')}>
                 <span className="font-semibold">Racegen</span>
                 <span className="text-xs text-muted-foreground">Ancestry Generator</span>
               </Button>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10">
-                    <span className="font-semibold">Dice Roll Log</span>
-                    <span className="text-xs text-muted-foreground">View Roll History</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                  <DiceRollLog />
-                </DialogContent>
-              </Dialog>
             </div>
           </CardContent>
         </Card>
