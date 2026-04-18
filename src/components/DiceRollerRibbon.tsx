@@ -224,10 +224,14 @@ function buildColoredSegments(dice: DieData[], constant: number): EqSegment[] {
 }
 
 // --- Component ---
-const DiceRollerRibbon: React.FC = () => {
+interface DiceRollerRibbonProps {
+  embedded?: boolean;
+}
+
+const DiceRollerRibbon: React.FC<DiceRollerRibbonProps> = ({ embedded = false }) => {
   const { user } = useAuth();
   const location = useLocation();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(embedded);
   const [equation, setEquation] = useState('');
   const [bonus, setBonus] = useState('0');
   const [totalDisplay, setTotalDisplay] = useState('—');
@@ -751,28 +755,34 @@ const DiceRollerRibbon: React.FC = () => {
   return (
     <>
       <div
-        className={`fixed top-0 right-0 h-full z-[9999] transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-        style={{ width: 320 }}
+        className={
+          embedded
+            ? 'w-full h-full'
+            : `fixed top-0 right-0 h-full z-[9999] transition-transform duration-300 ease-in-out ${
+                isOpen ? 'translate-x-0' : 'translate-x-full'
+              }`
+        }
+        style={embedded ? undefined : { width: 320 }}
       >
         <div className="h-full flex flex-col"
           style={{
             background: 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)) , #0a0c12',
-            borderLeft: '1px solid #141a2c',
+            borderLeft: embedded ? 'none' : '1px solid #141a2c',
             fontFamily: '"Orbitron", sans-serif',
             color: '#d6d9e6',
             letterSpacing: '1px',
           }}
         >
-          {/* Close button */}
-          <button
-            onClick={handleClose}
-            className="absolute top-2 right-2 text-white/60 hover:text-white text-xl z-10"
-            style={{ fontFamily: '"Orbitron", sans-serif' }}
-          >
-            ✕
-          </button>
+          {/* Close button (hidden when embedded) */}
+          {!embedded && (
+            <button
+              onClick={handleClose}
+              className="absolute top-2 right-2 text-white/60 hover:text-white text-xl z-10"
+              style={{ fontFamily: '"Orbitron", sans-serif' }}
+            >
+              ✕
+            </button>
+          )}
 
           {/* Controls section */}
           <div className="p-3 flex flex-col gap-2 pt-8 shrink-0">
@@ -946,53 +956,55 @@ const DiceRollerRibbon: React.FC = () => {
         </div>
       </div>
 
-      {/* Tab */}
-      <button
-        onClick={handleToggle}
-        className={`fixed z-[10000] flex flex-col items-center justify-center transition-all duration-300 ${
-          isOpen ? 'right-[320px]' : 'right-0'
-        }`}
-        style={{
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: 40,
-          height: lastResult ? 140 : 120,
-          background: 'linear-gradient(180deg, #0a0c12, #070911)',
-          border: '1px solid #141a2c',
-          borderRight: isOpen ? '1px solid #141a2c' : 'none',
-          borderRadius: '8px 0 0 8px',
-          fontFamily: '"Orbitron", sans-serif',
-          color: '#d6d9e6',
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: 2,
-          cursor: 'pointer',
-          boxShadow: '-4px 0 15px rgba(0,0,0,0.4)',
-          padding: '8px 0',
-        }}
-      >
-        <span style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>🎲 DICE</span>
-        {lastResult && (
-          <div className="mt-1 flex flex-col items-center gap-0.5">
-            <span className="text-[10px] font-black" style={{
-              color: lastResult.duality === 'hope' ? '#ffd700' :
-                     lastResult.duality === 'fear' ? '#ff2a6d' :
-                     lastResult.duality === 'crit' ? '#fff' : '#00f5ff',
-              textShadow: lastResult.duality === 'crit' ? '0 0 6px #ffd700' : 'none',
-            }}>
-              {lastResult.total}
-            </span>
-            {lastResult.duality !== 'none' && (
-              <span className="text-[8px]" style={{
+      {/* Tab (hidden when embedded) */}
+      {!embedded && (
+        <button
+          onClick={handleToggle}
+          className={`fixed z-[10000] flex flex-col items-center justify-center transition-all duration-300 ${
+            isOpen ? 'right-[320px]' : 'right-0'
+          }`}
+          style={{
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 40,
+            height: lastResult ? 140 : 120,
+            background: 'linear-gradient(180deg, #0a0c12, #070911)',
+            border: '1px solid #141a2c',
+            borderRight: isOpen ? '1px solid #141a2c' : 'none',
+            borderRadius: '8px 0 0 8px',
+            fontFamily: '"Orbitron", sans-serif',
+            color: '#d6d9e6',
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: 2,
+            cursor: 'pointer',
+            boxShadow: '-4px 0 15px rgba(0,0,0,0.4)',
+            padding: '8px 0',
+          }}
+        >
+          <span style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>🎲 DICE</span>
+          {lastResult && (
+            <div className="mt-1 flex flex-col items-center gap-0.5">
+              <span className="text-[10px] font-black" style={{
                 color: lastResult.duality === 'hope' ? '#ffd700' :
-                       lastResult.duality === 'fear' ? '#ff2a6d' : '#fff',
+                       lastResult.duality === 'fear' ? '#ff2a6d' :
+                       lastResult.duality === 'crit' ? '#fff' : '#00f5ff',
+                textShadow: lastResult.duality === 'crit' ? '0 0 6px #ffd700' : 'none',
               }}>
-                {lastResult.duality === 'hope' ? 'H' : lastResult.duality === 'fear' ? 'F' : 'C'}
+                {lastResult.total}
               </span>
-            )}
-          </div>
-        )}
-      </button>
+              {lastResult.duality !== 'none' && (
+                <span className="text-[8px]" style={{
+                  color: lastResult.duality === 'hope' ? '#ffd700' :
+                         lastResult.duality === 'fear' ? '#ff2a6d' : '#fff',
+                }}>
+                  {lastResult.duality === 'hope' ? 'H' : lastResult.duality === 'fear' ? 'F' : 'C'}
+                </span>
+              )}
+            </div>
+          )}
+        </button>
+      )}
     </>
   );
 };
