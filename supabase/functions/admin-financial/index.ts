@@ -433,6 +433,46 @@ serve(async (req) => {
         });
       }
 
+      case "delete_recurring_payment": {
+        const { recurring_payment_id } = params;
+
+        const { data: payment, error: paymentError } = await supabase
+          .from("recurring_payments")
+          .select("id, metadata")
+          .eq("id", recurring_payment_id)
+          .single();
+
+        if (paymentError || !payment) {
+          throw new Error("Recurring payment not found");
+        }
+
+        const metadata = (payment.metadata ?? {}) as Record<string, unknown>;
+        const acceptanceId = typeof metadata.acceptance_id === "string" ? metadata.acceptance_id : null;
+        const source = typeof metadata.source === "string" ? metadata.source : null;
+
+        const { error: deletePaymentError } = await supabase
+          .from("recurring_payments")
+          .delete()
+          .eq("id", recurring_payment_id);
+
+        if (deletePaymentError) throw deletePaymentError;
+
+        if (source === "questseek_full_time" && acceptanceId) {
+          const { error: deleteAcceptanceError } = await supabase
+            .from("quest_acceptances")
+            .delete()
+            .eq("id", acceptanceId);
+
+          if (deleteAcceptanceError) throw deleteAcceptanceError;
+        }
+
+        logStep("Recurring payment deleted", { recurring_payment_id, acceptanceId, source });
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
       case "trigger_daily":
       case "trigger_weekly": 
       case "trigger_monthly":
