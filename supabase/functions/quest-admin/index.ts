@@ -65,6 +65,8 @@ Deno.serve(async (req) => {
         return await getDowntimeConfig()
       case 'update_downtime_config':
         return await updateDowntimeConfig(params)
+      case 'delete_acceptance':
+        return await deleteAcceptance(params)
       default:
         return new Response(JSON.stringify({ error: 'Invalid operation' }), {
           status: 400,
@@ -333,6 +335,25 @@ async function rejectApplication({ acceptanceId, adminNotes }: { acceptanceId: s
 
   await cancelFullTimeSubscription(acceptanceId)
 
+  return new Response(JSON.stringify({ success: true }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function deleteAcceptance({ acceptanceId }: { acceptanceId: string }) {
+  // Hard delete an acceptance row + any linked recurring_payments entry.
+  // Intended for cleaning up cancelled/rejected jobs from admin views.
+  await supabase
+    .from('recurring_payments')
+    .delete()
+    .filter('metadata->>acceptance_id', 'eq', acceptanceId)
+
+  const { error } = await supabase
+    .from('quest_acceptances')
+    .delete()
+    .eq('id', acceptanceId)
+
+  if (error) throw error
   return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })

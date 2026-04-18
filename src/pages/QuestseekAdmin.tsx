@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Check, X, RefreshCw, Settings, Package, Download, Upload, Briefcase, Search, Filter } from "lucide-react";
+import { ArrowLeft, Plus, Check, X, RefreshCw, Settings, Package, Download, Upload, Briefcase, Search, Filter, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatHexDenomination, formatHex, formatHexRounded } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
@@ -208,6 +208,19 @@ const QuestseekAdmin = () => {
       toast({ title: "Error", description: data?.error || "Failed", variant: "destructive" });
     } else {
       toast({ title: "Application approved! Recurring payment created." });
+      loadData();
+    }
+  };
+
+  const deleteAcceptance = async (acceptanceId: string) => {
+    if (!confirm("Permanently delete this job record? This also removes its @tunes entry.")) return;
+    const { data, error } = await supabase.functions.invoke("quest-admin", {
+      body: { operation: "delete_acceptance", acceptanceId },
+    });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || "Failed", variant: "destructive" });
+    } else {
+      toast({ title: "Job record deleted" });
       loadData();
     }
   };
@@ -513,6 +526,13 @@ const QuestseekAdmin = () => {
                                     <X className="w-3 h-3" />
                                   </Button>
                                 </div>
+                              )}
+                              {(a.status === 'rejected' || a.status === 'cancelled' || a.status === 'completed') && (
+                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-400 hover:bg-red-900/30"
+                                  title="Permanently delete this record"
+                                  onClick={() => deleteAcceptance(a.id)}>
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
                               )}
                             </div>
                           ))}
