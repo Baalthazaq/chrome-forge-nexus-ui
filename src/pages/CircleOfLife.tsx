@@ -753,7 +753,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
 
   const updateNode = async (
     id: string,
-    updates: { label?: string; type?: string; color?: string }
+    updates: { label?: string; type?: string; color?: string; weight?: number; mate_up_probability?: number }
   ) => {
     const { error } = await supabase.from("evolution_nodes").update(updates).eq("id", id);
     if (error) {
