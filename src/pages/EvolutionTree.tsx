@@ -393,11 +393,16 @@ const EvolutionTree = () => {
       }
       const depths = Array.from(byDepth.keys()).sort((a, b) => a - b);
 
-      // Place column-by-column. Within a column, sort by parent barycenter (already-placed parents).
+      // Determine the tallest column in this family to compute centering offsets.
       const familyTop = yCursor;
-      let familyMaxY = yCursor;
+      const maxCount = Math.max(...depths.map((d) => byDepth.get(d)!.length));
+      const familyHeight = maxCount * STEP_Y;
+
+      // Sort each column by parent barycenter (using a temp pass), then center vertically.
+      // First pass: assign a tentative order using parent barycenter from prior columns.
+      const orderedByDepth = new Map<number, NodeRow[]>();
       for (const d of depths) {
-        const list = byDepth.get(d)!;
+        const list = byDepth.get(d)!.slice();
         list.sort((a, b) => {
           const ap = (parentsOf.get(a.id) ?? []).filter((p) => newPos[p]);
           const bp = (parentsOf.get(b.id) ?? []).filter((p) => newPos[p]);
@@ -406,14 +411,15 @@ const EvolutionTree = () => {
           if (ay !== by) return ay - by;
           return a.label.localeCompare(b.label);
         });
+        orderedByDepth.set(d, list);
+        // Place tentatively so next column's barycenter calc uses real positions.
+        const colHeight = list.length * STEP_Y;
+        const colOffset = (familyHeight - colHeight) / 2;
         list.forEach((n, i) => {
-          const x = LEFT + d * STEP_X;
-          const y = familyTop + i * STEP_Y;
-          newPos[n.id] = { x, y };
-          if (y + NODE_H > familyMaxY) familyMaxY = y + NODE_H;
+          newPos[n.id] = { x: LEFT + d * STEP_X, y: familyTop + colOffset + i * STEP_Y };
         });
       }
-      yCursor = familyMaxY + FAMILY_GAP;
+      yCursor = familyTop + familyHeight + FAMILY_GAP;
     }
 
     setPendingPositions(newPos);
