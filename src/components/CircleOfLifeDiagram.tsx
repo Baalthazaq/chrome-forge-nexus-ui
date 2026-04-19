@@ -247,39 +247,58 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
       cursor += w;
     }
 
-    // Spread variants (depth 3) angularly to prevent label overlap
-    const variants = out
-      .filter((n) => n.depth === 3)
-      .sort((a, b) => a.angle - b.angle);
-    if (variants.length > 1) {
-      const r = ringRadii[3];
-      // Approximate angular space needed per label (in radians)
-      const labelAngularSpan = (label: string) => {
-        const px = 7 + label.length * 5.4; // approx label width
-        return (px / r) * 1.05;
-      };
-      // Forward pass: push apart
-      for (let i = 1; i < variants.length; i++) {
-        const prev = variants[i - 1];
-        const cur = variants[i];
-        const need = (labelAngularSpan(prev.label) + labelAngularSpan(cur.label)) / 2;
-        if (cur.angle - prev.angle < need) {
-          cur.angle = prev.angle + need;
+    // Spread variants (depth 3) angularly within their family's arc to prevent
+    // labels from one family invading another's territory.
+    const r3 = ringRadii[3];
+    const labelAngularSpan = (label: string) =>
+      ((7 + label.length * 5.4) / r3) * 1.05;
+
+    // Group variants by their family ancestor (by arc containment).
+    const familyNodes = out.filter((n) => n.depth === 1);
+    for (const fam of familyNodes) {
+      const famVariants = out
+        .filter((n) => n.depth === 3 && n.angle >= fam.startAngle && n.angle <= fam.endAngle)
+        .sort((a, b) => a.angle - b.angle);
+      if (famVariants.length === 0) continue;
+
+      const arcStart = fam.startAngle;
+      const arcEnd = fam.endAngle;
+      const arcSize = arcEnd - arcStart;
+      const totalNeed = famVariants.reduce((s, v) => s + labelAngularSpan(v.label), 0);
+
+      if (totalNeed >= arcSize * 0.95) {
+        // Crowded: distribute evenly across the family's arc
+        const step = arcSize / famVariants.length;
+        famVariants.forEach((v, i) => {
+          v.angle = arcStart + step * (i + 0.5);
+        });
+      } else {
+        // Has room: only nudge apart pairs that overlap, clamped to arc
+        // Forward pass
+        for (let i = 1; i < famVariants.length; i++) {
+          const prev = famVariants[i - 1];
+          const cur = famVariants[i];
+          const need = (labelAngularSpan(prev.label) + labelAngularSpan(cur.label)) / 2;
+          if (cur.angle - prev.angle < need) cur.angle = prev.angle + need;
         }
-      }
-      // Wrap-around check
-      const first = variants[0];
-      const last = variants[variants.length - 1];
-      const wrapNeed = (labelAngularSpan(last.label) + labelAngularSpan(first.label)) / 2;
-      if (first.angle + Math.PI * 2 - last.angle < wrapNeed) {
-        // Backward redistribute to balance
-        const overflow = wrapNeed - (first.angle + Math.PI * 2 - last.angle);
-        for (let i = variants.length - 1; i >= 0; i--) {
-          variants[i].angle -= overflow * ((i + 1) / variants.length);
+        // Clamp tail and back-propagate
+        const last = famVariants[famVariants.length - 1];
+        if (last.angle > arcEnd - labelAngularSpan(last.label) / 2) {
+          last.angle = arcEnd - labelAngularSpan(last.label) / 2;
+          for (let i = famVariants.length - 2; i >= 0; i--) {
+            const next = famVariants[i + 1];
+            const cur = famVariants[i];
+            const need = (labelAngularSpan(next.label) + labelAngularSpan(cur.label)) / 2;
+            if (next.angle - cur.angle < need) cur.angle = next.angle - need;
+          }
         }
+        // Clamp head
+        const first = famVariants[0];
+        const minHead = arcStart + labelAngularSpan(first.label) / 2;
+        if (first.angle < minHead) first.angle = minHead;
       }
-      // Recompute positions for variants
-      for (const v of variants) {
+
+      for (const v of famVariants) {
         v.x = cx + Math.cos(v.angle) * v.radius;
         v.y = cy + Math.sin(v.angle) * v.radius;
       }
