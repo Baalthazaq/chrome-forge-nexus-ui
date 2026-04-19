@@ -366,13 +366,55 @@ const EvolutionTree = () => {
     };
     for (const n of nodes) findFamily(n.id);
 
-    // Order families alphabetically by label
-    const familyIds = Array.from(new Set(Array.from(familyOf.values())));
-    familyIds.sort((a, b) => {
+    // Order families: start alphabetical, then greedily reorder so families that share
+    // cross-family edges (a node in family A also linked to family B) sit adjacent.
+    const familyIdsInit = Array.from(new Set(Array.from(familyOf.values())));
+    familyIdsInit.sort((a, b) => {
       const al = nodes.find((n) => n.id === a)?.label ?? "";
       const bl = nodes.find((n) => n.id === b)?.label ?? "";
       return al.localeCompare(bl);
     });
+
+    // Build cross-family link weights: number of edges crossing between two families.
+    const famLink = new Map<string, number>(); // key "famA|famB" (sorted) -> count
+    const famKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+    for (const e of edges) {
+      const fa = familyOf.get(e.parent_id);
+      const fb = familyOf.get(e.child_id);
+      if (fa && fb && fa !== fb) {
+        famLink.set(famKey(fa, fb), (famLink.get(famKey(fa, fb)) ?? 0) + 1);
+      }
+    }
+    // Greedy reorder: start with first family, then repeatedly pick the next unplaced
+    // family with the strongest tie to the last placed one (fall back to alphabetical).
+    const familyIds: string[] = [];
+    const remaining = new Set(familyIdsInit);
+    if (familyIdsInit.length) {
+      familyIds.push(familyIdsInit[0]);
+      remaining.delete(familyIdsInit[0]);
+    }
+    while (remaining.size) {
+      const last = familyIds[familyIds.length - 1];
+      let best: string | null = null;
+      let bestScore = -1;
+      for (const f of remaining) {
+        const score = famLink.get(famKey(last, f)) ?? 0;
+        if (score > bestScore) {
+          bestScore = score;
+          best = f;
+        }
+      }
+      if (bestScore <= 0) {
+        // No tie — pick the alphabetically-next remaining family for stability.
+        best = Array.from(remaining).sort((a, b) => {
+          const al = nodes.find((n) => n.id === a)?.label ?? "";
+          const bl = nodes.find((n) => n.id === b)?.label ?? "";
+          return al.localeCompare(bl);
+        })[0];
+      }
+      familyIds.push(best!);
+      remaining.delete(best!);
+    }
 
     const STEP_X = NODE_W + COL_GAP;
     const STEP_Y = NODE_H + ROW_GAP;
@@ -383,7 +425,13 @@ const EvolutionTree = () => {
     const newPos: Record<string, { x: number; y: number }> = {};
     let yCursor = TOP;
 
-    for (const famId of familyIds) {
+    // Helper: collect all nodes in a subtree (for cross-link checks).
+    const subtreeIds = new Map<string, Set<string>>();
+
+    for (let famIdx = 0; famIdx < familyIds.length; famIdx++) {
+      const famId = familyIds[famIdx];
+      const prevFamId = familyIds[famIdx - 1] ?? null;
+      const nextFamId = familyIds[famIdx + 1] ?? null;
       const famNodes = nodes.filter((n) => familyOf.get(n.id) === famId);
       // Group by depth column within the family
       const byDepth = new Map<number, NodeRow[]>();
@@ -396,13 +444,7 @@ const EvolutionTree = () => {
 
       const familyTop = yCursor;
 
-      // Subtree-based layout: each node owns a vertical "slot" sized to fit all of its
-      // descendants. Children are stacked within the parent's slot and the parent is
-      // centered on its children. This keeps each parent visually aligned with its own
-      // variants instead of being dragged down by unrelated siblings' stacks.
-      //
-      // We assign each node to one "primary" parent (its first parent alphabetically,
-      // matching the family-assignment rule) so the tree is strict for layout purposes.
+      // Subtree-based layout (each parent centered on its children).
       const primaryParent = new Map<string, string | null>();
       for (const n of famNodes) {
         const ps = (parentsOf.get(n.id) ?? []).slice().sort();
@@ -414,7 +456,6 @@ const EvolutionTree = () => {
         const pp = primaryParent.get(n.id);
         if (pp && primaryChildren.has(pp)) primaryChildren.get(pp)!.push(n);
       }
-      // Sort children by descendant count desc (bigger subtrees first), then alpha as tiebreak.
       const subtreeSize = new Map<string, number>();
       const computeSize = (id: string): number => {
         if (subtreeSize.has(id)) return subtreeSize.get(id)!;
@@ -425,15 +466,54 @@ const EvolutionTree = () => {
       };
       for (const n of famNodes) computeSize(n.id);
 
-      // Recursive placement: returns the [topY, bottomY] occupied slot for the subtree.
-      const placeSubtree = (id: string, startY: number): { top: number; bottom: number; centerY: number } => {
-        const node = famNodes.find((n) => n.id === id)!;
+      // Collect all node ids in each subtree (for affinity scoring).
+      const collectSubtree = (id: string): Set<string> => {
+        if (subtreeIds.has(id)) return subtreeIds.get(id)!;
+        const set = new Set<string>([id]);
+        for (const c of primaryChildren.get(id) ?? []) {
+          for (const x of collectSubtree(c.id)) set.add(x);
+        }
+        subtreeIds.set(id, set);
+        return set;
+      };
+      for (const n of famNodes) collectSubtree(n.id);
+
+      // Affinity score: how strongly a subtree links to a target family
+      // (count of edges from any subtree node to/from a node in target family).
+      const affinityToFamily = (subtreeRootId: string, targetFam: string | null): number => {
+        if (!targetFam) return 0;
+        const ids = subtreeIds.get(subtreeRootId)!;
+        let score = 0;
+        for (const e of edges) {
+          const pIn = ids.has(e.parent_id);
+          const cIn = ids.has(e.child_id);
+          if (pIn && !cIn && familyOf.get(e.child_id) === targetFam) score++;
+          else if (cIn && !pIn && familyOf.get(e.parent_id) === targetFam) score++;
+        }
+        return score;
+      };
+
+      // Recursive placement: kids with strong ties to the family ABOVE go to top,
+      // kids with strong ties to the family BELOW go to bottom; rest sorted by size/alpha.
+      const placeSubtree = (id: string, startY: number, aboveFam: string | null, belowFam: string | null): { top: number; bottom: number; centerY: number } => {
         const d = depth.get(id) ?? 0;
         const x = LEFT + d * STEP_X;
-        const kids = (primaryChildren.get(id) ?? []).slice().sort((a, b) => {
-          const sa = subtreeSize.get(a.id) ?? 1;
-          const sb = subtreeSize.get(b.id) ?? 1;
-          if (sa !== sb) return sa - sb; // smaller first → larger last keeps visual balance; flip if desired
+        const kidsRaw = (primaryChildren.get(id) ?? []).slice();
+
+        // Score each kid: positive = belongs near top (links above), negative = near bottom.
+        const kidScore = new Map<string, number>();
+        for (const k of kidsRaw) {
+          const up = affinityToFamily(k.id, aboveFam);
+          const down = affinityToFamily(k.id, belowFam);
+          kidScore.set(k.id, up - down);
+        }
+        const kids = kidsRaw.sort((a, b) => {
+          const sa = kidScore.get(a.id)!;
+          const sb = kidScore.get(b.id)!;
+          if (sa !== sb) return sb - sa; // higher score (more upward affinity) first
+          const za = subtreeSize.get(a.id) ?? 1;
+          const zb = subtreeSize.get(b.id) ?? 1;
+          if (za !== zb) return za - zb;
           return a.label.localeCompare(b.label);
         });
 
@@ -444,28 +524,39 @@ const EvolutionTree = () => {
 
         let cursor = startY;
         const childCenters: number[] = [];
-        for (const k of kids) {
-          const r = placeSubtree(k.id, cursor);
+        for (let i = 0; i < kids.length; i++) {
+          const k = kids[i];
+          // For nested levels, the "above"/"below" context is the previous/next sibling's subtree.
+          // But for cross-family alignment we keep using outer family context — it still nudges
+          // shared-category subtrees toward the top of their parent's slot.
+          const r = placeSubtree(k.id, cursor, aboveFam, belowFam);
           childCenters.push(r.centerY);
-          cursor = r.bottom; // next sibling starts right after this subtree
+          cursor = r.bottom;
         }
         const top = startY;
         const bottom = cursor;
-        // Center parent on the midpoint between first and last child centers.
         const centerY = (childCenters[0] + childCenters[childCenters.length - 1]) / 2;
         newPos[id] = { x, y: centerY };
         return { top, bottom, centerY };
       };
 
-      // Roots within this family (depth 0 OR primaryParent null inside family scope)
+      // Roots within this family
       const roots = famNodes.filter((n) => !primaryParent.get(n.id) || !famNodes.some((m) => m.id === primaryParent.get(n.id)));
+      // Sort roots themselves by affinity (above-linked roots first, below-linked last).
+      roots.sort((a, b) => {
+        const sa = affinityToFamily(a.id, prevFamId) - affinityToFamily(a.id, nextFamId);
+        const sb = affinityToFamily(b.id, prevFamId) - affinityToFamily(b.id, nextFamId);
+        if (sa !== sb) return sb - sa;
+        return a.label.localeCompare(b.label);
+      });
+
       let cursorY = familyTop;
       for (const r of roots) {
-        const res = placeSubtree(r.id, cursorY);
+        const res = placeSubtree(r.id, cursorY, prevFamId, nextFamId);
         cursorY = res.bottom;
       }
 
-      // Now place any remaining nodes (multi-parent nodes whose primary parent is in another family) — fallback.
+      // Fallback for any unplaced nodes.
       for (const n of famNodes) {
         if (!newPos[n.id]) {
           const d = depth.get(n.id) ?? 0;
