@@ -199,11 +199,11 @@ export default function CircleOfLife() {
       depthOf.set(n.id, n.type === "family" ? 1 : computeDepth(n.id, new Set()));
     }
 
-    // Size & rings
-    const size = 1400;
+    // Size & rings — extra outer padding prevents variant labels from clipping/overlapping at the edge
+    const size = 1700;
     const cx = size / 2;
     const cy = size / 2;
-    const ringRadii = [0, size * 0.13, size * 0.27, size * 0.42]; // root, family, race, variant
+    const ringRadii = [0, size * 0.11, size * 0.22, size * 0.36]; // root, family, race, variant
 
     const out: LayoutNode[] = [];
     const links: { from: LayoutNode; to: LayoutNode }[] = [];
