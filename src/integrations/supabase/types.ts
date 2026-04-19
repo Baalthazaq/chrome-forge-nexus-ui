@@ -881,8 +881,10 @@ export type Database = {
           created_at: string
           id: string
           label: string
+          mate_up_probability: number
           type: string
           updated_at: string
+          weight: number
           x: number
           y: number
         }
@@ -891,8 +893,10 @@ export type Database = {
           created_at?: string
           id?: string
           label: string
+          mate_up_probability?: number
           type?: string
           updated_at?: string
+          weight?: number
           x?: number
           y?: number
         }
@@ -901,8 +905,10 @@ export type Database = {
           created_at?: string
           id?: string
           label?: string
+          mate_up_probability?: number
           type?: string
           updated_at?: string
+          weight?: number
           x?: number
           y?: number
         }
