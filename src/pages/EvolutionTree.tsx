@@ -17,6 +17,7 @@ import {
   Loader2,
   LayoutGrid,
 } from "lucide-react";
+import CircleOfLifeDiagram from "@/components/CircleOfLifeDiagram";
 import {
   Dialog,
   DialogContent,
@@ -149,7 +150,11 @@ function buildSeedLayout() {
   return { nodes, edges };
 }
 
-const EvolutionTree = () => {
+interface EvolutionTreeProps {
+  initialView?: "tree" | "circle";
+}
+
+const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
   const canEdit = !!user && isAdmin;
@@ -163,6 +168,7 @@ const EvolutionTree = () => {
   const [pendingPositions, setPendingPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [saving, setSaving] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"tree" | "circle">(initialView);
   const [newLabel, setNewLabel] = useState("");
   const [newType, setNewType] = useState("race");
   const [newColor, setNewColor] = useState<string>(Object.values(FAMILY_COLORS)[0]);
@@ -859,6 +865,20 @@ const EvolutionTree = () => {
             onChange={(e) => setFilter(e.target.value)}
             className="max-w-xs"
           />
+          <Button
+            size="sm"
+            variant={viewMode === "tree" ? "default" : "outline"}
+            onClick={() => setViewMode("tree")}
+          >
+            Tree View
+          </Button>
+          <Button
+            size="sm"
+            variant={viewMode === "circle" ? "default" : "outline"}
+            onClick={() => setViewMode("circle")}
+          >
+            Circle of Life
+          </Button>
           {canEdit && (
             <>
               <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
@@ -898,119 +918,125 @@ const EvolutionTree = () => {
           </span>
         </div>
 
-        <div className="flex gap-4">
-          <Card className="flex-1 overflow-auto" style={{ maxHeight: "75vh" }}>
-            <svg
-              ref={svgRef}
-              width={bounds.width}
-              height={bounds.height}
-              onMouseMove={onMouseMoveSvg}
-              onMouseUp={onMouseUpSvg}
-              onMouseLeave={onMouseUpSvg}
-              style={{ display: "block", cursor: dragState.current ? "grabbing" : "default" }}
-            >
-              {/* edges */}
-              {edges.map((e) => {
-                const from = nodes.find((n) => n.id === e.parent_id);
-                const to = nodes.find((n) => n.id === e.child_id);
-                if (!from || !to) return null;
-                if (!visibleIds.has(from.id) || !visibleIds.has(to.id)) return null;
-                const fp = getEffectiveXY(from);
-                const tp = getEffectiveXY(to);
-                const x1 = fp.x + NODE_W;
-                const y1 = fp.y + NODE_H / 2;
-                const x2 = tp.x;
-                const y2 = tp.y + NODE_H / 2;
-                const mx = (x1 + x2) / 2;
-                const color = nodeColors.get(from.id) ?? from.color ?? "hsl(var(--primary))";
-                const highlighted =
-                  selectedId && (e.parent_id === selectedId || e.child_id === selectedId);
-                return (
-                  <g key={e.id}>
-                    <path
-                      d={`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`}
-                      stroke={color}
-                      strokeOpacity={highlighted ? 1 : 0.45}
-                      strokeWidth={highlighted ? 2.5 : 1.5}
-                      fill="none"
-                    />
-                    {canEdit && highlighted && (
-                      <g
-                        transform={`translate(${mx - 8}, ${(y1 + y2) / 2 - 8})`}
-                        style={{ cursor: "pointer" }}
-                        onClick={() => removeEdge(e.id)}
-                      >
-                        <circle r="9" cx="8" cy="8" fill="hsl(var(--destructive))" />
-                        <text
-                          x="8"
-                          y="8"
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          fontSize="12"
-                          fill="white"
+        {viewMode === "circle" ? (
+          <CircleOfLifeDiagram
+            nodes={nodes.map((n) => ({ id: n.id, label: n.label, type: n.type, color: n.color, y: getEffectiveXY(n).y }))}
+            edges={edges}
+          />
+        ) : (
+          <div className="flex gap-4">
+            <Card className="flex-1 overflow-auto" style={{ maxHeight: "75vh" }}>
+              <svg
+                ref={svgRef}
+                width={bounds.width}
+                height={bounds.height}
+                onMouseMove={onMouseMoveSvg}
+                onMouseUp={onMouseUpSvg}
+                onMouseLeave={onMouseUpSvg}
+                style={{ display: "block", cursor: dragState.current ? "grabbing" : "default" }}
+              >
+                {/* edges */}
+                {edges.map((e) => {
+                  const from = nodes.find((n) => n.id === e.parent_id);
+                  const to = nodes.find((n) => n.id === e.child_id);
+                  if (!from || !to) return null;
+                  if (!visibleIds.has(from.id) || !visibleIds.has(to.id)) return null;
+                  const fp = getEffectiveXY(from);
+                  const tp = getEffectiveXY(to);
+                  const x1 = fp.x + NODE_W;
+                  const y1 = fp.y + NODE_H / 2;
+                  const x2 = tp.x;
+                  const y2 = tp.y + NODE_H / 2;
+                  const mx = (x1 + x2) / 2;
+                  const color = nodeColors.get(from.id) ?? from.color ?? "hsl(var(--primary))";
+                  const highlighted =
+                    selectedId && (e.parent_id === selectedId || e.child_id === selectedId);
+                  return (
+                    <g key={e.id}>
+                      <path
+                        d={`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`}
+                        stroke={color}
+                        strokeOpacity={highlighted ? 1 : 0.45}
+                        strokeWidth={highlighted ? 2.5 : 1.5}
+                        fill="none"
+                      />
+                      {canEdit && highlighted && (
+                        <g
+                          transform={`translate(${mx - 8}, ${(y1 + y2) / 2 - 8})`}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => removeEdge(e.id)}
                         >
-                          ×
-                        </text>
-                      </g>
-                    )}
-                  </g>
-                );
-              })}
+                          <circle r="9" cx="8" cy="8" fill="hsl(var(--destructive))" />
+                          <text
+                            x="8"
+                            y="8"
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            fontSize="12"
+                            fill="white"
+                          >
+                            ×
+                          </text>
+                        </g>
+                      )}
+                    </g>
+                  );
+                })}
 
-              {/* nodes */}
-              {nodes.map((n) => {
-                if (!visibleIds.has(n.id)) return null;
-                const { x, y } = getEffectiveXY(n);
-                const isSelected = n.id === selectedId;
-                const isLinkSource = n.id === linkSourceId;
-                const color = nodeColors.get(n.id) ?? n.color ?? "hsl(var(--primary))";
-                const isFamily = n.type === "family";
-                const isRace = n.type === "race";
-                return (
-                  <g
-                    key={n.id}
-                    transform={`translate(${x}, ${y})`}
-                    style={{ cursor: canEdit ? "grab" : "pointer" }}
-                    onMouseDown={(e) => onMouseDownNode(e, n)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (linkSourceId && linkSourceId !== n.id) {
-                        addEdge(linkSourceId, n.id);
-                        setLinkSourceId(null);
-                      } else {
-                        setSelectedId(n.id);
-                      }
-                    }}
-                  >
-                    <rect
-                      width={NODE_W}
-                      height={NODE_H}
-                      rx={6}
-                      fill="hsl(var(--card))"
-                      stroke={isLinkSource ? "hsl(var(--primary))" : color}
-                      strokeWidth={isSelected ? 3 : isFamily ? 2.5 : isRace ? 1.75 : 1.25}
-                      strokeDasharray={isLinkSource ? "4 3" : undefined}
-                    />
-                    <text
-                      x={NODE_W / 2}
-                      y={NODE_H / 2}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fill="hsl(var(--foreground))"
-                      fontSize={isFamily ? 14 : isRace ? 13 : 12}
-                      fontWeight={isFamily ? 700 : isRace ? 600 : 400}
-                      style={{ pointerEvents: "none" }}
+                {/* nodes */}
+                {nodes.map((n) => {
+                  if (!visibleIds.has(n.id)) return null;
+                  const { x, y } = getEffectiveXY(n);
+                  const isSelected = n.id === selectedId;
+                  const isLinkSource = n.id === linkSourceId;
+                  const color = nodeColors.get(n.id) ?? n.color ?? "hsl(var(--primary))";
+                  const isFamily = n.type === "family";
+                  const isRace = n.type === "race";
+                  return (
+                    <g
+                      key={n.id}
+                      transform={`translate(${x}, ${y})`}
+                      style={{ cursor: canEdit ? "grab" : "pointer" }}
+                      onMouseDown={(e) => onMouseDownNode(e, n)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (linkSourceId && linkSourceId !== n.id) {
+                          addEdge(linkSourceId, n.id);
+                          setLinkSourceId(null);
+                        } else {
+                          setSelectedId(n.id);
+                        }
+                      }}
                     >
-                      {n.label}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
-          </Card>
+                      <rect
+                        width={NODE_W}
+                        height={NODE_H}
+                        rx={6}
+                        fill="hsl(var(--card))"
+                        stroke={isLinkSource ? "hsl(var(--primary))" : color}
+                        strokeWidth={isSelected ? 3 : isFamily ? 2.5 : isRace ? 1.75 : 1.25}
+                        strokeDasharray={isLinkSource ? "4 3" : undefined}
+                      />
+                      <text
+                        x={NODE_W / 2}
+                        y={NODE_H / 2}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill="hsl(var(--foreground))"
+                        fontSize={isFamily ? 14 : isRace ? 13 : 12}
+                        fontWeight={isFamily ? 700 : isRace ? 600 : 400}
+                        style={{ pointerEvents: "none" }}
+                      >
+                        {n.label}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </Card>
 
-          {/* Side inspector */}
-          <Card className="w-80 p-4 space-y-3 self-start sticky top-4">
+            {/* Side inspector */}
+            <Card className="w-80 p-4 space-y-3 self-start sticky top-4">
             <h3 className="font-semibold">Inspector</h3>
             {!selectedNode && (
               <p className="text-sm text-muted-foreground">
@@ -1234,6 +1260,7 @@ const EvolutionTree = () => {
             )}
           </Card>
         </div>
+        )}
       </div>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
