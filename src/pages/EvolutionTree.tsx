@@ -505,6 +505,13 @@ const EvolutionTree = () => {
               </Button>
               <Button
                 size="sm"
+                variant="outline"
+                onClick={autoLayout}
+              >
+                <LayoutGrid className="h-4 w-4 mr-1" /> Auto-Layout
+              </Button>
+              <Button
+                size="sm"
                 variant="ghost"
                 onClick={discardPositions}
                 disabled={Object.keys(pendingPositions).length === 0}
