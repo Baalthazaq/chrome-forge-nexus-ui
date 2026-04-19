@@ -339,6 +339,73 @@ export default function CircleOfLife() {
   const cx = size / 2;
   const cy = size / 2;
 
+  // Build adjacency from the placed layout (use ALL links incl. cross-parent)
+  const childMap = new Map<string, string[]>();
+  const parentMap = new Map<string, string[]>();
+  for (const l of layout.links) {
+    if (!childMap.has(l.from.id)) childMap.set(l.from.id, []);
+    childMap.get(l.from.id)!.push(l.to.id);
+    if (!parentMap.has(l.to.id)) parentMap.set(l.to.id, []);
+    parentMap.get(l.to.id)!.push(l.from.id);
+  }
+
+  // Forward = all descendants (branching). Backward = single chain to root (no branching, take first parent).
+  const { highlightedNodes, highlightedLinks } = (() => {
+    if (!focusId || focusId === ROOT_ID) {
+      return { highlightedNodes: new Set<string>(), highlightedLinks: new Set<string>() };
+    }
+    const hN = new Set<string>([focusId]);
+    const hL = new Set<string>();
+    // Forward BFS
+    const queue = [focusId];
+    while (queue.length) {
+      const cur = queue.shift()!;
+      for (const c of childMap.get(cur) ?? []) {
+        hL.add(`${cur}->${c}`);
+        if (!hN.has(c)) {
+          hN.add(c);
+          queue.push(c);
+        }
+      }
+    }
+    // Backward chain — only first parent at each step
+    let cur: string | undefined = focusId;
+    const seen = new Set<string>([focusId]);
+    while (cur) {
+      const parents = parentMap.get(cur) ?? [];
+      if (!parents.length) break;
+      const p = parents[0];
+      hL.add(`${p}->${cur}`);
+      hN.add(p);
+      if (seen.has(p)) break;
+      seen.add(p);
+      cur = p;
+    }
+    return { highlightedNodes: hN, highlightedLinks: hL };
+  })();
+
+  // Compute zoom viewBox: when focused, center on the focus node and tighten box
+  const focusNode = focusId ? layout.nodes.find((n) => n.id === focusId) : null;
+  let vbX = 0, vbY = 0, vbW = size, vbH = size;
+  if (focusNode && focusId !== ROOT_ID) {
+    const fx = (focusNode as any).x as number;
+    const fy = (focusNode as any).y as number;
+    // Zoom to ~45% of full size, centered on the focus point
+    const zoom = 0.45;
+    vbW = size * zoom;
+    vbH = size * zoom;
+    vbX = Math.max(0, Math.min(size - vbW, fx - vbW / 2));
+    vbY = Math.max(0, Math.min(size - vbH, fy - vbH / 2));
+  }
+
+  const handleNodeClick = (id: string) => {
+    if (id === ROOT_ID) {
+      setFocusId(null);
+      return;
+    }
+    setFocusId((cur) => (cur === id ? null : id));
+  };
+
   // Curved link path: quadratic bezier through the radial midpoint
   const linkPath = (a: LayoutNode, b: LayoutNode) => {
     const ax = (a as any).x;
