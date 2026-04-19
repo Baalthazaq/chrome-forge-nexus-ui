@@ -129,9 +129,11 @@ export default function CircleOfLife() {
     }
 
     // Roots = family nodes (or any node with no parent in graph)
+    // Order families by their vertical position in the Evolution Tree (y ascending),
+    // so the wheel preserves the manually-curated tree order instead of alphabetizing.
     const families = nodes
       .filter((n) => n.type === "family")
-      .sort((a, b) => a.label.localeCompare(b.label));
+      .sort((a, b) => (a.y ?? 0) - (b.y ?? 0) || a.label.localeCompare(b.label));
 
     // Helper: family ancestors of any node (walk parents up; include 'family' types)
     const familyAncestors = (id: string): string[] => {
