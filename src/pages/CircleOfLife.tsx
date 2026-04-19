@@ -267,7 +267,9 @@ export default function CircleOfLife() {
       const parent = parentId ? out.find((x) => x.id === parentId) : null;
       if (parent) links.push({ from: parent, to: ln });
 
-      const kids = (childrenOf.get(id) ?? []).filter((k) => !placed.has(k));
+      const kids = (childrenOf.get(id) ?? [])
+        .filter((k) => !placed.has(k))
+        .sort((a, b) => (byId.get(a)?.y ?? 0) - (byId.get(b)?.y ?? 0));
       if (!kids.length) return;
       const kidLeaves = kids.map((k) => ({ k, leaves: leafCountOf(k) }));
       const totalK = kidLeaves.reduce((s, x) => s + x.leaves, 0) || 1;
