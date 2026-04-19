@@ -47,31 +47,62 @@ interface EdgeRow {
   child_id: string;
 }
 
+// High-contrast family palette — only Family nodes get an explicit color.
+// Race/Variant nodes inherit a blended + lightened version of their family ancestors.
 const FAMILY_COLORS: Record<string, string> = {
-  Avian: "hsl(200 90% 60%)",
-  Beastfolk: "hsl(30 80% 55%)",
-  Giant: "hsl(15 70% 50%)",
-  Aberration: "hsl(280 70% 60%)",
-  Fey: "hsl(140 70% 55%)",
-  Planar: "hsl(330 80% 60%)",
-  Goblinoid: "hsl(80 60% 45%)",
-  Shapeshifter: "hsl(260 60% 65%)",
-  Draconic: "hsl(0 80% 55%)",
-  Elven: "hsl(170 70% 55%)",
-  Dwarven: "hsl(40 70% 50%)",
-  Gnome: "hsl(50 80% 55%)",
-  Construct: "hsl(220 15% 60%)",
-  Dragon: "hsl(10 90% 55%)",
-  Monstrosity: "hsl(290 50% 50%)",
-  Plant: "hsl(110 60% 45%)",
-  Undead: "hsl(240 20% 50%)",
-  Halfling: "hsl(60 60% 55%)",
-  Human: "hsl(35 75% 60%)",
-  Reptilian: "hsl(100 50% 45%)",
-  Elemental: "hsl(190 80% 55%)",
-  Orcish: "hsl(120 30% 45%)",
-  Lycan: "hsl(20 60% 45%)",
+  Aberration: "hsl(285 75% 55%)",
+  Avian: "hsl(200 90% 55%)",
+  Beastfolk: "hsl(28 85% 52%)",
+  Construct: "hsl(220 12% 55%)",
+  Draconic: "hsl(355 80% 55%)",
+  Dragon: "hsl(8 88% 55%)",
+  Dwarven: "hsl(38 75% 48%)",
+  Elemental: "hsl(185 85% 50%)",
+  Elven: "hsl(160 70% 48%)",
+  Fey: "hsl(135 65% 50%)",
+  Giant: "hsl(15 65% 45%)",
+  Gnome: "hsl(52 85% 55%)",
+  Goblinoid: "hsl(75 60% 42%)",
+  Halfling: "hsl(65 55% 52%)",
+  Human: "hsl(42 70% 58%)",
+  Lycan: "hsl(18 55% 40%)",
+  Monstrosity: "hsl(305 50% 48%)",
+  Orcish: "hsl(115 45% 40%)",
+  Planar: "hsl(325 80% 58%)",
+  Plant: "hsl(95 60% 42%)",
+  Reptilian: "hsl(105 55% 40%)",
+  Shapeshifter: "hsl(255 60% 62%)",
+  Undead: "hsl(245 20% 45%)",
 };
+
+// Parse "hsl(H S% L%)" → { h, s, l }
+function parseHsl(s: string | null | undefined): { h: number; s: number; l: number } | null {
+  if (!s) return null;
+  const m = s.match(/hsl\(\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)%\s+(-?\d+(?:\.\d+)?)%\s*\)/);
+  if (!m) return null;
+  return { h: parseFloat(m[1]), s: parseFloat(m[2]), l: parseFloat(m[3]) };
+}
+
+// Blend an array of HSL colors using circular-mean for hue, average for s/l.
+function blendHsl(colors: { h: number; s: number; l: number }[]): { h: number; s: number; l: number } | null {
+  if (colors.length === 0) return null;
+  if (colors.length === 1) return { ...colors[0] };
+  let sx = 0, sy = 0, ss = 0, sl = 0;
+  for (const c of colors) {
+    const r = (c.h * Math.PI) / 180;
+    sx += Math.cos(r);
+    sy += Math.sin(r);
+    ss += c.s;
+    sl += c.l;
+  }
+  let h = (Math.atan2(sy / colors.length, sx / colors.length) * 180) / Math.PI;
+  if (h < 0) h += 360;
+  return { h, s: ss / colors.length, l: sl / colors.length };
+}
+
+function hslToString(c: { h: number; s: number; l: number }): string {
+  return `hsl(${c.h.toFixed(1)} ${c.s.toFixed(1)}% ${c.l.toFixed(1)}%)`;
+}
 
 const NODE_W = 150;
 const NODE_H = 40;
