@@ -471,6 +471,19 @@ const EvolutionTree = () => {
     toast.success("Node deleted");
   };
 
+  const updateNode = async (
+    id: string,
+    updates: { label?: string; type?: string; color?: string }
+  ) => {
+    const { error } = await supabase.from("evolution_nodes").update(updates).eq("id", id);
+    if (error) {
+      toast.error("Failed to update: " + error.message);
+      return;
+    }
+    setNodes((prev) => prev.map((n) => (n.id === id ? { ...n, ...updates } : n)));
+    toast.success("Node updated");
+  };
+
   const addNode = async () => {
     if (!newLabel.trim()) return;
     const { data, error } = await supabase
