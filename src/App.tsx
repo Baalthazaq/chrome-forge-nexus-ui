@@ -51,6 +51,7 @@ import EncounterBuilder from "./pages/EncounterBuilder";
 import DiceRollerRibbon from "./components/DiceRollerRibbon";
 import DiceRoller from "./pages/DiceRoller";
 import EvolutionTree from "./pages/EvolutionTree";
+import CircleOfLife from "./pages/CircleOfLife";
 
 const queryClient = new QueryClient();
 
@@ -109,6 +110,7 @@ const App = () => (
             <Route path="/admin/encounters" element={<EncounterBuilder />} />
             <Route path="/admin/dice-roller" element={<DiceRoller />} />
             <Route path="/evolution-tree" element={<EvolutionTree />} />
+            <Route path="/circle-of-life" element={<CircleOfLife />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
