@@ -108,7 +108,6 @@ const App = () => (
             <Route path="/admin/environments" element={<EnvironmentsAdmin />} />
             <Route path="/admin/encounters" element={<EncounterBuilder />} />
             <Route path="/admin/dice-roller" element={<DiceRoller />} />
-            <Route path="/evolution-tree" element={<EvolutionTree />} />
             <Route path="/circle-of-life" element={<CircleOfLife />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
