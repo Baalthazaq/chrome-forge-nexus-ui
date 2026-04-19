@@ -15,6 +15,7 @@ import {
   Save,
   RotateCcw,
   Loader2,
+  LayoutGrid,
 } from "lucide-react";
 import {
   Dialog,
@@ -322,6 +323,75 @@ const EvolutionTree = () => {
 
   const discardPositions = () => setPendingPositions({});
 
+  const autoLayout = () => {
+    if (nodes.length === 0) return;
+    // Compute depth = longest path from any root (no parents) to node.
+    // Detect cycles defensively; nodes still in cycles get depth 0.
+    const parentsOf = new Map<string, string[]>();
+    const childrenOf = new Map<string, string[]>();
+    for (const n of nodes) {
+      parentsOf.set(n.id, []);
+      childrenOf.set(n.id, []);
+    }
+    for (const e of edges) {
+      parentsOf.get(e.child_id)?.push(e.parent_id);
+      childrenOf.get(e.parent_id)?.push(e.child_id);
+    }
+    const depth = new Map<string, number>();
+    const visiting = new Set<string>();
+    const compute = (id: string): number => {
+      if (depth.has(id)) return depth.get(id)!;
+      if (visiting.has(id)) return 0; // cycle guard
+      visiting.add(id);
+      const ps = parentsOf.get(id) ?? [];
+      const d = ps.length === 0 ? 0 : Math.max(...ps.map((p) => compute(p) + 1));
+      visiting.delete(id);
+      depth.set(id, d);
+      return d;
+    };
+    for (const n of nodes) compute(n.id);
+
+    // Group nodes by depth column
+    const cols = new Map<number, NodeRow[]>();
+    for (const n of nodes) {
+      const d = depth.get(n.id) ?? 0;
+      if (!cols.has(d)) cols.set(d, []);
+      cols.get(d)!.push(n);
+    }
+
+    // Order within each column: sort by average parent y (barycenter) for fewer crossings
+    const newPos: Record<string, { x: number; y: number }> = {};
+    const sortedDepths = Array.from(cols.keys()).sort((a, b) => a - b);
+    const colYCursor = new Map<string, number>(); // not needed; computed below
+    const STEP_X = NODE_W + COL_GAP;
+    const STEP_Y = NODE_H + ROW_GAP;
+    const TOP = 40;
+    const LEFT = 40;
+
+    for (const d of sortedDepths) {
+      const list = cols.get(d)!;
+      list.sort((a, b) => {
+        const ap = parentsOf.get(a.id) ?? [];
+        const bp = parentsOf.get(b.id) ?? [];
+        const ay = ap.length
+          ? ap.reduce((s, p) => s + (newPos[p]?.y ?? nodes.find((n) => n.id === p)?.y ?? 0), 0) / ap.length
+          : a.label.charCodeAt(0);
+        const by = bp.length
+          ? bp.reduce((s, p) => s + (newPos[p]?.y ?? nodes.find((n) => n.id === p)?.y ?? 0), 0) / bp.length
+          : b.label.charCodeAt(0);
+        if (ay !== by) return ay - by;
+        return a.label.localeCompare(b.label);
+      });
+      list.forEach((n, i) => {
+        newPos[n.id] = { x: LEFT + d * STEP_X, y: TOP + i * STEP_Y };
+      });
+    }
+
+    setPendingPositions(newPos);
+    toast.success("Auto-arranged — review then Save Layout");
+  };
+
+
   const addEdge = async (parentId: string, childId: string) => {
     if (parentId === childId) {
       toast.error("Cannot link a node to itself");
@@ -432,6 +502,13 @@ const EvolutionTree = () => {
                 Save Layout
                 {Object.keys(pendingPositions).length > 0 &&
                   ` (${Object.keys(pendingPositions).length})`}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={autoLayout}
+              >
+                <LayoutGrid className="h-4 w-4 mr-1" /> Auto-Layout
               </Button>
               <Button
                 size="sm"
