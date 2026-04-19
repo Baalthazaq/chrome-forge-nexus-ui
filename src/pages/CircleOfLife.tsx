@@ -10,6 +10,7 @@ interface NodeRow {
   label: string;
   type: string;
   color: string | null;
+  y: number;
 }
 interface EdgeRow {
   id: string;
