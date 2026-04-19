@@ -394,67 +394,89 @@ const EvolutionTree = () => {
       }
       const depths = Array.from(byDepth.keys()).sort((a, b) => a - b);
 
-      // Determine the tallest column in this family to compute centering offsets.
       const familyTop = yCursor;
-      const maxCount = Math.max(...depths.map((d) => byDepth.get(d)!.length));
-      const familyHeight = maxCount * STEP_Y;
 
-      // Right-priority layout: place the deepest column first as a stacked block,
-      // then walk leftward, centering each parent on the barycenter of its children.
-      const deepest = depths[depths.length - 1];
-      const deepestList = byDepth.get(deepest)!.slice().sort((a, b) => a.label.localeCompare(b.label));
-      const deepestHeight = deepestList.length * STEP_Y;
-      const deepestOffset = (familyHeight - deepestHeight) / 2;
-      deepestList.forEach((n, i) => {
-        newPos[n.id] = { x: LEFT + deepest * STEP_X, y: familyTop + deepestOffset + i * STEP_Y };
-      });
+      // Subtree-based layout: each node owns a vertical "slot" sized to fit all of its
+      // descendants. Children are stacked within the parent's slot and the parent is
+      // centered on its children. This keeps each parent visually aligned with its own
+      // variants instead of being dragged down by unrelated siblings' stacks.
+      //
+      // We assign each node to one "primary" parent (its first parent alphabetically,
+      // matching the family-assignment rule) so the tree is strict for layout purposes.
+      const primaryParent = new Map<string, string | null>();
+      for (const n of famNodes) {
+        const ps = (parentsOf.get(n.id) ?? []).slice().sort();
+        primaryParent.set(n.id, ps.length === 0 ? null : ps[0]);
+      }
+      const primaryChildren = new Map<string, NodeRow[]>();
+      for (const n of famNodes) primaryChildren.set(n.id, []);
+      for (const n of famNodes) {
+        const pp = primaryParent.get(n.id);
+        if (pp && primaryChildren.has(pp)) primaryChildren.get(pp)!.push(n);
+      }
+      // Sort children by descendant count desc (bigger subtrees first), then alpha as tiebreak.
+      const subtreeSize = new Map<string, number>();
+      const computeSize = (id: string): number => {
+        if (subtreeSize.has(id)) return subtreeSize.get(id)!;
+        const cs = primaryChildren.get(id) ?? [];
+        const s = 1 + cs.reduce((acc, c) => acc + computeSize(c.id), 0);
+        subtreeSize.set(id, s);
+        return s;
+      };
+      for (const n of famNodes) computeSize(n.id);
 
-      // Walk from second-deepest back to root, centering each node on its placed children.
-      for (let di = depths.length - 2; di >= 0; di--) {
-        const d = depths[di];
-        const list = byDepth.get(d)!.slice();
-        // Compute desired y from children barycenter (only children already placed).
-        const desired = new Map<string, number>();
-        for (const n of list) {
-          const cs = (childrenOf.get(n.id) ?? []).filter((c) => newPos[c]);
-          const y = cs.length
-            ? cs.reduce((s, c) => s + newPos[c].y, 0) / cs.length
-            : familyTop + familyHeight / 2 - STEP_Y / 2;
-          desired.set(n.id, y);
-        }
-        list.sort((a, b) => {
-          const ay = desired.get(a.id)!;
-          const by = desired.get(b.id)!;
-          if (ay !== by) return ay - by;
+      // Recursive placement: returns the [topY, bottomY] occupied slot for the subtree.
+      const placeSubtree = (id: string, startY: number): { top: number; bottom: number; centerY: number } => {
+        const node = famNodes.find((n) => n.id === id)!;
+        const d = depth.get(id) ?? 0;
+        const x = LEFT + d * STEP_X;
+        const kids = (primaryChildren.get(id) ?? []).slice().sort((a, b) => {
+          const sa = subtreeSize.get(a.id) ?? 1;
+          const sb = subtreeSize.get(b.id) ?? 1;
+          if (sa !== sb) return sa - sb; // smaller first → larger last keeps visual balance; flip if desired
           return a.label.localeCompare(b.label);
         });
-        // Resolve overlaps while keeping order; nudge to maintain STEP_Y spacing.
-        const placed: { id: string; y: number }[] = [];
-        for (const n of list) {
-          let y = desired.get(n.id)!;
-          if (placed.length > 0) {
-            const minY = placed[placed.length - 1].y + STEP_Y;
-            if (y < minY) y = minY;
-          }
-          placed.push({ id: n.id, y });
+
+        if (kids.length === 0) {
+          newPos[id] = { x, y: startY };
+          return { top: startY, bottom: startY + STEP_Y, centerY: startY };
         }
-        // Center the resolved column vertically within the family band.
-        const colTop = placed[0].y;
-        const colBottom = placed[placed.length - 1].y;
-        const colCenter = (colTop + colBottom) / 2;
-        const familyCenter = familyTop + familyHeight / 2 - STEP_Y / 2;
-        const shift = familyCenter - colCenter;
-        // Only shift if it doesn't push children out of alignment too much; apply gentle shift.
-        for (const p of placed) {
-          newPos[p.id] = { x: LEFT + d * STEP_X, y: p.y + shift };
+
+        let cursor = startY;
+        const childCenters: number[] = [];
+        for (const k of kids) {
+          const r = placeSubtree(k.id, cursor);
+          childCenters.push(r.centerY);
+          cursor = r.bottom; // next sibling starts right after this subtree
+        }
+        const top = startY;
+        const bottom = cursor;
+        // Center parent on the midpoint between first and last child centers.
+        const centerY = (childCenters[0] + childCenters[childCenters.length - 1]) / 2;
+        newPos[id] = { x, y: centerY };
+        return { top, bottom, centerY };
+      };
+
+      // Roots within this family (depth 0 OR primaryParent null inside family scope)
+      const roots = famNodes.filter((n) => !primaryParent.get(n.id) || !famNodes.some((m) => m.id === primaryParent.get(n.id)));
+      let cursorY = familyTop;
+      for (const r of roots) {
+        const res = placeSubtree(r.id, cursorY);
+        cursorY = res.bottom;
+      }
+
+      // Now place any remaining nodes (multi-parent nodes whose primary parent is in another family) — fallback.
+      for (const n of famNodes) {
+        if (!newPos[n.id]) {
+          const d = depth.get(n.id) ?? 0;
+          newPos[n.id] = { x: LEFT + d * STEP_X, y: cursorY };
+          cursorY += STEP_Y;
         }
       }
 
-      // Compute actual family bounds from placed nodes to advance yCursor.
       const ys = famNodes.map((n) => newPos[n.id]?.y ?? familyTop);
       const minY = Math.min(...ys);
       const maxY = Math.max(...ys);
-      // Normalize so family starts at familyTop.
       const norm = familyTop - minY;
       for (const n of famNodes) {
         if (newPos[n.id]) newPos[n.id].y += norm;
