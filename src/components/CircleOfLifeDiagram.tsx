@@ -130,7 +130,7 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
           onClick={(e) => { if (e.target === e.currentTarget) setFocusId(null); }}
         >
           {layout.guideRadii.map((radius, i) => (
-            <circle key={i} cx={cx} cy={cy} r={size * r} fill="none"
+            <circle key={i} cx={cx} cy={cy} r={radius} fill="none"
               stroke="hsl(var(--border))" strokeDasharray="2 8" strokeWidth={1} />
           ))}
 
