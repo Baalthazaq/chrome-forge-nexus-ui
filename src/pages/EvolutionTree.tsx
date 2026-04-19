@@ -863,7 +863,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-6">
+    <div className="dark min-h-screen bg-background text-foreground p-6">
       <div className="max-w-[1800px] mx-auto space-y-4">
         <header className="space-y-2">
           <h1 className="text-4xl font-bold tracking-tight">Ancestry Evolution Tree</h1>
