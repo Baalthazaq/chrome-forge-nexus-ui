@@ -789,6 +789,8 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
         label: selectedNode.label,
         type: selectedNode.type,
         color: selectedNode.color ?? Object.values(FAMILY_COLORS)[0],
+        weight: String((selectedNode as any).weight ?? 1),
+        mate_up_probability: String(Math.round(((selectedNode as any).mate_up_probability ?? 0.33) * 100)),
       });
     } else {
       setEditBuffer(null);
