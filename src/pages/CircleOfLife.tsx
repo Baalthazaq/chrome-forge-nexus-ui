@@ -172,19 +172,27 @@ export default function CircleOfLife() {
     const familyLeaves = families.map((f) => ({ f, leaves: leafCountOf(f.id) }));
     const totalLeaves = familyLeaves.reduce((s, x) => s + x.leaves, 0) || 1;
 
-    // Determine depth via BFS from each family root
+    // Determine MAX depth from any family root (so a node that is both a
+    // direct child of a family AND a grandchild via another path is placed
+    // at the deeper ring — keeps tiers visually consistent)
     const depthOf = new Map<string, number>();
-    for (const f of families) depthOf.set(f.id, 1);
-    const queue: string[] = families.map((f) => f.id);
-    while (queue.length) {
-      const cur = queue.shift()!;
-      const d = depthOf.get(cur)!;
-      for (const c of childrenOf.get(cur) ?? []) {
-        if (!depthOf.has(c) || (depthOf.get(c)! > d + 1)) {
-          depthOf.set(c, d + 1);
-          queue.push(c);
-        }
+    const computeDepth = (id: string, seen: Set<string>): number => {
+      if (seen.has(id)) return 1;
+      seen.add(id);
+      const node = byId.get(id);
+      if (node?.type === "family") return 1;
+      const parents = parentsOf.get(id) ?? [];
+      if (!parents.length) return 1;
+      let best = 1;
+      for (const p of parents) {
+        const d = computeDepth(p, seen) + 1;
+        if (d > best) best = d;
       }
+      seen.delete(id);
+      return best;
+    };
+    for (const n of nodes) {
+      depthOf.set(n.id, n.type === "family" ? 1 : computeDepth(n.id, new Set()));
     }
 
     // Size & rings
