@@ -159,6 +159,7 @@ interface EvolutionTreeProps {
 const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
+  const navigate = useNavigate();
   const canEdit = !!user && isAdmin;
 
   const [nodes, setNodes] = useState<NodeRow[]>([]);
