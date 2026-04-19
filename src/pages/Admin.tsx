@@ -170,75 +170,84 @@ const Admin = () => {
           </div>
         </div>
 
-        {/* Admin Apps Grid */}
+        {/* Player Apps Grid - by category */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
-              Admin App Access
+              Player App Access
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {appCategories.map((cat) => (
+              <div key={cat.title}>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  {cat.title}
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {cat.apps.map((app) => (
+                    <Button
+                      key={app.id}
+                      onClick={() => navigate(`/admin/${app.id}`)}
+                      variant="outline"
+                      className="h-16 flex flex-col gap-1 hover:bg-primary/10"
+                    >
+                      <span className="font-semibold">{app.label}</span>
+                      <span className="text-xs text-muted-foreground">{app.desc}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* World Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              World Management
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {apps.map((app) => (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              {adminTools.map((tool) => (
                 <Button
-                  key={app}
-                  onClick={() => navigate(`/admin/${app}`)}
+                  key={tool.label}
+                  onClick={tool.onClick}
                   variant="outline"
-                  className="h-16 flex flex-col gap-2 hover:bg-primary/10"
+                  className="h-16 flex flex-col gap-1 hover:bg-primary/10"
                 >
-                  <span className="font-semibold capitalize">{app}</span>
-                  <span className="text-xs text-muted-foreground">Admin View</span>
+                  <span className="font-semibold">{tool.label}</span>
+                  <span className="text-xs text-muted-foreground">{tool.desc}</span>
                 </Button>
               ))}
-              <Button
-                onClick={() => navigate('/roldex-admin')}
-                variant="outline"
-                className="h-16 flex flex-col gap-2 hover:bg-primary/10"
-              >
-                <span className="font-semibold">Roldex Network</span>
-                <span className="text-xs text-muted-foreground">Network Admin</span>
-              </Button>
-              <Button
-                onClick={() => navigate('/admin/organizations')}
-                variant="outline"
-                className="h-16 flex flex-col gap-2 hover:bg-primary/10"
-              >
-                <span className="font-semibold">Organizations</span>
-                <span className="text-xs text-muted-foreground">Groups Admin</span>
-              </Button>
-              <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => navigate('/admin/tokens')}>
-                <span className="font-semibold">Character Tokens</span>
-                <span className="text-xs text-muted-foreground">Token Generator</span>
-              </Button>
-              <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => navigate('/features')}>
-                <span className="font-semibold">Feature List</span>
-                <span className="text-xs text-muted-foreground">App Features</span>
-              </Button>
-              <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => navigate('/admin/data-export')}>
-                <span className="font-semibold">Data Export</span>
-                <span className="text-xs text-muted-foreground">Export Tables</span>
-              </Button>
-              <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => navigate('/admin/bestiary')}>
-                <span className="font-semibold">Bestiary</span>
-                <span className="text-xs text-muted-foreground">Adversary Cards</span>
-              </Button>
-              <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => navigate('/admin/environments')}>
-                <span className="font-semibold">Environments</span>
-                <span className="text-xs text-muted-foreground">Environment Cards</span>
-              </Button>
-              <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => navigate('/admin/encounters')}>
-                <span className="font-semibold">Encounter Builder</span>
-                <span className="text-xs text-muted-foreground">Build Encounters</span>
-              </Button>
-              <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => navigate('/admin/dice-roller')}>
-                <span className="font-semibold">Dice Roller & Log</span>
-                <span className="text-xs text-muted-foreground">Roll Dice + History</span>
-              </Button>
-              <Button variant="outline" className="h-16 flex flex-col gap-2 hover:bg-primary/10" onClick={() => window.open('/tools/racegen.html', '_blank')}>
-                <span className="font-semibold">Racegen</span>
-                <span className="text-xs text-muted-foreground">Ancestry Generator</span>
-              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Utilities */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Dice5 className="h-5 w-5" />
+              Utilities & Tools
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              {utilityTools.map((tool) => (
+                <Button
+                  key={tool.label}
+                  onClick={tool.onClick}
+                  variant="outline"
+                  className="h-16 flex flex-col gap-1 hover:bg-primary/10"
+                >
+                  <span className="font-semibold">{tool.label}</span>
+                  <span className="text-xs text-muted-foreground">{tool.desc}</span>
+                </Button>
+              ))}
             </div>
           </CardContent>
         </Card>
