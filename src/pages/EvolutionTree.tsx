@@ -778,6 +778,61 @@ const EvolutionTree = () => {
     ? edges.filter((e) => e.parent_id === selectedNode.id)
     : [];
 
+  // Resolve display color per node:
+  //  - Family nodes: their stored color (or fallback by label).
+  //  - Non-family nodes: blend of all family ancestor colors, lightened by depth tier.
+  const nodeColors = useMemo(() => {
+    const parentsOf = new Map<string, string[]>();
+    for (const n of nodes) parentsOf.set(n.id, []);
+    for (const e of edges) parentsOf.get(e.child_id)?.push(e.parent_id);
+
+    const familyAncestors = new Map<string, Set<string>>();
+    const visiting = new Set<string>();
+    const compute = (id: string): Set<string> => {
+      if (familyAncestors.has(id)) return familyAncestors.get(id)!;
+      if (visiting.has(id)) return new Set();
+      visiting.add(id);
+      const node = nodes.find((n) => n.id === id);
+      const set = new Set<string>();
+      if (node?.type === "family") set.add(id);
+      for (const p of parentsOf.get(id) ?? []) {
+        for (const f of compute(p)) set.add(f);
+      }
+      visiting.delete(id);
+      familyAncestors.set(id, set);
+      return set;
+    };
+    for (const n of nodes) compute(n.id);
+
+    const result = new Map<string, string>();
+    for (const n of nodes) {
+      if (n.type === "family") {
+        result.set(n.id, n.color ?? FAMILY_COLORS[n.label] ?? "hsl(220 50% 60%)");
+        continue;
+      }
+      const fams = Array.from(familyAncestors.get(n.id) ?? []);
+      const hsls = fams
+        .map((fid) => {
+          const fn = nodes.find((x) => x.id === fid);
+          return parseHsl(fn?.color ?? FAMILY_COLORS[fn?.label ?? ""] ?? null);
+        })
+        .filter((x): x is { h: number; s: number; l: number } => !!x);
+      const blended = blendHsl(hsls);
+      if (!blended) {
+        result.set(n.id, n.color ?? "hsl(220 50% 60%)");
+        continue;
+      }
+      const bump = n.type === "race" ? 12 : n.type === "variant" ? 24 : 0;
+      const sDrop = n.type === "race" ? 8 : n.type === "variant" ? 16 : 0;
+      result.set(n.id, hslToString({
+        h: blended.h,
+        s: Math.max(15, blended.s - sDrop),
+        l: Math.min(85, blended.l + bump),
+      }));
+    }
+    return result;
+  }, [nodes, edges]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
