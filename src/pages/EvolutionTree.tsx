@@ -1260,6 +1260,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
             )}
           </Card>
         </div>
+        )}
       </div>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
