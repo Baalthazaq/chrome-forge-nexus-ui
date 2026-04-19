@@ -91,6 +91,7 @@ export default function CircleOfLife() {
   const [edges, setEdges] = useState<EdgeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoverId, setHoverId] = useState<string | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
