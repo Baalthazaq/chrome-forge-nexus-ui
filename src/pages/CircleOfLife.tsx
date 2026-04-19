@@ -175,7 +175,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const [newLabel, setNewLabel] = useState("");
   const [newType, setNewType] = useState("race");
   const [newColor, setNewColor] = useState<string>(Object.values(FAMILY_COLORS)[0]);
-  const [editBuffer, setEditBuffer] = useState<{ label: string; type: string; color: string } | null>(null);
+  const [editBuffer, setEditBuffer] = useState<{ label: string; type: string; color: string; weight: string; mate_up_probability: string } | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragState = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
