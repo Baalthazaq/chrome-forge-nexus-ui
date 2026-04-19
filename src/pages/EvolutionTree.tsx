@@ -922,7 +922,7 @@ const EvolutionTree = () => {
                 const x2 = tp.x;
                 const y2 = tp.y + NODE_H / 2;
                 const mx = (x1 + x2) / 2;
-                const color = from.color ?? "hsl(var(--primary))";
+                const color = nodeColors.get(from.id) ?? from.color ?? "hsl(var(--primary))";
                 const highlighted =
                   selectedId && (e.parent_id === selectedId || e.child_id === selectedId);
                 return (
