@@ -455,7 +455,7 @@ export default function CircleOfLife() {
               }}
             >
               {/* Subtle ring guides */}
-              {[0.13, 0.27, 0.42].map((r, i) => (
+              {[0.11, 0.22, 0.36].map((r, i) => (
                 <circle
                   key={i}
                   cx={cx}
