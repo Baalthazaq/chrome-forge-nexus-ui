@@ -503,6 +503,19 @@ const EvolutionTree = () => {
   };
 
   const selectedNode = nodes.find((n) => n.id === selectedId) ?? null;
+
+  useEffect(() => {
+    if (selectedNode) {
+      setEditBuffer({
+        label: selectedNode.label,
+        type: selectedNode.type,
+        color: selectedNode.color ?? Object.values(FAMILY_COLORS)[0],
+      });
+    } else {
+      setEditBuffer(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
   const selectedParents = selectedNode
     ? edges.filter((e) => e.child_id === selectedNode.id)
     : [];
