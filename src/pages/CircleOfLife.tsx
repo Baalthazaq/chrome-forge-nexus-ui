@@ -10,6 +10,7 @@ interface NodeRow {
   label: string;
   type: string;
   color: string | null;
+  y: number;
 }
 interface EdgeRow {
   id: string;
@@ -95,7 +96,7 @@ export default function CircleOfLife() {
     (async () => {
       setLoading(true);
       const [{ data: n, error: ne }, { data: e, error: ee }] = await Promise.all([
-        supabase.from("evolution_nodes").select("id,label,type,color"),
+        supabase.from("evolution_nodes").select("id,label,type,color,y"),
         supabase.from("evolution_edges").select("id,parent_id,child_id"),
       ]);
       if (ne || ee) {
@@ -128,9 +129,11 @@ export default function CircleOfLife() {
     }
 
     // Roots = family nodes (or any node with no parent in graph)
+    // Order families by their vertical position in the Evolution Tree (y ascending),
+    // so the wheel preserves the manually-curated tree order instead of alphabetizing.
     const families = nodes
       .filter((n) => n.type === "family")
-      .sort((a, b) => a.label.localeCompare(b.label));
+      .sort((a, b) => (a.y ?? 0) - (b.y ?? 0) || a.label.localeCompare(b.label));
 
     // Helper: family ancestors of any node (walk parents up; include 'family' types)
     const familyAncestors = (id: string): string[] => {
@@ -264,7 +267,9 @@ export default function CircleOfLife() {
       const parent = parentId ? out.find((x) => x.id === parentId) : null;
       if (parent) links.push({ from: parent, to: ln });
 
-      const kids = (childrenOf.get(id) ?? []).filter((k) => !placed.has(k));
+      const kids = (childrenOf.get(id) ?? [])
+        .filter((k) => !placed.has(k))
+        .sort((a, b) => (byId.get(a)?.y ?? 0) - (byId.get(b)?.y ?? 0));
       if (!kids.length) return;
       const kidLeaves = kids.map((k) => ({ k, leaves: leafCountOf(k) }));
       const totalK = kidLeaves.reduce((s, x) => s + x.leaves, 0) || 1;
