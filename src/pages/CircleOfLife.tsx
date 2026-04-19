@@ -16,7 +16,9 @@ import {
   RotateCcw,
   Loader2,
   LayoutGrid,
+  ArrowLeft,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import CircleOfLifeDiagram from "@/components/CircleOfLifeDiagram";
 import {
   Dialog,
