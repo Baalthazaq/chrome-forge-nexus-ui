@@ -34,6 +34,8 @@ interface LayoutNode {
   radius: number;
   color: string;
   parentId: string | null;
+  x: number;
+  y: number;
 }
 
 const ROOT_ID = "__root__";
@@ -70,18 +72,13 @@ function parseHsl(s: string | null | undefined): { h: number; s: number; l: numb
   if (!m) return null;
   return { h: parseFloat(m[1]), s: parseFloat(m[2]), l: parseFloat(m[3]) };
 }
-
 function hslToString(c: { h: number; s: number; l: number }) {
   return `hsl(${c.h.toFixed(0)} ${c.s.toFixed(0)}% ${c.l.toFixed(0)}%)`;
 }
-
 function blendHsl(list: ({ h: number; s: number; l: number } | null)[]) {
   const valid = list.filter(Boolean) as { h: number; s: number; l: number }[];
   if (!valid.length) return { h: 220, s: 10, l: 60 };
-  let xs = 0;
-  let ys = 0;
-  let ss = 0;
-  let ls = 0;
+  let xs = 0, ys = 0, ss = 0, ls = 0;
   for (const c of valid) {
     const r = (c.h * Math.PI) / 180;
     xs += Math.cos(r);
@@ -101,11 +98,7 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
 
   const layout = useMemo(() => {
     if (!nodes.length) {
-      return {
-        nodes: [] as LayoutNode[],
-        links: [] as { from: LayoutNode; to: LayoutNode }[],
-        size: 1900,
-      };
+      return { nodes: [] as LayoutNode[], links: [] as { from: LayoutNode; to: LayoutNode }[], size: 1900 };
     }
 
     const byId = new Map(nodes.map((n) => [n.id, n]));
@@ -150,10 +143,7 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
         if (visited.has(id)) return;
         visited.add(id);
         const kids = childrenOf.get(id) ?? [];
-        if (!kids.length) {
-          count += 1;
-          return;
-        }
+        if (!kids.length) { count += 1; return; }
         for (const k of kids) walk(k);
       };
       walk(rootId);
@@ -183,24 +173,17 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
       depthOf.set(n.id, n.type === "family" ? 1 : computeDepth(n.id, new Set()));
     }
 
-    const size = 1900;
+    const size = 1700;
     const cx = size / 2;
     const cy = size / 2;
-    const ringRadii = [0, size * 0.12, size * 0.24, size * 0.39];
+    const ringRadii = [0, size * 0.13, size * 0.26, size * 0.4];
 
     const out: LayoutNode[] = [];
     const links: { from: LayoutNode; to: LayoutNode }[] = [];
     const root: LayoutNode = {
-      id: ROOT_ID,
-      label: "The Source",
-      type: "root",
-      depth: 0,
-      angle: 0,
-      startAngle: 0,
-      endAngle: Math.PI * 2,
-      radius: 0,
-      color: "hsl(45 90% 70%)",
-      parentId: null,
+      id: ROOT_ID, label: "The Source", type: "root", depth: 0,
+      angle: 0, startAngle: 0, endAngle: Math.PI * 2, radius: 0,
+      color: "hsl(45 90% 70%)", parentId: null, x: cx, y: cy,
     };
     out.push(root);
 
@@ -232,16 +215,11 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
       const midA = (startA + endA) / 2;
       const radius = ringRadii[Math.min(depth, ringRadii.length - 1)];
       const ln: LayoutNode = {
-        id: n.id,
-        label: n.label,
-        type: n.type,
-        depth,
-        angle: midA,
-        startAngle: startA,
-        endAngle: endA,
-        radius,
-        color: colorFor(n),
-        parentId,
+        id: n.id, label: n.label, type: n.type, depth,
+        angle: midA, startAngle: startA, endAngle: endA, radius,
+        color: colorFor(n), parentId,
+        x: cx + Math.cos(midA) * radius,
+        y: cy + Math.sin(midA) * radius,
       };
       out.push(ln);
       const parent = parentId ? out.find((x) => x.id === parentId) : null;
@@ -269,6 +247,45 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
       cursor += w;
     }
 
+    // Spread variants (depth 3) angularly to prevent label overlap
+    const variants = out
+      .filter((n) => n.depth === 3)
+      .sort((a, b) => a.angle - b.angle);
+    if (variants.length > 1) {
+      const r = ringRadii[3];
+      // Approximate angular space needed per label (in radians)
+      const labelAngularSpan = (label: string) => {
+        const px = 7 + label.length * 5.4; // approx label width
+        return (px / r) * 1.05;
+      };
+      // Forward pass: push apart
+      for (let i = 1; i < variants.length; i++) {
+        const prev = variants[i - 1];
+        const cur = variants[i];
+        const need = (labelAngularSpan(prev.label) + labelAngularSpan(cur.label)) / 2;
+        if (cur.angle - prev.angle < need) {
+          cur.angle = prev.angle + need;
+        }
+      }
+      // Wrap-around check
+      const first = variants[0];
+      const last = variants[variants.length - 1];
+      const wrapNeed = (labelAngularSpan(last.label) + labelAngularSpan(first.label)) / 2;
+      if (first.angle + Math.PI * 2 - last.angle < wrapNeed) {
+        // Backward redistribute to balance
+        const overflow = wrapNeed - (first.angle + Math.PI * 2 - last.angle);
+        for (let i = variants.length - 1; i >= 0; i--) {
+          variants[i].angle -= overflow * ((i + 1) / variants.length);
+        }
+      }
+      // Recompute positions for variants
+      for (const v of variants) {
+        v.x = cx + Math.cos(v.angle) * v.radius;
+        v.y = cy + Math.sin(v.angle) * v.radius;
+      }
+    }
+
+    // Add cross-edges (multi-parents)
     const placedNodes = new Map(out.map((o) => [o.id, o]));
     const linkKey = new Set(links.map((l) => `${l.from.id}->${l.to.id}`));
     for (const e of edges) {
@@ -279,11 +296,6 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
       if (linkKey.has(key)) continue;
       linkKey.add(key);
       links.push({ from, to });
-    }
-
-    for (const ln of out) {
-      (ln as LayoutNode & { x: number; y: number }).x = cx + Math.cos(ln.angle) * ln.radius;
-      (ln as LayoutNode & { x: number; y: number }).y = cy + Math.sin(ln.angle) * ln.radius;
     }
 
     return { nodes: out, links, size };
@@ -313,79 +325,26 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
     }
     const hN = new Set<string>([focusId]);
     const hL = new Set<string>();
-    const queue = [focusId];
-    while (queue.length) {
-      const cur = queue.shift()!;
+    // Forward (descendants, branching)
+    const fwd = [focusId];
+    while (fwd.length) {
+      const cur = fwd.shift()!;
       for (const c of childMap.get(cur) ?? []) {
         hL.add(`${cur}->${c}`);
-        if (!hN.has(c)) {
-          hN.add(c);
-          queue.push(c);
-        }
+        if (!hN.has(c)) { hN.add(c); fwd.push(c); }
       }
     }
-    let cur: string | undefined = focusId;
-    const seen = new Set<string>([focusId]);
-    while (cur) {
-      const parents = parentMap.get(cur) ?? [];
-      if (!parents.length) break;
-      const p = parents[0];
-      hL.add(`${p}->${cur}`);
-      hN.add(p);
-      if (seen.has(p)) break;
-      seen.add(p);
-      cur = p;
+    // Backward (ancestors, branching — all parents)
+    const bwd = [focusId];
+    while (bwd.length) {
+      const cur = bwd.shift()!;
+      for (const p of parentMap.get(cur) ?? []) {
+        hL.add(`${p}->${cur}`);
+        if (!hN.has(p)) { hN.add(p); bwd.push(p); }
+      }
     }
     return { highlightedNodes: hN, highlightedLinks: hL };
   }, [childMap, focusId, parentMap]);
-
-  const labelColumns = useMemo(() => {
-    if (focusId) return new Map<string, { x: number; y: number; anchor: "start" | "end"; elbowX: number }>();
-
-    const size = layout.size;
-    const margin = 96;
-    const minGap = 18;
-    const map = new Map<string, { x: number; y: number; anchor: "start" | "end"; elbowX: number }>();
-    const outer = layout.nodes.filter((n) => n.depth === 3);
-
-    const placeSide = (items: LayoutNode[], side: "left" | "right") => {
-      const sorted = items
-        .map((n) => ({ n, desiredY: (n as LayoutNode & { y: number }).y }))
-        .sort((a, b) => a.desiredY - b.desiredY);
-      if (!sorted.length) return;
-
-      const placed = sorted.map((item, index) => {
-        const prevY = index === 0 ? margin : sorted[index - 1].desiredY;
-        return { ...item, y: Math.max(item.desiredY, index === 0 ? margin : prevY + minGap) };
-      });
-
-      for (let i = 1; i < placed.length; i++) {
-        placed[i].y = Math.max(placed[i].y, placed[i - 1].y + minGap);
-      }
-      const overflow = placed[placed.length - 1].y - (size - margin);
-      if (overflow > 0) {
-        for (const item of placed) item.y -= overflow;
-      }
-      for (let i = placed.length - 2; i >= 0; i--) {
-        placed[i].y = Math.min(placed[i].y, placed[i + 1].y - minGap);
-      }
-      const topShift = margin - placed[0].y;
-      if (topShift > 0) {
-        for (const item of placed) item.y += topShift;
-      }
-
-      const x = side === "right" ? size * 0.915 : size * 0.085;
-      const elbowX = side === "right" ? size * 0.83 : size * 0.17;
-      const anchor = side === "right" ? "start" : "end";
-      for (const item of placed) {
-        map.set(item.n.id, { x, y: item.y, anchor, elbowX });
-      }
-    };
-
-    placeSide(outer.filter((n) => Math.cos(n.angle) >= 0), "right");
-    placeSide(outer.filter((n) => Math.cos(n.angle) < 0), "left");
-    return map;
-  }, [focusId, layout.nodes, layout.size]);
 
   const handleExportSvg = () => {
     if (!svgRef.current) return;
@@ -403,29 +362,20 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
   const cx = size / 2;
   const cy = size / 2;
   const focusNode = focusId ? layout.nodes.find((n) => n.id === focusId) : null;
-  let vbX = 0;
-  let vbY = 0;
-  let vbW = size;
-  let vbH = size;
+  let vbX = 0, vbY = 0, vbW = size, vbH = size;
   if (focusNode && focusId !== ROOT_ID) {
-    const fx = (focusNode as LayoutNode & { x: number }).x;
-    const fy = (focusNode as LayoutNode & { y: number }).y;
-    vbW = size * 0.5;
-    vbH = size * 0.5;
-    vbX = Math.max(0, Math.min(size - vbW, fx - vbW / 2));
-    vbY = Math.max(0, Math.min(size - vbH, fy - vbH / 2));
+    vbW = size * 0.55;
+    vbH = size * 0.55;
+    vbX = Math.max(0, Math.min(size - vbW, focusNode.x - vbW / 2));
+    vbY = Math.max(0, Math.min(size - vbH, focusNode.y - vbH / 2));
   }
 
   const linkPath = (a: LayoutNode, b: LayoutNode) => {
-    const ax = (a as LayoutNode & { x: number }).x;
-    const ay = (a as LayoutNode & { y: number }).y;
-    const bx = (b as LayoutNode & { x: number }).x;
-    const by = (b as LayoutNode & { y: number }).y;
     const midR = (a.radius + b.radius) / 2;
     const midA = b.angle;
     const mxp = cx + Math.cos(midA) * midR;
     const myp = cy + Math.sin(midA) * midR;
-    return `M ${ax} ${ay} Q ${mxp} ${myp} ${bx} ${by}`;
+    return `M ${a.x} ${a.y} Q ${mxp} ${myp} ${b.x} ${b.y}`;
   };
 
   const fontFor = (depth: number) => {
@@ -441,7 +391,7 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
         <div>
           <h2 className="text-2xl font-bold">Circle of Life</h2>
           <p className="text-sm text-muted-foreground">
-            Generated from the current evolution tree, with The Source at the center.
+            Generated from the current evolution tree, with The Source at the center. Click a node to focus; click the background to reset.
           </p>
         </div>
         <Button variant="outline" onClick={handleExportSvg} className="gap-2">
@@ -455,21 +405,11 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
           viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
           className="h-auto w-full transition-all duration-500 ease-in-out"
           style={{ maxHeight: "85vh" }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setFocusId(null);
-          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setFocusId(null); }}
         >
-          {[0.12, 0.24, 0.39].map((r, i) => (
-            <circle
-              key={i}
-              cx={cx}
-              cy={cy}
-              r={size * r}
-              fill="none"
-              stroke="hsl(var(--border))"
-              strokeDasharray="2 8"
-              strokeWidth={1}
-            />
+          {[0.13, 0.26, 0.4].map((r, i) => (
+            <circle key={i} cx={cx} cy={cy} r={size * r} fill="none"
+              stroke="hsl(var(--border))" strokeDasharray="2 8" strokeWidth={1} />
           ))}
 
           <g>
@@ -479,137 +419,71 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
               const isHover = hoverId && (l.from.id === hoverId || l.to.id === hoverId);
               const dimmed = focusId && !isHighlighted;
               return (
-                <path
-                  key={i}
-                  d={linkPath(l.from, l.to)}
-                  fill="none"
+                <path key={i} d={linkPath(l.from, l.to)} fill="none"
                   stroke={l.to.color}
-                  strokeOpacity={dimmed ? 0.08 : isHighlighted || isHover ? 1 : 0.55}
-                  strokeWidth={
-                    (isHighlighted ? 1.5 : 1) *
-                    (l.to.depth === 1 ? 2.5 : l.to.depth === 2 ? 1.6 : 1)
-                  }
-                  style={{ transition: "stroke-opacity 300ms, stroke-width 300ms" }}
-                />
+                  strokeOpacity={dimmed ? 0.08 : isHighlighted || isHover ? 1 : 0.6}
+                  strokeWidth={(isHighlighted ? 1.6 : 1) * (l.to.depth === 1 ? 2.5 : l.to.depth === 2 ? 1.6 : 1)}
+                  style={{ transition: "stroke-opacity 300ms, stroke-width 300ms" }} />
               );
             })}
           </g>
 
           <g>
             {layout.nodes.map((n) => {
-              const x = (n as LayoutNode & { x: number }).x;
-              const y = (n as LayoutNode & { y: number }).y;
               const r = n.depth === 0 ? 28 : n.depth === 1 ? 14 : n.depth === 2 ? 8 : 5;
               const angDeg = (n.angle * 180) / Math.PI;
               const flip = n.angle > Math.PI / 2 && n.angle < (3 * Math.PI) / 2;
               const labelRot = flip ? angDeg + 180 : angDeg;
-              const labelOffset = r + 8 + (n.depth === 3 ? Math.max(0, n.label.length * 0.3) : 0);
+              const labelOffset = r + 8;
               const lx = flip ? -labelOffset : labelOffset;
               const anchor = flip ? "end" : "start";
               const isRoot = n.depth === 0;
               const isHighlighted = highlightedNodes.has(n.id);
               const isFocus = focusId === n.id;
               const dimmed = focusId && !isHighlighted && !isRoot;
-              const externalLabel = labelColumns.get(n.id);
-              const leaderTargetX = externalLabel
-                ? externalLabel.anchor === "start"
-                  ? externalLabel.x - 8
-                  : externalLabel.x + 8
-                : null;
 
               return (
-                <g
-                  key={n.id}
+                <g key={n.id}
                   onMouseEnter={() => setHoverId(n.id)}
                   onMouseLeave={() => setHoverId(null)}
                   onClick={(e) => {
                     e.stopPropagation();
                     setFocusId((cur) => (n.id === ROOT_ID ? null : cur === n.id ? null : n.id));
                   }}
-                  style={{ cursor: "pointer" }}
-                >
-                  {externalLabel && !focusId && (
-                    <>
-                      <path
-                        d={`M ${x} ${y} L ${externalLabel.elbowX} ${y} L ${leaderTargetX} ${externalLabel.y}`}
-                        fill="none"
-                        stroke={n.color}
-                        strokeOpacity={dimmed ? 0.14 : 0.45}
-                        strokeWidth={1}
-                      />
-                      <text
-                        x={externalLabel.x}
-                        y={externalLabel.y + 3}
-                        textAnchor={externalLabel.anchor}
-                        fontSize={fontFor(n.depth)}
-                        fontWeight={500}
-                        fill="hsl(var(--foreground))"
-                        stroke="hsl(var(--background))"
-                        strokeWidth={3}
-                        paintOrder="stroke"
-                        opacity={dimmed ? 0.25 : 1}
-                        style={{ pointerEvents: "none", transition: "opacity 300ms" }}
-                      >
-                        {n.label}
-                      </text>
-                    </>
-                  )}
-
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={isFocus ? r * 1.4 : r}
+                  style={{ cursor: "pointer" }}>
+                  <circle cx={n.x} cy={n.y} r={isFocus ? r * 1.4 : r}
                     fill={n.color}
                     stroke={isFocus ? "hsl(45 95% 70%)" : "hsl(var(--background))"}
                     strokeWidth={isFocus ? 3 : 1.5}
-                    opacity={dimmed ? 0.18 : hoverId && hoverId !== n.id && !focusId ? 0.6 : 1}
-                    style={{ transition: "opacity 300ms, r 300ms, stroke-width 300ms" }}
-                  />
+                    opacity={dimmed ? 0.18 : hoverId && hoverId !== n.id && !focusId ? 0.7 : 1}
+                    style={{ transition: "opacity 300ms, r 300ms, stroke-width 300ms" }} />
 
                   {isRoot ? (
-                    <text
-                      x={x}
-                      y={y + 5}
-                      textAnchor="middle"
-                      fontSize={fontFor(0)}
-                      fontWeight="bold"
-                      fill="hsl(var(--background))"
-                      style={{ pointerEvents: "none" }}
-                    >
+                    <text x={n.x} y={n.y + 5} textAnchor="middle"
+                      fontSize={fontFor(0)} fontWeight="bold"
+                      fill="hsl(var(--background))" style={{ pointerEvents: "none" }}>
                       ✶
                     </text>
-                  ) : !externalLabel || !!focusId ? (
-                    <g transform={`translate(${x} ${y}) rotate(${labelRot})`}>
-                      <text
-                        x={lx}
-                        y={3}
-                        textAnchor={anchor}
+                  ) : (
+                    <g transform={`translate(${n.x} ${n.y}) rotate(${labelRot})`}>
+                      <text x={lx} y={3} textAnchor={anchor}
                         fontSize={fontFor(n.depth)}
                         fontWeight={n.depth <= 1 ? 700 : n.depth === 2 ? 600 : 400}
                         fill="hsl(var(--foreground))"
-                        stroke="hsl(var(--background))"
-                        strokeWidth={3}
-                        paintOrder="stroke"
+                        stroke="hsl(var(--background))" strokeWidth={3} paintOrder="stroke"
                         opacity={dimmed ? 0.25 : 1}
-                        style={{ pointerEvents: "none", transition: "opacity 300ms" }}
-                      >
+                        style={{ pointerEvents: "none", transition: "opacity 300ms" }}>
                         {n.label}
                       </text>
                     </g>
-                  ) : null}
+                  )}
                 </g>
               );
             })}
           </g>
 
-          <text
-            x={cx}
-            y={cy + 50}
-            textAnchor="middle"
-            fontSize={14}
-            fill="hsl(var(--muted-foreground))"
-            fontStyle="italic"
-          >
+          <text x={cx} y={cy + 50} textAnchor="middle"
+            fontSize={14} fill="hsl(var(--muted-foreground))" fontStyle="italic">
             The Source
           </text>
         </svg>
