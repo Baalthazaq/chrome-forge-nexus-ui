@@ -385,36 +385,108 @@ const EvolutionTree = () => {
         famLink.set(famKey(fa, fb), (famLink.get(famKey(fa, fb)) ?? 0) + 1);
       }
     }
-    // Greedy reorder: start with first family, then repeatedly pick the next unplaced
-    // family with the strongest tie to the last placed one (fall back to alphabetical).
-    const familyIds: string[] = [];
-    const remaining = new Set(familyIdsInit);
-    if (familyIdsInit.length) {
-      familyIds.push(familyIdsInit[0]);
-      remaining.delete(familyIdsInit[0]);
+    // Build adjacency of families that share at least one cross-family edge.
+    const famNeighbors = new Map<string, Map<string, number>>();
+    for (const f of familyIdsInit) famNeighbors.set(f, new Map());
+    for (const [key, w] of famLink.entries()) {
+      const [a, b] = key.split("|");
+      famNeighbors.get(a)!.set(b, w);
+      famNeighbors.get(b)!.set(a, w);
     }
-    while (remaining.size) {
-      const last = familyIds[familyIds.length - 1];
-      let best: string | null = null;
-      let bestScore = -1;
-      for (const f of remaining) {
-        const score = famLink.get(famKey(last, f)) ?? 0;
-        if (score > bestScore) {
-          bestScore = score;
-          best = f;
+    const labelOf = (id: string) => nodes.find((n) => n.id === id)?.label ?? "";
+    const alpha = (a: string, b: string) => labelOf(a).localeCompare(labelOf(b));
+
+    // Split families into "connected" (have any cross-family edge) and "isolated" (none).
+    const connectedSet = new Set(familyIdsInit.filter((f) => (famNeighbors.get(f)?.size ?? 0) > 0));
+    const isolated = familyIdsInit.filter((f) => !connectedSet.has(f)).sort(alpha);
+
+    // Find connected components among connected families, then linearize each component
+    // by repeatedly chaining the strongest-tie unplaced neighbor to either end of the chain.
+    // This minimizes edges that must "tunnel" through unrelated families.
+    const visited = new Set<string>();
+    const components: string[][] = [];
+    for (const start of Array.from(connectedSet).sort(alpha)) {
+      if (visited.has(start)) continue;
+      const comp: string[] = [];
+      const stack = [start];
+      while (stack.length) {
+        const cur = stack.pop()!;
+        if (visited.has(cur)) continue;
+        visited.add(cur);
+        comp.push(cur);
+        for (const nb of famNeighbors.get(cur)!.keys()) if (!visited.has(nb)) stack.push(nb);
+      }
+      components.push(comp);
+    }
+
+    // Linearize a component: pick the highest-degree node as seed, then extend at whichever
+    // end has the strongest available tie. Falls back alphabetically.
+    const linearize = (comp: string[]): string[] => {
+      if (comp.length <= 1) return comp.slice();
+      const inComp = new Set(comp);
+      const degree = (f: string) =>
+        Array.from(famNeighbors.get(f)!.entries()).filter(([n]) => inComp.has(n)).length;
+      const seed = comp.slice().sort((a, b) => {
+        const dd = degree(b) - degree(a);
+        return dd !== 0 ? dd : alpha(a, b);
+      })[0];
+      const chain: string[] = [seed];
+      const placed = new Set<string>([seed]);
+      while (placed.size < comp.length) {
+        const head = chain[0];
+        const tail = chain[chain.length - 1];
+        let bestEnd: "head" | "tail" = "tail";
+        let bestF: string | null = null;
+        let bestW = -1;
+        const consider = (end: "head" | "tail", anchor: string) => {
+          for (const [nb, w] of famNeighbors.get(anchor)!.entries()) {
+            if (placed.has(nb) || !inComp.has(nb)) continue;
+            if (w > bestW || (w === bestW && bestF && alpha(nb, bestF) < 0)) {
+              bestW = w;
+              bestF = nb;
+              bestEnd = end;
+            }
+          }
+        };
+        consider("tail", tail);
+        consider("head", head);
+        if (!bestF) {
+          // No direct tie to either end — pick the unplaced family with strongest tie to ANY
+          // placed family and append at the end nearest that anchor.
+          let anchorEnd: "head" | "tail" = "tail";
+          for (const f of comp) {
+            if (placed.has(f)) continue;
+            for (const [nb, w] of famNeighbors.get(f)!.entries()) {
+              if (!placed.has(nb)) continue;
+              const idx = chain.indexOf(nb);
+              const end: "head" | "tail" = idx < chain.length / 2 ? "head" : "tail";
+              if (w > bestW || (w === bestW && bestF && alpha(f, bestF) < 0)) {
+                bestW = w;
+                bestF = f;
+                anchorEnd = end;
+              }
+            }
+          }
+          if (bestF) bestEnd = anchorEnd;
         }
+        if (!bestF) {
+          // Truly disconnected leftover (shouldn't happen inside a component) — alphabetical.
+          bestF = comp.filter((f) => !placed.has(f)).sort(alpha)[0];
+          bestEnd = "tail";
+        }
+        if (bestEnd === "tail") chain.push(bestF);
+        else chain.unshift(bestF);
+        placed.add(bestF);
       }
-      if (bestScore <= 0) {
-        // No tie — pick the alphabetically-next remaining family for stability.
-        best = Array.from(remaining).sort((a, b) => {
-          const al = nodes.find((n) => n.id === a)?.label ?? "";
-          const bl = nodes.find((n) => n.id === b)?.label ?? "";
-          return al.localeCompare(bl);
-        })[0];
-      }
-      familyIds.push(best!);
-      remaining.delete(best!);
-    }
+      return chain;
+    };
+
+    // Order components by size (largest first) so the main connected web sits at the top,
+    // then smaller webs, then isolated families at the bottom.
+    components.sort((a, b) => b.length - a.length || alpha(a[0], b[0]));
+    const familyIds: string[] = [];
+    for (const comp of components) familyIds.push(...linearize(comp));
+    familyIds.push(...isolated);
 
     const STEP_X = NODE_W + COL_GAP;
     const STEP_Y = NODE_H + ROW_GAP;
