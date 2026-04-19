@@ -16,7 +16,9 @@ import {
   RotateCcw,
   Loader2,
   LayoutGrid,
+  ArrowLeft,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import CircleOfLifeDiagram from "@/components/CircleOfLifeDiagram";
 import {
   Dialog,
@@ -157,6 +159,7 @@ interface EvolutionTreeProps {
 const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
+  const navigate = useNavigate();
   const canEdit = !!user && isAdmin;
 
   const [nodes, setNodes] = useState<NodeRow[]>([]);
@@ -866,6 +869,9 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
     <div className="dark min-h-screen bg-background text-foreground p-6">
       <div className="max-w-[1800px] mx-auto space-y-4">
         <header className="space-y-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/admin')} className="-ml-2">
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back to Admin
+          </Button>
           <h1 className="text-4xl font-bold tracking-tight">Ancestry Evolution Tree</h1>
           <p className="text-muted-foreground">
             A directed graph — drag nodes to rearrange. A node may have multiple parents
