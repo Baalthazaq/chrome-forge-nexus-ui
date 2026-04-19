@@ -172,19 +172,27 @@ export default function CircleOfLife() {
     const familyLeaves = families.map((f) => ({ f, leaves: leafCountOf(f.id) }));
     const totalLeaves = familyLeaves.reduce((s, x) => s + x.leaves, 0) || 1;
 
-    // Determine depth via BFS from each family root
+    // Determine MAX depth from any family root (so a node that is both a
+    // direct child of a family AND a grandchild via another path is placed
+    // at the deeper ring — keeps tiers visually consistent)
     const depthOf = new Map<string, number>();
-    for (const f of families) depthOf.set(f.id, 1);
-    const queue: string[] = families.map((f) => f.id);
-    while (queue.length) {
-      const cur = queue.shift()!;
-      const d = depthOf.get(cur)!;
-      for (const c of childrenOf.get(cur) ?? []) {
-        if (!depthOf.has(c) || (depthOf.get(c)! > d + 1)) {
-          depthOf.set(c, d + 1);
-          queue.push(c);
-        }
+    const computeDepth = (id: string, seen: Set<string>): number => {
+      if (seen.has(id)) return 1;
+      seen.add(id);
+      const node = byId.get(id);
+      if (node?.type === "family") return 1;
+      const parents = parentsOf.get(id) ?? [];
+      if (!parents.length) return 1;
+      let best = 1;
+      for (const p of parents) {
+        const d = computeDepth(p, seen) + 1;
+        if (d > best) best = d;
       }
+      seen.delete(id);
+      return best;
+    };
+    for (const n of nodes) {
+      depthOf.set(n.id, n.type === "family" ? 1 : computeDepth(n.id, new Set()));
     }
 
     // Size & rings
@@ -228,10 +236,16 @@ export default function CircleOfLife() {
       });
     };
 
+    // Track which nodes have been placed to avoid duplicates from multi-parent edges
+    const placed = new Set<string>();
+
     // Recursively place subtree within angular slice [startAngle, endAngle]
-    const place = (id: string, startA: number, endA: number, depth: number, parentId: string | null) => {
+    const place = (id: string, startA: number, endA: number, parentId: string | null) => {
+      if (placed.has(id)) return;
       const n = byId.get(id);
       if (!n) return;
+      placed.add(id);
+      const depth = depthOf.get(id) ?? 1;
       const midA = (startA + endA) / 2;
       const radius = ringRadii[Math.min(depth, ringRadii.length - 1)];
       const ln: LayoutNode = {
@@ -250,26 +264,39 @@ export default function CircleOfLife() {
       const parent = parentId ? out.find((x) => x.id === parentId) : null;
       if (parent) links.push({ from: parent, to: ln });
 
-      const kids = childrenOf.get(id) ?? [];
+      const kids = (childrenOf.get(id) ?? []).filter((k) => !placed.has(k));
       if (!kids.length) return;
-      // Allocate sub-slices proportional to leaf count
       const kidLeaves = kids.map((k) => ({ k, leaves: leafCountOf(k) }));
-      const totalK = kidLeaves.reduce((s, x) => s + x.leaves, 0);
+      const totalK = kidLeaves.reduce((s, x) => s + x.leaves, 0) || 1;
       let cursor = startA;
       for (const { k, leaves } of kidLeaves) {
         const w = ((endA - startA) * leaves) / totalK;
-        place(k, cursor, cursor + w, depth + 1, id);
+        place(k, cursor, cursor + w, id);
         cursor += w;
       }
     };
 
     // Distribute families around full circle proportional to their leaf counts
-    let cursor = -Math.PI / 2; // start at top
+    let cursor = -Math.PI / 2;
     const total = totalLeaves;
     for (const { f, leaves } of familyLeaves) {
       const w = (Math.PI * 2 * leaves) / total;
-      place(f.id, cursor, cursor + w, 1, ROOT_ID);
+      place(f.id, cursor, cursor + w, ROOT_ID);
       cursor += w;
+    }
+
+    // Add dashed cross-links for any extra parent relationships not represented
+    // by the primary placement (so multi-parent ancestry like Drow remains visible)
+    const placedNodes = new Map(out.map((o) => [o.id, o]));
+    const linkKey = new Set(links.map((l) => `${l.from.id}->${l.to.id}`));
+    for (const e of edges) {
+      const from = placedNodes.get(e.parent_id);
+      const to = placedNodes.get(e.child_id);
+      if (!from || !to) continue;
+      const k = `${from.id}->${to.id}`;
+      if (linkKey.has(k)) continue;
+      linkKey.add(k);
+      links.push({ from, to });
     }
 
     // Convert polar (angle, radius) → cartesian on each node, store on object via mutation
