@@ -50,7 +50,6 @@ import EnvironmentsAdmin from "./pages/EnvironmentsAdmin";
 import EncounterBuilder from "./pages/EncounterBuilder";
 import DiceRollerRibbon from "./components/DiceRollerRibbon";
 import DiceRoller from "./pages/DiceRoller";
-import EvolutionTree from "./pages/EvolutionTree";
 import CircleOfLife from "./pages/CircleOfLife";
 
 const queryClient = new QueryClient();
