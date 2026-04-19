@@ -399,28 +399,67 @@ const EvolutionTree = () => {
       const maxCount = Math.max(...depths.map((d) => byDepth.get(d)!.length));
       const familyHeight = maxCount * STEP_Y;
 
-      // Sort each column by parent barycenter (using a temp pass), then center vertically.
-      // First pass: assign a tentative order using parent barycenter from prior columns.
-      const orderedByDepth = new Map<number, NodeRow[]>();
-      for (const d of depths) {
+      // Right-priority layout: place the deepest column first as a stacked block,
+      // then walk leftward, centering each parent on the barycenter of its children.
+      const deepest = depths[depths.length - 1];
+      const deepestList = byDepth.get(deepest)!.slice().sort((a, b) => a.label.localeCompare(b.label));
+      const deepestHeight = deepestList.length * STEP_Y;
+      const deepestOffset = (familyHeight - deepestHeight) / 2;
+      deepestList.forEach((n, i) => {
+        newPos[n.id] = { x: LEFT + deepest * STEP_X, y: familyTop + deepestOffset + i * STEP_Y };
+      });
+
+      // Walk from second-deepest back to root, centering each node on its placed children.
+      for (let di = depths.length - 2; di >= 0; di--) {
+        const d = depths[di];
         const list = byDepth.get(d)!.slice();
+        // Compute desired y from children barycenter (only children already placed).
+        const desired = new Map<string, number>();
+        for (const n of list) {
+          const cs = (childrenOf.get(n.id) ?? []).filter((c) => newPos[c]);
+          const y = cs.length
+            ? cs.reduce((s, c) => s + newPos[c].y, 0) / cs.length
+            : familyTop + familyHeight / 2 - STEP_Y / 2;
+          desired.set(n.id, y);
+        }
         list.sort((a, b) => {
-          const ap = (parentsOf.get(a.id) ?? []).filter((p) => newPos[p]);
-          const bp = (parentsOf.get(b.id) ?? []).filter((p) => newPos[p]);
-          const ay = ap.length ? ap.reduce((s, p) => s + newPos[p].y, 0) / ap.length : familyTop;
-          const by = bp.length ? bp.reduce((s, p) => s + newPos[p].y, 0) / bp.length : familyTop;
+          const ay = desired.get(a.id)!;
+          const by = desired.get(b.id)!;
           if (ay !== by) return ay - by;
           return a.label.localeCompare(b.label);
         });
-        orderedByDepth.set(d, list);
-        // Place tentatively so next column's barycenter calc uses real positions.
-        const colHeight = list.length * STEP_Y;
-        const colOffset = (familyHeight - colHeight) / 2;
-        list.forEach((n, i) => {
-          newPos[n.id] = { x: LEFT + d * STEP_X, y: familyTop + colOffset + i * STEP_Y };
-        });
+        // Resolve overlaps while keeping order; nudge to maintain STEP_Y spacing.
+        const placed: { id: string; y: number }[] = [];
+        for (const n of list) {
+          let y = desired.get(n.id)!;
+          if (placed.length > 0) {
+            const minY = placed[placed.length - 1].y + STEP_Y;
+            if (y < minY) y = minY;
+          }
+          placed.push({ id: n.id, y });
+        }
+        // Center the resolved column vertically within the family band.
+        const colTop = placed[0].y;
+        const colBottom = placed[placed.length - 1].y;
+        const colCenter = (colTop + colBottom) / 2;
+        const familyCenter = familyTop + familyHeight / 2 - STEP_Y / 2;
+        const shift = familyCenter - colCenter;
+        // Only shift if it doesn't push children out of alignment too much; apply gentle shift.
+        for (const p of placed) {
+          newPos[p.id] = { x: LEFT + d * STEP_X, y: p.y + shift };
+        }
       }
-      yCursor = familyTop + familyHeight + FAMILY_GAP;
+
+      // Compute actual family bounds from placed nodes to advance yCursor.
+      const ys = famNodes.map((n) => newPos[n.id]?.y ?? familyTop);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      // Normalize so family starts at familyTop.
+      const norm = familyTop - minY;
+      for (const n of famNodes) {
+        if (newPos[n.id]) newPos[n.id].y += norm;
+      }
+      yCursor = familyTop + (maxY - minY) + STEP_Y + FAMILY_GAP;
     }
 
     setPendingPositions(newPos);
