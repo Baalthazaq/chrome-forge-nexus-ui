@@ -96,7 +96,7 @@ export default function CircleOfLife() {
     (async () => {
       setLoading(true);
       const [{ data: n, error: ne }, { data: e, error: ee }] = await Promise.all([
-        supabase.from("evolution_nodes").select("id,label,type,color"),
+        supabase.from("evolution_nodes").select("id,label,type,color,y"),
         supabase.from("evolution_edges").select("id,parent_id,child_id"),
       ]);
       if (ne || ee) {
