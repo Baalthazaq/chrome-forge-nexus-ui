@@ -89,10 +89,58 @@ const Admin = () => {
     );
   }
 
-  const apps = [
-    'charisma', 'sending', 'app-of-holding', 'questseek', 'succubus',
-    'doppleganger', 'bholdr', '@tunes', 'cvnews',
-    'brittlewisp', 'wyrmcart', 'tome', 'timestop', 'maze', 'suggestion'
+  const appCategories = [
+    {
+      title: 'Character & Social',
+      apps: [
+        { id: 'doppleganger', label: 'Doppleganger', desc: 'Character Sheets' },
+        { id: 'charisma', label: 'Charisma', desc: 'Profiles' },
+        { id: 'succubus', label: 'Succubus', desc: 'NPC Discovery' },
+        { id: 'sending', label: 'Sending', desc: 'Messaging' },
+      ],
+    },
+    {
+      title: 'Economy & Work',
+      apps: [
+        { id: 'app-of-holding', label: 'App of Holding', desc: 'Vault' },
+        { id: '@tunes', label: '@tunes', desc: 'Subscriptions' },
+        { id: 'wyrmcart', label: 'Wyrmcart', desc: 'Shop' },
+        { id: 'questseek', label: 'Questseek', desc: 'Jobs' },
+      ],
+    },
+    {
+      title: 'Media & Knowledge',
+      apps: [
+        { id: 'cvnews', label: 'CVNews', desc: 'News Feed' },
+        { id: 'bholdr', label: 'BHoldR', desc: 'Video Sharing' },
+        { id: 'tome', label: 'Tome', desc: 'Notes & Lore' },
+        { id: 'brittlewisp', label: 'Brittlewisp', desc: 'App' },
+      ],
+    },
+    {
+      title: 'World & Utility',
+      apps: [
+        { id: 'maze', label: 'Maze', desc: 'Interactive Map' },
+        { id: 'timestop', label: 'Timestop', desc: 'Calendar' },
+        { id: 'suggestion', label: 'Suggestion', desc: 'Feedback' },
+      ],
+    },
+  ];
+
+  const adminTools = [
+    { label: 'Roldex Network', desc: 'Network Admin', onClick: () => navigate('/roldex-admin') },
+    { label: 'Organizations', desc: 'Groups Admin', onClick: () => navigate('/admin/organizations') },
+    { label: 'Bestiary', desc: 'Adversary Cards', onClick: () => navigate('/admin/bestiary') },
+    { label: 'Environments', desc: 'Environment Cards', onClick: () => navigate('/admin/environments') },
+    { label: 'Encounter Builder', desc: 'Build Encounters', onClick: () => navigate('/admin/encounters') },
+  ];
+
+  const utilityTools = [
+    { label: 'Character Tokens', desc: 'Token Generator', onClick: () => navigate('/admin/tokens') },
+    { label: 'Dice Roller & Log', desc: 'Roll Dice + History', onClick: () => navigate('/admin/dice-roller') },
+    { label: 'Racegen', desc: 'Ancestry Generator', onClick: () => window.open('/tools/racegen.html', '_blank') },
+    { label: 'Feature List', desc: 'App Features', onClick: () => navigate('/features') },
+    { label: 'Data Export', desc: 'Export Tables', onClick: () => navigate('/admin/data-export') },
   ];
 
   return (
