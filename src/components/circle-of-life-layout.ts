@@ -175,13 +175,51 @@ export function buildCircleLayout(nodes: CircleNodeRow[], edges: CircleEdgeRow[]
     });
   };
 
+  // Determine each node's "primary" parent — the deepest one in the tree.
+  // For multi-parent leaves (edge cases like Umbragen ∈ Drow ∩ Elf, or Drider ∈ Spider ∩ Aberration),
+  // this groups them with their most-specific parent's siblings instead of by raw y-coord.
+  const depthFromRoot = new Map<string, number>();
+  const computeDepth = (id: string, seen = new Set<string>()): number => {
+    if (depthFromRoot.has(id)) return depthFromRoot.get(id)!;
+    if (seen.has(id)) return 0;
+    seen.add(id);
+    const parents = (parentsOf.get(id) ?? []).filter((p) => byId.has(p));
+    if (!parents.length) {
+      depthFromRoot.set(id, 0);
+      return 0;
+    }
+    const d = 1 + Math.max(...parents.map((p) => computeDepth(p, seen)));
+    depthFromRoot.set(id, d);
+    return d;
+  };
+  for (const n of nodes) computeDepth(n.id);
+
+  const primaryParentOf = new Map<string, string | null>();
+  for (const n of nodes) {
+    const parents = (parentsOf.get(n.id) ?? []).filter((p) => byId.has(p));
+    if (!parents.length) {
+      primaryParentOf.set(n.id, null);
+      continue;
+    }
+    // Pick the deepest parent; tie-break by lower y for stability.
+    parents.sort((a, b) => {
+      const dd = (depthFromRoot.get(b) ?? 0) - (depthFromRoot.get(a) ?? 0);
+      if (dd !== 0) return dd;
+      return (byId.get(a)?.y ?? 0) - (byId.get(b)?.y ?? 0);
+    });
+    primaryParentOf.set(n.id, parents[0]);
+  }
+
   const sortKids = (ids: string[]) =>
     [...ids].sort((a, b) => (byId.get(a)?.y ?? 0) - (byId.get(b)?.y ?? 0));
 
   const leafOrder: string[] = [];
   const seenLeaf = new Set<string>();
   const walkLeaves = (id: string) => {
-    const kids = sortKids((childrenOf.get(id) ?? []).filter((k) => byId.has(k)));
+    const allKids = (childrenOf.get(id) ?? []).filter((k) => byId.has(k));
+    // Only descend into kids whose primary parent is the current node — multi-parent
+    // children get visited under their deepest parent so they cluster correctly.
+    const kids = sortKids(allKids.filter((k) => primaryParentOf.get(k) === id));
     if (!kids.length) {
       if (!seenLeaf.has(id)) {
         seenLeaf.add(id);
