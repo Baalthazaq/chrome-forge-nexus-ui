@@ -963,7 +963,7 @@ const EvolutionTree = () => {
                 const { x, y } = getEffectiveXY(n);
                 const isSelected = n.id === selectedId;
                 const isLinkSource = n.id === linkSourceId;
-                const color = n.color ?? "hsl(var(--primary))";
+                const color = nodeColors.get(n.id) ?? n.color ?? "hsl(var(--primary))";
                 const isFamily = n.type === "family";
                 const isRace = n.type === "race";
                 return (
