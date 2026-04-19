@@ -284,19 +284,6 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
       if (ln) links.push({ from: root, to: ln });
     }
 
-    // Add cross-edges (multi-parents)
-    const placedNodes = new Map(out.map((o) => [o.id, o]));
-    const linkKey = new Set(links.map((l) => `${l.from.id}->${l.to.id}`));
-    for (const e of edges) {
-      const from = placedNodes.get(e.parent_id);
-      const to = placedNodes.get(e.child_id);
-      if (!from || !to) continue;
-      const key = `${from.id}->${to.id}`;
-      if (linkKey.has(key)) continue;
-      linkKey.add(key);
-      links.push({ from, to });
-    }
-
     return { nodes: out, links, size };
   }, [nodes, edges]);
 
