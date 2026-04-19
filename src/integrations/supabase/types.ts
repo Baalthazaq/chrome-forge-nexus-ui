@@ -839,6 +839,75 @@ export type Database = {
         }
         Relationships: []
       }
+      evolution_edges: {
+        Row: {
+          child_id: string
+          created_at: string
+          id: string
+          parent_id: string
+        }
+        Insert: {
+          child_id: string
+          created_at?: string
+          id?: string
+          parent_id: string
+        }
+        Update: {
+          child_id?: string
+          created_at?: string
+          id?: string
+          parent_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evolution_edges_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "evolution_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evolution_edges_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "evolution_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evolution_nodes: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          label: string
+          type: string
+          updated_at: string
+          x: number
+          y: number
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          type?: string
+          updated_at?: string
+          x?: number
+          y?: number
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          type?: string
+          updated_at?: string
+          x?: number
+          y?: number
+        }
+        Relationships: []
+      }
       game_calendar: {
         Row: {
           current_day: number
