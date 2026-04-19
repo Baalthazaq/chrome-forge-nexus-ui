@@ -1119,9 +1119,36 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div>
+                      <Label className="text-xs">Weight (variant leaves)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={editBuffer.weight}
+                        placeholder="1"
+                        onChange={(e) => setEditBuffer({ ...editBuffer, weight: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Mate-Up Probability (%)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={editBuffer.mate_up_probability}
+                        placeholder="33"
+                        onChange={(e) => setEditBuffer({ ...editBuffer, mate_up_probability: e.target.value })}
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Chance to mate with parent category (default 33%).
+                      </p>
+                    </div>
                     {(editBuffer.label !== selectedNode.label ||
                       editBuffer.type !== selectedNode.type ||
-                      editBuffer.color !== (selectedNode.color ?? "")) && (
+                      editBuffer.color !== (selectedNode.color ?? "") ||
+                      Number(editBuffer.weight || 0) !== ((selectedNode as any).weight ?? 1) ||
+                      Number(editBuffer.mate_up_probability || 0) / 100 !== ((selectedNode as any).mate_up_probability ?? 0.33)) && (
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -1131,6 +1158,8 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                               label: editBuffer.label.trim(),
                               type: editBuffer.type,
                               color: editBuffer.color,
+                              weight: Math.max(0, Math.floor(Number(editBuffer.weight) || 0)),
+                              mate_up_probability: Math.min(1, Math.max(0, (Number(editBuffer.mate_up_probability) || 0) / 100)),
                             })
                           }
                         >
@@ -1144,6 +1173,8 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                               label: selectedNode.label,
                               type: selectedNode.type,
                               color: selectedNode.color ?? Object.values(FAMILY_COLORS)[0],
+                              weight: String((selectedNode as any).weight ?? 1),
+                              mate_up_probability: String(Math.round(((selectedNode as any).mate_up_probability ?? 0.33) * 100)),
                             })
                           }
                         >
