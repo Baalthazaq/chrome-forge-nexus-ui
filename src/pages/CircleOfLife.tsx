@@ -199,11 +199,11 @@ export default function CircleOfLife() {
       depthOf.set(n.id, n.type === "family" ? 1 : computeDepth(n.id, new Set()));
     }
 
-    // Size & rings
-    const size = 1400;
+    // Size & rings — extra outer padding prevents variant labels from clipping/overlapping at the edge
+    const size = 1700;
     const cx = size / 2;
     const cy = size / 2;
-    const ringRadii = [0, size * 0.13, size * 0.27, size * 0.42]; // root, family, race, variant
+    const ringRadii = [0, size * 0.11, size * 0.22, size * 0.36]; // root, family, race, variant
 
     const out: LayoutNode[] = [];
     const links: { from: LayoutNode; to: LayoutNode }[] = [];
@@ -211,7 +211,7 @@ export default function CircleOfLife() {
     // Synthetic root
     const root: LayoutNode = {
       id: ROOT_ID,
-      label: "Common Ancestor",
+      label: "The Source",
       type: "root",
       depth: 0,
       angle: 0,
@@ -455,7 +455,7 @@ export default function CircleOfLife() {
               }}
             >
               {/* Subtle ring guides */}
-              {[0.13, 0.27, 0.42].map((r, i) => (
+              {[0.11, 0.22, 0.36].map((r, i) => (
                 <circle
                   key={i}
                   cx={cx}
@@ -577,7 +577,7 @@ export default function CircleOfLife() {
                 fill="hsl(45 60% 75%)"
                 fontStyle="italic"
               >
-                Common Ancestor
+                The Source
               </text>
             </svg>
           </div>
