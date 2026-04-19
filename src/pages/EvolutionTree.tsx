@@ -709,14 +709,102 @@ const EvolutionTree = () => {
             )}
             {selectedNode && (
               <div className="space-y-3">
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase">Label</div>
-                  <div className="font-semibold">{selectedNode.label}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase">Type</div>
-                  <div className="capitalize">{selectedNode.type}</div>
-                </div>
+                {canEdit && editBuffer ? (
+                  <div className="space-y-2">
+                    <div>
+                      <Label className="text-xs uppercase text-muted-foreground">Label</Label>
+                      <Input
+                        value={editBuffer.label}
+                        onChange={(e) =>
+                          setEditBuffer({ ...editBuffer, label: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs uppercase text-muted-foreground">Type</Label>
+                      <Select
+                        value={editBuffer.type}
+                        onValueChange={(v) => setEditBuffer({ ...editBuffer, type: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="family">Family</SelectItem>
+                          <SelectItem value="race">Race</SelectItem>
+                          <SelectItem value="variant">Variant</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs uppercase text-muted-foreground">Color</Label>
+                      <Select
+                        value={editBuffer.color}
+                        onValueChange={(v) => setEditBuffer({ ...editBuffer, color: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(FAMILY_COLORS).map(([name, c]) => (
+                            <SelectItem key={name} value={c}>
+                              <span className="inline-flex items-center gap-2">
+                                <span
+                                  className="inline-block w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: c }}
+                                />
+                                {name}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {(editBuffer.label !== selectedNode.label ||
+                      editBuffer.type !== selectedNode.type ||
+                      editBuffer.color !== (selectedNode.color ?? "")) && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={() =>
+                            updateNode(selectedNode.id, {
+                              label: editBuffer.label.trim(),
+                              type: editBuffer.type,
+                              color: editBuffer.color,
+                            })
+                          }
+                        >
+                          <Save className="h-3 w-3 mr-1" /> Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            setEditBuffer({
+                              label: selectedNode.label,
+                              type: selectedNode.type,
+                              color: selectedNode.color ?? Object.values(FAMILY_COLORS)[0],
+                            })
+                          }
+                        >
+                          Reset
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <div className="text-xs text-muted-foreground uppercase">Label</div>
+                      <div className="font-semibold">{selectedNode.label}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground uppercase">Type</div>
+                      <div className="capitalize">{selectedNode.type}</div>
+                    </div>
+                  </>
+                )}
                 <div>
                   <div className="text-xs text-muted-foreground uppercase mb-1">
                     Parents ({selectedParents.length})
