@@ -205,116 +205,83 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
       });
     };
 
-    const placed = new Set<string>();
-    const place = (id: string, startA: number, endA: number, parentId: string | null) => {
-      if (placed.has(id)) return;
-      const n = byId.get(id);
-      if (!n) return;
-      placed.add(id);
-      const depth = depthOf.get(id) ?? 1;
-      const midA = (startA + endA) / 2;
+    // STEP 1: Walk tree in family order to collect leaves in display order.
+    const sortKids = (ids: string[]) =>
+      [...ids].sort((a, b) => (byId.get(a)?.y ?? 0) - (byId.get(b)?.y ?? 0));
+
+    const leafOrder: string[] = [];
+    const seenLeaf = new Set<string>();
+    const walkLeaves = (id: string) => {
+      const kids = sortKids((childrenOf.get(id) ?? []).filter((k) => byId.has(k)));
+      if (!kids.length) {
+        if (!seenLeaf.has(id)) { seenLeaf.add(id); leafOrder.push(id); }
+        return;
+      }
+      for (const k of kids) walkLeaves(k);
+    };
+    for (const f of families) walkLeaves(f.id);
+
+    // STEP 2: Place all leaves equidistantly on the outer ring.
+    const totalLeavesN = Math.max(1, leafOrder.length);
+    const stepA = (Math.PI * 2) / totalLeavesN;
+    const startLeafA = -Math.PI / 2 + stepA / 2;
+    const angleOf = new Map<string, number>();
+    leafOrder.forEach((id, i) => angleOf.set(id, startLeafA + i * stepA));
+
+    // STEP 3: Interior nodes = circular mean of descendant-leaf angles.
+    const leafDescendants = (id: string): string[] => {
+      const acc: string[] = [];
+      const seen = new Set<string>();
+      const walk = (cur: string) => {
+        if (seen.has(cur)) return;
+        seen.add(cur);
+        const kids = childrenOf.get(cur) ?? [];
+        if (!kids.length) { acc.push(cur); return; }
+        for (const k of kids) walk(k);
+      };
+      walk(id);
+      return acc;
+    };
+    const circularMean = (angles: number[]): number => {
+      let xs = 0, ys = 0;
+      for (const a of angles) { xs += Math.cos(a); ys += Math.sin(a); }
+      return Math.atan2(ys / angles.length, xs / angles.length);
+    };
+    for (const n of nodes) {
+      if (angleOf.has(n.id)) continue;
+      const leaves = leafDescendants(n.id);
+      const angles = leaves.map((l) => angleOf.get(l)).filter((a): a is number => a !== undefined);
+      if (angles.length) angleOf.set(n.id, circularMean(angles));
+    }
+
+    // STEP 4: Materialize nodes onto their depth ring.
+    const nodeMap = new Map<string, LayoutNode>();
+    for (const n of nodes) {
+      const a = angleOf.get(n.id);
+      if (a === undefined) continue;
+      const depth = depthOf.get(n.id) ?? 1;
       const radius = ringRadii[Math.min(depth, ringRadii.length - 1)];
       const ln: LayoutNode = {
         id: n.id, label: n.label, type: n.type, depth,
-        angle: midA, startAngle: startA, endAngle: endA, radius,
-        color: colorFor(n), parentId,
-        x: cx + Math.cos(midA) * radius,
-        y: cy + Math.sin(midA) * radius,
+        angle: a, startAngle: a, endAngle: a, radius,
+        color: colorFor(n), parentId: null,
+        x: cx + Math.cos(a) * radius,
+        y: cy + Math.sin(a) * radius,
       };
       out.push(ln);
-      const parent = parentId ? out.find((x) => x.id === parentId) : null;
-      if (parent) links.push({ from: parent, to: ln });
-
-      const kids = (childrenOf.get(id) ?? [])
-        .filter((k) => !placed.has(k))
-        .sort((a, b) => (byId.get(a)?.y ?? 0) - (byId.get(b)?.y ?? 0));
-      if (!kids.length) return;
-
-      const kidLeaves = kids.map((k) => ({ k, leaves: leafCountOf(k) }));
-      const totalK = kidLeaves.reduce((s, x) => s + x.leaves, 0) || 1;
-      let cursor = startA;
-      for (const { k, leaves } of kidLeaves) {
-        const w = ((endA - startA) * leaves) / totalK;
-        place(k, cursor, cursor + w, id);
-        cursor += w;
-      }
-    };
-
-    let cursor = -Math.PI / 2;
-    for (const { f, leaves } of familyLeaves) {
-      const w = (Math.PI * 2 * leaves) / totalLeaves;
-      place(f.id, cursor, cursor + w, ROOT_ID);
-      cursor += w;
+      nodeMap.set(n.id, ln);
     }
 
-    // Spread variants (depth 3) angularly within their family's arc to prevent
-    // labels from one family invading another's territory.
-    const r3 = ringRadii[3];
-    const labelAngularSpan = (label: string) =>
-      ((7 + label.length * 5.4) / r3) * 1.05;
-
-    // Group variants by their family ancestor (by arc containment).
-    const familyNodes = out.filter((n) => n.depth === 1);
-    for (const fam of familyNodes) {
-      const famVariants = out
-        .filter((n) => n.depth === 3 && n.angle >= fam.startAngle && n.angle <= fam.endAngle)
-        .sort((a, b) => a.angle - b.angle);
-      if (famVariants.length === 0) continue;
-
-      const arcStart = fam.startAngle;
-      const arcEnd = fam.endAngle;
-      const arcSize = arcEnd - arcStart;
-      const totalNeed = famVariants.reduce((s, v) => s + labelAngularSpan(v.label), 0);
-
-      if (totalNeed >= arcSize * 0.95) {
-        // Crowded: distribute evenly across the family's arc
-        const step = arcSize / famVariants.length;
-        famVariants.forEach((v, i) => {
-          v.angle = arcStart + step * (i + 0.5);
-        });
-      } else {
-        // Has room: only nudge apart pairs that overlap, clamped to arc
-        // Forward pass
-        for (let i = 1; i < famVariants.length; i++) {
-          const prev = famVariants[i - 1];
-          const cur = famVariants[i];
-          const need = (labelAngularSpan(prev.label) + labelAngularSpan(cur.label)) / 2;
-          if (cur.angle - prev.angle < need) cur.angle = prev.angle + need;
-        }
-        // Clamp tail and back-propagate
-        const last = famVariants[famVariants.length - 1];
-        if (last.angle > arcEnd - labelAngularSpan(last.label) / 2) {
-          last.angle = arcEnd - labelAngularSpan(last.label) / 2;
-          for (let i = famVariants.length - 2; i >= 0; i--) {
-            const next = famVariants[i + 1];
-            const cur = famVariants[i];
-            const need = (labelAngularSpan(next.label) + labelAngularSpan(cur.label)) / 2;
-            if (next.angle - cur.angle < need) cur.angle = next.angle - need;
-          }
-        }
-        // Clamp head
-        const first = famVariants[0];
-        const minHead = arcStart + labelAngularSpan(first.label) / 2;
-        if (first.angle < minHead) first.angle = minHead;
-      }
-
-      for (const v of famVariants) {
-        v.x = cx + Math.cos(v.angle) * v.radius;
-        v.y = cy + Math.sin(v.angle) * v.radius;
-      }
-    }
-
-    // Add cross-edges (multi-parents)
-    const placedNodes = new Map(out.map((o) => [o.id, o]));
-    const linkKey = new Set(links.map((l) => `${l.from.id}->${l.to.id}`));
+    // STEP 5: Build links from edges; connect top-level families to root.
     for (const e of edges) {
-      const from = placedNodes.get(e.parent_id);
-      const to = placedNodes.get(e.child_id);
+      const from = nodeMap.get(e.parent_id);
+      const to = nodeMap.get(e.child_id);
       if (!from || !to) continue;
-      const key = `${from.id}->${to.id}`;
-      if (linkKey.has(key)) continue;
-      linkKey.add(key);
       links.push({ from, to });
+    }
+    for (const f of families) {
+      const ln = nodeMap.get(f.id);
+      if (ln) links.push({ from: root, to: ln });
     }
 
     return { nodes: out, links, size };
