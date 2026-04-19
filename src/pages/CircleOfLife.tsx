@@ -446,9 +446,13 @@ export default function CircleOfLife() {
           <div className="w-full overflow-auto">
             <svg
               ref={svgRef}
-              viewBox={`0 0 ${size} ${size}`}
-              className="w-full h-auto"
+              viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
+              className="w-full h-auto transition-all duration-500 ease-in-out"
               style={{ maxHeight: "85vh" }}
+              onClick={(e) => {
+                // Click on empty space resets focus
+                if (e.target === e.currentTarget) setFocusId(null);
+              }}
             >
               {/* Subtle ring guides */}
               {[0.13, 0.27, 0.42].map((r, i) => (
@@ -467,22 +471,23 @@ export default function CircleOfLife() {
               {/* Links */}
               <g>
                 {layout.links.map((l, i) => {
+                  const key = `${l.from.id}->${l.to.id}`;
+                  const isHighlighted = highlightedLinks.has(key);
                   const isHover =
-                    hoverId &&
-                    (l.from.id === hoverId ||
-                      l.to.id === hoverId ||
-                      // highlight chain to root
-                      false);
+                    hoverId && (l.from.id === hoverId || l.to.id === hoverId);
+                  const dimmed = focusId && !isHighlighted;
                   return (
                     <path
                       key={i}
                       d={linkPath(l.from, l.to)}
                       fill="none"
                       stroke={l.to.color}
-                      strokeOpacity={isHover ? 1 : 0.55}
+                      strokeOpacity={dimmed ? 0.08 : isHighlighted || isHover ? 1 : 0.55}
                       strokeWidth={
-                        l.to.depth === 1 ? 2.5 : l.to.depth === 2 ? 1.6 : 1
+                        (isHighlighted ? 1.5 : 1) *
+                        (l.to.depth === 1 ? 2.5 : l.to.depth === 2 ? 1.6 : 1)
                       }
+                      style={{ transition: "stroke-opacity 300ms, stroke-width 300ms" }}
                     />
                   );
                 })}
@@ -495,7 +500,6 @@ export default function CircleOfLife() {
                   const y = (n as any).y;
                   const r =
                     n.depth === 0 ? 28 : n.depth === 1 ? 14 : n.depth === 2 ? 8 : 5;
-                  // label rotation: tangent to circle, flipped on left half for readability
                   const angDeg = (n.angle * 180) / Math.PI;
                   const flip = n.angle > Math.PI / 2 && n.angle < (3 * Math.PI) / 2;
                   const labelRot = flip ? angDeg + 180 : angDeg;
@@ -503,22 +507,30 @@ export default function CircleOfLife() {
                   const lx = flip ? -labelOffset : labelOffset;
                   const anchor = flip ? "end" : "start";
                   const isRoot = n.depth === 0;
+                  const isHighlighted = highlightedNodes.has(n.id);
+                  const isFocus = focusId === n.id;
+                  const dimmed = focusId && !isHighlighted && !isRoot;
 
                   return (
                     <g
                       key={n.id}
                       onMouseEnter={() => setHoverId(n.id)}
                       onMouseLeave={() => setHoverId(null)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleNodeClick(n.id);
+                      }}
                       style={{ cursor: "pointer" }}
                     >
                       <circle
                         cx={x}
                         cy={y}
-                        r={r}
+                        r={isFocus ? r * 1.4 : r}
                         fill={n.color}
-                        stroke="hsl(220 15% 12%)"
-                        strokeWidth={1.5}
-                        opacity={hoverId && hoverId !== n.id ? 0.6 : 1}
+                        stroke={isFocus ? "hsl(45 95% 70%)" : "hsl(220 15% 12%)"}
+                        strokeWidth={isFocus ? 3 : 1.5}
+                        opacity={dimmed ? 0.18 : hoverId && hoverId !== n.id && !focusId ? 0.6 : 1}
+                        style={{ transition: "opacity 300ms, r 300ms, stroke-width 300ms" }}
                       />
                       {isRoot ? (
                         <text
@@ -528,6 +540,7 @@ export default function CircleOfLife() {
                           fontSize={fontFor(0)}
                           fontWeight="bold"
                           fill="hsl(220 15% 10%)"
+                          style={{ pointerEvents: "none" }}
                         >
                           ✶
                         </text>
@@ -543,7 +556,8 @@ export default function CircleOfLife() {
                             stroke="hsl(220 15% 8%)"
                             strokeWidth={3}
                             paintOrder="stroke"
-                            style={{ pointerEvents: "none" }}
+                            opacity={dimmed ? 0.25 : 1}
+                            style={{ pointerEvents: "none", transition: "opacity 300ms" }}
                           >
                             {n.label}
                           </text>
