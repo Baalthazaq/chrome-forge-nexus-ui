@@ -17,6 +17,7 @@ import {
   Loader2,
   LayoutGrid,
 } from "lucide-react";
+import CircleOfLifeDiagram from "@/components/CircleOfLifeDiagram";
 import {
   Dialog,
   DialogContent,
@@ -149,7 +150,11 @@ function buildSeedLayout() {
   return { nodes, edges };
 }
 
-const EvolutionTree = () => {
+interface EvolutionTreeProps {
+  initialView?: "tree" | "circle";
+}
+
+const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
   const canEdit = !!user && isAdmin;
@@ -163,6 +168,7 @@ const EvolutionTree = () => {
   const [pendingPositions, setPendingPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [saving, setSaving] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"tree" | "circle">(initialView);
   const [newLabel, setNewLabel] = useState("");
   const [newType, setNewType] = useState("race");
   const [newColor, setNewColor] = useState<string>(Object.values(FAMILY_COLORS)[0]);
