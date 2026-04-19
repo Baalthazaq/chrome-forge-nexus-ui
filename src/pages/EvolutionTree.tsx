@@ -391,13 +391,29 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
     };
     for (const n of nodes) computeDepth(n.id);
 
-    // Group nodes by their root family ancestor (depth-0 reachable ancestor).
-    // For multi-parent nodes, pick the family of the first parent (alphabetical) to keep stable.
+    const pickPrimaryParentId = (id: string): string | null => {
+      const ps = (parentsOf.get(id) ?? []).slice();
+      if (ps.length === 0) return null;
+      ps.sort((a, b) => {
+        const depthDiff = (depth.get(b) ?? 0) - (depth.get(a) ?? 0);
+        if (depthDiff !== 0) return depthDiff;
+        const ay = nodes.find((n) => n.id === a)?.y ?? 0;
+        const by = nodes.find((n) => n.id === b)?.y ?? 0;
+        if (ay !== by) return ay - by;
+        const al = nodes.find((n) => n.id === a)?.label ?? "";
+        const bl = nodes.find((n) => n.id === b)?.label ?? "";
+        return al.localeCompare(bl);
+      });
+      return ps[0];
+    };
+
+    // Group nodes by their root family ancestor.
+    // For multi-parent nodes, follow the deepest / most-specific parent path.
     const familyOf = new Map<string, string>(); // node id -> family node id
     const findFamily = (id: string): string => {
       if (familyOf.has(id)) return familyOf.get(id)!;
-      const ps = (parentsOf.get(id) ?? []).slice().sort();
-      const fam = ps.length === 0 ? id : findFamily(ps[0]);
+      const primaryParentId = pickPrimaryParentId(id);
+      const fam = primaryParentId ? findFamily(primaryParentId) : id;
       familyOf.set(id, fam);
       return fam;
     };
@@ -556,8 +572,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
       // Subtree-based layout (each parent centered on its children).
       const primaryParent = new Map<string, string | null>();
       for (const n of famNodes) {
-        const ps = (parentsOf.get(n.id) ?? []).slice().sort();
-        primaryParent.set(n.id, ps.length === 0 ? null : ps[0]);
+        primaryParent.set(n.id, pickPrimaryParentId(n.id));
       }
       const primaryChildren = new Map<string, NodeRow[]>();
       for (const n of famNodes) primaryChildren.set(n.id, []);
