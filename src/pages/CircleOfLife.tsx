@@ -211,7 +211,7 @@ export default function CircleOfLife() {
     // Synthetic root
     const root: LayoutNode = {
       id: ROOT_ID,
-      label: "Common Ancestor",
+      label: "The Source",
       type: "root",
       depth: 0,
       angle: 0,
