@@ -577,7 +577,7 @@ export default function CircleOfLife() {
                 fill="hsl(45 60% 75%)"
                 fontStyle="italic"
               >
-                Common Ancestor
+                The Source
               </text>
             </svg>
           </div>
