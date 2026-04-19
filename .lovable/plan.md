@@ -1,38 +1,38 @@
 
-## Unify Admin Dice Roller with Ribbon Panel
+Goal: Generate an .xlsx that lists every node from the Evolution Tree EXCEPT the final variant leaves (D3). For each listed node: a default weight, and a default "mate-up" probability of 33%.
 
-The admin dice tool (`public/tools/dice-roller.html`) and the in-app `DiceRollerRibbon.tsx` have drifted. Each fix to one requires re-implementing in the other. Let's consolidate.
+Source of truth:
+- `src/data/racegenData.ts` (RACES array — same data as racegen.html)
+- `src/components/circle-of-life-layout.ts` for hierarchy rules:
+  - Sub-family (D1.5): Elven under Fey, Dwarven under Giant (per prior plan — needs confirm but using as-is for now since user said proceed)
+  - Sub-race (D2.5): Drow under Elf
+  - Edge case: Umbragen reassigned from Elf → Drow
+- D1 = Root Family, D1.5 = Sub-Family, D2 = Race, D2.5 = Sub-Race, D3 = Variant (SKIPPED)
 
-### Approach: Replace the standalone HTML with the React component
+Weight rule per user:
+- Default weight = number of D3 variants that branch from that node (recursively counted)
+- Examples:
+  - Race "Elf" has 13 variants → weight 13
+  - Sub-race "Drow" has 3 variants (Selunite, Lolth-sworn, Drider) + Umbragen reassigned → 4
+  - Race "Elf" then loses Umbragen and the Drow row, so its leaf count under Elf = 13 (original variants minus Umbragen) = 12; total under Elf node = 12 + Drow's 4 = 16
+  - Family "Fey" = sum of leaves under all its descendants
+- Mate-up probability column: constant 0.33
 
-Rather than maintaining two parallel implementations (HTML/vanilla JS vs React/TSX), repoint the admin "Dice Roller" button to the existing ribbon component, mounted on a dedicated page.
+Output:
+- Single sheet "Tree (no variants)"
+- Columns: Node, Type (Family / Sub-Family / Race / Sub-Race), Parent, Weight (leaf count), Mate-Up Probability (0.33)
+- Sorted by Family → Sub-Family → Race → Sub-Race for readability
+- Saved to `/mnt/documents/racegen_tree_weights.xlsx`
 
-### Plan
+Algorithm:
+1. Build node list from `RACES` applying the three hierarchy overrides (Elven/Dwarven sub-families, Drow sub-race, Umbragen reassignment).
+2. Build parent→children map.
+3. For each non-D3 node, recursively count D3 descendants → that's the weight.
+4. Write rows in tree order with openpyxl, bold headers, freeze top row, auto-width.
+5. Run recalculate_formulas.py (no formulas here, but verify clean file).
+6. QA: convert sheet to image / read back top rows to confirm.
+7. Emit `<lov-artifact>`.
 
-1. **Create `src/pages/DiceRoller.tsx`**
-   - Full-page wrapper that mounts `<DiceRollerRibbon />` in an always-open state
-   - Header with "Back to Admin" button
-   - Admin-gated (redirects non-admins)
+Deliverable: `racegen_tree_weights.xlsx` ready for the user to edit weights before we rewrite the racegen algorithm.
 
-2. **Add a `defaultOpen` / `embedded` prop to `DiceRollerRibbon.tsx`**
-   - When `embedded=true`: panel is always open, no floating tab, fills container
-   - When omitted: current floating ribbon behaviour (preserves homepage usage)
-
-3. **Update `src/App.tsx`**
-   - Add route `/admin/dice-roller` → `DiceRoller` page
-
-4. **Update `src/pages/Admin.tsx`**
-   - Change the "Dice Roller" button from `window.open('/tools/dice-roller.html')` to `navigate('/admin/dice-roller')`
-
-5. **Retire `public/tools/dice-roller.html`**
-   - Leave file in place but unreferenced (safe rollback). Can delete later once confirmed.
-
-### Result
-
-Single source of truth for dice logic. Every future change to the ribbon (crit matching, colors, equation parsing, gradients, etc.) automatically applies to admin. Zero duplication.
-
-### Files touched
-- `src/components/DiceRollerRibbon.tsx` — add `embedded` prop
-- `src/pages/DiceRoller.tsx` — new
-- `src/App.tsx` — new route
-- `src/pages/Admin.tsx` — change navigation target
+After approval I'll switch to default mode and run the script.
