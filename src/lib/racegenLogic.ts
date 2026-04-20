@@ -328,6 +328,7 @@ export function rollSubject(nodes: EvoNode[], edges: EvoEdge[], options?: { seed
     edges,
     byId: new Map(nodes.map((n) => [n.id, n])),
     weightCache: new Map(),
+    effectiveWeightCache: new Map(),
     depth: 0,
   };
 
