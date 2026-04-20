@@ -7,7 +7,6 @@ import {
   getChildIds,
   getParentIds,
   getFamilyAncestor,
-  getSourceAncestor,
 } from "./evolutionGraph";
 import { TRAITS } from "@/data/traits";
 
