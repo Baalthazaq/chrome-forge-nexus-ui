@@ -882,6 +882,7 @@ export type Database = {
           id: string
           label: string
           mate_up_probability: number
+          reproduction_mode: string
           type: string
           updated_at: string
           weight: number
@@ -894,6 +895,7 @@ export type Database = {
           id?: string
           label: string
           mate_up_probability?: number
+          reproduction_mode?: string
           type?: string
           updated_at?: string
           weight?: number
@@ -906,6 +908,7 @@ export type Database = {
           id?: string
           label?: string
           mate_up_probability?: number
+          reproduction_mode?: string
           type?: string
           updated_at?: string
           weight?: number
