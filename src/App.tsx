@@ -51,6 +51,7 @@ import EncounterBuilder from "./pages/EncounterBuilder";
 import DiceRollerRibbon from "./components/DiceRollerRibbon";
 import DiceRoller from "./pages/DiceRoller";
 import CircleOfLife from "./pages/CircleOfLife";
+import Racegen from "./pages/Racegen";
 
 const queryClient = new QueryClient();
 
@@ -110,6 +111,7 @@ const App = () => (
             <Route path="/admin/dice-roller" element={<DiceRoller />} />
             <Route path="/circle-of-life" element={<CircleOfLife />} />
             <Route path="/admin/circle-of-life" element={<CircleOfLife />} />
+            <Route path="/admin/racegen" element={<Racegen />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

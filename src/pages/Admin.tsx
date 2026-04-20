@@ -138,7 +138,7 @@ const Admin = () => {
   const utilityTools = [
     { label: 'Character Tokens', desc: 'Token Generator', onClick: () => navigate('/admin/tokens') },
     { label: 'Dice Roller & Log', desc: 'Roll Dice + History', onClick: () => navigate('/admin/dice-roller') },
-    { label: 'Racegen', desc: 'Ancestry Generator', onClick: () => window.open('/tools/racegen.html', '_blank') },
+    { label: 'Racegen', desc: 'Ancestry Generator', onClick: () => navigate('/admin/racegen') },
     { label: 'Circle of Life', desc: 'Ancestry Tree & Circle', onClick: () => navigate('/admin/circle-of-life') },
     { label: 'Feature List', desc: 'App Features', onClick: () => navigate('/features') },
     { label: 'Data Export', desc: 'Export Tables', onClick: () => navigate('/admin/data-export') },

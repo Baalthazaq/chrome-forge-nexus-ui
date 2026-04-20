@@ -178,7 +178,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const [newLabel, setNewLabel] = useState("");
   const [newType, setNewType] = useState("race");
   const [newColor, setNewColor] = useState<string>(Object.values(FAMILY_COLORS)[0]);
-  const [editBuffer, setEditBuffer] = useState<{ label: string; type: string; color: string; weight: string; mate_up_probability: string; reproduction_mode: string } | null>(null);
+  const [editBuffer, setEditBuffer] = useState<{ label: string; type: string; color: string; weight: string; mate_up_probability: string; reproduction_mode: string; tags: string; host_required_tags: string; host_tag_match_mode: string } | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragState = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
@@ -788,14 +788,14 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
 
   const updateNode = async (
     id: string,
-    updates: { label?: string; type?: string; color?: string; weight?: number; mate_up_probability?: number; reproduction_mode?: string }
+    updates: { label?: string; type?: string; color?: string; weight?: number; mate_up_probability?: number; reproduction_mode?: string; tags?: string[]; host_required_tags?: string[]; host_tag_match_mode?: string }
   ) => {
     const { error } = await supabase.from("evolution_nodes").update(updates).eq("id", id);
     if (error) {
       toast.error("Failed to update: " + error.message);
       return;
     }
-    setNodes((prev) => prev.map((n) => (n.id === id ? { ...n, ...updates } : n)));
+    setNodes((prev) => prev.map((n) => (n.id === id ? { ...n, ...updates } as NodeRow : n)));
     toast.success("Node updated");
   };
 
@@ -820,13 +820,17 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
 
   useEffect(() => {
     if (selectedNode) {
+      const sn: any = selectedNode;
       setEditBuffer({
         label: selectedNode.label,
         type: selectedNode.type,
         color: selectedNode.color ?? Object.values(FAMILY_COLORS)[0],
-        weight: String((selectedNode as any).weight ?? 1),
-        mate_up_probability: String(Math.round(((selectedNode as any).mate_up_probability ?? 0.33) * 100)),
-        reproduction_mode: (selectedNode as any).reproduction_mode ?? "sexual",
+        weight: String(sn.weight ?? 1),
+        mate_up_probability: String(Math.round((sn.mate_up_probability ?? 0.33) * 100)),
+        reproduction_mode: sn.reproduction_mode ?? "sexual",
+        tags: (sn.tags ?? []).join(", "),
+        host_required_tags: (sn.host_required_tags ?? []).join(", "),
+        host_tag_match_mode: sn.host_tag_match_mode ?? "all",
       });
     } else {
       setEditBuffer(null);
@@ -992,47 +996,60 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                   {editBuffer.reproduction_mode === "created" && "Built by a creator. Mate-up % is reused as the creator's climb chance to leave this category."}
                 </p>
               </div>
-              {(editBuffer.label !== selectedNode.label ||
-                editBuffer.type !== selectedNode.type ||
-                editBuffer.color !== (selectedNode.color ?? "") ||
-                Number(editBuffer.weight || 0) !== ((selectedNode as any).weight ?? 1) ||
-                Number(editBuffer.mate_up_probability || 0) / 100 !== ((selectedNode as any).mate_up_probability ?? 0.33) ||
-                editBuffer.reproduction_mode !== ((selectedNode as any).reproduction_mode ?? "sexual")) && (
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    onClick={() =>
-                      updateNode(selectedNode.id, {
-                        label: editBuffer.label.trim(),
-                        type: editBuffer.type,
-                        color: editBuffer.color,
-                        weight: Math.max(0, Math.floor(Number(editBuffer.weight) || 0)),
-                        mate_up_probability: Math.min(1, Math.max(0, (Number(editBuffer.mate_up_probability) || 0) / 100)),
-                        reproduction_mode: editBuffer.reproduction_mode,
-                      })
-                    }
-                  >
-                    <Save className="h-3 w-3 mr-1" /> Save
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      setEditBuffer({
-                        label: selectedNode.label,
-                        type: selectedNode.type,
-                        color: selectedNode.color ?? Object.values(FAMILY_COLORS)[0],
-                        weight: String((selectedNode as any).weight ?? 1),
-                        mate_up_probability: String(Math.round(((selectedNode as any).mate_up_probability ?? 0.33) * 100)),
-                        reproduction_mode: (selectedNode as any).reproduction_mode ?? "sexual",
-                      })
-                    }
-                  >
-                    Reset
-                  </Button>
-                </div>
+              <div>
+                <Label className="text-xs">Tags (comma-separated, prefix with ! to remove inherited)</Label>
+                <Input
+                  value={editBuffer.tags}
+                  placeholder="Soul, Blood, !Biological"
+                  onChange={(e) => setEditBuffer({ ...editBuffer, tags: e.target.value })}
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Known tags: Soul, Blood, Biological, Mineral, Arcane, Elemental. Family/race labels are auto-tags.
+                </p>
+              </div>
+              {editBuffer.reproduction_mode === "transformed" && (
+                <>
+                  <div>
+                    <Label className="text-xs">Host Required Tags (comma-separated)</Label>
+                    <Input
+                      value={editBuffer.host_required_tags}
+                      placeholder="Blood, Soul"
+                      onChange={(e) => setEditBuffer({ ...editBuffer, host_required_tags: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Host Tag Match Mode</Label>
+                    <Select value={editBuffer.host_tag_match_mode} onValueChange={(v) => setEditBuffer({ ...editBuffer, host_tag_match_mode: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All required (AND)</SelectItem>
+                        <SelectItem value="any">Any required (OR)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
               )}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  onClick={() =>
+                    updateNode(selectedNode.id, {
+                      label: editBuffer.label.trim(),
+                      type: editBuffer.type,
+                      color: editBuffer.color,
+                      weight: Math.max(0, Math.floor(Number(editBuffer.weight) || 0)),
+                      mate_up_probability: Math.min(1, Math.max(0, (Number(editBuffer.mate_up_probability) || 0) / 100)),
+                      reproduction_mode: editBuffer.reproduction_mode,
+                      tags: editBuffer.tags.split(",").map(t => t.trim()).filter(Boolean),
+                      host_required_tags: editBuffer.host_required_tags.split(",").map(t => t.trim()).filter(Boolean),
+                      host_tag_match_mode: editBuffer.host_tag_match_mode,
+                    })
+                  }
+                >
+                  <Save className="h-3 w-3 mr-1" /> Save
+                </Button>
+              </div>
             </div>
           ) : (
             <>

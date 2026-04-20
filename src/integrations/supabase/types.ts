@@ -879,10 +879,13 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string
+          host_required_tags: string[]
+          host_tag_match_mode: string
           id: string
           label: string
           mate_up_probability: number
           reproduction_mode: string
+          tags: string[]
           type: string
           updated_at: string
           weight: number
@@ -892,10 +895,13 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string
+          host_required_tags?: string[]
+          host_tag_match_mode?: string
           id?: string
           label: string
           mate_up_probability?: number
           reproduction_mode?: string
+          tags?: string[]
           type?: string
           updated_at?: string
           weight?: number
@@ -905,10 +911,13 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string
+          host_required_tags?: string[]
+          host_tag_match_mode?: string
           id?: string
           label?: string
           mate_up_probability?: number
           reproduction_mode?: string
+          tags?: string[]
           type?: string
           updated_at?: string
           weight?: number
