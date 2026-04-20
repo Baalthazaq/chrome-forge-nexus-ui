@@ -7,6 +7,7 @@ import {
   getChildIds,
   getParentIds,
   getFamilyAncestor,
+  getSourceAncestor,
 } from "./evolutionGraph";
 import { TRAITS } from "@/data/traits";
 
@@ -197,33 +198,46 @@ function rollBirthableLineage(node: EvoNode, ctx: Ctx, share: number, gender: "M
     return lineage;
   }
 
-  // Sexual: two parents. One inherits this race; the other may "mate up" to a different family.
+  // Sexual: two parents. One inherits this race; the other may "mate up" — first to a different
+  // family within the same Source, then (rarer still) to anything across the entire graph.
   const family = getFamilyAncestor(node.id, ctx.nodes, ctx.edges);
-  const mateUp = Math.random() < (node.mate_up_probability ?? 0.33);
+  const source = getSourceAncestor(node.id, ctx.nodes, ctx.edges);
+  const mateUpProb = node.mate_up_probability ?? 0.33;
+  const mateUp = Math.random() < mateUpProb;
+  // Among mate-ups, the same proportion (mateUpProb) climbs past the Source to anywhere.
+  const climbPastSource = mateUp && Math.random() < mateUpProb;
 
   // Parent 1: same race
   ctx.depth++;
   const p1 = rollBirthableLineage(node, ctx, share / 2, "M");
   ctx.depth--;
 
-  // Parent 2: same family (default) or different family (mate-up)
+  // Parent 2: same family / source-cousin / wild
   let p2Race: EvoNode = node;
-  if (mateUp && family) {
-    // pick a different family
-    const otherFamilies = ctx.nodes.filter((n) => n.type === "family" && n.id !== family.id);
+  const birthable = (r: EvoNode) =>
+    r.reproduction_mode === "sexual" || r.reproduction_mode === "asexual";
+
+  if (mateUp && climbPastSource) {
+    // Wild: any birthable race anywhere (may include those outside the Source, e.g. Construct/Undead)
+    const all = ctx.nodes.filter((n) => n.type === "race" && birthable(n) && n.id !== node.id);
+    const r = pickRaceFromPool(all, ctx);
+    if (r) p2Race = r;
+  } else if (mateUp && family) {
+    // Source-cousin: a different family that shares the same Source ancestor (if any)
+    const otherFamilies = ctx.nodes.filter((n) => {
+      if (n.type !== "family" || n.id === family.id) return false;
+      if (!source) return true;
+      return getSourceAncestor(n.id, ctx.nodes, ctx.edges)?.id === source.id;
+    });
     const famPicked = pickRaceFromPool(otherFamilies, ctx);
     if (famPicked) {
-      const races = getRaceDescendants(famPicked.id, ctx).filter(
-        (r) => r.reproduction_mode === "sexual" || r.reproduction_mode === "asexual"
-      );
+      const races = getRaceDescendants(famPicked.id, ctx).filter(birthable);
       const r = pickRaceFromPool(races, ctx);
       if (r) p2Race = r;
     }
   } else if (family) {
-    // pick another race in same family
-    const sameFam = getRaceDescendants(family.id, ctx).filter(
-      (r) => r.reproduction_mode === "sexual" || r.reproduction_mode === "asexual"
-    );
+    // Same family
+    const sameFam = getRaceDescendants(family.id, ctx).filter(birthable);
     const r = pickRaceFromPool(sameFam, ctx);
     if (r) p2Race = r;
   }
