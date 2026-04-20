@@ -182,6 +182,8 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragState = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
+  const panState = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -304,42 +306,57 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes, pendingPositions]);
 
-  const onMouseDownNode = (e: React.MouseEvent, n: NodeRow) => {
+  // Convert a client (mouse/touch) point to canvas coords (accounting for pan).
+  const clientToCanvas = (clientX: number, clientY: number) => {
+    const svg = svgRef.current;
+    if (!svg) return { x: 0, y: 0 };
+    const rect = svg.getBoundingClientRect();
+    return { x: clientX - rect.left - pan.x, y: clientY - rect.top - pan.y };
+  };
+
+  const onPointerDownNode = (e: React.PointerEvent, n: NodeRow) => {
     setSelectedId(n.id);
     if (!canEdit) return;
-    if (linkSourceId) return; // don't drag during linking
+    if (linkSourceId) return;
+    e.stopPropagation();
     e.preventDefault();
-    const svg = svgRef.current;
-    if (!svg) return;
-    const pt = svg.createSVGPoint();
-    pt.x = e.clientX;
-    pt.y = e.clientY;
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return;
-    const local = pt.matrixTransform(ctm.inverse());
+    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    const local = clientToCanvas(e.clientX, e.clientY);
     const { x, y } = getEffectiveXY(n);
     dragState.current = { id: n.id, offsetX: local.x - x, offsetY: local.y - y };
   };
 
-  const onMouseMoveSvg = (e: React.MouseEvent) => {
-    if (!dragState.current) return;
-    const svg = svgRef.current;
-    if (!svg) return;
-    const pt = svg.createSVGPoint();
-    pt.x = e.clientX;
-    pt.y = e.clientY;
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return;
-    const local = pt.matrixTransform(ctm.inverse());
-    const { id, offsetX, offsetY } = dragState.current;
-    setPendingPositions((prev) => ({
-      ...prev,
-      [id]: { x: Math.max(0, local.x - offsetX), y: Math.max(0, local.y - offsetY) },
-    }));
+  const onPointerDownSvg = (e: React.PointerEvent) => {
+    // Only start panning if the press isn't on a node (nodes stop propagation).
+    panState.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      originX: pan.x,
+      originY: pan.y,
+    };
+    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
   };
 
-  const onMouseUpSvg = () => {
+  const onPointerMoveSvg = (e: React.PointerEvent) => {
+    if (dragState.current) {
+      const local = clientToCanvas(e.clientX, e.clientY);
+      const { id, offsetX, offsetY } = dragState.current;
+      setPendingPositions((prev) => ({
+        ...prev,
+        [id]: { x: Math.max(0, local.x - offsetX), y: Math.max(0, local.y - offsetY) },
+      }));
+      return;
+    }
+    if (panState.current) {
+      const dx = e.clientX - panState.current.startX;
+      const dy = e.clientY - panState.current.startY;
+      setPan({ x: panState.current.originX + dx, y: panState.current.originY + dy });
+    }
+  };
+
+  const onPointerUpSvg = () => {
     dragState.current = null;
+    panState.current = null;
   };
 
   const savePositions = async () => {
@@ -1202,16 +1219,34 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
           </div>
         ) : (
           <div className="flex gap-4">
-            <Card className="flex-1 overflow-auto" style={{ maxHeight: "75vh" }}>
+            <div
+              className="flex-1 min-w-0 relative rounded-md border border-border bg-card overflow-hidden"
+              style={{ height: "85vh" }}
+            >
+              <Button
+                size="sm"
+                variant="outline"
+                className="absolute top-2 right-2 z-10"
+                onClick={() => setPan({ x: 0, y: 0 })}
+              >
+                Reset View
+              </Button>
               <svg
                 ref={svgRef}
-                width={bounds.width}
-                height={bounds.height}
-                onMouseMove={onMouseMoveSvg}
-                onMouseUp={onMouseUpSvg}
-                onMouseLeave={onMouseUpSvg}
-                style={{ display: "block", cursor: dragState.current ? "grabbing" : "default" }}
+                width="100%"
+                height="100%"
+                onPointerDown={onPointerDownSvg}
+                onPointerMove={onPointerMoveSvg}
+                onPointerUp={onPointerUpSvg}
+                onPointerCancel={onPointerUpSvg}
+                onPointerLeave={onPointerUpSvg}
+                style={{
+                  display: "block",
+                  cursor: dragState.current ? "grabbing" : panState.current ? "grabbing" : "grab",
+                  touchAction: "none",
+                }}
               >
+                <g transform={`translate(${pan.x}, ${pan.y})`}>
                 {/* edges */}
                 {edges.map((e) => {
                   const from = nodes.find((n) => n.id === e.parent_id);
@@ -1273,8 +1308,8 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                     <g
                       key={n.id}
                       transform={`translate(${x}, ${y})`}
-                      style={{ cursor: canEdit ? "grab" : "pointer" }}
-                      onMouseDown={(e) => onMouseDownNode(e, n)}
+                      style={{ cursor: canEdit ? "grab" : "pointer", touchAction: "none" }}
+                      onPointerDown={(e) => onPointerDownNode(e, n)}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (linkSourceId && linkSourceId !== n.id) {
@@ -1309,8 +1344,9 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                     </g>
                   );
                 })}
+                </g>
               </svg>
-            </Card>
+            </div>
 
             {inspectorOpen && inspectorPanel}
         </div>
