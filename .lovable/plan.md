@@ -1,38 +1,56 @@
+## Reproduction Modes — Expanded Plan
 
-Goal: Generate an .xlsx that lists every node from the Evolution Tree EXCEPT the final variant leaves (D3). For each listed node: a default weight, and a default "mate-up" probability of 33%.
+Modeling all the special cases as a single `reproduction_mode` field on `evolution_nodes`, reusing the existing `mate_up_probability` machinery rather than inventing a parallel system.
 
-Source of truth:
-- `src/data/racegenData.ts` (RACES array — same data as racegen.html)
-- `src/components/circle-of-life-layout.ts` for hierarchy rules:
-  - Sub-family (D1.5): Elven under Fey, Dwarven under Giant (per prior plan — needs confirm but using as-is for now since user said proceed)
-  - Sub-race (D2.5): Drow under Elf
-  - Edge case: Umbragen reassigned from Elf → Drow
-- D1 = Root Family, D1.5 = Sub-Family, D2 = Race, D2.5 = Sub-Race, D3 = Variant (SKIPPED)
+### Modes (single `reproduction_mode` text column, default `'sexual'`)
 
-Weight rule per user:
-- Default weight = number of D3 variants that branch from that node (recursively counted)
-- Examples:
-  - Race "Elf" has 13 variants → weight 13
-  - Sub-race "Drow" has 3 variants (Selunite, Lolth-sworn, Drider) + Umbragen reassigned → 4
-  - Race "Elf" then loses Umbragen and the Drow row, so its leaf count under Elf = 13 (original variants minus Umbragen) = 12; total under Elf node = 12 + Drow's 4 = 16
-  - Family "Fey" = sum of leaves under all its descendants
-- Mate-up probability column: constant 0.33
 
-Output:
-- Single sheet "Tree (no variants)"
-- Columns: Node, Type (Family / Sub-Family / Race / Sub-Race), Parent, Weight (leaf count), Mate-Up Probability (0.33)
-- Sorted by Family → Sub-Family → Race → Sub-Race for readability
-- Saved to `/mnt/documents/racegen_tree_weights.xlsx`
+| Mode          | Meaning                                                               | Racegen behavior                                                                                               |
+| ------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `sexual`      | Standard two-parent                                                   | Existing climb-and-mix using `mate_up_probability`                                                             |
+| `asexual`     | Single parent of same lineage                                         | Pick one parent at this node's tier; no mate, no climb                                                         |
+| `transformed` | Originates from another race (Undead, Parasite Fungril, Blight Plant) | Roll a normal sexual lineage as the "host," then overlay this node as the result                               |
+| `created`     | Built by a creator                                                    | Pick one parent (the creator) using the same weighted + climb logic as `mate_up_probability`; no second parent |
 
-Algorithm:
-1. Build node list from `RACES` applying the three hierarchy overrides (Elven/Dwarven sub-families, Drow sub-race, Umbragen reassignment).
-2. Build parent→children map.
-3. For each non-D3 node, recursively count D3 descendants → that's the weight.
-4. Write rows in tree order with openpyxl, bold headers, freeze top row, auto-width.
-5. Run recalculate_formulas.py (no formulas here, but verify clean file).
-6. QA: convert sheet to image / read back top rows to confirm.
-7. Emit `<lov-artifact>`.
 
-Deliverable: `racegen_tree_weights.xlsx` ready for the user to edit weights before we rewrite the racegen algorithm.
+Inheritance: descendants inherit their nearest ancestor's mode unless they explicitly override.
 
-After approval I'll switch to default mode and run the script.
+### Why this covers everything
+
+- **Undead** → `transformed` (host = any sexual lineage, then "becomes undead")
+- **Constructs / Modron / Clank** → `created`. Re-using the `mate_up_probability` value as the "creator climb chance" means a low number keeps creators within Construct (your original 0% intent), a high number forces creators from other families. Default 33% gives a mix; you can edit per-node.
+- **Fungril** → `asexual` (single parent, same race)
+- **Parasite Fungril** → `transformed` (overlaid onto a host)
+- **Blight Plant** → `transformed` (same as Parasite)
+
+No need for a separate `creator_pool` column — the creator is picked using the same weighted tree + mate-up climb the standard algorithm already understands. This keeps the data model minimal and the editor simple.
+
+### Schema change (one column only)
+
+```sql
+ALTER TABLE public.evolution_nodes
+  ADD COLUMN IF NOT EXISTS reproduction_mode text NOT NULL DEFAULT 'sexual';
+-- (no CHECK constraint; we validate in the UI dropdown to keep it editable)
+```
+
+Then a data seed (separate insert/update step, not a migration) sets:
+
+- Undead family + race → `transformed`
+- Construct family, Modron sub-family, Clank race → `created`
+- Plant: Fungril → `asexual`; Awakened Plant stays `sexual`
+- The existing variant **Parasitic** under Fungril → `transformed`
+- **Blight** already exists under Plant as well and should be → `transformed` 
+
+### UI (Circle of Life detail panel only — nothing on canvas)
+
+Add to the editable side panel, beneath weight + mate-up:
+
+- **Reproduction Mode** dropdown: Sexual / Asexual / Transformed / Created
+- Helper text under the dropdown explaining how Racegen will treat it, including the note that `mate_up_probability` is reused as "creator climb chance" for `created` and is ignored for `asexual` and `transformed`.
+
+### Files that will change
+
+- New migration: add `reproduction_mode` column
+- Data seed (insert tool, not migration): set modes for Undead / Construct chain / Fungril; create Parasite Fungril node + edge; handle Blight Plant per answer below
+- `src/pages/CircleOfLife.tsx`: extend `editBuffer`, `updateNode`, and detail panel UI with the dropdown + helper text
+- `src/integrations/supabase/types.ts`: auto-regenerated
