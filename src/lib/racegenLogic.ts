@@ -109,7 +109,9 @@ interface Ctx {
   depth: number;
 }
 
-const MAX_DEPTH = 6;
+const MAX_DEPTH = 3;
+// Effective mate-up probability decays per generation of recursion.
+const MATE_UP_DECAY = 0.5;
 
 /** Roll a leaf race + variant identity from a given pool of race-type nodes (weighted). */
 function pickRaceFromPool(pool: EvoNode[], ctx: Ctx): EvoNode | null {
@@ -199,45 +201,52 @@ function rollBirthableLineage(node: EvoNode, ctx: Ctx, share: number, gender: "M
   }
 
   // Sexual: two parents. One inherits this race; the other may "mate up" — first to a different
-  // family within the same Source, then (rarer still) to anything across the entire graph.
+  // family within the same Source, then (rarer still) to a distant cousin under The Source.
+  // Sexual subjects can ONLY mate with other sexual races. Asexual races (e.g. Fungril) are excluded.
   const family = getFamilyAncestor(node.id, ctx.nodes, ctx.edges);
   const source = getSourceAncestor(node.id, ctx.nodes, ctx.edges);
-  const mateUpProb = node.mate_up_probability ?? 0.33;
+  const baseMateUpProb = node.mate_up_probability ?? 0.2;
+  // Decay mate-up odds with each generation of recursion to concentrate ancestry near the subject.
+  const mateUpProb = baseMateUpProb * Math.pow(MATE_UP_DECAY, ctx.depth);
   const mateUp = Math.random() < mateUpProb;
-  // Among mate-ups, the same proportion (mateUpProb) climbs past the Source to anywhere.
-  const climbPastSource = mateUp && Math.random() < mateUpProb;
+  // Among mate-ups, a smaller fraction climbs to a distant cousin (still under the same Source).
+  const climbPastFamily = mateUp && Math.random() < mateUpProb;
 
   // Parent 1: same race
   ctx.depth++;
   const p1 = rollBirthableLineage(node, ctx, share / 2, "M");
   ctx.depth--;
 
-  // Parent 2: same family / source-cousin / wild
+  // Parent 2: same family / source-cousin (sexual partners only)
   let p2Race: EvoNode = node;
-  const birthable = (r: EvoNode) =>
-    r.reproduction_mode === "sexual" || r.reproduction_mode === "asexual";
+  const sexualMate = (r: EvoNode) => r.reproduction_mode === "sexual" && r.id !== node.id;
 
-  if (mateUp && climbPastSource) {
-    // Wild: any birthable race anywhere (may include those outside the Source, e.g. Construct/Undead)
-    const all = ctx.nodes.filter((n) => n.type === "race" && birthable(n) && n.id !== node.id);
-    const r = pickRaceFromPool(all, ctx);
+  if (mateUp && climbPastFamily && source) {
+    // Wild (Source-bounded): any sexual race that shares the same Source ancestor, in a different family.
+    const cousins = ctx.nodes.filter((n) => {
+      if (n.type !== "race" || !sexualMate(n)) return false;
+      const nSource = getSourceAncestor(n.id, ctx.nodes, ctx.edges);
+      if (nSource?.id !== source.id) return false;
+      const nFam = getFamilyAncestor(n.id, ctx.nodes, ctx.edges);
+      return !family || nFam?.id !== family.id;
+    });
+    const r = pickRaceFromPool(cousins, ctx);
     if (r) p2Race = r;
-  } else if (mateUp && family) {
-    // Source-cousin: a different family that shares the same Source ancestor (if any)
+  } else if (mateUp && family && source) {
+    // Source-cousin: a different family that shares the same Source ancestor.
     const otherFamilies = ctx.nodes.filter((n) => {
       if (n.type !== "family" || n.id === family.id) return false;
-      if (!source) return true;
       return getSourceAncestor(n.id, ctx.nodes, ctx.edges)?.id === source.id;
     });
     const famPicked = pickRaceFromPool(otherFamilies, ctx);
     if (famPicked) {
-      const races = getRaceDescendants(famPicked.id, ctx).filter(birthable);
+      const races = getRaceDescendants(famPicked.id, ctx).filter(sexualMate);
       const r = pickRaceFromPool(races, ctx);
       if (r) p2Race = r;
     }
   } else if (family) {
-    // Same family
-    const sameFam = getRaceDescendants(family.id, ctx).filter(birthable);
+    // Same family — sexual partners only.
+    const sameFam = getRaceDescendants(family.id, ctx).filter(sexualMate);
     const r = pickRaceFromPool(sameFam, ctx);
     if (r) p2Race = r;
   }

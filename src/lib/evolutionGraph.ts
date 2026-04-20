@@ -48,7 +48,8 @@ export function resolveEffectiveTags(
     const node = byId.get(id);
     if (!node) return;
     // Auto-tag with the node's own label so e.g. "Dragon" or "Drow" is targetable.
-    additions.add(node.label);
+    // Source-typed nodes are excluded — "The Source" is structural, not a tag.
+    if (node.type !== "source") additions.add(node.label);
     for (const raw of node.tags ?? []) {
       const t = raw.trim();
       if (!t) continue;
