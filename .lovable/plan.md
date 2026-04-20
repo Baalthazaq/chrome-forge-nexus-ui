@@ -1,67 +1,66 @@
+# Racegen Logic Audit & Rebuild
 
+## Problems found
 
-# Link The Source as a Cross-Pollination Root
+1. **"The Source" leaks into tags.** `resolveEffectiveTags` auto-adds every ancestor's label as a tag. Source-typed nodes shouldn't auto-tag.
+2. **Mate-up probability is far too high (33% per generation).** With recursion depth 6, almost every subject has 2–3 mate-up events in their tree. A mate-up at the immediate-parent level contributes the full 50% DNA share, producing the "50% Fungril" outcome you saw.
+3. **Mate-up can pick incompatible reproduction modes as a partner.** Illumian (sexual) "mated up" to Fungril (asexual). A sexual subject cannot have an asexual mate — Fungril doesn't reproduce sexually with anyone, period. The cousin/wild pools currently allow any "birthable" race, including asexual ones.
+4. **Asexual recursion is pointless and corrupts DNA aggregation.** When the picked partner is asexual (Fungril), the recursion just stamps Fungril all the way down with full 50% share. That's why the example shows literally "50% Fungril."
+5. **Wild tier is too broad.** Even at low rates, the "climb past Source" branch lets Construct/Undead and other unrelated lines into a normal birth. That's not what cross-pollination through The Source is supposed to mean.
+6. **Identity vs lineage confusion in the example.** "Male Noble Illumian" with 50% Fungril DNA is internally consistent given the bugs above, but the resulting subject reads as nonsensical because the rolled identity (Illumian/Noble) is decoupled from the mostly-Fungril ancestry the engine generated.
 
-## Goal
-Connect The Source to most families so that, very rarely, a "mate-up" roll can cross between top-level families (e.g. Mortal × Draconic, Fey × Aetheris). Tag inheritance flows through The Source naturally. Transformation logic is unaffected.
+## Fixes
 
-## What changes
+### A. Stop auto-tagging The Source (`src/lib/evolutionGraph.ts`)
 
-### 1. Database edges (no schema change)
-Add `evolution_edges` rows from **The Source** as parent to each of the following family/race-root nodes (whatever exists at the top of each grouping today):
-- Mortal, Draconic, Fey, Plant, Elemental, Aetheris, Infernis, Mephling, Aberration, Modron
-- **Excluded**: Construct, Undead
+- In `resolveEffectiveTags`, skip the auto-label for nodes of `type === 'source'`. Their explicit `tags` (if ever set) still propagate; just the literal label "The Source" no longer becomes a tag.
 
-If any of those don't currently exist as standalone family nodes, the edge attaches to the next-highest node in that grouping.
+### B. Restrict mate-up partners to compatible reproduction (`src/lib/racegenLogic.ts`)
 
-### 2. Rolling logic — tiered mate-up (`src/lib/racegenLogic.ts`)
+- In `rollBirthableLineage`, when picking parent 2 for a **sexual** subject, the candidate pool is filtered to `reproduction_mode === 'sexual'` only. Asexual races (Fungril, etc.) are removed from same-family, source-cousin, and wild pools.
+- Asexual subjects keep their current single-parent recursion (one parent, same race).
 
-Currently, when a sexual race rolls a second parent, `mate_up_probability` (default 0.33) decides between "same family" and "different family." We extend this into three tiers:
+### C. Recalibrate mate-up probability defaults
 
-```
-Roll for parent 2:
-  ~96% → same family as parent 1 (existing same-family pick)
-  ~3.5% → different family, same Source ancestor
-       (pick another family that shares The Source as ancestor)
-  ~0.5% → unrelated (any birthable race anywhere)
-```
+- Lower seeded `mate_up_probability` from `0.33` → `0.2` for all family/race nodes via a data migration.
+- Tier split inside `rollBirthableLineage` is unchanged in shape:
+  - `same family`: `1 - p`  (~95%)
+  - `source-cousin`: `p * (1 - p)`  (~4.75%)
+  - `wild`: `p * p`  (~0.25%)
 
-Exact split is governed by `mate_up_probability` on the node:
-- `p_same_family   = 1 - mate_up_probability`             (default 0.67 → bumped to 0.96 by your tag tuning later, or we recalibrate the default)
-- `p_source_cousin = mate_up_probability * 0.875`         (~3.5% at default 0.04)
-- `p_wild          = mate_up_probability * 0.125`         (~0.5% at default 0.04)
+### D. Constrain "wild" to The Source's descendants
 
-To get the "96 / 3.5 / 0.5" feel by default, we'll lower the default `mate_up_probability` from `0.33` to `0.04` for the seeded races (data update, not schema).
+- Replace the "any birthable race anywhere" wild pool with "any birthable race whose Source ancestor matches the subject's Source ancestor." Effectively: cross-family mating never reaches Construct/Undead (which aren't linked to The Source). Wild becomes "very distant cousin under The Source" rather than "anything in the universe."
+- Subjects whose own race has no Source ancestor (e.g. Construct, Undead) get no wild tier — same family only.
 
-### 3. `getFamilyAncestor` — keep walking to The Source (per your call)
-We do NOT skip The Source. It remains a valid `family`-typed ancestor. To prevent it from collapsing all races into "same family" for the *normal* mate-up step, we change the resolution to return the **nearest family ancestor that is not The Source** for "same family" picks, while still allowing The Source to be the connecting node for the "source cousin" tier.
+### E. Limit lineage depth and decay mate-up by generation
 
-Implementation: add a small helper `getNearestNonSourceFamily(nodeId)` used by the same-family branch; The Source itself is identified by label === "The Source" (or by type `source` if we choose to introduce it — see Technical Notes).
+- Reduce `MAX_DEPTH` from `6` → `3`. Beyond great-grandparents, lineage stops branching (parents become same-race terminal nodes). Keeps the lineage tree readable and prevents deep recursion from inflating exotic-DNA percentages.
+- Multiply effective mate-up probability by `0.5` per generation of recursion. So if base `p = 0.05`: parent-level mate-up = 5%, grandparent-level = 2.5%, great-grandparent = 1.25%. Concentrates ancestry near the subject and makes deep-tree mate-ups rare.
 
-### 4. Tag inheritance
-No code change needed. `resolveEffectiveTags` already walks all ancestors, so any tags ever placed on The Source automatically flow to all linked descendants. (The Source currently has no tags, per your earlier direction.)
+### F. Variant identity sanity
 
-### 5. DNA aggregation
-No change needed. DNA aggregates by leaf race label from the lineage tree, not from graph edges. The Source never appears as a leaf.
-
-## What's NOT changing
-- Transformation host-matching (`host_required_tags`) — unaffected, still works on effective tags.
-- Variant promotion to identity — unaffected.
-- Asexual / created / transformed reproduction modes — unaffected.
-- The Circle of Life visual editor — will simply show the new edges.
+- When a chosen variant has reproduction mode `sexual` (e.g. Noble Illumian), it stays as a variant label on top of the parent race — this is already correct. No change needed here, but the example was confusing because the lineage looked nothing like the identity. With fixes A–E, the lineage will overwhelmingly be Illumian/Human with small mate-up sprinkles, matching expectations.
 
 ## Files touched
-- **Data update** (insert tool): add `evolution_edges` rows from The Source → each linked family; lower `mate_up_probability` defaults on seeded family/race nodes to ~0.04.
-- **`src/lib/evolutionGraph.ts`**: add `getNearestNonSourceFamily(nodeId, nodes, edges)` helper.
-- **`src/lib/racegenLogic.ts`**: replace the binary same-family/mate-up branch with the three-tier roll described above; use the new helper for the same-family pick.
 
-## Technical notes
-- "The Source" is identified by `label === 'The Source'`. If you'd prefer a structural marker, we can add `type = 'source'` in a follow-up — purely cosmetic for the logic.
-- The 96/3.5/0.5 split assumes `mate_up_probability = 0.04`. Per-node overrides still work: a race with `mate_up_probability = 0.5` would have ~50% same-family, ~44% source-cousin, ~6% wild.
-- "Source cousin" picks are weighted by `subtreeWeight` across families that share The Source, so big families (Mortal) will dominate that tier.
+- `src/lib/evolutionGraph.ts` — skip auto-tagging for `source` type.
+- `src/lib/racegenLogic.ts` — sexual-only partner filter for sexual subjects, source-bounded wild pool, depth reduction, per-generation probability decay.
+- **Data migration** — set `mate_up_probability = 0.05` on all `family` and `race` nodes (variants left alone).
 
 ## Out of scope
-- Visual rendering tweaks in the Circle of Life diagram (edges will just appear).
-- Adding tags to The Source itself.
-- Changing Construct / Undead — they remain disconnected from The Source.
 
+- Renaming or restructuring nodes (Plant/Fungril hierarchy).
+- Changing identity/variant naming in the result card.
+- Visual tweaks to the lineage tree component.
+
+## Expected outcome (Noble Illumian re-roll, after fixes)
+
+```
+Identity: Male Noble Illumian
+DNA:      ~94% Human, ~3% Elf, ~2% Dwarf, ~1% Drakona
+Lineage:  Illumian × Human (or sibling humanoid race), with a
+          rare humanoid cousin appearing at grandparent depth.
+```
+
+Fungril can no longer appear as a parent of a sexual subject. "The Source" no longer appears as a tag chip anywhere.
