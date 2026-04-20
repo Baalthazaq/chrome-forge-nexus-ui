@@ -1,122 +1,67 @@
-# Racegen Rebuild + Node Tag System
 
-## Part 1: Tag System (foundation for everything else)
 
-### Schema change
+# Link The Source as a Cross-Pollination Root
 
-Add a `tags` column to `evolution_nodes`:
+## Goal
+Connect The Source to most families so that, very rarely, a "mate-up" roll can cross between top-level families (e.g. Mortal × Draconic, Fey × Aetheris). Tag inheritance flows through The Source naturally. Transformation logic is unaffected.
 
-```sql
-ALTER TABLE public.evolution_nodes
-  ADD COLUMN IF NOT EXISTS tags text[] NOT NULL DEFAULT '{}';
+## What changes
+
+### 1. Database edges (no schema change)
+Add `evolution_edges` rows from **The Source** as parent to each of the following family/race-root nodes (whatever exists at the top of each grouping today):
+- Mortal, Draconic, Fey, Plant, Elemental, Aetheris, Infernis, Mephling, Aberration, Modron
+- **Excluded**: Construct, Undead
+
+If any of those don't currently exist as standalone family nodes, the edge attaches to the next-highest node in that grouping.
+
+### 2. Rolling logic — tiered mate-up (`src/lib/racegenLogic.ts`)
+
+Currently, when a sexual race rolls a second parent, `mate_up_probability` (default 0.33) decides between "same family" and "different family." We extend this into three tiers:
+
+```
+Roll for parent 2:
+  ~96% → same family as parent 1 (existing same-family pick)
+  ~3.5% → different family, same Source ancestor
+       (pick another family that shares The Source as ancestor)
+  ~0.5% → unrelated (any birthable race anywhere)
 ```
 
-### How tags work
+Exact split is governed by `mate_up_probability` on the node:
+- `p_same_family   = 1 - mate_up_probability`             (default 0.67 → bumped to 0.96 by your tag tuning later, or we recalibrate the default)
+- `p_source_cousin = mate_up_probability * 0.875`         (~3.5% at default 0.04)
+- `p_wild          = mate_up_probability * 0.125`         (~0.5% at default 0.04)
 
-- Every node has a `tags` array (e.g. `['Soul']`, `['Blood']`, `['Biological']`).
-- **Inheritance is computed at read time, not stored.** A node's *effective* tags = its own tags ∪ all ancestor tags, walking up the evolution graph through The Source.
-- A node can **add** tags its ancestors don't have.
-- A node can **remove** an inherited tag by prefixing with `!` (e.g. `!Biological` on Construct strips the inherited bio tag). Stored as plain strings; the resolver handles the `!` prefix.
-- Tags are free-form text, but the Circle of Life editor offers a quick-pick list of known tags (`Soul`, `Blood`, `Biological`, `Mineral`, `Arcane`, `Elemental`) plus a free-text field for new ones.
+To get the "96 / 3.5 / 0.5" feel by default, we'll lower the default `mate_up_probability` from `0.33` to `0.04` for the seeded races (data update, not schema).
 
-### Seed data (initial tag assignments)
+### 3. `getFamilyAncestor` — keep walking to The Source (per your call)
+We do NOT skip The Source. It remains a valid `family`-typed ancestor. To prevent it from collapsing all races into "same family" for the *normal* mate-up step, we change the resolution to return the **nearest family ancestor that is not The Source** for "same family" picks, while still allowing The Source to be the connecting node for the "source cousin" tier.
 
-- **The Source** → `['Biological']` (default for everything mortal)
-- **Construct family** → `['!Biological', 'Mineral']` (overrides the inherited bio tag)
-- **Undead family** → no change at family level; specific races below add what they need
-- **Aetheris, Mephling, Infernis, Elemental families** → add `Arcane` or `Elemental` as appropriate
+Implementation: add a small helper `getNearestNonSourceFamily(nodeId)` used by the same-family branch; The Source itself is identified by label === "The Source" (or by type `source` if we choose to introduce it — see Technical Notes).
 
-### UI in Circle of Life detail panel
+### 4. Tag inheritance
+No code change needed. `resolveEffectiveTags` already walks all ancestors, so any tags ever placed on The Source automatically flow to all linked descendants. (The Source currently has no tags, per your earlier direction.)
 
-- New **Tags** field (chip input) below the existing fields.
-- Helper text: "Tags are inherited from parents. Prefix with `!` to remove an inherited tag."
-- A read-only **Effective Tags** line shows the resolved set (helpful when editing).
+### 5. DNA aggregation
+No change needed. DNA aggregates by leaf race label from the lineage tree, not from graph edges. The Source never appears as a leaf.
 
----
+## What's NOT changing
+- Transformation host-matching (`host_required_tags`) — unaffected, still works on effective tags.
+- Variant promotion to identity — unaffected.
+- Asexual / created / transformed reproduction modes — unaffected.
+- The Circle of Life visual editor — will simply show the new edges.
 
-## Part 2: Reproduction Modes — now driven by tag requirements
+## Files touched
+- **Data update** (insert tool): add `evolution_edges` rows from The Source → each linked family; lower `mate_up_probability` defaults on seeded family/race nodes to ~0.04.
+- **`src/lib/evolutionGraph.ts`**: add `getNearestNonSourceFamily(nodeId, nodes, edges)` helper.
+- **`src/lib/racegenLogic.ts`**: replace the binary same-family/mate-up branch with the three-tier roll described above; use the new helper for the same-family pick.
 
-The four modes (`sexual`, `asexual`, `transformed`, `created`) work as previously planned, **but `transformed` gains an optional `host_required_tags` filter**.
-
-### New optional column on `evolution_nodes`
-
-```sql
-ALTER TABLE public.evolution_nodes
-  ADD COLUMN IF NOT EXISTS host_required_tags text[] NOT NULL DEFAULT '{}';
-```
-
-When the generator rolls a `transformed` node:
-
-1. Look at the node's parent in the tree.
-2. **If the parent is a real birthable race** (its own mode is `sexual` or `asexual`), use it as the host directly. → Drider uses Drow.
-3. **If the parent is itself `transformed` or a category root with no birthable form** (Undead, Construct), climb to The Source and roll a sexual lineage from any other family **whose effective tags include all of `host_required_tags**`.
-
-### Seed data for transformed races
-
-- **Vampire / Vampire Spawn** → `host_required_tags = ['Blood']` (excludes Constructs which removed Biological → no Blood-bearing flesh; includes mortals)
-- **Ghost / Banshee / Wraith / Poltergeist / Will-o'-Wisp** → `host_required_tags = ['Soul']`
-- **Zombie / Skeleton / Flaming Skeleton / Crawling Claw / Mummy / Ghoul / Revenant** → `host_required_tags = ['Biological']`
-- **Dracolich** → `host_required_tags = ['Soul', 'Biological']` and we further narrow to Draconic family in code (handled below)
-- **Drider** → no tags needed; parent (Drow) is birthable, branch 1 fires
-- **Blight Plant, Parasite Fungril** → `host_required_tags = ['Biological']`
-
-### Narrowing beyond tags (rare cases)
-
-For a couple of races (Dracolich) the host needs a specific *family*, not just a tag. We can handle this by including Families and Race names in the tags by default. This will allow transformations to work on specific races/variants/and families if needed.   
-  
-We also need a mechanism for a transformation to require ALL tags, or ANY tag. 
-
-### Gender inheritance
-
-- `transformed` subjects **inherit gender from the host roll** (per your answer for Drider). Result card shows the host's gender; no separate gender roll for the transformed identity.
-- This applies uniformly: Vampire inherits from the rolled mortal, Drider inherits from the rolled Drow, etc.
-
----
-
-## Part 3: Worked examples with the new system
-
-**Drider:**
-
-1. Mode = `transformed`, parent = Drow (mode `sexual`, birthable). Branch 1.
-2. Roll a normal Drow lineage with mate-up checks. Get e.g. female Lolth-sworn Drow with Selunite × Lolth-sworn parents.
-3. Identity = Drider, gender = female (inherited).
-
-**Vampire:**
-
-1. Mode = `transformed`, parent = Undead (no birthable form). Branch 2.
-2. `host_required_tags = ['Blood']`. Filter all families: Constructs out (they removed Biological, so no Blood inheritance), Mephling/Aetheris out unless they carry Blood, mortals in. Weighted roll picks e.g. Human.
-3. Roll a full sexual Human lineage. Get e.g. male Alaethean Human, Tomber × Alaethean parents.
-4. Identity = Vampire, gender = male (inherited).
-
-**Ghost:**
-
-1. Same as Vampire but with `host_required_tags = ['Soul']`. Soul is on The Source by default, so most families qualify; Constructs are excluded only if they explicitly remove Soul (we'll seed `!Soul` on Construct too).
-
----
-
-## Part 4: Racegen page (unchanged from prior plan, plus tag awareness)
-
-Same scope as before:
-
-- New `/admin/racegen` page replacing the static HTML tool.
-- Pulls live from `evolution_nodes` + `evolution_edges`.
-- Pure functions in `src/lib/racegenLogic.ts` for rolling, tag resolution, host filtering, DNA accounting.
-- Lineage tree displays effective tags as small chips on each node, plus the `[A]`/`[T]`/`[C]` mode badges.
-- Adding a new race/family/tag in Circle of Life immediately changes Racegen output — no code edits needed.
-
-## Files
-
-- **Migration**: add `tags`, `host_required_tags`, `host_family_filter` columns to `evolution_nodes`.
-- **Data seed (insert tool)**: assign initial tags to The Source, Construct, Undead races, transformed races' host requirements.
-- `**src/pages/CircleOfLife.tsx**`: add Tags chip input and Effective Tags readout to the detail panel.
-- `**src/pages/Racegen.tsx**`: new page.
-- `**src/lib/racegenLogic.ts**`: new module — `resolveEffectiveTags`, `pickHost`, `rollLineage`, `rollSubject`, etc.
-- `**src/lib/evolutionGraph.ts**` (new helper): tag resolution + ancestor walking, shared between CircleOfLife and Racegen.
-- `**src/data/traits.ts**`: extracted trait word lists.
-- `**src/App.tsx**` + `**src/pages/Admin.tsx**`: route + nav link.
+## Technical notes
+- "The Source" is identified by `label === 'The Source'`. If you'd prefer a structural marker, we can add `type = 'source'` in a follow-up — purely cosmetic for the logic.
+- The 96/3.5/0.5 split assumes `mate_up_probability = 0.04`. Per-node overrides still work: a race with `mate_up_probability = 0.5` would have ~50% same-family, ~44% source-cousin, ~6% wild.
+- "Source cousin" picks are weighted by `subtreeWeight` across families that share The Source, so big families (Mortal) will dominate that tier.
 
 ## Out of scope
+- Visual rendering tweaks in the Circle of Life diagram (edges will just appear).
+- Adding tags to The Source itself.
+- Changing Construct / Undead — they remain disconnected from The Source.
 
-- Editing nodes from Racegen.
-- Persisting generated subjects.
-- Auto-suggesting tags based on race name (you set them manually in the editor).
