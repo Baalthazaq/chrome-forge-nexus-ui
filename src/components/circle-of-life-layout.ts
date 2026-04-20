@@ -4,6 +4,7 @@ export interface CircleNodeRow {
   type: string;
   color: string | null;
   y: number;
+  reproduction_mode?: string;
 }
 
 export interface CircleEdgeRow {
