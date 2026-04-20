@@ -131,6 +131,26 @@ function pickRaceFromPool(pool: EvoNode[], ctx: Ctx): EvoNode | null {
   return picked?.node ?? null;
 }
 
+/** Get all descendant 'race' nodes under a family (or just return the node if it's already race-typed) */
+function getRaceDescendants(nodeId: string, ctx: Ctx): EvoNode[] {
+  const node = ctx.byId.get(nodeId);
+  if (!node) return [];
+  if (node.type === "race") return [node];
+  const out: EvoNode[] = [];
+  const stack = getChildIds(nodeId, ctx.edges);
+  const seen = new Set<string>();
+  while (stack.length) {
+    const cid = stack.pop()!;
+    if (seen.has(cid)) continue;
+    seen.add(cid);
+    const c = ctx.byId.get(cid);
+    if (!c) continue;
+    if (c.type === "race") out.push(c);
+    else stack.push(...getChildIds(cid, ctx.edges));
+  }
+  return out;
+}
+
 /** Pick a variant child of a race (if any). Variants are weighted. */
 function pickVariant(raceId: string, ctx: Ctx): EvoNode | null {
   const variantIds = getChildIds(raceId, ctx.edges);
