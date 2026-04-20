@@ -266,12 +266,12 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
     load();
   }, [load]);
 
-  // Visible nodes after filter
+  // Visible nodes after filter — match only nodes whose label contains the filter,
+  // plus their direct ancestors so context to the family root remains visible.
   const visibleIds = useMemo(() => {
     if (!filter.trim()) return new Set(nodes.map((n) => n.id));
     const f = filter.toLowerCase();
     const direct = new Set(nodes.filter((n) => n.label.toLowerCase().includes(f)).map((n) => n.id));
-    // Include ancestors and descendants of any matching node
     const result = new Set(direct);
     let changed = true;
     while (changed) {
@@ -279,10 +279,6 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
       for (const e of edges) {
         if (result.has(e.child_id) && !result.has(e.parent_id)) {
           result.add(e.parent_id);
-          changed = true;
-        }
-        if (result.has(e.parent_id) && !result.has(e.child_id)) {
-          result.add(e.child_id);
           changed = true;
         }
       }
