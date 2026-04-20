@@ -1198,7 +1198,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                 onFocusChange={setSelectedId}
               />
             </div>
-            {inspectorPanel}
+            {inspectorOpen && inspectorPanel}
           </div>
         ) : (
           <div className="flex gap-4">
