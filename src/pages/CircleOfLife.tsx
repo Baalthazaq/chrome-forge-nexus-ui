@@ -943,10 +943,40 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
         </div>
 
         {viewMode === "circle" ? (
-          <CircleOfLifeDiagram
-            nodes={nodes.map((n) => ({ id: n.id, label: n.label, type: n.type, color: n.color, y: getEffectiveXY(n).y }))}
-            edges={edges}
-          />
+          <div className="flex gap-4">
+            <div className="flex-1 min-w-0">
+              <CircleOfLifeDiagram
+                nodes={nodes.map((n) => ({ id: n.id, label: n.label, type: n.type, color: n.color, y: getEffectiveXY(n).y }))}
+                edges={edges}
+                focusId={selectedId}
+                onFocusChange={setSelectedId}
+              />
+            </div>
+            {/* Reuse the same inspector as the tree view */}
+            <Card className="w-80 p-4 space-y-3 self-start sticky top-4 max-h-[85vh] overflow-auto">
+              <h3 className="font-semibold">Inspector</h3>
+              {!selectedNode && (
+                <p className="text-sm text-muted-foreground">
+                  Click a node in the wheel to focus it. The diagram will rotate and zoom to its lineage.
+                </p>
+              )}
+              {selectedNode && editBuffer && (
+                <p className="text-xs text-muted-foreground">
+                  Editing <strong>{selectedNode.label}</strong>. Use the side panel below in tree view for full edit controls, or switch to tree view.
+                </p>
+              )}
+              {selectedNode && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setViewMode("tree")}
+                >
+                  Edit in Tree view
+                </Button>
+              )}
+            </Card>
+          </div>
         ) : (
           <div className="flex gap-4">
             <Card className="flex-1 overflow-auto" style={{ maxHeight: "75vh" }}>
