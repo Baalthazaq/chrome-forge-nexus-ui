@@ -1242,10 +1242,13 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                 size="sm"
                 variant="outline"
                 className="absolute top-2 right-2 z-10"
-                onClick={() => setPan({ x: 0, y: 0 })}
+                onClick={() => { setPan({ x: 0, y: 0 }); setZoom(1); }}
               >
                 Reset View
               </Button>
+              <div className="absolute top-2 right-28 z-10 text-xs text-muted-foreground bg-card/80 px-2 py-1 rounded border border-border">
+                {Math.round(zoom * 100)}%
+              </div>
               <svg
                 ref={svgRef}
                 width="100%"
@@ -1255,13 +1258,14 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                 onPointerUp={onPointerUpSvg}
                 onPointerCancel={onPointerUpSvg}
                 onPointerLeave={onPointerUpSvg}
+                onWheel={onWheelSvg}
                 style={{
                   display: "block",
                   cursor: dragState.current ? "grabbing" : panState.current ? "grabbing" : "grab",
                   touchAction: "none",
                 }}
               >
-                <g transform={`translate(${pan.x}, ${pan.y})`}>
+                <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
                 {/* edges */}
                 {edges.map((e) => {
                   const from = nodes.find((n) => n.id === e.parent_id);
