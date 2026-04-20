@@ -414,7 +414,10 @@ export function rollSubject(nodes: EvoNode[], edges: EvoEdge[], options?: { seed
     case "sexual":
     default: {
       gender = rollGender();
-      lineage = rollBirthableLineage(identity, ctx, 1, gender);
+      // Use the variant as the lineage leaf when one was chosen, so the
+      // subject + same-race parent retain the variant label (e.g. Lightfoot Halfling).
+      const leafNode = variant ?? identity;
+      lineage = rollBirthableLineage(leafNode, ctx, 1, gender);
       break;
     }
   }
