@@ -94,7 +94,8 @@ export function getParentIds(nodeId: string, edges: EvoEdge[]): string[] {
   return edges.filter((e) => e.child_id === nodeId).map((e) => e.parent_id);
 }
 
-/** Find the family ancestor (type === 'family') for a node, if any */
+/** Find the family ancestor (type === 'family') for a node, if any.
+ *  "The Source" (type 'source') is intentionally NOT a family — it sits above families. */
 export function getFamilyAncestor(
   nodeId: string,
   nodes: EvoNode[],
@@ -106,6 +107,22 @@ export function getFamilyAncestor(
   for (const aid of getAncestorIds(nodeId, edges)) {
     const a = byId.get(aid);
     if (a?.type === "family") return a;
+  }
+  return null;
+}
+
+/** Find the Source ancestor (type === 'source') for a node, if any. */
+export function getSourceAncestor(
+  nodeId: string,
+  nodes: EvoNode[],
+  edges: EvoEdge[]
+): EvoNode | null {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const self = byId.get(nodeId);
+  if (self?.type === "source") return self;
+  for (const aid of getAncestorIds(nodeId, edges)) {
+    const a = byId.get(aid);
+    if (a?.type === "source") return a;
   }
   return null;
 }
