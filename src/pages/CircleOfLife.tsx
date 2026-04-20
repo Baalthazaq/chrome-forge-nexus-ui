@@ -1219,16 +1219,34 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
           </div>
         ) : (
           <div className="flex gap-4">
-            <Card className="flex-1 overflow-auto" style={{ maxHeight: "75vh" }}>
+            <div
+              className="flex-1 min-w-0 relative rounded-md border border-border bg-card overflow-hidden"
+              style={{ height: "85vh" }}
+            >
+              <Button
+                size="sm"
+                variant="outline"
+                className="absolute top-2 right-2 z-10"
+                onClick={() => setPan({ x: 0, y: 0 })}
+              >
+                Reset View
+              </Button>
               <svg
                 ref={svgRef}
-                width={bounds.width}
-                height={bounds.height}
-                onMouseMove={onMouseMoveSvg}
-                onMouseUp={onMouseUpSvg}
-                onMouseLeave={onMouseUpSvg}
-                style={{ display: "block", cursor: dragState.current ? "grabbing" : "default" }}
+                width="100%"
+                height="100%"
+                onPointerDown={onPointerDownSvg}
+                onPointerMove={onPointerMoveSvg}
+                onPointerUp={onPointerUpSvg}
+                onPointerCancel={onPointerUpSvg}
+                onPointerLeave={onPointerUpSvg}
+                style={{
+                  display: "block",
+                  cursor: dragState.current ? "grabbing" : panState.current ? "grabbing" : "grab",
+                  touchAction: "none",
+                }}
               >
+                <g transform={`translate(${pan.x}, ${pan.y})`}>
                 {/* edges */}
                 {edges.map((e) => {
                   const from = nodes.find((n) => n.id === e.parent_id);
@@ -1290,8 +1308,8 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                     <g
                       key={n.id}
                       transform={`translate(${x}, ${y})`}
-                      style={{ cursor: canEdit ? "grab" : "pointer" }}
-                      onMouseDown={(e) => onMouseDownNode(e, n)}
+                      style={{ cursor: canEdit ? "grab" : "pointer", touchAction: "none" }}
+                      onPointerDown={(e) => onPointerDownNode(e, n)}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (linkSourceId && linkSourceId !== n.id) {
@@ -1326,8 +1344,9 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                     </g>
                   );
                 })}
+                </g>
               </svg>
-            </Card>
+            </div>
 
             {inspectorOpen && inspectorPanel}
         </div>
