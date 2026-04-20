@@ -1242,7 +1242,32 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                 size="sm"
                 variant="outline"
                 className="absolute top-2 right-2 z-10"
-                onClick={() => { setPan({ x: 0, y: 0 }); setZoom(1); }}
+                onClick={() => {
+                  const visibleNodes = nodes.filter((n) => visibleIds.has(n.id));
+                  if (visibleNodes.length === 0) {
+                    setPan({ x: 0, y: 0 }); setZoom(1);
+                    return;
+                  }
+                  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                  for (const n of visibleNodes) {
+                    const { x, y } = getEffectiveXY(n);
+                    if (x < minX) minX = x;
+                    if (y < minY) minY = y;
+                    if (x + NODE_W > maxX) maxX = x + NODE_W;
+                    if (y + NODE_H > maxY) maxY = y + NODE_H;
+                  }
+                  const rect = svgRef.current?.getBoundingClientRect();
+                  const vw = rect?.width ?? 800;
+                  const vh = rect?.height ?? 600;
+                  const padding = 40;
+                  const contentW = maxX - minX;
+                  const contentH = maxY - minY;
+                  const newZoom = Math.max(0.2, Math.min(3, Math.min((vw - padding * 2) / contentW, (vh - padding * 2) / contentH)));
+                  const cx = (minX + maxX) / 2;
+                  const cy = (minY + maxY) / 2;
+                  setZoom(newZoom);
+                  setPan({ x: vw / 2 - cx * newZoom, y: vh / 2 - cy * newZoom });
+                }}
               >
                 Reset View
               </Button>
