@@ -303,12 +303,30 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes, pendingPositions]);
 
-  // Convert a client (mouse/touch) point to canvas coords (accounting for pan).
+  // Convert a client (mouse/touch) point to canvas coords (accounting for pan + zoom).
   const clientToCanvas = (clientX: number, clientY: number) => {
     const svg = svgRef.current;
     if (!svg) return { x: 0, y: 0 };
     const rect = svg.getBoundingClientRect();
-    return { x: clientX - rect.left - pan.x, y: clientY - rect.top - pan.y };
+    return {
+      x: (clientX - rect.left - pan.x) / zoom,
+      y: (clientY - rect.top - pan.y) / zoom,
+    };
+  };
+
+  const onWheelSvg = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    const newZoom = Math.max(0.2, Math.min(3, zoom * factor));
+    // Keep the point under the cursor stationary in canvas space.
+    const k = newZoom / zoom;
+    setPan({ x: cx - (cx - pan.x) * k, y: cy - (cy - pan.y) * k });
+    setZoom(newZoom);
   };
 
   const onPointerDownNode = (e: React.PointerEvent, n: NodeRow) => {
