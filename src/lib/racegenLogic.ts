@@ -7,7 +7,6 @@ import {
   getChildIds,
   getParentIds,
   getFamilyAncestor,
-  getSourceAncestor,
 } from "./evolutionGraph";
 import { TRAITS } from "@/data/traits";
 
@@ -105,6 +104,8 @@ interface Ctx {
   edges: EvoEdge[];
   byId: Map<string, EvoNode>;
   weightCache: Map<string, number>;
+  // Cache of weight * mate_up_probability per node, used for partner pool weighting.
+  effectiveWeightCache: Map<string, number>;
   // Block infinite recursion / category cycling.
   depth: number;
 }
@@ -112,6 +113,15 @@ interface Ctx {
 const MAX_DEPTH = 3;
 // Effective mate-up probability decays per generation of recursion.
 const MATE_UP_DECAY = 0.5;
+
+function getEffectiveWeight(nodeId: string, ctx: Ctx): number {
+  const cached = ctx.effectiveWeightCache.get(nodeId);
+  if (cached !== undefined) return cached;
+  const n = ctx.byId.get(nodeId);
+  const w = Math.max(0.0001, (n?.weight ?? 1) * (n?.mate_up_probability ?? 0.2));
+  ctx.effectiveWeightCache.set(nodeId, w);
+  return w;
+}
 
 /** Roll a leaf race + variant identity from a given pool of race-type nodes (weighted). */
 function pickRaceFromPool(pool: EvoNode[], ctx: Ctx): EvoNode | null {
@@ -152,8 +162,7 @@ function pickVariant(raceId: string, ctx: Ctx): EvoNode | null {
   return picked?.node ?? null;
 }
 
-/** Find host candidates whose effective tags satisfy the host_required_tags filter.
- *  Hosts must be birthable races (sexual/asexual). Variants and transforms are skipped. */
+/** Find host candidates whose effective tags satisfy the host_required_tags filter. */
 function findHostCandidates(targetNode: EvoNode, ctx: Ctx): EvoNode[] {
   const required = targetNode.host_required_tags ?? [];
   const matchAll = (targetNode.host_tag_match_mode ?? "all") === "all";
@@ -168,14 +177,78 @@ function findHostCandidates(targetNode: EvoNode, ctx: Ctx): EvoNode[] {
   });
 }
 
-/** A node "drives" reproduction if it has a non-default mode. Variants with transformed/created/asexual
- *  modes act as the identity for the rolled subject, overriding their parent race's mode. */
+/** A node "drives" reproduction if it has a non-default mode. */
 function isTransformIdentity(n: EvoNode): boolean {
   return n.reproduction_mode === "transformed" || n.reproduction_mode === "created";
 }
 
-/** Roll a "birthable" lineage subtree: handles sexual + asexual modes only. Used as the
- *  basis for both top-level rolls and as host lineages for transformed subjects. */
+/** First structural parent of a node, preferring non-source parents. */
+function getPrimaryParent(nodeId: string, ctx: Ctx): EvoNode | null {
+  const parentIds = getParentIds(nodeId, ctx.edges);
+  const parents = parentIds.map((id) => ctx.byId.get(id)).filter((n): n is EvoNode => !!n);
+  if (parents.length === 0) return null;
+  const nonSource = parents.find((p) => p.type !== "source");
+  return nonSource ?? parents[0];
+}
+
+/** Recursively descend from a node to a leaf (race or variant), weighted by effectiveWeight.
+ *  Sexual-only filter applied at every layer. Returns null if no valid leaf exists. */
+function pickLeafDescendant(rootId: string, ctx: Ctx): EvoNode | null {
+  const root = ctx.byId.get(rootId);
+  if (!root) return null;
+
+  // If this is itself a sexual leaf race/variant with no children that qualify, return it.
+  const childIds = getChildIds(rootId, ctx.edges);
+  const sexualChildren = childIds
+    .map((id) => ctx.byId.get(id))
+    .filter((n): n is EvoNode => !!n && (n.type === "source" || n.type === "family" || n.reproduction_mode === "sexual"));
+
+  if (sexualChildren.length === 0) {
+    // Leaf level. Accept only if root is sexual race/variant.
+    if ((root.type === "race" || root.type === "variant") && root.reproduction_mode === "sexual") return root;
+    return null;
+  }
+
+  // Weight children by effectiveWeight (weight * mate_up_probability).
+  const items = sexualChildren.map((c) => ({ weight: getEffectiveWeight(c.id, ctx), node: c }));
+  // Try in weighted-random order until one yields a valid leaf.
+  const tried = new Set<string>();
+  for (let attempts = 0; attempts < items.length * 2; attempts++) {
+    const remaining = items.filter((it) => !tried.has(it.node.id));
+    if (remaining.length === 0) break;
+    const picked = weightedPick(remaining);
+    if (!picked) break;
+    tried.add(picked.node.id);
+    const leaf = pickLeafDescendant(picked.node.id, ctx);
+    if (leaf) return leaf;
+  }
+  return null;
+}
+
+/** Walk-up-the-tree partner picker.
+ *  Starting at `subjectNode`, at each level: roll against (level.mate_up_probability * decay).
+ *  On success: climb to primary parent. On failure (or no parent): pick weighted leaf descendant. */
+function pickMatePartner(subjectNode: EvoNode, ctx: Ctx): EvoNode | null {
+  const decay = Math.pow(MATE_UP_DECAY, ctx.depth);
+  let level: EvoNode = subjectNode;
+  // Safety bound on climbing
+  for (let i = 0; i < 16; i++) {
+    const p = (level.mate_up_probability ?? 0.2) * decay;
+    const parent = getPrimaryParent(level.id, ctx);
+    if (parent && Math.random() < p) {
+      level = parent;
+      continue;
+    }
+    break;
+  }
+  // Pick a leaf descendant under `level`. For variant-having races, this descends into variants.
+  const leaf = pickLeafDescendant(level.id, ctx);
+  if (leaf) return leaf;
+  // Fallback: subject itself
+  return subjectNode;
+}
+
+/** Roll a "birthable" lineage subtree: handles sexual + asexual modes only. */
 function rollBirthableLineage(node: EvoNode, ctx: Ctx, share: number, gender: "M" | "F"): LineageNode {
   const tags = Array.from(resolveEffectiveTags(node.id, ctx.nodes, ctx.edges));
   const lineage: LineageNode = {
@@ -200,59 +273,14 @@ function rollBirthableLineage(node: EvoNode, ctx: Ctx, share: number, gender: "M
     return lineage;
   }
 
-  // Sexual: two parents. One inherits this race; the other may "mate up" — first to a different
-  // family within the same Source, then (rarer still) to a distant cousin under The Source.
-  // Sexual subjects can ONLY mate with other sexual races. Asexual races (e.g. Fungril) are excluded.
-  const family = getFamilyAncestor(node.id, ctx.nodes, ctx.edges);
-  const source = getSourceAncestor(node.id, ctx.nodes, ctx.edges);
-  const baseMateUpProb = node.mate_up_probability ?? 0.2;
-  // Decay mate-up odds with each generation of recursion to concentrate ancestry near the subject.
-  const mateUpProb = baseMateUpProb * Math.pow(MATE_UP_DECAY, ctx.depth);
-  const mateUp = Math.random() < mateUpProb;
-  // Among mate-ups, a smaller fraction climbs to a distant cousin (still under the same Source).
-  const climbPastFamily = mateUp && Math.random() < mateUpProb;
-
-  // Parent 1: same race
+  // Sexual: P1 inherits the same node (variants stay variants); P2 walks-up the tree.
   ctx.depth++;
   const p1 = rollBirthableLineage(node, ctx, share / 2, "M");
   ctx.depth--;
 
-  // Parent 2: same family / source-cousin (sexual partners only)
-  let p2Race: EvoNode = node;
-  const sexualMate = (r: EvoNode) => r.reproduction_mode === "sexual" && r.id !== node.id;
-
-  if (mateUp && climbPastFamily && source) {
-    // Wild (Source-bounded): any sexual race that shares the same Source ancestor, in a different family.
-    const cousins = ctx.nodes.filter((n) => {
-      if (n.type !== "race" || !sexualMate(n)) return false;
-      const nSource = getSourceAncestor(n.id, ctx.nodes, ctx.edges);
-      if (nSource?.id !== source.id) return false;
-      const nFam = getFamilyAncestor(n.id, ctx.nodes, ctx.edges);
-      return !family || nFam?.id !== family.id;
-    });
-    const r = pickRaceFromPool(cousins, ctx);
-    if (r) p2Race = r;
-  } else if (mateUp && family && source) {
-    // Source-cousin: a different family that shares the same Source ancestor.
-    const otherFamilies = ctx.nodes.filter((n) => {
-      if (n.type !== "family" || n.id === family.id) return false;
-      return getSourceAncestor(n.id, ctx.nodes, ctx.edges)?.id === source.id;
-    });
-    const famPicked = pickRaceFromPool(otherFamilies, ctx);
-    if (famPicked) {
-      const races = getRaceDescendants(famPicked.id, ctx).filter(sexualMate);
-      const r = pickRaceFromPool(races, ctx);
-      if (r) p2Race = r;
-    }
-  } else if (family) {
-    // Same family — sexual partners only.
-    const sameFam = getRaceDescendants(family.id, ctx).filter(sexualMate);
-    const r = pickRaceFromPool(sameFam, ctx);
-    if (r) p2Race = r;
-  }
-
+  const p2Node = pickMatePartner(node, ctx) ?? node;
   ctx.depth++;
-  const p2 = rollBirthableLineage(p2Race, ctx, share / 2, "F");
+  const p2 = rollBirthableLineage(p2Node, ctx, share / 2, "F");
   ctx.depth--;
 
   lineage.parents.push(p1, p2);
@@ -300,6 +328,7 @@ export function rollSubject(nodes: EvoNode[], edges: EvoEdge[], options?: { seed
     edges,
     byId: new Map(nodes.map((n) => [n.id, n])),
     weightCache: new Map(),
+    effectiveWeightCache: new Map(),
     depth: 0,
   };
 
