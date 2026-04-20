@@ -184,6 +184,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const dragState = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
   const panState = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
