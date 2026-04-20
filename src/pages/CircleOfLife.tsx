@@ -178,7 +178,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const [newLabel, setNewLabel] = useState("");
   const [newType, setNewType] = useState("race");
   const [newColor, setNewColor] = useState<string>(Object.values(FAMILY_COLORS)[0]);
-  const [editBuffer, setEditBuffer] = useState<{ label: string; type: string; color: string; weight: string; mate_up_probability: string; reproduction_mode: string } | null>(null);
+  const [editBuffer, setEditBuffer] = useState<{ label: string; type: string; color: string; weight: string; mate_up_probability: string; reproduction_mode: string; tags: string; host_required_tags: string; host_tag_match_mode: string } | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragState = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
@@ -788,14 +788,14 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
 
   const updateNode = async (
     id: string,
-    updates: { label?: string; type?: string; color?: string; weight?: number; mate_up_probability?: number; reproduction_mode?: string }
+    updates: { label?: string; type?: string; color?: string; weight?: number; mate_up_probability?: number; reproduction_mode?: string; tags?: string[]; host_required_tags?: string[]; host_tag_match_mode?: string }
   ) => {
     const { error } = await supabase.from("evolution_nodes").update(updates).eq("id", id);
     if (error) {
       toast.error("Failed to update: " + error.message);
       return;
     }
-    setNodes((prev) => prev.map((n) => (n.id === id ? { ...n, ...updates } : n)));
+    setNodes((prev) => prev.map((n) => (n.id === id ? { ...n, ...updates } as NodeRow : n)));
     toast.success("Node updated");
   };
 
@@ -820,13 +820,17 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
 
   useEffect(() => {
     if (selectedNode) {
+      const sn: any = selectedNode;
       setEditBuffer({
         label: selectedNode.label,
         type: selectedNode.type,
         color: selectedNode.color ?? Object.values(FAMILY_COLORS)[0],
-        weight: String((selectedNode as any).weight ?? 1),
-        mate_up_probability: String(Math.round(((selectedNode as any).mate_up_probability ?? 0.33) * 100)),
-        reproduction_mode: (selectedNode as any).reproduction_mode ?? "sexual",
+        weight: String(sn.weight ?? 1),
+        mate_up_probability: String(Math.round((sn.mate_up_probability ?? 0.33) * 100)),
+        reproduction_mode: sn.reproduction_mode ?? "sexual",
+        tags: (sn.tags ?? []).join(", "),
+        host_required_tags: (sn.host_required_tags ?? []).join(", "),
+        host_tag_match_mode: sn.host_tag_match_mode ?? "all",
       });
     } else {
       setEditBuffer(null);
