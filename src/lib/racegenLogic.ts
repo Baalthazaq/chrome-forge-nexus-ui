@@ -292,7 +292,13 @@ export function rollSubject(nodes: EvoNode[], edges: EvoEdge[], options?: { seed
     throw new Error("No race nodes available");
   }
 
-  const variant = pickVariant(identity.id, ctx);
+  let variant = pickVariant(identity.id, ctx);
+  // If the chosen variant carries a transform/created mode, promote it to identity.
+  // The original race becomes the lineage root for that transform's host search via tags.
+  if (variant && isTransformIdentity(variant)) {
+    identity = variant;
+    variant = null; // variant has been promoted; no separate variant label
+  }
   const family = getFamilyAncestor(identity.id, ctx.nodes, ctx.edges);
   const identityTags = Array.from(resolveEffectiveTags(identity.id, ctx.nodes, ctx.edges));
 
