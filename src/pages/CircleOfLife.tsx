@@ -17,6 +17,8 @@ import {
   Loader2,
   LayoutGrid,
   ArrowLeft,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import CircleOfLifeDiagram from "@/components/CircleOfLifeDiagram";
