@@ -149,21 +149,26 @@ function pickVariant(raceId: string, ctx: Ctx): EvoNode | null {
   return picked?.node ?? null;
 }
 
-/** Find host candidates whose effective tags satisfy the host_required_tags filter. */
+/** Find host candidates whose effective tags satisfy the host_required_tags filter.
+ *  Hosts must be birthable races (sexual/asexual). Variants and transforms are skipped. */
 function findHostCandidates(targetNode: EvoNode, ctx: Ctx): EvoNode[] {
   const required = targetNode.host_required_tags ?? [];
   const matchAll = (targetNode.host_tag_match_mode ?? "all") === "all";
   const allRaces = ctx.nodes.filter((n) => n.type === "race");
   return allRaces.filter((race) => {
-    // Don't host on yourself or your own descendants.
     if (race.id === targetNode.id) return false;
-    // Don't host on transformed/created races (need a birthable).
     if (race.reproduction_mode !== "sexual" && race.reproduction_mode !== "asexual") return false;
     if (required.length === 0) return true;
     const tags = resolveEffectiveTags(race.id, ctx.nodes, ctx.edges);
     if (matchAll) return required.every((t) => tags.has(t));
     return required.some((t) => tags.has(t));
   });
+}
+
+/** A node "drives" reproduction if it has a non-default mode. Variants with transformed/created/asexual
+ *  modes act as the identity for the rolled subject, overriding their parent race's mode. */
+function isTransformIdentity(n: EvoNode): boolean {
+  return n.reproduction_mode === "transformed" || n.reproduction_mode === "created";
 }
 
 /** Roll a "birthable" lineage subtree: handles sexual + asexual modes only. Used as the
