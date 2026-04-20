@@ -17,6 +17,8 @@ import {
   Loader2,
   LayoutGrid,
   ArrowLeft,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import CircleOfLifeDiagram from "@/components/CircleOfLifeDiagram";
@@ -172,6 +174,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const [saving, setSaving] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"tree" | "circle">(initialView);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   const [newLabel, setNewLabel] = useState("");
   const [newType, setNewType] = useState("race");
   const [newColor, setNewColor] = useState<string>(Object.values(FAMILY_COLORS)[0]);
@@ -1137,6 +1140,15 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
           >
             Circle of Life
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setInspectorOpen((v) => !v)}
+            title={inspectorOpen ? "Hide inspector" : "Show inspector"}
+          >
+            {inspectorOpen ? <PanelRightClose className="h-4 w-4 mr-1" /> : <PanelRightOpen className="h-4 w-4 mr-1" />}
+            {inspectorOpen ? "Hide Inspector" : "Show Inspector"}
+          </Button>
           {canEdit && (
             <>
               <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
@@ -1186,7 +1198,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                 onFocusChange={setSelectedId}
               />
             </div>
-            {inspectorPanel}
+            {inspectorOpen && inspectorPanel}
           </div>
         ) : (
           <div className="flex gap-4">
@@ -1300,7 +1312,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
               </svg>
             </Card>
 
-            {inspectorPanel}
+            {inspectorOpen && inspectorPanel}
         </div>
         )}
       </div>

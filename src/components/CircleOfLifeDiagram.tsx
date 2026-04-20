@@ -217,12 +217,15 @@ export function CircleOfLifeDiagram({
             <g>
               {layout.nodes.map((n) => {
                  const r = n.depth === 0 ? 28 : n.depth <= 1.5 ? 14 : n.depth <= 2.5 ? 8 : 5;
-                // Compensate for the wheel rotation so labels stay readable horizontally.
-                const effectiveAngleDeg = ((n.angle * 180) / Math.PI) + rotationDeg;
-                let normalized = ((effectiveAngleDeg % 360) + 360) % 360;
+                // The label <g> is INSIDE the rotated wheel, so its local rotation
+                // composes with the parent rotation. The on-screen angle is what
+                // matters for deciding whether to flip the text.
+                const localAngleDeg = (n.angle * 180) / Math.PI;
+                const screenAngleDeg = localAngleDeg + rotationDeg;
+                const normalized = ((screenAngleDeg % 360) + 360) % 360;
                 const flip = normalized > 90 && normalized < 270;
-                const labelRot = flip ? effectiveAngleDeg + 180 : effectiveAngleDeg;
-                // Counter-rotate the label group to keep it upright relative to the screen
+                // Local rotation: align with radial direction, then add 180° if flipped.
+                const labelRot = flip ? localAngleDeg + 180 : localAngleDeg;
                 const counterRot = -rotationDeg;
                 const labelOffset = r + 8;
                 const lx = flip ? -labelOffset : labelOffset;
