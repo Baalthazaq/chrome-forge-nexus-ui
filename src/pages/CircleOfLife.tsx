@@ -1140,6 +1140,15 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
           >
             Circle of Life
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setInspectorOpen((v) => !v)}
+            title={inspectorOpen ? "Hide inspector" : "Show inspector"}
+          >
+            {inspectorOpen ? <PanelRightClose className="h-4 w-4 mr-1" /> : <PanelRightOpen className="h-4 w-4 mr-1" />}
+            {inspectorOpen ? "Hide Inspector" : "Show Inspector"}
+          </Button>
           {canEdit && (
             <>
               <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
