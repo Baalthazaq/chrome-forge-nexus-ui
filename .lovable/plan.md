@@ -1,56 +1,122 @@
-## Reproduction Modes — Expanded Plan
+# Racegen Rebuild + Node Tag System
 
-Modeling all the special cases as a single `reproduction_mode` field on `evolution_nodes`, reusing the existing `mate_up_probability` machinery rather than inventing a parallel system.
+## Part 1: Tag System (foundation for everything else)
 
-### Modes (single `reproduction_mode` text column, default `'sexual'`)
+### Schema change
 
-
-| Mode          | Meaning                                                               | Racegen behavior                                                                                               |
-| ------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `sexual`      | Standard two-parent                                                   | Existing climb-and-mix using `mate_up_probability`                                                             |
-| `asexual`     | Single parent of same lineage                                         | Pick one parent at this node's tier; no mate, no climb                                                         |
-| `transformed` | Originates from another race (Undead, Parasite Fungril, Blight Plant) | Roll a normal sexual lineage as the "host," then overlay this node as the result                               |
-| `created`     | Built by a creator                                                    | Pick one parent (the creator) using the same weighted + climb logic as `mate_up_probability`; no second parent |
-
-
-Inheritance: descendants inherit their nearest ancestor's mode unless they explicitly override.
-
-### Why this covers everything
-
-- **Undead** → `transformed` (host = any sexual lineage, then "becomes undead")
-- **Constructs / Modron / Clank** → `created`. Re-using the `mate_up_probability` value as the "creator climb chance" means a low number keeps creators within Construct (your original 0% intent), a high number forces creators from other families. Default 33% gives a mix; you can edit per-node.
-- **Fungril** → `asexual` (single parent, same race)
-- **Parasite Fungril** → `transformed` (overlaid onto a host)
-- **Blight Plant** → `transformed` (same as Parasite)
-
-No need for a separate `creator_pool` column — the creator is picked using the same weighted tree + mate-up climb the standard algorithm already understands. This keeps the data model minimal and the editor simple.
-
-### Schema change (one column only)
+Add a `tags` column to `evolution_nodes`:
 
 ```sql
 ALTER TABLE public.evolution_nodes
-  ADD COLUMN IF NOT EXISTS reproduction_mode text NOT NULL DEFAULT 'sexual';
--- (no CHECK constraint; we validate in the UI dropdown to keep it editable)
+  ADD COLUMN IF NOT EXISTS tags text[] NOT NULL DEFAULT '{}';
 ```
 
-Then a data seed (separate insert/update step, not a migration) sets:
+### How tags work
 
-- Undead family + race → `transformed`
-- Construct family, Modron sub-family, Clank race → `created`
-- Plant: Fungril → `asexual`; Awakened Plant stays `sexual`
-- The existing variant **Parasitic** under Fungril → `transformed`
-- **Blight** already exists under Plant as well and should be → `transformed` 
+- Every node has a `tags` array (e.g. `['Soul']`, `['Blood']`, `['Biological']`).
+- **Inheritance is computed at read time, not stored.** A node's *effective* tags = its own tags ∪ all ancestor tags, walking up the evolution graph through The Source.
+- A node can **add** tags its ancestors don't have.
+- A node can **remove** an inherited tag by prefixing with `!` (e.g. `!Biological` on Construct strips the inherited bio tag). Stored as plain strings; the resolver handles the `!` prefix.
+- Tags are free-form text, but the Circle of Life editor offers a quick-pick list of known tags (`Soul`, `Blood`, `Biological`, `Mineral`, `Arcane`, `Elemental`) plus a free-text field for new ones.
 
-### UI (Circle of Life detail panel only — nothing on canvas)
+### Seed data (initial tag assignments)
 
-Add to the editable side panel, beneath weight + mate-up:
+- **The Source** → `['Biological']` (default for everything mortal)
+- **Construct family** → `['!Biological', 'Mineral']` (overrides the inherited bio tag)
+- **Undead family** → no change at family level; specific races below add what they need
+- **Aetheris, Mephling, Infernis, Elemental families** → add `Arcane` or `Elemental` as appropriate
 
-- **Reproduction Mode** dropdown: Sexual / Asexual / Transformed / Created
-- Helper text under the dropdown explaining how Racegen will treat it, including the note that `mate_up_probability` is reused as "creator climb chance" for `created` and is ignored for `asexual` and `transformed`.
+### UI in Circle of Life detail panel
 
-### Files that will change
+- New **Tags** field (chip input) below the existing fields.
+- Helper text: "Tags are inherited from parents. Prefix with `!` to remove an inherited tag."
+- A read-only **Effective Tags** line shows the resolved set (helpful when editing).
 
-- New migration: add `reproduction_mode` column
-- Data seed (insert tool, not migration): set modes for Undead / Construct chain / Fungril; create Parasite Fungril node + edge; handle Blight Plant per answer below
-- `src/pages/CircleOfLife.tsx`: extend `editBuffer`, `updateNode`, and detail panel UI with the dropdown + helper text
-- `src/integrations/supabase/types.ts`: auto-regenerated
+---
+
+## Part 2: Reproduction Modes — now driven by tag requirements
+
+The four modes (`sexual`, `asexual`, `transformed`, `created`) work as previously planned, **but `transformed` gains an optional `host_required_tags` filter**.
+
+### New optional column on `evolution_nodes`
+
+```sql
+ALTER TABLE public.evolution_nodes
+  ADD COLUMN IF NOT EXISTS host_required_tags text[] NOT NULL DEFAULT '{}';
+```
+
+When the generator rolls a `transformed` node:
+
+1. Look at the node's parent in the tree.
+2. **If the parent is a real birthable race** (its own mode is `sexual` or `asexual`), use it as the host directly. → Drider uses Drow.
+3. **If the parent is itself `transformed` or a category root with no birthable form** (Undead, Construct), climb to The Source and roll a sexual lineage from any other family **whose effective tags include all of `host_required_tags**`.
+
+### Seed data for transformed races
+
+- **Vampire / Vampire Spawn** → `host_required_tags = ['Blood']` (excludes Constructs which removed Biological → no Blood-bearing flesh; includes mortals)
+- **Ghost / Banshee / Wraith / Poltergeist / Will-o'-Wisp** → `host_required_tags = ['Soul']`
+- **Zombie / Skeleton / Flaming Skeleton / Crawling Claw / Mummy / Ghoul / Revenant** → `host_required_tags = ['Biological']`
+- **Dracolich** → `host_required_tags = ['Soul', 'Biological']` and we further narrow to Draconic family in code (handled below)
+- **Drider** → no tags needed; parent (Drow) is birthable, branch 1 fires
+- **Blight Plant, Parasite Fungril** → `host_required_tags = ['Biological']`
+
+### Narrowing beyond tags (rare cases)
+
+For a couple of races (Dracolich) the host needs a specific *family*, not just a tag. We can handle this by including Families and Race names in the tags by default. This will allow transformations to work on specific races/variants/and families if needed.   
+  
+We also need a mechanism for a transformation to require ALL tags, or ANY tag. 
+
+### Gender inheritance
+
+- `transformed` subjects **inherit gender from the host roll** (per your answer for Drider). Result card shows the host's gender; no separate gender roll for the transformed identity.
+- This applies uniformly: Vampire inherits from the rolled mortal, Drider inherits from the rolled Drow, etc.
+
+---
+
+## Part 3: Worked examples with the new system
+
+**Drider:**
+
+1. Mode = `transformed`, parent = Drow (mode `sexual`, birthable). Branch 1.
+2. Roll a normal Drow lineage with mate-up checks. Get e.g. female Lolth-sworn Drow with Selunite × Lolth-sworn parents.
+3. Identity = Drider, gender = female (inherited).
+
+**Vampire:**
+
+1. Mode = `transformed`, parent = Undead (no birthable form). Branch 2.
+2. `host_required_tags = ['Blood']`. Filter all families: Constructs out (they removed Biological, so no Blood inheritance), Mephling/Aetheris out unless they carry Blood, mortals in. Weighted roll picks e.g. Human.
+3. Roll a full sexual Human lineage. Get e.g. male Alaethean Human, Tomber × Alaethean parents.
+4. Identity = Vampire, gender = male (inherited).
+
+**Ghost:**
+
+1. Same as Vampire but with `host_required_tags = ['Soul']`. Soul is on The Source by default, so most families qualify; Constructs are excluded only if they explicitly remove Soul (we'll seed `!Soul` on Construct too).
+
+---
+
+## Part 4: Racegen page (unchanged from prior plan, plus tag awareness)
+
+Same scope as before:
+
+- New `/admin/racegen` page replacing the static HTML tool.
+- Pulls live from `evolution_nodes` + `evolution_edges`.
+- Pure functions in `src/lib/racegenLogic.ts` for rolling, tag resolution, host filtering, DNA accounting.
+- Lineage tree displays effective tags as small chips on each node, plus the `[A]`/`[T]`/`[C]` mode badges.
+- Adding a new race/family/tag in Circle of Life immediately changes Racegen output — no code edits needed.
+
+## Files
+
+- **Migration**: add `tags`, `host_required_tags`, `host_family_filter` columns to `evolution_nodes`.
+- **Data seed (insert tool)**: assign initial tags to The Source, Construct, Undead races, transformed races' host requirements.
+- `**src/pages/CircleOfLife.tsx**`: add Tags chip input and Effective Tags readout to the detail panel.
+- `**src/pages/Racegen.tsx**`: new page.
+- `**src/lib/racegenLogic.ts**`: new module — `resolveEffectiveTags`, `pickHost`, `rollLineage`, `rollSubject`, etc.
+- `**src/lib/evolutionGraph.ts**` (new helper): tag resolution + ancestor walking, shared between CircleOfLife and Racegen.
+- `**src/data/traits.ts**`: extracted trait word lists.
+- `**src/App.tsx**` + `**src/pages/Admin.tsx**`: route + nav link.
+
+## Out of scope
+
+- Editing nodes from Racegen.
+- Persisting generated subjects.
+- Auto-suggesting tags based on race name (you set them manually in the editor).
