@@ -175,7 +175,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const [newLabel, setNewLabel] = useState("");
   const [newType, setNewType] = useState("race");
   const [newColor, setNewColor] = useState<string>(Object.values(FAMILY_COLORS)[0]);
-  const [editBuffer, setEditBuffer] = useState<{ label: string; type: string; color: string; weight: string; mate_up_probability: string } | null>(null);
+  const [editBuffer, setEditBuffer] = useState<{ label: string; type: string; color: string; weight: string; mate_up_probability: string; reproduction_mode: string } | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragState = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
@@ -753,7 +753,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
 
   const updateNode = async (
     id: string,
-    updates: { label?: string; type?: string; color?: string; weight?: number; mate_up_probability?: number }
+    updates: { label?: string; type?: string; color?: string; weight?: number; mate_up_probability?: number; reproduction_mode?: string }
   ) => {
     const { error } = await supabase.from("evolution_nodes").update(updates).eq("id", id);
     if (error) {
@@ -791,6 +791,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
         color: selectedNode.color ?? Object.values(FAMILY_COLORS)[0],
         weight: String((selectedNode as any).weight ?? 1),
         mate_up_probability: String(Math.round(((selectedNode as any).mate_up_probability ?? 0.33) * 100)),
+        reproduction_mode: (selectedNode as any).reproduction_mode ?? "sexual",
       });
     } else {
       setEditBuffer(null);
@@ -1144,11 +1145,35 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                         Chance to mate with parent category (default 33%).
                       </p>
                     </div>
+                    <div>
+                      <Label className="text-xs">Reproduction Mode</Label>
+                      <Select
+                        value={editBuffer.reproduction_mode}
+                        onValueChange={(v) => setEditBuffer({ ...editBuffer, reproduction_mode: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sexual">Sexual</SelectItem>
+                          <SelectItem value="asexual">Asexual</SelectItem>
+                          <SelectItem value="transformed">Transformed</SelectItem>
+                          <SelectItem value="created">Created</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        {editBuffer.reproduction_mode === "sexual" && "Standard two-parent breeding using mate-up probability."}
+                        {editBuffer.reproduction_mode === "asexual" && "Single parent of the same lineage. Mate-up % is ignored."}
+                        {editBuffer.reproduction_mode === "transformed" && "Originates from another race (host). Roll a normal lineage, then overlay this. Mate-up % is ignored."}
+                        {editBuffer.reproduction_mode === "created" && "Built by a creator. Mate-up % is reused as the creator's climb chance to leave this category."}
+                      </p>
+                    </div>
                     {(editBuffer.label !== selectedNode.label ||
                       editBuffer.type !== selectedNode.type ||
                       editBuffer.color !== (selectedNode.color ?? "") ||
                       Number(editBuffer.weight || 0) !== ((selectedNode as any).weight ?? 1) ||
-                      Number(editBuffer.mate_up_probability || 0) / 100 !== ((selectedNode as any).mate_up_probability ?? 0.33)) && (
+                      Number(editBuffer.mate_up_probability || 0) / 100 !== ((selectedNode as any).mate_up_probability ?? 0.33) ||
+                      editBuffer.reproduction_mode !== ((selectedNode as any).reproduction_mode ?? "sexual")) && (
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -1160,6 +1185,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                               color: editBuffer.color,
                               weight: Math.max(0, Math.floor(Number(editBuffer.weight) || 0)),
                               mate_up_probability: Math.min(1, Math.max(0, (Number(editBuffer.mate_up_probability) || 0) / 100)),
+                              reproduction_mode: editBuffer.reproduction_mode,
                             })
                           }
                         >
@@ -1175,6 +1201,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                               color: selectedNode.color ?? Object.values(FAMILY_COLORS)[0],
                               weight: String((selectedNode as any).weight ?? 1),
                               mate_up_probability: String(Math.round(((selectedNode as any).mate_up_probability ?? 0.33) * 100)),
+                              reproduction_mode: (selectedNode as any).reproduction_mode ?? "sexual",
                             })
                           }
                         >
