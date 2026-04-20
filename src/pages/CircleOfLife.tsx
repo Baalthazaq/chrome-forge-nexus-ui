@@ -1186,30 +1186,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                 onFocusChange={setSelectedId}
               />
             </div>
-            {/* Reuse the same inspector as the tree view */}
-            <Card className="w-80 p-4 space-y-3 self-start sticky top-4 max-h-[85vh] overflow-auto">
-              <h3 className="font-semibold">Inspector</h3>
-              {!selectedNode && (
-                <p className="text-sm text-muted-foreground">
-                  Click a node in the wheel to focus it. The diagram will rotate and zoom to its lineage.
-                </p>
-              )}
-              {selectedNode && editBuffer && (
-                <p className="text-xs text-muted-foreground">
-                  Editing <strong>{selectedNode.label}</strong>. Use the side panel below in tree view for full edit controls, or switch to tree view.
-                </p>
-              )}
-              {selectedNode && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setViewMode("tree")}
-                >
-                  Edit in Tree view
-                </Button>
-              )}
-            </Card>
+            {inspectorPanel}
           </div>
         ) : (
           <div className="flex gap-4">
