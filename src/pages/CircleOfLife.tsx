@@ -184,6 +184,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const dragState = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
   const panState = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -265,12 +266,12 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
     load();
   }, [load]);
 
-  // Visible nodes after filter
+  // Visible nodes after filter — match only nodes whose label contains the filter,
+  // plus their direct ancestors so context to the family root remains visible.
   const visibleIds = useMemo(() => {
     if (!filter.trim()) return new Set(nodes.map((n) => n.id));
     const f = filter.toLowerCase();
     const direct = new Set(nodes.filter((n) => n.label.toLowerCase().includes(f)).map((n) => n.id));
-    // Include ancestors and descendants of any matching node
     const result = new Set(direct);
     let changed = true;
     while (changed) {
@@ -278,10 +279,6 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
       for (const e of edges) {
         if (result.has(e.child_id) && !result.has(e.parent_id)) {
           result.add(e.parent_id);
-          changed = true;
-        }
-        if (result.has(e.parent_id) && !result.has(e.child_id)) {
-          result.add(e.child_id);
           changed = true;
         }
       }
@@ -306,12 +303,30 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes, pendingPositions]);
 
-  // Convert a client (mouse/touch) point to canvas coords (accounting for pan).
+  // Convert a client (mouse/touch) point to canvas coords (accounting for pan + zoom).
   const clientToCanvas = (clientX: number, clientY: number) => {
     const svg = svgRef.current;
     if (!svg) return { x: 0, y: 0 };
     const rect = svg.getBoundingClientRect();
-    return { x: clientX - rect.left - pan.x, y: clientY - rect.top - pan.y };
+    return {
+      x: (clientX - rect.left - pan.x) / zoom,
+      y: (clientY - rect.top - pan.y) / zoom,
+    };
+  };
+
+  const onWheelSvg = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    const newZoom = Math.max(0.2, Math.min(3, zoom * factor));
+    // Keep the point under the cursor stationary in canvas space.
+    const k = newZoom / zoom;
+    setPan({ x: cx - (cx - pan.x) * k, y: cy - (cy - pan.y) * k });
+    setZoom(newZoom);
   };
 
   const onPointerDownNode = (e: React.PointerEvent, n: NodeRow) => {
@@ -1227,10 +1242,13 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                 size="sm"
                 variant="outline"
                 className="absolute top-2 right-2 z-10"
-                onClick={() => setPan({ x: 0, y: 0 })}
+                onClick={() => { setPan({ x: 0, y: 0 }); setZoom(1); }}
               >
                 Reset View
               </Button>
+              <div className="absolute top-2 right-28 z-10 text-xs text-muted-foreground bg-card/80 px-2 py-1 rounded border border-border">
+                {Math.round(zoom * 100)}%
+              </div>
               <svg
                 ref={svgRef}
                 width="100%"
@@ -1240,13 +1258,14 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                 onPointerUp={onPointerUpSvg}
                 onPointerCancel={onPointerUpSvg}
                 onPointerLeave={onPointerUpSvg}
+                onWheel={onWheelSvg}
                 style={{
                   display: "block",
                   cursor: dragState.current ? "grabbing" : panState.current ? "grabbing" : "grab",
                   touchAction: "none",
                 }}
               >
-                <g transform={`translate(${pan.x}, ${pan.y})`}>
+                <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
                 {/* edges */}
                 {edges.map((e) => {
                   const from = nodes.find((n) => n.id === e.parent_id);
