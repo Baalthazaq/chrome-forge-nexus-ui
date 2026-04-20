@@ -1312,7 +1312,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
               </svg>
             </Card>
 
-            {inspectorPanel}
+            {inspectorOpen && inspectorPanel}
         </div>
         )}
       </div>
