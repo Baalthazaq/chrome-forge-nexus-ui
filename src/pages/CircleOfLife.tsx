@@ -45,6 +45,7 @@ interface NodeRow {
   x: number;
   y: number;
   color: string | null;
+  reproduction_mode?: string;
 }
 interface EdgeRow {
   id: string;
