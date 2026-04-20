@@ -1,0 +1,3 @@
+UPDATE public.evolution_nodes SET reproduction_mode = 'transformed' WHERE id IN ('950d1f6d-06de-448a-872c-9063e21d3490','4b2732ef-cf60-40cb-9a5c-537578953061','9d407b78-2653-4536-ba62-37294841ac3a','bddaaf9b-6828-4d01-a6a2-5276d4cd62ab');
+UPDATE public.evolution_nodes SET reproduction_mode = 'created' WHERE id IN ('7c935d59-579c-49bf-b6a7-2b8527f51f28','597f9eaf-6276-4b60-971c-61d3930e201f','1d2ca236-e4ed-4736-8d76-f7ac770c28e6');
+UPDATE public.evolution_nodes SET reproduction_mode = 'asexual' WHERE id = '70fc65f7-84c0-476d-afc1-1b2bb26a71dd';
