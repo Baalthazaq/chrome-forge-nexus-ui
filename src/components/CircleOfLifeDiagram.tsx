@@ -121,12 +121,13 @@ export function CircleOfLifeDiagram({ nodes, edges, className }: CircleOfLifeDia
         </Button>
       </div>
 
-      <div className="w-full overflow-auto">
+      <div className="w-full">
         <svg
           ref={svgRef}
           viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
-          className="h-auto w-full transition-all duration-500 ease-in-out"
-          style={{ maxHeight: "85vh" }}
+          preserveAspectRatio="xMidYMid meet"
+          className="block w-full transition-all duration-500 ease-in-out"
+          style={{ height: "85vh" }}
           onClick={(e) => { if (e.target === e.currentTarget) setFocusId(null); }}
         >
           {layout.guideRadii.map((radius, i) => (
