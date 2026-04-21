@@ -332,6 +332,28 @@ function aggregateDna(lineage: LineageNode): { label: string; pct: number }[] {
     .sort((a, b) => b.pct - a.pct);
 }
 
+/** Aggregate DNA by (race, variant) pair — a variant wraps its parent race
+ *  as its single child, so we track the most recent variant ancestor while
+ *  walking, and credit each race-typed leaf with its enclosing variant. */
+function aggregateIdentities(lineage: LineageNode): SecondaryIdentity[] {
+  const map = new Map<string, SecondaryIdentity>();
+  const walk = (l: LineageNode, currentVariant: string | null) => {
+    const variantHere = l.type === "variant" ? l.label : currentVariant;
+    if (l.parents.length === 0) {
+      const raceLabel = l.type === "race" ? l.label : (variantHere ?? l.label);
+      const variantLabel = l.type === "race" ? variantHere : null;
+      const key = `${raceLabel}::${variantLabel ?? ""}`;
+      const existing = map.get(key);
+      if (existing) existing.pct += l.dnaShare * 100;
+      else map.set(key, { raceLabel, variantLabel, pct: l.dnaShare * 100 });
+      return;
+    }
+    for (const p of l.parents) walk(p, variantHere);
+  };
+  walk(lineage, null);
+  return Array.from(map.values()).sort((a, b) => b.pct - a.pct);
+}
+
 /** Apply transformations from the transformations table.
  *  Iterates by stage; each transformation rolls against `chance` if host_required_tags match
  *  and forbidden_tags don't intersect. After applying, granted_tags expand the effective set
