@@ -882,12 +882,17 @@ export type Database = {
           host_required_tags: string[]
           host_tag_match_mode: string
           id: string
+          identity_overwrites_host: boolean
+          is_carrier: boolean
           label: string
           mate_up_probability: number
+          mate_variant_lock_tags: string[]
+          origin_mode: string
           reproduction_mode: string
           tags: string[]
           type: string
           updated_at: string
+          variant_inheritance: string
           weight: number
           x: number
           y: number
@@ -898,12 +903,17 @@ export type Database = {
           host_required_tags?: string[]
           host_tag_match_mode?: string
           id?: string
+          identity_overwrites_host?: boolean
+          is_carrier?: boolean
           label: string
           mate_up_probability?: number
+          mate_variant_lock_tags?: string[]
+          origin_mode?: string
           reproduction_mode?: string
           tags?: string[]
           type?: string
           updated_at?: string
+          variant_inheritance?: string
           weight?: number
           x?: number
           y?: number
@@ -914,17 +924,81 @@ export type Database = {
           host_required_tags?: string[]
           host_tag_match_mode?: string
           id?: string
+          identity_overwrites_host?: boolean
+          is_carrier?: boolean
           label?: string
           mate_up_probability?: number
+          mate_variant_lock_tags?: string[]
+          origin_mode?: string
           reproduction_mode?: string
           tags?: string[]
           type?: string
           updated_at?: string
+          variant_inheritance?: string
           weight?: number
           x?: number
           y?: number
         }
         Relationships: []
+      }
+      evolution_transformations: {
+        Row: {
+          acquisition: string
+          carrier_node_id: string | null
+          chance: number
+          created_at: string
+          description: string | null
+          forbidden_tags: string[]
+          granted_tags: string[]
+          host_required_tags: string[]
+          host_tag_match_mode: string
+          id: string
+          label: string
+          stackable: boolean
+          stage: number
+          updated_at: string
+        }
+        Insert: {
+          acquisition?: string
+          carrier_node_id?: string | null
+          chance?: number
+          created_at?: string
+          description?: string | null
+          forbidden_tags?: string[]
+          granted_tags?: string[]
+          host_required_tags?: string[]
+          host_tag_match_mode?: string
+          id?: string
+          label: string
+          stackable?: boolean
+          stage?: number
+          updated_at?: string
+        }
+        Update: {
+          acquisition?: string
+          carrier_node_id?: string | null
+          chance?: number
+          created_at?: string
+          description?: string | null
+          forbidden_tags?: string[]
+          granted_tags?: string[]
+          host_required_tags?: string[]
+          host_tag_match_mode?: string
+          id?: string
+          label?: string
+          stackable?: boolean
+          stage?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evolution_transformations_carrier_node_id_fkey"
+            columns: ["carrier_node_id"]
+            isOneToOne: false
+            referencedRelation: "evolution_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       game_calendar: {
         Row: {

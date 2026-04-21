@@ -4,7 +4,7 @@
 export interface EvoNode {
   id: string;
   label: string;
-  type: string; // 'family' | 'race' | 'variant' (free text in DB)
+  type: string; // 'family' | 'race' | 'variant' | 'source' (free text in DB)
   color: string | null;
   weight: number;
   mate_up_probability: number;
@@ -12,12 +12,33 @@ export interface EvoNode {
   tags: string[];
   host_required_tags: string[];
   host_tag_match_mode: string; // 'all' | 'any'
+  // New flags (data-driven quirks; defaults applied when missing)
+  origin_mode?: string; // 'born' | 'created' | 'parasitic'
+  is_carrier?: boolean;
+  variant_inheritance?: string; // 'random' | 'mother' | 'father'
+  mate_variant_lock_tags?: string[];
+  identity_overwrites_host?: boolean;
 }
 
 export interface EvoEdge {
   id: string;
   parent_id: string;
   child_id: string;
+}
+
+export interface EvoTransformation {
+  id: string;
+  label: string;
+  description: string | null;
+  granted_tags: string[];
+  host_required_tags: string[];
+  host_tag_match_mode: string; // 'all' | 'any'
+  forbidden_tags: string[];
+  acquisition: string; // 'innate' | 'afflicted'
+  carrier_node_id: string | null;
+  stackable: boolean;
+  stage: number;
+  chance: number;
 }
 
 /**
