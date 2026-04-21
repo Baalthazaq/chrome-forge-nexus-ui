@@ -103,15 +103,7 @@ function SubjectCard({ subject }: { subject: RolledSubject }) {
 
       <div className="space-y-1">
         <div className="text-[10px] uppercase text-muted-foreground tracking-wider">DNA</div>
-        <div className="flex h-2 rounded overflow-hidden bg-muted">
-          {visibleDna.map((d, i) => (
-            <div
-              key={i}
-              title={`${d.label} ${d.pct.toFixed(1)}%`}
-              style={{ width: `${d.pct}%`, backgroundColor: `hsl(${(i * 67) % 360} 60% 55%)` }}
-            />
-          ))}
-        </div>
+        <DnaBar groups={subject.dnaGrouped} />
         <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
           {visibleDna.slice(0, 8).map((d, i) => (
             <span key={i}>{d.label} {d.pct.toFixed(1)}%</span>
