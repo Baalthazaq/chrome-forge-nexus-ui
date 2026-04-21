@@ -39,8 +39,10 @@ export interface CircleLayout {
 
 export const ROOT_ID = "__root__";
 
-/** Families excluded from the active Racegen pool. The wheel hides them too. */
-const EXCLUDED_FAMILY_LABELS = new Set(["Undead", "Plant", "Construct", "Modron"]);
+/** Families excluded from the active Racegen pool. The wheel hides them too.
+ *  Plant and Construct are now active again — Construct uses a "created" flow
+ *  (a constructed subject + a generated creator). */
+const EXCLUDED_FAMILY_LABELS = new Set(["Undead", "Modron"]);
 
 /** Filter the raw node/edge graph to only the families/races/variants that
  *  Racegen actively rolls. Used by the wheel and by Racegen itself so the
@@ -79,10 +81,6 @@ export function filterActiveCircleGraph(
 
   const keep = (n: CircleNodeRow): boolean => {
     if (n.is_carrier) return false;
-    // Exclude any node whose origin mode is non-born (parasitic/created) — these
-    // were the legacy transformation/created branches.
-    if (n.origin_mode && n.origin_mode !== "born") return false;
-    if (n.reproduction_mode && n.reproduction_mode !== "sexual") return false;
     if (n.type === "family" && EXCLUDED_FAMILY_LABELS.has(n.label)) return false;
     const fam = familyOf.get(n.id);
     if (fam && EXCLUDED_FAMILY_LABELS.has(fam)) return false;
