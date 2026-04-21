@@ -68,6 +68,58 @@ function HeaderMakeup({ subject }: { subject: RolledSubject }) {
   );
 }
 
+/** Stable hue from a string so the same race always gets the same color. */
+function raceHue(label: string): number {
+  let h = 0;
+  for (let i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) | 0;
+  return Math.abs(h) % 360;
+}
+
+/**
+ * DNA bar: race-level color blocks, thin dividers between variants of the
+ * same race, and an empty gap between different families.
+ */
+function DnaBar({ groups }: { groups: RolledSubject["dnaGrouped"] }) {
+  const FAMILY_GAP_PCT = 1.5;
+  const totalGaps = Math.max(0, groups.length - 1) * FAMILY_GAP_PCT;
+  const scale = (100 - totalGaps) / 100;
+  return (
+    <div className="flex h-2.5 rounded overflow-hidden bg-muted">
+      {groups.map((fam, fi) => (
+        <div key={fi} className="flex h-full" style={{ width: `${fam.pct * scale}%` }}>
+          {fam.races.map((race, ri) => {
+            const hue = raceHue(race.raceLabel);
+            return (
+              <div
+                key={ri}
+                className="flex h-full"
+                style={{ width: `${(race.pct / fam.pct) * 100}%` }}
+                title={`${race.raceLabel} ${race.pct.toFixed(1)}%`}
+              >
+                {race.variants.map((v, vi) => (
+                  <div
+                    key={vi}
+                    className="h-full"
+                    title={`${v.label} ${v.pct.toFixed(1)}%`}
+                    style={{
+                      width: `${(v.pct / race.pct) * 100}%`,
+                      backgroundColor: `hsl(${hue} 60% ${50 + (vi % 3) * 8}%)`,
+                      boxShadow: vi > 0 ? "inset 1px 0 0 hsl(0 0% 0% / 0.35)" : undefined,
+                    }}
+                  />
+                ))}
+              </div>
+            );
+          })}
+          {fi < groups.length - 1 && (
+            <div className="h-full bg-background" style={{ width: `${(FAMILY_GAP_PCT / fam.pct) * 100}%`, marginLeft: 0 }} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function SubjectCard({ subject }: { subject: RolledSubject }) {
   const originBadge = ORIGIN_BADGE[subject.origin_mode];
   const OriginIcon = originBadge?.icon;
