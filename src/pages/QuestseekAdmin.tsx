@@ -504,9 +504,15 @@ const QuestseekAdmin = () => {
                         {quest.available_quantity !== null && ` • ${quest.available_quantity} available`}
                         {quest.pay_interval && ` • Pays ${quest.pay_interval}`}
                       </p>
-                      {quest.quest_acceptances?.length > 0 && (
+                      {(() => {
+                        // For commissions, hide 'completed' acceptances from the active listing —
+                        // commissions are repeatable, so past completions shouldn't clutter the badges.
+                        const visibleAcceptances = (quest.quest_acceptances || []).filter((a: any) =>
+                          quest.job_type === 'commission' ? a.status !== 'completed' : true
+                        );
+                        return visibleAcceptances.length > 0 && (
                         <div className="flex gap-1 mt-1 flex-wrap items-center">
-                          {quest.quest_acceptances.map((a: any) => (
+                          {visibleAcceptances.map((a: any) => (
                             <div key={a.id} className="flex items-center gap-1">
                               <Badge variant="outline" className={`text-xs ${
                                 a.status === 'pending_approval' ? 'border-blue-500/50 text-blue-400' :
@@ -537,7 +543,8 @@ const QuestseekAdmin = () => {
                             </div>
                           ))}
                         </div>
-                      )}
+                        );
+                      })()}
                     </div>
                     <div className="flex gap-2">
                       {quest.available_quantity !== null && (
