@@ -549,7 +549,8 @@ function rollBornSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
     ? dominantInfo.variants.find((v) => v.label === subjectVariantLabel) ?? null
     : null;
 
-  const headerMakeup = buildHeaderMakeup(identities, subjectRaceLabel);
+  const headerMakeup = buildHeaderMakeup(identities, subjectRaceLabel, ctx);
+  const dnaGrouped = buildDnaGrouped(identities, ctx);
   const secondaryIdentities = identities
     .filter((i) => !(i.raceLabel === subjectRaceLabel && i.variantLabel === subjectVariantLabel))
     .filter((i) => i.pct >= HEADER_MAKEUP_MIN_PCT)
@@ -570,6 +571,7 @@ function rollBornSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
     lineage,
     dna,
     headerMakeup,
+    dnaGrouped,
     secondaryIdentities,
     traits: pickTraits(),
     effectiveTags: effective,
