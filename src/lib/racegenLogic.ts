@@ -446,29 +446,17 @@ function buildHeaderMakeup(
 
 // ---------- public API ----------
 
-export function rollSubject(
-  nodes: EvoNode[],
-  edges: EvoEdge[],
-  options?: { seedRaceId?: string; transformations?: unknown },
-): RolledSubject {
-  void options?.transformations; // transformations are no longer applied (excluded by plan)
-  const ctx = makeCtx(nodes, edges);
-  if (!ctx.activeRaces.length) throw new Error("No active races available for Racegen");
-
-  // Pick the seed race
-  let seedInfo: RaceInfo | undefined;
-  if (options?.seedRaceId) seedInfo = ctx.byRaceId.get(options.seedRaceId);
-  if (!seedInfo) seedInfo = pickRandomActiveRace(ctx);
-
+/**
+ * Build a fully-formed born subject from a born seed race. The subject's
+ * identity is derived from DNA majority across the rolled lineage.
+ */
+function rollBornSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
   const gender = rollGender();
   const { lineage, subjectPick } = rollLineage(seedInfo, ctx, gender);
 
   const dna = aggregateDna(lineage);
   const identities = aggregateIdentities(lineage);
 
-  // Subject identity is determined by the DNA majority — the race with the
-  // highest aggregate percentage wins, then the highest variant within it.
-  // This avoids the final child-roll producing a "Painted Elf" who is 63% Hob.
   const racePctMap = new Map<string, number>();
   for (const id of identities) {
     racePctMap.set(id.raceLabel, (racePctMap.get(id.raceLabel) ?? 0) + id.pct);
@@ -480,7 +468,6 @@ export function rollSubject(
   const subjectRaceLabel = dominantRaceLabel;
   const subjectVariantLabel = dominantVariant?.variantLabel ?? null;
 
-  // Resolve the dominant race's RaceInfo + variant node for tags/family.
   const dominantInfo =
     ctx.activeRaces.find((r) => r.race.label === dominantRaceLabel) ?? subjectPick.info;
   const dominantVariantNode = subjectVariantLabel
@@ -488,7 +475,6 @@ export function rollSubject(
     : null;
 
   const headerMakeup = buildHeaderMakeup(identities, subjectRaceLabel);
-
   const secondaryIdentities = identities
     .filter((i) => !(i.raceLabel === subjectRaceLabel && i.variantLabel === subjectVariantLabel))
     .filter((i) => i.pct >= HEADER_MAKEUP_MIN_PCT)
@@ -514,4 +500,113 @@ export function rollSubject(
     effectiveTags: effective,
     transformations: [],
   };
+}
+
+/**
+ * Build a created subject (e.g. Construct). The subject is a single instance
+ * of the chosen race+variant — no biological ancestry. A *creator* is then
+ * generated:
+ *  - With probability (1 - mate_up_probability) the creator is the same race
+ *    (the construct is "self-made" by its own kind).
+ *  - With probability mate_up_probability the creator is rolled from the
+ *    born/sexual race pool weighted by base weight, and that creator is
+ *    generated as a normal full NPC (with their own lineage tree).
+ * The creator becomes the lone "parent" node in the subject's lineage tree
+ * (flagged with isCreator) so it shows up in the displayed tree but does not
+ * contribute to the subject's DNA composition.
+ */
+function rollCreatedSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
+  const gender = rollGender();
+  const variant = pickVariantFor(seedInfo);
+  const variantPart = variant ? ` (${variant.label})` : "";
+  const tagSourceId = variant?.id ?? seedInfo.race.id;
+  const effective = Array.from(resolveEffectiveTags(tagSourceId, ctx.nodes, ctx.edges));
+
+  // Roll the creator. mate_up_probability = chance creator is a *different* race.
+  // (Defaults around 0.2 → ~80% chance of "self-made by another construct".)
+  const goExternal = Math.random() < seedInfo.mateChance && ctx.bornRaces.length > 0;
+
+  let creatorLineage: LineageNode;
+  if (goExternal) {
+    // Pick a born/sexual race weighted by base weight, then generate that
+    // creator as a full normal NPC and attach as the subject's sole "parent".
+    const creatorRace = weightedPick(
+      ctx.bornRaces.map((r) => ({ weight: r.weight, value: r })),
+    )!;
+    const creatorSubject = rollBornSubject(creatorRace, ctx);
+    creatorLineage = { ...creatorSubject.lineage, isCreator: true, dnaShare: 0 };
+  } else {
+    // Self-made: a fellow construct of the same race made this one.
+    const creatorVariant = pickVariantFor(seedInfo);
+    const creatorVariantPart = creatorVariant ? ` (${creatorVariant.label})` : "";
+    const creatorTagSourceId = creatorVariant?.id ?? seedInfo.race.id;
+    const creatorTags = Array.from(resolveEffectiveTags(creatorTagSourceId, ctx.nodes, ctx.edges));
+    creatorLineage = {
+      nodeId: `creator::${seedInfo.race.id}::${creatorVariant?.id ?? ""}`,
+      label: `${seedInfo.race.label}${creatorVariantPart}`,
+      type: seedInfo.race.type,
+      reproduction_mode: seedInfo.race.reproduction_mode,
+      effectiveTags: creatorTags,
+      gender: rollGender(),
+      parents: [],
+      dnaShare: 0,
+      isCreator: true,
+    };
+  }
+
+  const lineage: LineageNode = {
+    nodeId: `${seedInfo.race.id}::${variant?.id ?? ""}`,
+    label: `${seedInfo.race.label}${variantPart}`,
+    type: seedInfo.race.type,
+    reproduction_mode: seedInfo.race.reproduction_mode,
+    effectiveTags: effective,
+    gender,
+    parents: [creatorLineage],
+    dnaShare: 1,
+  };
+
+  const dna = [{ label: lineage.label, pct: 100 }];
+  const headerMakeup = [{
+    raceLabel: seedInfo.race.label,
+    pct: 100,
+    variants: variant ? [{ label: variant.label, pct: 100 }] : [],
+  }];
+
+  return {
+    initials: generateInitials(),
+    gender,
+    identityNodeId: seedInfo.race.id,
+    identityLabel: seedInfo.race.label,
+    identityFamily: seedInfo.familyLabel,
+    variantLabel: variant?.label ?? null,
+    reproduction_mode: seedInfo.race.reproduction_mode,
+    origin_mode: "created",
+    lineage,
+    dna,
+    headerMakeup,
+    secondaryIdentities: [],
+    traits: pickTraits(),
+    effectiveTags: effective,
+    transformations: [],
+  };
+}
+
+export function rollSubject(
+  nodes: EvoNode[],
+  edges: EvoEdge[],
+  options?: { seedRaceId?: string; transformations?: unknown },
+): RolledSubject {
+  void options?.transformations; // transformations are no longer applied
+  const ctx = makeCtx(nodes, edges);
+  if (!ctx.activeRaces.length) throw new Error("No active races available for Racegen");
+
+  // Pick the seed race
+  let seedInfo: RaceInfo | undefined;
+  if (options?.seedRaceId) seedInfo = ctx.byRaceId.get(options.seedRaceId);
+  if (!seedInfo) seedInfo = pickRandomActiveRace(ctx);
+
+  // Route to created vs born flow based on the seed race's family.
+  const isCreated = ctx.createdRaces.some((r) => r.race.id === seedInfo!.race.id);
+  if (isCreated) return rollCreatedSubject(seedInfo, ctx);
+  return rollBornSubject(seedInfo, ctx);
 }
