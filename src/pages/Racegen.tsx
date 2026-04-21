@@ -86,33 +86,35 @@ function DnaBar({ groups }: { groups: RolledSubject["dnaGrouped"] }) {
   return (
     <div className="flex h-2.5 rounded overflow-hidden bg-muted">
       {groups.map((fam, fi) => (
-        <div key={fi} className="flex h-full" style={{ width: `${fam.pct * scale}%` }}>
-          {fam.races.map((race, ri) => {
-            const hue = raceHue(race.raceLabel);
-            return (
-              <div
-                key={ri}
-                className="flex h-full"
-                style={{ width: `${(race.pct / fam.pct) * 100}%` }}
-                title={`${race.raceLabel} ${race.pct.toFixed(1)}%`}
-              >
-                {race.variants.map((v, vi) => (
-                  <div
-                    key={vi}
-                    className="h-full"
-                    title={`${v.label} ${v.pct.toFixed(1)}%`}
-                    style={{
-                      width: `${(v.pct / race.pct) * 100}%`,
-                      backgroundColor: `hsl(${hue} 60% ${50 + (vi % 3) * 8}%)`,
-                      boxShadow: vi > 0 ? "inset 1px 0 0 hsl(0 0% 0% / 0.35)" : undefined,
-                    }}
-                  />
-                ))}
-              </div>
-            );
-          })}
+        <div key={fi} className="contents">
+          <div className="flex h-full" style={{ width: `${fam.pct * scale}%` }}>
+            {fam.races.map((race, ri) => {
+              const hue = raceHue(race.raceLabel);
+              return (
+                <div
+                  key={ri}
+                  className="flex h-full"
+                  style={{ width: `${(race.pct / fam.pct) * 100}%` }}
+                  title={`${race.raceLabel} ${race.pct.toFixed(1)}%`}
+                >
+                  {race.variants.map((v, vi) => (
+                    <div
+                      key={vi}
+                      className="h-full"
+                      title={`${v.label} ${v.pct.toFixed(1)}%`}
+                      style={{
+                        width: `${(v.pct / race.pct) * 100}%`,
+                        backgroundColor: `hsl(${hue} 60% ${50 + (vi % 3) * 8}%)`,
+                        boxShadow: vi > 0 ? "inset 1px 0 0 hsl(0 0% 0% / 0.35)" : undefined,
+                      }}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
           {fi < groups.length - 1 && (
-            <div className="h-full bg-background" style={{ width: `${(FAMILY_GAP_PCT / fam.pct) * 100}%`, marginLeft: 0 }} />
+            <div className="h-full bg-background" style={{ width: `${FAMILY_GAP_PCT}%` }} />
           )}
         </div>
       ))}
