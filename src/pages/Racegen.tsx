@@ -83,9 +83,9 @@ function SubjectCard({ subject }: { subject: RolledSubject }) {
             {subject.variantLabel ? `${subject.variantLabel} ` : ""}
             <span className="text-foreground">{subject.identityLabel}</span>
           </div>
-          {subject.secondaryIdentities.length > 0 && (
+          {(subject.secondaryIdentities?.length ?? 0) > 0 && (
             <div className="mt-1 space-y-0.5">
-              {subject.secondaryIdentities.map((s, i) => (
+              {subject.secondaryIdentities!.map((s, i) => (
                 <div key={i} className="text-xs text-muted-foreground">
                   {s.variantLabel ? `${s.variantLabel} ` : ""}
                   <span className="text-foreground/80">{s.raceLabel}</span>
