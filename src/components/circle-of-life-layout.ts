@@ -81,10 +81,6 @@ export function filterActiveCircleGraph(
 
   const keep = (n: CircleNodeRow): boolean => {
     if (n.is_carrier) return false;
-    // Exclude any node whose origin mode is non-born (parasitic/created) — these
-    // were the legacy transformation/created branches.
-    if (n.origin_mode && n.origin_mode !== "born") return false;
-    if (n.reproduction_mode && n.reproduction_mode !== "sexual") return false;
     if (n.type === "family" && EXCLUDED_FAMILY_LABELS.has(n.label)) return false;
     const fam = familyOf.get(n.id);
     if (fam && EXCLUDED_FAMILY_LABELS.has(fam)) return false;
