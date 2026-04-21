@@ -266,9 +266,10 @@ function makePick(info: RaceInfo, gender: "M" | "F"): AncestorPick {
  */
 function rollChild(mother: AncestorPick, father: AncestorPick, ctx: Ctx, gender: "M" | "F"): { pick: AncestorPick; nextMateChance: number } {
   // Pick the race side: weighted by the parents' base weights so heavier races dominate ties.
-  const items = [
-    { weight: mother.info.weight, value: { parent: "M" as const, info: mother.info, variant: mother.variant } },
-    { weight: father.info.weight, value: { parent: "F" as const, info: father.info, variant: father.variant } },
+  type Side = { parent: "M" | "F"; info: RaceInfo; variant: EvoNode | null };
+  const items: { weight: number; value: Side }[] = [
+    { weight: mother.info.weight, value: { parent: "M", info: mother.info, variant: mother.variant } },
+    { weight: father.info.weight, value: { parent: "F", info: father.info, variant: father.variant } },
   ];
   const sideRaw = weightedPick(items)!;
   const childInfo = sideRaw.info;
