@@ -163,13 +163,18 @@ interface Ctx {
   nodes: EvoNode[];
   edges: EvoEdge[];
   byId: Map<string, EvoNode>;
+  /** Born/sexual races — the ancestry pool. */
+  bornRaces: RaceInfo[];
+  /** Created races — Constructs etc. */
+  createdRaces: RaceInfo[];
+  /** Born + Created — the full subject pool used by the seed dropdown. */
   activeRaces: RaceInfo[];
   byRaceId: Map<string, RaceInfo>;
-  /** Per-race precomputed mate-pick distribution. */
+  /** Per-born-race precomputed mate-pick distribution (over bornRaces only). */
   mateTable: Map<string, { weight: number; raceId: string }[]>;
 }
 
-function buildRaceInfo(race: EvoNode, ctx: Omit<Ctx, "activeRaces" | "byRaceId" | "mateTable">): RaceInfo {
+function buildRaceInfo(race: EvoNode, ctx: Pick<Ctx, "nodes" | "edges" | "byId">): RaceInfo {
   const variants = getChildIds(race.id, ctx.edges)
     .map((id) => ctx.byId.get(id))
     .filter((n): n is EvoNode => !!n && n.type === "variant" && !n.is_carrier);
@@ -186,32 +191,24 @@ function buildRaceInfo(race: EvoNode, ctx: Omit<Ctx, "activeRaces" | "byRaceId" 
 }
 
 /**
- * For each active race, build a mate distribution:
+ * For each born race, build a sexual-mate distribution over bornRaces:
  *   weight(target) = base_weight(target) * affinity(self → target)
  *
  * Affinity tiers (multiplicative on top of base weight):
- *   - same race                      → 1.0       (baseline; "stays in race")
+ *   - same race                      → SAME_RACE_BIAS
  *   - same family, different race    → mateChance
- *   - cross-family                   → mateChance * mateChance / 2  (rarer)
- *
- * The "stays in race" baseline is huge compared to the cross terms because
- * race weights are small integers (~1–7) but combine multiplicatively. We
- * therefore *boost* the same-race weight so most pairings remain in-race.
+ *   - cross-family                   → mateChance * mateChance / 2
  */
-function buildMateTable(ctx: Omit<Ctx, "mateTable">): Map<string, { weight: number; raceId: string }[]> {
-  const SAME_RACE_BIAS = 8; // bias toward staying in race
+function buildMateTable(bornRaces: RaceInfo[]): Map<string, { weight: number; raceId: string }[]> {
+  const SAME_RACE_BIAS = 8;
   const out = new Map<string, { weight: number; raceId: string }[]>();
-  for (const self of ctx.activeRaces) {
+  for (const self of bornRaces) {
     const dist: { weight: number; raceId: string }[] = [];
-    for (const other of ctx.activeRaces) {
+    for (const other of bornRaces) {
       let mult: number;
-      if (other.race.id === self.race.id) {
-        mult = SAME_RACE_BIAS;
-      } else if (other.familyLabel && other.familyLabel === self.familyLabel) {
-        mult = self.mateChance;
-      } else {
-        mult = self.mateChance * self.mateChance * 0.5;
-      }
+      if (other.race.id === self.race.id) mult = SAME_RACE_BIAS;
+      else if (other.familyLabel && other.familyLabel === self.familyLabel) mult = self.mateChance;
+      else mult = self.mateChance * self.mateChance * 0.5;
       const w = other.weight * mult;
       if (w > 0) dist.push({ weight: w, raceId: other.race.id });
     }
@@ -223,13 +220,16 @@ function buildMateTable(ctx: Omit<Ctx, "mateTable">): Map<string, { weight: numb
 function makeCtx(nodes: EvoNode[], edges: EvoEdge[]): Ctx {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const partial = { nodes, edges, byId };
-  const activeRaces = nodes
-    .filter((n) => isActiveRace(n, nodes, edges))
+  const bornRaces = nodes
+    .filter((n) => isBornRace(n, nodes, edges))
     .map((r) => buildRaceInfo(r, partial));
+  const createdRaces = nodes
+    .filter((n) => isCreatedRace(n, nodes, edges))
+    .map((r) => buildRaceInfo(r, partial));
+  const activeRaces = [...bornRaces, ...createdRaces];
   const byRaceId = new Map(activeRaces.map((r) => [r.race.id, r]));
-  const ctxBase = { ...partial, activeRaces, byRaceId };
-  const mateTable = buildMateTable(ctxBase);
-  return { ...ctxBase, mateTable };
+  const mateTable = buildMateTable(bornRaces);
+  return { ...partial, bornRaces, createdRaces, activeRaces, byRaceId, mateTable };
 }
 
 // ---------- variant + race picking ----------
@@ -239,6 +239,7 @@ function pickVariantFor(info: RaceInfo): EvoNode | null {
   return weightedPick(info.variants.map((v) => ({ weight: Math.max(0.0001, v.weight ?? 1), value: v })));
 }
 
+/** Weighted random subject pick across the full active pool (born + created). */
 function pickRandomActiveRace(ctx: Ctx): RaceInfo {
   const items = ctx.activeRaces.map((r) => ({ weight: r.weight, value: r }));
   return weightedPick(items)!;
