@@ -1034,6 +1034,39 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                   </div>
                 </>
               )}
+              <div className="space-y-2 border-t border-border pt-2">
+                <div className="text-[10px] uppercase text-muted-foreground tracking-wider">Origin & Quirks</div>
+                <div>
+                  <Label className="text-xs">Origin Mode</Label>
+                  <Select value={editBuffer.origin_mode} onValueChange={(v) => setEditBuffer({ ...editBuffer, origin_mode: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="born">Born (default)</SelectItem>
+                      <SelectItem value="created">Created</SelectItem>
+                      <SelectItem value="parasitic">Parasitic</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Variant Inheritance</Label>
+                  <Select value={editBuffer.variant_inheritance} onValueChange={(v) => setEditBuffer({ ...editBuffer, variant_inheritance: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="random">Random</SelectItem>
+                      <SelectItem value="mother">From Mother</SelectItem>
+                      <SelectItem value="father">From Father</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <label className="flex items-center gap-2 text-xs">
+                  <input type="checkbox" checked={editBuffer.is_carrier} onChange={(e) => setEditBuffer({ ...editBuffer, is_carrier: e.target.checked })} />
+                  Is Carrier (transformation source, never rolled as identity)
+                </label>
+                <label className="flex items-center gap-2 text-xs">
+                  <input type="checkbox" checked={editBuffer.identity_overwrites_host} onChange={(e) => setEditBuffer({ ...editBuffer, identity_overwrites_host: e.target.checked })} />
+                  Identity Overwrites Host (parasitic only)
+                </label>
+              </div>
               <div className="flex gap-2">
                 <Button
                   size="sm"
@@ -1049,6 +1082,10 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                       tags: editBuffer.tags.split(",").map(t => t.trim()).filter(Boolean),
                       host_required_tags: editBuffer.host_required_tags.split(",").map(t => t.trim()).filter(Boolean),
                       host_tag_match_mode: editBuffer.host_tag_match_mode,
+                      origin_mode: editBuffer.origin_mode,
+                      is_carrier: editBuffer.is_carrier,
+                      variant_inheritance: editBuffer.variant_inheritance,
+                      identity_overwrites_host: editBuffer.identity_overwrites_host,
                     })
                   }
                 >
