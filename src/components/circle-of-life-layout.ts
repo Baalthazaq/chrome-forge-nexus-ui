@@ -5,6 +5,8 @@ export interface CircleNodeRow {
   color: string | null;
   y: number;
   reproduction_mode?: string;
+  origin_mode?: string;
+  is_carrier?: boolean;
 }
 
 export interface CircleEdgeRow {
@@ -346,14 +348,17 @@ export function buildCircleLayout(nodes: CircleNodeRow[], edges: CircleEdgeRow[]
     if (!from || !to) continue;
     links.push({ from, to });
   }
-  // Only sexual/asexual families descend from The Source. Transform/created
-  // families (Undead, Construct) are origin-less from a lineage standpoint
-  // and should not visually connect to the Source node.
+  // Only born families descend from The Source. Created/parasitic families
+  // (Construct, Modron, Undead) are origin-less from a lineage standpoint
+  // and should not visually connect to the Source node. Falls back to the
+  // legacy reproduction_mode flag for compatibility.
   for (const family of (rootFamilies.length ? rootFamilies : families)) {
     const ln = nodeMap.get(family.id);
     if (!ln) continue;
+    const origin = (family as any).origin_mode as string | undefined;
+    if (origin && origin !== "born") continue;
     const mode = (family as any).reproduction_mode ?? "sexual";
-    if (mode === "transformed" || mode === "created") continue;
+    if (!origin && (mode === "transformed" || mode === "created")) continue;
     links.push({ from: root, to: ln });
   }
 
