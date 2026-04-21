@@ -58,7 +58,13 @@ export interface RolledSubject {
   /** Aggregated DNA breakdown by leaf race+variant label (granular). */
   dna: { label: string; pct: number }[];
   /** Race-grouped header makeup, e.g. "Dwarf (50% Gold, 25% Shield)". */
-  headerMakeup: { raceLabel: string; pct: number; variants: { label: string; pct: number }[] }[];
+  headerMakeup: { raceLabel: string; familyLabel: string | null; pct: number; variants: { label: string; pct: number }[] }[];
+  /** Full DNA breakdown grouped by family > race > variant for visualization. */
+  dnaGrouped: {
+    familyLabel: string | null;
+    pct: number;
+    races: { raceLabel: string; pct: number; variants: { label: string; pct: number }[] }[];
+  }[];
   secondaryIdentities: SecondaryIdentity[];
   hijackedDna?: { label: string; pct: number }[];
   inheritedHostTags?: string[];
@@ -452,7 +458,8 @@ function aggregateIdentities(lineage: LineageNode): SecondaryIdentity[] {
 function buildHeaderMakeup(
   identities: SecondaryIdentity[],
   primaryRaceLabel: string,
-): { raceLabel: string; pct: number; variants: { label: string; pct: number }[] }[] {
+  ctx: Ctx,
+): { raceLabel: string; familyLabel: string | null; pct: number; variants: { label: string; pct: number }[] }[] {
   const byRace = new Map<string, { pct: number; variants: { label: string; pct: number }[] }>();
   for (const id of identities) {
     const slot = byRace.get(id.raceLabel) ?? { pct: 0, variants: [] };
@@ -460,23 +467,56 @@ function buildHeaderMakeup(
     if (id.variantLabel) slot.variants.push({ label: id.variantLabel, pct: id.pct });
     byRace.set(id.raceLabel, slot);
   }
-  const out: { raceLabel: string; pct: number; variants: { label: string; pct: number }[] }[] = [];
+  const out: { raceLabel: string; familyLabel: string | null; pct: number; variants: { label: string; pct: number }[] }[] = [];
   for (const [raceLabel, slot] of byRace.entries()) {
     if (raceLabel === primaryRaceLabel || slot.pct >= HEADER_MAKEUP_MIN_PCT) {
+      const info = ctx.activeRaces.find((r) => r.race.label === raceLabel);
       out.push({
         raceLabel,
+        familyLabel: info?.familyLabel ?? null,
         pct: slot.pct,
         variants: slot.variants.sort((a, b) => b.pct - a.pct),
       });
     }
   }
-  // Primary first, then descending by share.
   out.sort((a, b) => {
     if (a.raceLabel === primaryRaceLabel) return -1;
     if (b.raceLabel === primaryRaceLabel) return 1;
     return b.pct - a.pct;
   });
   return out;
+}
+
+/** Group ALL DNA (no threshold filter) by family > race > variant for the bar viz. */
+function buildDnaGrouped(
+  identities: SecondaryIdentity[],
+  ctx: Ctx,
+): { familyLabel: string | null; pct: number; races: { raceLabel: string; pct: number; variants: { label: string; pct: number }[] }[] }[] {
+  const families = new Map<string, { pct: number; races: Map<string, { pct: number; variants: { label: string; pct: number }[] }> }>();
+  for (const id of identities) {
+    const info = ctx.activeRaces.find((r) => r.race.label === id.raceLabel);
+    const famKey = info?.familyLabel ?? "_none";
+    const fam = families.get(famKey) ?? { pct: 0, races: new Map() };
+    fam.pct += id.pct;
+    const race = fam.races.get(id.raceLabel) ?? { pct: 0, variants: [] };
+    race.pct += id.pct;
+    race.variants.push({ label: id.variantLabel ?? id.raceLabel, pct: id.pct });
+    fam.races.set(id.raceLabel, race);
+    families.set(famKey, fam);
+  }
+  return Array.from(families.entries())
+    .map(([key, fam]) => ({
+      familyLabel: key === "_none" ? null : key,
+      pct: fam.pct,
+      races: Array.from(fam.races.entries())
+        .map(([raceLabel, r]) => ({
+          raceLabel,
+          pct: r.pct,
+          variants: r.variants.sort((a, b) => b.pct - a.pct),
+        }))
+        .sort((a, b) => b.pct - a.pct),
+    }))
+    .sort((a, b) => b.pct - a.pct);
 }
 
 // ---------- public API ----------
@@ -509,7 +549,8 @@ function rollBornSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
     ? dominantInfo.variants.find((v) => v.label === subjectVariantLabel) ?? null
     : null;
 
-  const headerMakeup = buildHeaderMakeup(identities, subjectRaceLabel);
+  const headerMakeup = buildHeaderMakeup(identities, subjectRaceLabel, ctx);
+  const dnaGrouped = buildDnaGrouped(identities, ctx);
   const secondaryIdentities = identities
     .filter((i) => !(i.raceLabel === subjectRaceLabel && i.variantLabel === subjectVariantLabel))
     .filter((i) => i.pct >= HEADER_MAKEUP_MIN_PCT)
@@ -530,6 +571,7 @@ function rollBornSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
     lineage,
     dna,
     headerMakeup,
+    dnaGrouped,
     secondaryIdentities,
     traits: pickTraits(),
     effectiveTags: effective,
@@ -603,8 +645,18 @@ function rollCreatedSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
   const dna = [{ label: lineage.label, pct: 100 }];
   const headerMakeup = [{
     raceLabel: seedInfo.race.label,
+    familyLabel: seedInfo.familyLabel,
     pct: 100,
     variants: variant ? [{ label: variant.label, pct: 100 }] : [],
+  }];
+  const dnaGrouped = [{
+    familyLabel: seedInfo.familyLabel,
+    pct: 100,
+    races: [{
+      raceLabel: seedInfo.race.label,
+      pct: 100,
+      variants: [{ label: variant?.label ?? seedInfo.race.label, pct: 100 }],
+    }],
   }];
 
   return {
@@ -619,6 +671,7 @@ function rollCreatedSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
     lineage,
     dna,
     headerMakeup,
+    dnaGrouped,
     secondaryIdentities: [],
     traits: pickTraits(),
     effectiveTags: effective,
