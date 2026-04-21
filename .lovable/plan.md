@@ -1,62 +1,82 @@
 
-## Racegen ancestry fix
 
-### Problem to fix
-The current lineage logic now forces both parents to be the child’s exact node, which removed mixed ancestry entirely. At the same time, the display still needs every lineage row to remain `Race (Variant)`.
+## Racegen overhaul: data cleanup + new top-down lineage algorithm
 
-### What to change
+### Part 1 — Data cleanup (Circle of Life graph + wheel)
 
-1. Restore mixed-ancestry partner selection in `src/lib/racegenLogic.ts`
-   - Re-enable the existing walk-up mate logic instead of cloning the child node for both parents.
-   - Use `pickMatePartner(...)` for the partner branch again so ancestry can climb to parent race/family/source tiers and come back down into a different compatible branch.
-   - Keep `pickMatePartner` as the mechanism that produces cross-race and cross-variant ancestry.
+Remove from active generation pool and set aside (excluded from rolls, but kept in DB for reference):
+- All **Undead** family races
+- All **Plant** family races (Awakened Plant, Blight, Treant, Dryad)
+- All **Created** origin races (Constructs / Exotic Construct / Clank)
+- All **Transformations** (no longer applied to generated subjects)
 
-2. Separate “display identity” from “mating source”
-   - Keep every rendered lineage node formatted as `Race (Variant)`.
-   - Do not force the chosen mate to become the child’s exact variant.
-   - Instead, allow the mate picker to return a genuinely mixed partner, then normalize that partner into a displayable `Race (Variant)` node before rendering.
+Reclassify:
+- **Fungril** moves from `Plant`/current family into the **Fey** family.
 
-3. Preserve race quirks like variant inheritance
-   - Use `variant_inheritance` on the race node to determine which parent controls the child’s final variant:
-     - `random`: child variant can come from either side / default behavior
-     - `mother`: child variant follows maternal side
-     - `father`: child variant follows paternal side
-   - This allows mixed-race ancestry while keeping cases like Spider’s father-led variant rule.
+Remove mechanic entirely:
+- **Asexual reproduction** — every birthable race now reproduces sexually only.
 
-4. Make lineage generation explicit about the two parent roles
-   - Parent A: the “same-line” parent anchored to the child’s line.
-   - Parent B: the partner selected via walk-up mate logic.
-   - The child’s final displayed identity should be resolved from those two parents plus the race quirk, not by rewriting both parents to match the child.
+Reflected in:
+- `src/components/CircleOfLifeDiagram.tsx` (the wheel) — excluded families/origins no longer rendered as active; Fungril sits inside the Fey arc.
+- `src/components/circle-of-life-layout.ts` — layout updated to drop excluded families and re-slot Fungril.
+- `src/lib/evolutionGraph.ts` and the racegen logic — filtered node pool excludes the set-aside groups; reproduction-mode logic loses the asexual branch.
 
-5. Keep DNA aggregation based on terminal lineage leaves
-   - Continue aggregating DNA from leaf nodes only.
-   - Because leaves remain `Race (Variant)`, the DNA bar and secondary identities will reflect real mixed ancestry again.
-   - Keep the `>= 25%` secondary identity rule unchanged.
+These categories are still queryable (e.g. for admin or future use), but Racegen will not roll them and the wheel/tree will not present them as active reproductive participants.
 
-6. Update Racegen card presentation in `src/pages/Racegen.tsx`
-   - Keep primary identity as the most prominent `Race + Variant`.
-   - Keep secondary identities underneath for any other `Race + Variant` at or above 25%.
-   - Do not display family in the header.
+### Part 2 — New top-down lineage algorithm
 
-### Expected behavior after fix
-- Mixed ancestry returns.
-- A child can have one parent from their own line and another from a different variant/race/family depending on mate-up rolls.
-- Every visible lineage row still shows a full `Race (Variant)` label.
-- DNA percentages and secondary identities once again reflect genuine mixed lineage instead of forced purity.
+Replace the current bottom-up recursive lineage with a **top-down generational walk** that starts from great-grandparents and walks down to the subject, accumulating mixed ancestry naturally.
 
-## Technical details
-- Main file: `src/lib/racegenLogic.ts`
-- Likely affected functions:
-  - `rollBirthableLineage`
-  - `rollBirthableLineageInner`
-  - `pickMatePartner`
-  - `pickLeafDescendant`
-  - identity resolution around `variant_inheritance`
-- UI file to verify: `src/pages/Racegen.tsx`
+#### Per-race "mate chance" weighting (precomputed)
 
-## Validation
-After implementation, verify with seeded rolls that:
-- mixed dwarf/halfling/etc ancestry appears again,
-- direct parents are not nonsensically rewritten,
-- every lineage row is `Race (Variant)`,
-- secondary identities match the leaf DNA breakdown.
+For each birthable race we precompute a weighted mate distribution:
+
+```text
+mate_weight(target) = race.mate_chance(target) * target.base_weight
+```
+
+This produces, for any given race, a normalized probability table of "who they are most likely to mate with" — covering same variant, other variant, same family, cross-family. This table is computed once per generation pass.
+
+#### Generation order (top-down, 3 generations: GGP → GP → P → Subject)
+
+For each branch of the family tree (the subject has 2 parents, 4 grandparents, 8 great-grandparents):
+
+1. **Pick a great-grandparent (GGP).** First GGP on the seed branch is anchored to the requested seed race (or weighted random). Each GGP is a concrete `Race (Variant)`.
+2. **Pick that GGP's mate** by sampling from the GGP's precomputed mate-weight table.
+3. **Roll their child (the grandparent, GP):** the child's race/variant is chosen by combining both parents — same variant if both match, else weighted between the two parents' lines, with a small chance to drift into a related branch consistent with the mate table.
+4. **Pick the GP's mate** using the *higher of the GP's parents'* mate-chance values as the filter strength — i.e. the more "open" parent dominates how exotic the GP's mate can be.
+5. Repeat the same child-roll + mate-roll process to produce the parent (P), then again to produce the **subject**.
+
+Each leaf (the 8 GGPs) contributes equal DNA share. The subject's displayed identity is the result of the final child roll, but their full racial makeup is computed from the leaf composition.
+
+#### DNA aggregation and display rules
+
+- Aggregate leaves by `(raceId, variantId)`.
+- Then group by `raceId` for display, combining variants of the same race into one line:
+  - Format: `Dwarf (50% Gold, 25% Shield), Human (25% Gunner)`
+- **Display threshold:** show a race in the header makeup only if it is the **subject's primary race** OR contributes **≥ 33%** of total DNA (was 25%).
+- The lineage tree still lists every individual ancestor as `Race (Variant)` — no grouping there.
+
+#### Variant inheritance quirks
+
+`variant_inheritance` (`mother` / `father` / `random`) still applies at each child-roll step, deciding which parent's variant the child inherits when the two parents differ.
+
+### Files to change
+
+- `src/lib/racegenLogic.ts` — full rewrite of lineage generation around the top-down algorithm; remove asexual mode; add precomputed mate-weight tables; update DNA aggregation + 33% threshold + grouped-by-race display.
+- `src/lib/evolutionGraph.ts` — filter helpers to exclude undead / plant / created / transformations from the active pool; drop asexual handling.
+- `src/components/CircleOfLifeDiagram.tsx` and `src/components/circle-of-life-layout.ts` — remove set-aside families from the wheel and move Fungril into Fey.
+- `src/pages/Racegen.tsx` — header makeup line uses the new grouped format and the 33% rule; lineage tree unchanged in structure.
+- `src/pages/CircleOfLife.tsx` — verify it still renders cleanly with the reduced set.
+- (Data) a one-time migration or admin helper to flip Fungril's family to Fey in `evolution_nodes`, and to mark undead/plant/created/transformations as inactive for generation (a boolean flag like `active_in_racegen`), so the source data is preserved.
+
+### Validation
+
+- The wheel shows only active families; Fungril sits inside Fey.
+- No subject ever rolls as undead, plant, created, or with a transformation.
+- No subject is ever asexual.
+- Subjects show clean grouped makeup like `Dwarf (50% Gold, 25% Shield), Human (25% Gunner)`.
+- Only the primary race or races with ≥ 33% DNA appear in the header line.
+- Lineage tree shows 8 great-grandparents → 4 grandparents → 2 parents → subject, every row a full `Race (Variant)`.
+- Mixed ancestry appears naturally and is driven by each race's mate-chance table, with the "more open" parent controlling the next mate filter.
+
