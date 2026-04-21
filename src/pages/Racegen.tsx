@@ -6,16 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Loader2, Dices, ChevronDown, ChevronRight, Sparkles, Bug } from "lucide-react";
+import { ArrowLeft, Loader2, Dices, ChevronDown, ChevronRight, Bug } from "lucide-react";
 import { toast } from "sonner";
 import { EvoNode, EvoEdge, EvoTransformation } from "@/lib/evolutionGraph";
-import { LineageNode, RolledSubject, rollSubject } from "@/lib/racegenLogic";
-
-const MODE_BADGE: Record<string, { letter: string; tip: string; cls: string }> = {
-  asexual: { letter: "A", tip: "Asexual", cls: "bg-emerald-700/40 text-emerald-200 border-emerald-600/60" },
-  transformed: { letter: "T", tip: "Transformed", cls: "bg-fuchsia-700/40 text-fuchsia-200 border-fuchsia-600/60" },
-  created: { letter: "C", tip: "Created", cls: "bg-amber-700/40 text-amber-200 border-amber-600/60" },
-};
+import { LineageNode, RolledSubject, rollSubject, isActiveRace } from "@/lib/racegenLogic";
 
 const ORIGIN_BADGE: Record<string, { label: string; cls: string; icon?: any }> = {
   parasitic: { label: "Parasitic", cls: "bg-violet-900/50 text-violet-200 border-violet-700/60", icon: Bug },

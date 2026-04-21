@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   buildCircleLayout,
+  filterActiveCircleGraph,
   ROOT_ID,
   type CircleEdgeRow,
   type CircleNodeRow,
@@ -38,7 +39,10 @@ export function CircleOfLifeDiagram({
     onFocusChange?.(resolved);
   };
 
-  const layout = useMemo(() => buildCircleLayout(nodes, edges), [nodes, edges]);
+  const layout = useMemo(() => {
+    const filtered = filterActiveCircleGraph(nodes, edges);
+    return buildCircleLayout(filtered.nodes, filtered.edges);
+  }, [nodes, edges]);
 
   const childMap = useMemo(() => {
     const map = new Map<string, string[]>();
