@@ -32,6 +32,12 @@ export interface AppliedTransformation {
   grantedTags: string[];
 }
 
+export interface SecondaryIdentity {
+  raceLabel: string;
+  variantLabel: string | null;
+  pct: number;
+}
+
 export interface RolledSubject {
   initials: string;
   gender: "M" | "F";
@@ -44,6 +50,8 @@ export interface RolledSubject {
   lineage: LineageNode;
   // Aggregated DNA breakdown by leaf race label.
   dna: { label: string; pct: number }[];
+  // Secondary races/variants whose DNA share is ≥ 25% (excludes the primary).
+  secondaryIdentities: SecondaryIdentity[];
   // For parasitic subjects: DNA of the hijacked host body. Identity DNA is N/A.
   hijackedDna?: { label: string; pct: number }[];
   // Tags inherited from a hijacked host (parasitic origin only).
