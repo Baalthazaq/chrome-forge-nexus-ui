@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Loader2, Dices, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, Loader2, Dices, ChevronDown, ChevronRight, Sparkles, Bug } from "lucide-react";
 import { toast } from "sonner";
-import { EvoNode, EvoEdge } from "@/lib/evolutionGraph";
+import { EvoNode, EvoEdge, EvoTransformation } from "@/lib/evolutionGraph";
 import { LineageNode, RolledSubject, rollSubject } from "@/lib/racegenLogic";
 
 const MODE_BADGE: Record<string, { letter: string; tip: string; cls: string }> = {
@@ -17,11 +17,16 @@ const MODE_BADGE: Record<string, { letter: string; tip: string; cls: string }> =
   created: { letter: "C", tip: "Created", cls: "bg-amber-700/40 text-amber-200 border-amber-600/60" },
 };
 
+const ORIGIN_BADGE: Record<string, { label: string; cls: string; icon?: any }> = {
+  parasitic: { label: "Parasitic", cls: "bg-violet-900/50 text-violet-200 border-violet-700/60", icon: Bug },
+  created: { label: "Created", cls: "bg-amber-900/50 text-amber-200 border-amber-700/60" },
+};
+
 function LineageTreeView({ node, depth = 0 }: { node: LineageNode; depth?: number }) {
   const [open, setOpen] = useState(depth < 2);
   const hasKids = node.parents.length > 0;
   const badge = MODE_BADGE[node.reproduction_mode];
-  const role = node.isHost ? "Host" : node.isCreator ? "Creator" : null;
+  const role = node.isHost ? "Hijacked Host" : node.isCreator ? "Creator" : null;
   return (
     <div className="text-xs" style={{ marginLeft: depth === 0 ? 0 : 12 }}>
       <div className="flex items-center gap-1.5 py-0.5">
@@ -57,10 +62,20 @@ function LineageTreeView({ node, depth = 0 }: { node: LineageNode; depth?: numbe
 
 function SubjectCard({ subject }: { subject: RolledSubject }) {
   const badge = MODE_BADGE[subject.reproduction_mode];
+  const originBadge = ORIGIN_BADGE[subject.origin_mode];
+  const OriginIcon = originBadge?.icon;
+  const isParasitic = subject.origin_mode === "parasitic";
+  const visibleDna = isParasitic && subject.hijackedDna ? subject.hijackedDna : subject.dna;
+
+  // Filter out the structural tags from chips
+  const tagChips = subject.effectiveTags
+    .filter((t) => !["family", "race", "variant"].includes(t))
+    .slice(0, 12);
+
   return (
     <Card className="p-4 space-y-3 bg-card/80 border-border">
       <div className="flex items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0">
           <div className="text-2xl font-bold tracking-wider">{subject.initials}</div>
           <div className="text-sm text-muted-foreground">
             <span className="text-foreground font-semibold">{subject.gender === "M" ? "♂ Male" : "♀ Female"}</span>
@@ -72,17 +87,50 @@ function SubjectCard({ subject }: { subject: RolledSubject }) {
             )}
           </div>
         </div>
-        {badge && (
-          <span title={badge.tip} className={`inline-flex items-center justify-center text-xs font-bold w-6 h-6 rounded border ${badge.cls}`}>
-            {badge.letter}
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-1">
+          {originBadge && (
+            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 h-5 rounded border ${originBadge.cls}`}>
+              {OriginIcon && <OriginIcon className="h-3 w-3" />}
+              {originBadge.label}
+            </span>
+          )}
+          {badge && (
+            <span title={badge.tip} className={`inline-flex items-center justify-center text-xs font-bold w-6 h-6 rounded border ${badge.cls}`}>
+              {badge.letter}
+            </span>
+          )}
+        </div>
       </div>
 
+      {/* Transformations stack */}
+      {subject.transformations.length > 0 && (
+        <div className="space-y-1 border-l-2 border-fuchsia-600/40 pl-2">
+          <div className="text-[10px] uppercase text-muted-foreground tracking-wider flex items-center gap-1">
+            <Sparkles className="h-3 w-3" /> Transformations
+          </div>
+          {subject.transformations.map((t) => (
+            <div key={t.id} className="flex items-center gap-1.5 text-xs">
+              <Badge className="bg-fuchsia-900/40 text-fuchsia-100 border-fuchsia-700/60 hover:bg-fuchsia-900/40 text-[10px] py-0 px-1.5 h-5">
+                {t.label}
+              </Badge>
+              <span className="text-[10px] text-muted-foreground">
+                {t.acquisition === "afflicted" && t.carrierLabel
+                  ? `via ${t.carrierLabel}`
+                  : t.acquisition === "innate"
+                  ? "innate"
+                  : t.acquisition}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="space-y-1">
-        <div className="text-[10px] uppercase text-muted-foreground tracking-wider">DNA</div>
+        <div className="text-[10px] uppercase text-muted-foreground tracking-wider">
+          {isParasitic ? "Hijacked DNA" : "DNA"}
+        </div>
         <div className="flex h-2 rounded overflow-hidden bg-muted">
-          {subject.dna.map((d, i) => (
+          {visibleDna.map((d, i) => (
             <div
               key={i}
               title={`${d.label} ${d.pct.toFixed(1)}%`}
@@ -91,7 +139,7 @@ function SubjectCard({ subject }: { subject: RolledSubject }) {
           ))}
         </div>
         <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
-          {subject.dna.slice(0, 6).map((d, i) => (
+          {visibleDna.slice(0, 6).map((d, i) => (
             <span key={i}>{d.label} {d.pct.toFixed(1)}%</span>
           ))}
         </div>
@@ -112,16 +160,21 @@ function SubjectCard({ subject }: { subject: RolledSubject }) {
         </div>
       </div>
 
-      {subject.effectiveTags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {subject.effectiveTags.filter(t => !["family", "race", "variant"].includes(t)).slice(0, 8).map((t) => (
-            <Badge key={t} variant="outline" className="text-[9px] py-0 px-1 h-4">{t}</Badge>
-          ))}
+      {tagChips.length > 0 && (
+        <div>
+          <div className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Tags</div>
+          <div className="flex flex-wrap gap-1">
+            {tagChips.map((t) => (
+              <Badge key={t} variant="outline" className="text-[9px] py-0 px-1 h-4">{t}</Badge>
+            ))}
+          </div>
         </div>
       )}
 
       <details className="text-xs">
-        <summary className="cursor-pointer text-muted-foreground hover:text-foreground select-none">Lineage</summary>
+        <summary className="cursor-pointer text-muted-foreground hover:text-foreground select-none">
+          {isParasitic ? "Host body lineage" : "Lineage"}
+        </summary>
         <div className="mt-2">
           <LineageTreeView node={subject.lineage} />
         </div>
@@ -134,6 +187,7 @@ const Racegen = () => {
   const navigate = useNavigate();
   const [nodes, setNodes] = useState<EvoNode[]>([]);
   const [edges, setEdges] = useState<EvoEdge[]>([]);
+  const [transformations, setTransformations] = useState<EvoTransformation[]>([]);
   const [loading, setLoading] = useState(true);
   const [batchSize, setBatchSize] = useState(8);
   const [results, setResults] = useState<RolledSubject[]>([]);
@@ -141,22 +195,27 @@ const Racegen = () => {
 
   useEffect(() => {
     (async () => {
-      const [{ data: n, error: nErr }, { data: e, error: eErr }] = await Promise.all([
+      const [nRes, eRes, tRes] = await Promise.all([
         supabase.from("evolution_nodes").select("*"),
         supabase.from("evolution_edges").select("*"),
+        supabase.from("evolution_transformations").select("*"),
       ]);
-      if (nErr || eErr) {
+      if (nRes.error || eRes.error) {
         toast.error("Failed to load evolution graph");
         setLoading(false);
         return;
       }
-      setNodes((n ?? []) as unknown as EvoNode[]);
-      setEdges((e ?? []) as EvoEdge[]);
+      setNodes((nRes.data ?? []) as unknown as EvoNode[]);
+      setEdges((eRes.data ?? []) as EvoEdge[]);
+      setTransformations((tRes.data ?? []) as unknown as EvoTransformation[]);
       setLoading(false);
     })();
   }, []);
 
-  const races = useMemo(() => nodes.filter((n) => n.type === "race").sort((a, b) => a.label.localeCompare(b.label)), [nodes]);
+  const races = useMemo(
+    () => nodes.filter((n) => n.type === "race" && !n.is_carrier).sort((a, b) => a.label.localeCompare(b.label)),
+    [nodes]
+  );
 
   const generate = () => {
     if (nodes.length === 0) {
@@ -166,7 +225,10 @@ const Racegen = () => {
     try {
       const out: RolledSubject[] = [];
       for (let i = 0; i < batchSize; i++) {
-        out.push(rollSubject(nodes, edges, seedRaceId !== "any" ? { seedRaceId } : undefined));
+        out.push(rollSubject(nodes, edges, {
+          seedRaceId: seedRaceId !== "any" ? seedRaceId : undefined,
+          transformations,
+        }));
       }
       setResults(out);
     } catch (e: any) {
@@ -191,8 +253,7 @@ const Racegen = () => {
           </Button>
           <h1 className="text-4xl font-bold tracking-tight">Racegen</h1>
           <p className="text-muted-foreground">
-            Procedural ancestry generator — driven live by the Circle of Life graph.
-            Edit nodes, tags, and reproduction modes there; this page reflects them on the next roll.
+            Procedural ancestry generator — driven live by the Circle of Life graph and transformation table.
           </p>
         </header>
 
@@ -222,7 +283,7 @@ const Racegen = () => {
             <Dices className="h-4 w-4 mr-1" /> Generate
           </Button>
           <span className="text-xs text-muted-foreground ml-auto">
-            {nodes.length} nodes • {races.length} races
+            {nodes.length} nodes • {races.length} races • {transformations.length} transformations
           </span>
         </Card>
 
