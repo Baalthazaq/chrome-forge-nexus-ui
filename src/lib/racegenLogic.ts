@@ -506,7 +506,7 @@ export function rollSubject(
   if (origin === "born") {
     const all = aggregateIdentities(lineage);
     secondaryIdentities = all
-      .filter((i) => i.raceLabel !== identity!.label && i.pct >= 25)
+      .filter((i) => !(i.raceLabel === identity!.label && i.variantLabel === (variant?.label ?? null)) && i.pct >= 25)
       .slice(0, 4);
   } else if (origin === "parasitic" && lineage.parents.length > 0) {
     const hostLineage = lineage.parents[0];
