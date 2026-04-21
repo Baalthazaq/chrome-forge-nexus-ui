@@ -179,7 +179,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const [newLabel, setNewLabel] = useState("");
   const [newType, setNewType] = useState("race");
   const [newColor, setNewColor] = useState<string>(Object.values(FAMILY_COLORS)[0]);
-  const [editBuffer, setEditBuffer] = useState<{ label: string; type: string; color: string; weight: string; mate_up_probability: string; reproduction_mode: string; tags: string; host_required_tags: string; host_tag_match_mode: string } | null>(null);
+  const [editBuffer, setEditBuffer] = useState<{ label: string; type: string; color: string; weight: string; mate_up_probability: string; reproduction_mode: string; tags: string; host_required_tags: string; host_tag_match_mode: string; origin_mode: string; is_carrier: boolean; variant_inheritance: string; identity_overwrites_host: boolean } | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragState = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
