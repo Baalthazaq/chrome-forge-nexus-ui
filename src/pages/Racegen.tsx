@@ -187,8 +187,8 @@ const Racegen = () => {
   }, []);
 
   const races = useMemo(
-    () => nodes.filter((n) => n.type === "race" && !n.is_carrier).sort((a, b) => a.label.localeCompare(b.label)),
-    [nodes]
+    () => nodes.filter((n) => isActiveRace(n, nodes, edges)).sort((a, b) => a.label.localeCompare(b.label)),
+    [nodes, edges]
   );
 
   const generate = () => {
