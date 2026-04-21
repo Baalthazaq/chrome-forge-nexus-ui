@@ -294,13 +294,15 @@ function rollBirthableLineageInner(node: EvoNode, ctx: Ctx, share: number, gende
   }
   const inheritance = raceForQuirk?.variant_inheritance ?? "random";
 
+  // Both parents share the child's race+variant. Cross-variant mating is
+  // represented in the aggregated DNA / secondary identities, not by
+  // retroactively assigning a different variant to a direct parent.
   ctx.depth++;
   const p1 = rollBirthableLineage(node, ctx, share / 2, "M");
   ctx.depth--;
 
-  const p2Node = pickMatePartner(node, ctx) ?? node;
   ctx.depth++;
-  const p2 = rollBirthableLineage(p2Node, ctx, share / 2, "F");
+  const p2 = rollBirthableLineage(node, ctx, share / 2, "F");
   ctx.depth--;
 
   void inheritance;
