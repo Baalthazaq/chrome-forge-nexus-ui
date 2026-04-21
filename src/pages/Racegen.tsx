@@ -75,17 +75,25 @@ function SubjectCard({ subject }: { subject: RolledSubject }) {
   return (
     <Card className="p-4 space-y-3 bg-card/80 border-border">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="text-2xl font-bold tracking-wider">{subject.initials}</div>
           <div className="text-sm text-muted-foreground">
             <span className="text-foreground font-semibold">{subject.gender === "M" ? "♂ Male" : "♀ Female"}</span>
             {" · "}
             {subject.variantLabel ? `${subject.variantLabel} ` : ""}
             <span className="text-foreground">{subject.identityLabel}</span>
-            {subject.identityFamily && (
-              <span className="text-muted-foreground"> ({subject.identityFamily})</span>
-            )}
           </div>
+          {subject.secondaryIdentities.length > 0 && (
+            <div className="mt-1 space-y-0.5">
+              {subject.secondaryIdentities.map((s, i) => (
+                <div key={i} className="text-xs text-muted-foreground">
+                  {s.variantLabel ? `${s.variantLabel} ` : ""}
+                  <span className="text-foreground/80">{s.raceLabel}</span>
+                  <span className="ml-1 text-[10px]">({s.pct.toFixed(0)}%)</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex flex-col items-end gap-1">
           {originBadge && (
