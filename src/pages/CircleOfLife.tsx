@@ -789,7 +789,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
 
   const updateNode = async (
     id: string,
-    updates: { label?: string; type?: string; color?: string; weight?: number; mate_up_probability?: number; reproduction_mode?: string; tags?: string[]; host_required_tags?: string[]; host_tag_match_mode?: string }
+    updates: { label?: string; type?: string; color?: string; weight?: number; mate_up_probability?: number; reproduction_mode?: string; tags?: string[]; host_required_tags?: string[]; host_tag_match_mode?: string; origin_mode?: string; is_carrier?: boolean; variant_inheritance?: string; identity_overwrites_host?: boolean }
   ) => {
     const { error } = await supabase.from("evolution_nodes").update(updates).eq("id", id);
     if (error) {
