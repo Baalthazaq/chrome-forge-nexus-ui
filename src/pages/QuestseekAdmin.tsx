@@ -543,7 +543,8 @@ const QuestseekAdmin = () => {
                             </div>
                           ))}
                         </div>
-                      )}
+                        );
+                      })()}
                     </div>
                     <div className="flex gap-2">
                       {quest.available_quantity !== null && (
