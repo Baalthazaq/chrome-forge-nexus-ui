@@ -446,8 +446,28 @@ export function rollSubject(
 
   const dna = aggregateDna(lineage);
   const identities = aggregateIdentities(lineage);
-  const subjectRaceLabel = subjectPick.info.race.label;
-  const subjectVariantLabel = subjectPick.variant?.label ?? null;
+
+  // Subject identity is determined by the DNA majority — the race with the
+  // highest aggregate percentage wins, then the highest variant within it.
+  // This avoids the final child-roll producing a "Painted Elf" who is 63% Hob.
+  const racePctMap = new Map<string, number>();
+  for (const id of identities) {
+    racePctMap.set(id.raceLabel, (racePctMap.get(id.raceLabel) ?? 0) + id.pct);
+  }
+  const dominantRaceLabel = Array.from(racePctMap.entries()).sort((a, b) => b[1] - a[1])[0][0];
+  const dominantVariant = identities
+    .filter((i) => i.raceLabel === dominantRaceLabel && i.variantLabel)
+    .sort((a, b) => b.pct - a.pct)[0];
+  const subjectRaceLabel = dominantRaceLabel;
+  const subjectVariantLabel = dominantVariant?.variantLabel ?? null;
+
+  // Resolve the dominant race's RaceInfo + variant node for tags/family.
+  const dominantInfo =
+    ctx.activeRaces.find((r) => r.race.label === dominantRaceLabel) ?? subjectPick.info;
+  const dominantVariantNode = subjectVariantLabel
+    ? dominantInfo.variants.find((v) => v.label === subjectVariantLabel) ?? null
+    : null;
+
   const headerMakeup = buildHeaderMakeup(identities, subjectRaceLabel);
 
   const secondaryIdentities = identities
@@ -455,15 +475,15 @@ export function rollSubject(
     .filter((i) => i.pct >= HEADER_MAKEUP_MIN_PCT)
     .slice(0, 4);
 
-  const tagSourceId = subjectPick.variant?.id ?? subjectPick.info.race.id;
+  const tagSourceId = dominantVariantNode?.id ?? dominantInfo.race.id;
   const effective = Array.from(resolveEffectiveTags(tagSourceId, ctx.nodes, ctx.edges));
 
   return {
     initials: generateInitials(),
     gender,
-    identityNodeId: subjectPick.info.race.id,
+    identityNodeId: dominantInfo.race.id,
     identityLabel: subjectRaceLabel,
-    identityFamily: subjectPick.info.familyLabel,
+    identityFamily: dominantInfo.familyLabel,
     variantLabel: subjectVariantLabel,
     reproduction_mode: "sexual",
     origin_mode: "born",
