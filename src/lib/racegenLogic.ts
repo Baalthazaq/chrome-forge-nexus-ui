@@ -74,7 +74,10 @@ const ANCESTRY_DEPTH = 3;
 /** Display threshold for the header makeup line (in percent). */
 const HEADER_MAKEUP_MIN_PCT = 33;
 /** Hidden families: races inside these are not rolled by Racegen. */
-const EXCLUDED_FAMILY_LABELS = new Set(["Undead", "Plant", "Construct", "Modron"]);
+const EXCLUDED_FAMILY_LABELS = new Set(["Undead", "Modron"]);
+/** Races inside these families reproduce by being made, not born. They use
+ *  the "created" flow: a single instance + a separately generated creator. */
+const CREATED_FAMILY_LABELS = new Set(["Construct"]);
 
 // ---------- helpers ----------
 
@@ -115,15 +118,30 @@ function pickTraits() {
 
 // ---------- active-pool filtering ----------
 
-/** A race that Racegen will roll: born, sexual, non-carrier, and inside an allowed family. */
-export function isActiveRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
+/** Is this race a "created" race (e.g. Construct) — handled via the creator flow? */
+export function isCreatedRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
+  if (node.type !== "race") return false;
+  if (node.is_carrier) return false;
+  const family = getFamilyAncestor(node.id, nodes, edges);
+  if (family && EXCLUDED_FAMILY_LABELS.has(family.label)) return false;
+  return (node.origin_mode ?? "born") === "created" || family?.label === "Construct" || (family ? CREATED_FAMILY_LABELS.has(family.label) : false);
+}
+
+/** A born/sexual race that Racegen rolls via full ancestry. */
+export function isBornRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
   if (node.type !== "race") return false;
   if (node.is_carrier) return false;
   if ((node.origin_mode ?? "born") !== "born") return false;
   if (node.reproduction_mode !== "sexual") return false;
   const family = getFamilyAncestor(node.id, nodes, edges);
   if (family && EXCLUDED_FAMILY_LABELS.has(family.label)) return false;
+  if (family && CREATED_FAMILY_LABELS.has(family.label)) return false;
   return true;
+}
+
+/** Any race Racegen will roll (born or created). Used by the seed dropdown. */
+export function isActiveRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
+  return isBornRace(node, nodes, edges) || isCreatedRace(node, nodes, edges);
 }
 
 // ---------- generation context ----------
