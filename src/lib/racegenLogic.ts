@@ -645,8 +645,18 @@ function rollCreatedSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
   const dna = [{ label: lineage.label, pct: 100 }];
   const headerMakeup = [{
     raceLabel: seedInfo.race.label,
+    familyLabel: seedInfo.familyLabel,
     pct: 100,
     variants: variant ? [{ label: variant.label, pct: 100 }] : [],
+  }];
+  const dnaGrouped = [{
+    familyLabel: seedInfo.familyLabel,
+    pct: 100,
+    races: [{
+      raceLabel: seedInfo.race.label,
+      pct: 100,
+      variants: [{ label: variant?.label ?? seedInfo.race.label, pct: 100 }],
+    }],
   }];
 
   return {
@@ -661,6 +671,7 @@ function rollCreatedSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
     lineage,
     dna,
     headerMakeup,
+    dnaGrouped,
     secondaryIdentities: [],
     traits: pickTraits(),
     effectiveTags: effective,
