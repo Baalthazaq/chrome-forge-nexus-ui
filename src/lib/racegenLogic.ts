@@ -1,15 +1,22 @@
-// Pure rolling logic for the Racegen page.
-// Operates on the in-memory evolution graph + transformations table loaded from Supabase.
+// Racegen rolling logic — top-down generational walk.
+//
+// We generate ancestry top-down: pick 8 great-grandparents, walk down through
+// grandparents and parents to a single subject. Each leaf (GGP) contributes
+// equal DNA share (12.5%). Mate selection uses a precomputed mate-weight table
+// per race that combines the race's `mate_up_probability` with each candidate's
+// base weight, producing realistic mixed ancestry without recursion games.
+
 import {
   EvoNode,
   EvoEdge,
-  EvoTransformation,
   resolveEffectiveTags,
   getChildIds,
   getParentIds,
   getFamilyAncestor,
 } from "./evolutionGraph";
 import { TRAITS } from "@/data/traits";
+
+// ---------- public types (kept stable for the page) ----------
 
 export interface LineageNode {
   nodeId: string;
@@ -48,41 +55,48 @@ export interface RolledSubject {
   reproduction_mode: string;
   origin_mode: string;
   lineage: LineageNode;
-  // Aggregated DNA breakdown by leaf race label.
+  /** Aggregated DNA breakdown by leaf race+variant label (granular). */
   dna: { label: string; pct: number }[];
-  // Secondary races/variants whose DNA share is ≥ 25% (excludes the primary).
+  /** Race-grouped header makeup, e.g. "Dwarf (50% Gold, 25% Shield)". */
+  headerMakeup: { raceLabel: string; pct: number; variants: { label: string; pct: number }[] }[];
   secondaryIdentities: SecondaryIdentity[];
-  // For parasitic subjects: DNA of the hijacked host body. Identity DNA is N/A.
   hijackedDna?: { label: string; pct: number }[];
-  // Tags inherited from a hijacked host (parasitic origin only).
   inheritedHostTags?: string[];
   traits: { pos: string; neu: string; neg: string };
   effectiveTags: string[];
   transformations: AppliedTransformation[];
 }
 
+// ---------- tunables ----------
+
+/** Generations of ancestry above the subject. 3 ⇒ 8 great-grandparents. */
+const ANCESTRY_DEPTH = 3;
+/** Display threshold for the header makeup line (in percent). */
+const HEADER_MAKEUP_MIN_PCT = 33;
+/** Hidden families: races inside these are not rolled by Racegen. */
+const EXCLUDED_FAMILY_LABELS = new Set(["Undead", "Plant", "Construct", "Modron"]);
+
 // ---------- helpers ----------
+
 function rand<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function weightedPick<T extends { weight: number }>(items: T[]): T | null {
-  if (items.length === 0) return null;
+function weightedPick<T>(items: { weight: number; value: T }[]): T | null {
+  if (!items.length) return null;
   const total = items.reduce((s, it) => s + Math.max(0.0001, it.weight), 0);
   let r = Math.random() * total;
   for (const it of items) {
     r -= Math.max(0.0001, it.weight);
-    if (r <= 0) return it;
+    if (r <= 0) return it.value;
   }
-  return items[items.length - 1];
+  return items[items.length - 1].value;
 }
 
 function generateInitials(): string {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const r = Math.random();
-  let count = 2;
-  if (r > 0.9) count = 1;
-  else if (r > 0.6) count = 3;
+  const count = r > 0.9 ? 1 : r > 0.6 ? 3 : 2;
   let res = "";
   for (let i = 0; i < count; i++) {
     res += letters[Math.floor(Math.random() * 26)] + ".";
@@ -99,261 +113,266 @@ function pickTraits() {
   return { pos: rand(TRAITS.pos), neu: rand(TRAITS.neu), neg: rand(TRAITS.neg) };
 }
 
-function originOf(n: EvoNode | undefined | null): string {
-  return (n?.origin_mode ?? "born");
+// ---------- active-pool filtering ----------
+
+/** A race that Racegen will roll: born, sexual, non-carrier, and inside an allowed family. */
+export function isActiveRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
+  if (node.type !== "race") return false;
+  if (node.is_carrier) return false;
+  if ((node.origin_mode ?? "born") !== "born") return false;
+  if (node.reproduction_mode !== "sexual") return false;
+  const family = getFamilyAncestor(node.id, nodes, edges);
+  if (family && EXCLUDED_FAMILY_LABELS.has(family.label)) return false;
+  return true;
 }
 
-function subtreeWeight(nodeId: string, nodes: EvoNode[], edges: EvoEdge[], cache: Map<string, number>): number {
-  if (cache.has(nodeId)) return cache.get(nodeId)!;
-  const node = nodes.find((n) => n.id === nodeId)!;
-  const children = getChildIds(nodeId, edges);
-  let w = node.weight ?? 1;
-  if (children.length > 0 && node.type === "family") {
-    w = children.reduce((acc, c) => acc + subtreeWeight(c, nodes, edges, cache), 0);
-  }
-  cache.set(nodeId, w);
-  return w;
+// ---------- generation context ----------
+
+interface RaceInfo {
+  race: EvoNode;
+  variants: EvoNode[]; // pickable variant nodes (non-carrier)
+  family: EvoNode | null;
+  familyLabel: string | null;
+  /** Effective base weight for picking this race in a uniform pool. */
+  weight: number;
+  /** mate_up_probability — controls how willing this race is to mate outside its variant. */
+  mateChance: number;
+  /** variant_inheritance: random | mother | father */
+  variantInheritance: string;
 }
 
 interface Ctx {
   nodes: EvoNode[];
   edges: EvoEdge[];
   byId: Map<string, EvoNode>;
-  weightCache: Map<string, number>;
-  effectiveWeightCache: Map<string, number>;
-  depth: number;
+  activeRaces: RaceInfo[];
+  byRaceId: Map<string, RaceInfo>;
+  /** Per-race precomputed mate-pick distribution. */
+  mateTable: Map<string, { weight: number; raceId: string }[]>;
 }
 
-const MAX_DEPTH = 3;
-const MATE_UP_DECAY = 0.5;
-
-function getEffectiveWeight(nodeId: string, ctx: Ctx): number {
-  const cached = ctx.effectiveWeightCache.get(nodeId);
-  if (cached !== undefined) return cached;
-  const n = ctx.byId.get(nodeId);
-  const w = Math.max(0.0001, (n?.weight ?? 1) * (n?.mate_up_probability ?? 0.2));
-  ctx.effectiveWeightCache.set(nodeId, w);
-  return w;
-}
-
-/** Race nodes that can serve as a roll-able identity:
- *  excludes carriers, transformed/created reproduction (legacy), and non-born origins by default. */
-function isRollableRace(n: EvoNode): boolean {
-  if (n.type !== "race") return false;
-  if (n.is_carrier) return false;
-  return true;
-}
-
-function pickRaceFromPool(pool: EvoNode[], ctx: Ctx): EvoNode | null {
-  if (pool.length === 0) return null;
-  const items = pool.map((n) => ({ weight: subtreeWeight(n.id, ctx.nodes, ctx.edges, ctx.weightCache), node: n }));
-  const picked = weightedPick(items);
-  return picked?.node ?? null;
-}
-
-function pickVariant(raceId: string, ctx: Ctx): EvoNode | null {
-  const variantIds = getChildIds(raceId, ctx.edges);
-  const variants = variantIds
+function buildRaceInfo(race: EvoNode, ctx: Omit<Ctx, "activeRaces" | "byRaceId" | "mateTable">): RaceInfo {
+  const variants = getChildIds(race.id, ctx.edges)
     .map((id) => ctx.byId.get(id))
     .filter((n): n is EvoNode => !!n && n.type === "variant" && !n.is_carrier);
-  if (variants.length === 0) return null;
-  const picked = weightedPick(variants.map((v) => ({ weight: v.weight ?? 1, node: v })));
-  return picked?.node ?? null;
+  const family = getFamilyAncestor(race.id, ctx.nodes, ctx.edges);
+  return {
+    race,
+    variants,
+    family,
+    familyLabel: family?.label ?? null,
+    weight: Math.max(0.0001, race.weight ?? 1),
+    mateChance: Math.max(0, Math.min(1, race.mate_up_probability ?? 0.2)),
+    variantInheritance: race.variant_inheritance ?? "random",
+  };
 }
 
-function findHostCandidates(targetTags: string[], matchMode: string, ctx: Ctx, excludeId?: string): EvoNode[] {
-  const required = targetTags ?? [];
-  const matchAll = (matchMode ?? "all") === "all";
-  const allRaces = ctx.nodes.filter((n) => isRollableRace(n) && originOf(n) === "born");
-  return allRaces.filter((race) => {
-    if (race.id === excludeId) return false;
-    if (race.reproduction_mode !== "sexual" && race.reproduction_mode !== "asexual") return false;
-    if (required.length === 0) return true;
-    const tags = resolveEffectiveTags(race.id, ctx.nodes, ctx.edges);
-    if (matchAll) return required.every((t) => tags.has(t));
-    return required.some((t) => tags.has(t));
-  });
-}
-
-function getPrimaryParent(nodeId: string, ctx: Ctx): EvoNode | null {
-  const parentIds = getParentIds(nodeId, ctx.edges);
-  const parents = parentIds.map((id) => ctx.byId.get(id)).filter((n): n is EvoNode => !!n);
-  if (parents.length === 0) return null;
-  const nonSource = parents.find((p) => p.type !== "source");
-  return nonSource ?? parents[0];
-}
-
-function pickLeafDescendant(rootId: string, ctx: Ctx): EvoNode | null {
-  const root = ctx.byId.get(rootId);
-  if (!root) return null;
-  const childIds = getChildIds(rootId, ctx.edges);
-  const sexualChildren = childIds
-    .map((id) => ctx.byId.get(id))
-    .filter((n): n is EvoNode =>
-      !!n && !n.is_carrier &&
-      (n.type === "source" || n.type === "family" || n.reproduction_mode === "sexual" || n.reproduction_mode === "asexual")
-    );
-
-  if (sexualChildren.length === 0) {
-    if ((root.type === "race" || root.type === "variant") && !root.is_carrier &&
-        (root.reproduction_mode === "sexual" || root.reproduction_mode === "asexual")) return root;
-    return null;
-  }
-
-  const items = sexualChildren.map((c) => ({ weight: getEffectiveWeight(c.id, ctx), node: c }));
-  const tried = new Set<string>();
-  for (let attempts = 0; attempts < items.length * 2; attempts++) {
-    const remaining = items.filter((it) => !tried.has(it.node.id));
-    if (remaining.length === 0) break;
-    const picked = weightedPick(remaining);
-    if (!picked) break;
-    tried.add(picked.node.id);
-    const leaf = pickLeafDescendant(picked.node.id, ctx);
-    if (leaf) return leaf;
-  }
-  return null;
-}
-
-function pickMatePartner(subjectNode: EvoNode, ctx: Ctx): EvoNode | null {
-  const decay = Math.pow(MATE_UP_DECAY, ctx.depth);
-  let level: EvoNode = subjectNode;
-  for (let i = 0; i < 16; i++) {
-    const p = (level.mate_up_probability ?? 0.2) * decay;
-    const parent = getPrimaryParent(level.id, ctx);
-    if (parent && Math.random() < p) {
-      level = parent;
-      continue;
+/**
+ * For each active race, build a mate distribution:
+ *   weight(target) = base_weight(target) * affinity(self → target)
+ *
+ * Affinity tiers (multiplicative on top of base weight):
+ *   - same race                      → 1.0       (baseline; "stays in race")
+ *   - same family, different race    → mateChance
+ *   - cross-family                   → mateChance * mateChance / 2  (rarer)
+ *
+ * The "stays in race" baseline is huge compared to the cross terms because
+ * race weights are small integers (~1–7) but combine multiplicatively. We
+ * therefore *boost* the same-race weight so most pairings remain in-race.
+ */
+function buildMateTable(ctx: Omit<Ctx, "mateTable">): Map<string, { weight: number; raceId: string }[]> {
+  const SAME_RACE_BIAS = 8; // bias toward staying in race
+  const out = new Map<string, { weight: number; raceId: string }[]>();
+  for (const self of ctx.activeRaces) {
+    const dist: { weight: number; raceId: string }[] = [];
+    for (const other of ctx.activeRaces) {
+      let mult: number;
+      if (other.race.id === self.race.id) {
+        mult = SAME_RACE_BIAS;
+      } else if (other.familyLabel && other.familyLabel === self.familyLabel) {
+        mult = self.mateChance;
+      } else {
+        mult = self.mateChance * self.mateChance * 0.5;
+      }
+      const w = other.weight * mult;
+      if (w > 0) dist.push({ weight: w, raceId: other.race.id });
     }
-    break;
+    out.set(self.race.id, dist);
   }
-  const leaf = pickLeafDescendant(level.id, ctx);
-  if (leaf) return leaf;
-  return subjectNode;
+  return out;
 }
 
-/** Recursive birthable lineage. Every node displayed is "Race (Variant)":
- *  if `node` is a race we roll a variant for it; if it's a variant we look up
- *  its parent race. The label always combines both so the tree never shows a
- *  bare race or bare variant. DNA aggregation also keys on the race+variant pair. */
-function rollBirthableLineage(node: EvoNode, ctx: Ctx, share: number, gender: "M" | "F"): LineageNode {
-  let raceNode: EvoNode | undefined;
-  let variantNode: EvoNode | undefined;
+function makeCtx(nodes: EvoNode[], edges: EvoEdge[]): Ctx {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const partial = { nodes, edges, byId };
+  const activeRaces = nodes
+    .filter((n) => isActiveRace(n, nodes, edges))
+    .map((r) => buildRaceInfo(r, partial));
+  const byRaceId = new Map(activeRaces.map((r) => [r.race.id, r]));
+  const ctxBase = { ...partial, activeRaces, byRaceId };
+  const mateTable = buildMateTable(ctxBase);
+  return { ...ctxBase, mateTable };
+}
 
-  if (node.type === "variant") {
-    variantNode = node;
-    const parentIds = getParentIds(node.id, ctx.edges);
-    raceNode = parentIds.map((id) => ctx.byId.get(id)).find((n): n is EvoNode => !!n && n.type === "race");
-  } else if (node.type === "race") {
-    raceNode = node;
-    variantNode = pickVariant(node.id, ctx) ?? undefined;
+// ---------- variant + race picking ----------
+
+function pickVariantFor(info: RaceInfo): EvoNode | null {
+  if (!info.variants.length) return null;
+  return weightedPick(info.variants.map((v) => ({ weight: Math.max(0.0001, v.weight ?? 1), value: v })));
+}
+
+function pickRandomActiveRace(ctx: Ctx): RaceInfo {
+  const items = ctx.activeRaces.map((r) => ({ weight: r.weight, value: r }));
+  return weightedPick(items)!;
+}
+
+function pickMateRace(self: RaceInfo, ctx: Ctx, mateChanceOverride?: number): RaceInfo {
+  // If an override mate-chance is supplied (e.g. "use the more open parent"),
+  // rebuild the row on the fly using the override.
+  let dist = ctx.mateTable.get(self.race.id) ?? [];
+  if (mateChanceOverride !== undefined && Math.abs(mateChanceOverride - self.mateChance) > 0.001) {
+    const SAME_RACE_BIAS = 8;
+    dist = ctx.activeRaces.map((other) => {
+      let mult: number;
+      if (other.race.id === self.race.id) mult = SAME_RACE_BIAS;
+      else if (other.familyLabel && other.familyLabel === self.familyLabel) mult = mateChanceOverride;
+      else mult = mateChanceOverride * mateChanceOverride * 0.5;
+      return { weight: other.weight * mult, raceId: other.race.id };
+    });
+  }
+  const items = dist.map((d) => ({ weight: d.weight, value: ctx.byRaceId.get(d.raceId)! })).filter((i) => i.value);
+  const picked = weightedPick(items);
+  return picked ?? self;
+}
+
+// ---------- top-down lineage construction ----------
+
+interface AncestorPick {
+  info: RaceInfo;
+  variant: EvoNode | null;
+  gender: "M" | "F";
+}
+
+function makePick(info: RaceInfo, gender: "M" | "F"): AncestorPick {
+  return { info, variant: pickVariantFor(info), gender };
+}
+
+/**
+ * Roll the child of two parents:
+ * - Race comes from one of the parents (50/50 weighted by their base weights).
+ * - Variant follows variant_inheritance: random uses the chosen race's variant table,
+ *   "mother" forces the mother's variant if she is the chosen race, "father" likewise.
+ * - mateChance for the next mate filter = max of the two parents' mate chances.
+ */
+function rollChild(mother: AncestorPick, father: AncestorPick, ctx: Ctx, gender: "M" | "F"): { pick: AncestorPick; nextMateChance: number } {
+  // Pick the race side: weighted by the parents' base weights so heavier races dominate ties.
+  const items = [
+    { weight: mother.info.weight, value: { parent: "M" as const, info: mother.info, variant: mother.variant } },
+    { weight: father.info.weight, value: { parent: "F" as const, info: father.info, variant: father.variant } },
+  ];
+  const sideRaw = weightedPick(items)!;
+  const childInfo = sideRaw.info;
+
+  // Resolve variant via the child race's variant_inheritance quirk.
+  let variant: EvoNode | null = null;
+  if (childInfo.variants.length) {
+    const inh = childInfo.variantInheritance;
+    if (inh === "mother" && mother.info.race.id === childInfo.race.id && mother.variant) variant = mother.variant;
+    else if (inh === "father" && father.info.race.id === childInfo.race.id && father.variant) variant = father.variant;
+    else if (sideRaw.parent === "M" && mother.variant && mother.info.race.id === childInfo.race.id) variant = mother.variant;
+    else if (sideRaw.parent === "F" && father.variant && father.info.race.id === childInfo.race.id) variant = father.variant;
+    else variant = pickVariantFor(childInfo);
   }
 
-  const displayRace = raceNode ?? node;
-  const combinedLabel = variantNode ? `${displayRace.label} (${variantNode.label})` : displayRace.label;
-  const tagSourceId = variantNode?.id ?? displayRace.id;
+  const nextMateChance = Math.max(mother.info.mateChance, father.info.mateChance);
+  return { pick: { info: childInfo, variant, gender }, nextMateChance };
+}
+
+function pickToLineage(pick: AncestorPick, ctx: Ctx, share: number, parents: LineageNode[]): LineageNode {
+  const { race } = pick.info;
+  const tagSourceId = pick.variant?.id ?? race.id;
   const effTags = Array.from(resolveEffectiveTags(tagSourceId, ctx.nodes, ctx.edges));
-
-  const inner = rollBirthableLineageInner(displayRace, ctx, share, gender);
-  // Override the inner node's display label/tags so it shows race+variant.
-  inner.label = combinedLabel;
-  inner.effectiveTags = effTags;
-  if (variantNode) {
-    // Tag the nodeId with the variant so DNA aggregation groups by race+variant pair.
-    inner.nodeId = `${displayRace.id}::${variantNode.id}`;
-  }
-  return inner;
-}
-
-function rollBirthableLineageInner(node: EvoNode, ctx: Ctx, share: number, gender: "M" | "F"): LineageNode {
-  const tags = Array.from(resolveEffectiveTags(node.id, ctx.nodes, ctx.edges));
-  const lineage: LineageNode = {
-    nodeId: node.id,
-    label: node.label,
-    type: node.type,
-    reproduction_mode: node.reproduction_mode,
-    effectiveTags: tags,
-    gender,
-    parents: [],
+  const variantPart = pick.variant ? ` (${pick.variant.label})` : "";
+  const nodeKey = `${race.id}::${pick.variant?.id ?? ""}`;
+  return {
+    nodeId: nodeKey,
+    label: `${race.label}${variantPart}`,
+    type: race.type,
+    reproduction_mode: race.reproduction_mode,
+    effectiveTags: effTags,
+    gender: pick.gender,
+    parents,
     dnaShare: share,
   };
+}
 
-  if (ctx.depth >= MAX_DEPTH) return lineage;
+/**
+ * Top-down build:
+ *   level 0 = subject's parents (called "level 0" in the recursion meaning "the
+ *   level we're currently producing"). We start at the top: produce the 8 GGPs
+ *   (depth = ANCESTRY_DEPTH), walk down combining couples into children.
+ */
+function buildBranch(
+  ctx: Ctx,
+  seed: AncestorPick,
+  remainingDepth: number,
+  shareAtThisLevel: number,
+  childGender: "M" | "F",
+): { node: LineageNode; pick: AncestorPick; mateChanceForNextMate: number } {
+  // Mother is the seeded line for this branch. Father is rolled via mate table.
+  const motherGender: "M" | "F" = "F";
+  const fatherGender: "M" | "F" = "M";
 
-  if (node.reproduction_mode === "asexual") {
-    ctx.depth++;
-    const parentLineage = rollBirthableLineage(node, ctx, share, rollGender());
-    ctx.depth--;
-    lineage.parents.push(parentLineage);
-    return lineage;
+  const motherSeed = { ...seed, gender: motherGender };
+  const fatherInfo = pickMateRace(seed.info, ctx);
+  const fatherSeed: AncestorPick = makePick(fatherInfo, fatherGender);
+
+  if (remainingDepth <= 1) {
+    // These ARE the leaves (great-grandparents at top recursion entry, or just leaves).
+    // Combine to produce *this level's* node.
+    const motherLeaf = pickToLineage(motherSeed, ctx, shareAtThisLevel / 2, []);
+    const fatherLeaf = pickToLineage(fatherSeed, ctx, shareAtThisLevel / 2, []);
+    const { pick: childPick, nextMateChance } = rollChild(motherSeed, fatherSeed, ctx, childGender);
+    const childNode = pickToLineage(childPick, ctx, shareAtThisLevel, [motherLeaf, fatherLeaf]);
+    return { node: childNode, pick: childPick, mateChanceForNextMate: nextMateChance };
   }
 
-  let raceForQuirk: EvoNode | undefined = node.type === "race" ? node : undefined;
-  if (!raceForQuirk && node.type === "variant") {
-    const parentIds = getParentIds(node.id, ctx.edges);
-    raceForQuirk = parentIds.map((id) => ctx.byId.get(id)).find((n): n is EvoNode => !!n && n.type === "race");
-  }
-  const inheritance = raceForQuirk?.variant_inheritance ?? "random";
-
-  // Decide which gender carries the child's same-line identity based on
-  // the race's variant_inheritance quirk. The other parent is the "mate"
-  // selected via walk-up logic, which can land on a different variant/race/family.
-  let sameLineGender: "M" | "F";
-  if (inheritance === "mother") sameLineGender = "F";
-  else if (inheritance === "father") sameLineGender = "M";
-  else sameLineGender = Math.random() < 0.5 ? "M" : "F";
-  const mateGender: "M" | "F" = sameLineGender === "M" ? "F" : "M";
-
-  // Same-line parent: anchored to the child's race+variant.
-  ctx.depth++;
-  const sameLine = rollBirthableLineage(node, ctx, share / 2, sameLineGender);
-  ctx.depth--;
-
-  // Mate parent: walk up the tree and descend into a (possibly different) leaf.
-  ctx.depth++;
-  const mateNode = pickMatePartner(node, ctx) ?? node;
-  const mate = rollBirthableLineage(mateNode, ctx, share / 2, mateGender);
-  ctx.depth--;
-
-  // Push parents in M, F order for stable display.
-  if (sameLineGender === "M") lineage.parents.push(sameLine, mate);
-  else lineage.parents.push(mate, sameLine);
-  return lineage;
+  // Recurse: each parent has their own ancestry above them.
+  const motherBranch = buildBranch(ctx, motherSeed, remainingDepth - 1, shareAtThisLevel / 2, motherGender);
+  const fatherBranch = buildBranch(ctx, fatherSeed, remainingDepth - 1, shareAtThisLevel / 2, fatherGender);
+  const { pick: childPick, nextMateChance } = rollChild(motherBranch.pick, fatherBranch.pick, ctx, childGender);
+  const childNode = pickToLineage(childPick, ctx, shareAtThisLevel, [motherBranch.node, fatherBranch.node]);
+  return { node: childNode, pick: childPick, mateChanceForNextMate: nextMateChance };
 }
 
-function pickHostForParasite(target: EvoNode, ctx: Ctx): EvoNode | null {
-  const candidates = findHostCandidates(target.host_required_tags ?? [], target.host_tag_match_mode ?? "all", ctx, target.id);
-  return pickRaceFromPool(candidates, ctx);
+/**
+ * Produce a subject + lineage tree. The subject's seed race anchors one
+ * great-grandparent line (the maternal line of the subject's mother). All
+ * other lineage members are rolled via the mate table.
+ */
+function rollLineage(seedInfo: RaceInfo, ctx: Ctx, subjectGender: "M" | "F"): { lineage: LineageNode; subjectPick: AncestorPick } {
+  const seed = makePick(seedInfo, "F");
+  const branch = buildBranch(ctx, seed, ANCESTRY_DEPTH, 1, subjectGender);
+  return { lineage: branch.node, subjectPick: branch.pick };
 }
 
-function pickCreator(target: EvoNode, ctx: Ctx): EvoNode | null {
-  // Creator is a node matching host_required_tags; fallback any born race.
-  const cands = findHostCandidates(target.host_required_tags ?? [], target.host_tag_match_mode ?? "all", ctx, target.id);
-  if (cands.length) return pickRaceFromPool(cands, ctx);
-  const any = ctx.nodes.filter((n) => isRollableRace(n) && originOf(n) === "born" && n.id !== target.id);
-  return pickRaceFromPool(any, ctx);
-}
+// ---------- DNA aggregation ----------
 
 function aggregateDna(lineage: LineageNode): { label: string; pct: number }[] {
-  const dnaMap = new Map<string, number>();
+  const map = new Map<string, number>();
   const walk = (l: LineageNode) => {
-    if (l.parents.length === 0) {
-      dnaMap.set(l.label, (dnaMap.get(l.label) ?? 0) + l.dnaShare);
-    } else {
-      for (const p of l.parents) walk(p);
-    }
+    if (!l.parents.length) {
+      map.set(l.label, (map.get(l.label) ?? 0) + l.dnaShare);
+    } else for (const p of l.parents) walk(p);
   };
   walk(lineage);
-  return Array.from(dnaMap.entries())
-    .map(([label, share]) => ({ label, pct: share * 100 }))
-    .sort((a, b) => b.pct - a.pct);
+  return Array.from(map.entries()).map(([label, share]) => ({ label, pct: share * 100 })).sort((a, b) => b.pct - a.pct);
 }
 
-/** Aggregate DNA by (race, variant) pair. Every leaf's label is "Race (Variant)"
- *  (or just "Race" if the race has no variants), so we parse to recover the pair. */
 function aggregateIdentities(lineage: LineageNode): SecondaryIdentity[] {
   const map = new Map<string, SecondaryIdentity>();
   const walk = (l: LineageNode) => {
-    if (l.parents.length === 0) {
+    if (!l.parents.length) {
       const m = l.label.match(/^(.+?)\s+\((.+)\)$/);
       const raceLabel = m ? m[1] : l.label;
       const variantLabel = m ? m[2] : null;
@@ -369,178 +388,90 @@ function aggregateIdentities(lineage: LineageNode): SecondaryIdentity[] {
   return Array.from(map.values()).sort((a, b) => b.pct - a.pct);
 }
 
-/** Apply transformations from the transformations table.
- *  Iterates by stage; each transformation rolls against `chance` if host_required_tags match
- *  and forbidden_tags don't intersect. After applying, granted_tags expand the effective set
- *  so later-stage transformations can chain (Drider grants Spider → Queen unlocks). */
-function applyTransformations(
-  effectiveTags: Set<string>,
-  transformations: EvoTransformation[],
-  ctx: Ctx
-): AppliedTransformation[] {
-  const applied: AppliedTransformation[] = [];
-  const sorted = [...transformations].sort((a, b) => a.stage - b.stage);
-  // Multi-pass: re-evaluate later stages after a transformation grants new tags.
-  // Simple approach: iterate sorted; since stages are ordered, granted tags from earlier
-  // stages are already in effectiveTags by the time we reach later stages.
-  for (const t of sorted) {
-    if (!t.stackable && applied.some((a) => a.id === t.id)) continue;
-    if ((t.forbidden_tags ?? []).some((f) => effectiveTags.has(f))) continue;
-    const required = t.host_required_tags ?? [];
-    const matchAll = (t.host_tag_match_mode ?? "all") === "all";
-    if (required.length > 0) {
-      const ok = matchAll
-        ? required.every((r) => effectiveTags.has(r))
-        : required.some((r) => effectiveTags.has(r));
-      if (!ok) continue;
-    }
-    if (Math.random() >= (t.chance ?? 0.05)) continue;
-    const carrier = t.carrier_node_id ? ctx.byId.get(t.carrier_node_id) : null;
-    applied.push({
-      id: t.id,
-      label: t.label,
-      acquisition: t.acquisition,
-      carrierLabel: carrier?.label ?? null,
-      grantedTags: t.granted_tags ?? [],
-    });
-    for (const g of t.granted_tags ?? []) effectiveTags.add(g);
+/**
+ * Group the leaf identities by race for the header line. The primary race
+ * (the subject's anchor identity) is always shown. Other races are shown only
+ * if they hit HEADER_MAKEUP_MIN_PCT. Variants inside each race are listed in
+ * descending order.
+ */
+function buildHeaderMakeup(
+  identities: SecondaryIdentity[],
+  primaryRaceLabel: string,
+): { raceLabel: string; pct: number; variants: { label: string; pct: number }[] }[] {
+  const byRace = new Map<string, { pct: number; variants: { label: string; pct: number }[] }>();
+  for (const id of identities) {
+    const slot = byRace.get(id.raceLabel) ?? { pct: 0, variants: [] };
+    slot.pct += id.pct;
+    if (id.variantLabel) slot.variants.push({ label: id.variantLabel, pct: id.pct });
+    byRace.set(id.raceLabel, slot);
   }
-  return applied;
+  const out: { raceLabel: string; pct: number; variants: { label: string; pct: number }[] }[] = [];
+  for (const [raceLabel, slot] of byRace.entries()) {
+    if (raceLabel === primaryRaceLabel || slot.pct >= HEADER_MAKEUP_MIN_PCT) {
+      out.push({
+        raceLabel,
+        pct: slot.pct,
+        variants: slot.variants.sort((a, b) => b.pct - a.pct),
+      });
+    }
+  }
+  // Primary first, then descending by share.
+  out.sort((a, b) => {
+    if (a.raceLabel === primaryRaceLabel) return -1;
+    if (b.raceLabel === primaryRaceLabel) return 1;
+    return b.pct - a.pct;
+  });
+  return out;
 }
+
+// ---------- public API ----------
 
 export function rollSubject(
   nodes: EvoNode[],
   edges: EvoEdge[],
-  options?: { seedRaceId?: string; transformations?: EvoTransformation[] }
+  options?: { seedRaceId?: string; transformations?: unknown },
 ): RolledSubject {
-  const ctx: Ctx = {
-    nodes,
-    edges,
-    byId: new Map(nodes.map((n) => [n.id, n])),
-    weightCache: new Map(),
-    effectiveWeightCache: new Map(),
-    depth: 0,
-  };
+  void options?.transformations; // transformations are no longer applied (excluded by plan)
+  const ctx = makeCtx(nodes, edges);
+  if (!ctx.activeRaces.length) throw new Error("No active races available for Racegen");
 
-  // 1) pick the identity race (any rollable race, including parasitic & created origins)
-  let identity: EvoNode | null = null;
-  if (options?.seedRaceId) identity = ctx.byId.get(options.seedRaceId) ?? null;
-  if (!identity) {
-    const allRaces = nodes.filter(isRollableRace);
-    identity = pickRaceFromPool(allRaces, ctx);
-  }
-  if (!identity) throw new Error("No race nodes available");
+  // Pick the seed race
+  let seedInfo: RaceInfo | undefined;
+  if (options?.seedRaceId) seedInfo = ctx.byRaceId.get(options.seedRaceId);
+  if (!seedInfo) seedInfo = pickRandomActiveRace(ctx);
 
-  let variant = pickVariant(identity.id, ctx);
-  const family = getFamilyAncestor(identity.id, ctx.nodes, ctx.edges);
-  const identityTags = Array.from(resolveEffectiveTags(identity.id, ctx.nodes, ctx.edges));
-  const origin = originOf(identity);
+  const gender = rollGender();
+  const { lineage, subjectPick } = rollLineage(seedInfo, ctx, gender);
 
-  let lineage: LineageNode;
-  let gender: "M" | "F";
-  let dna: { label: string; pct: number }[] = [];
-  let hijackedDna: { label: string; pct: number }[] | undefined;
-  let inheritedHostTags: string[] | undefined;
-  // Effective tags as a Set we can mutate via transformations.
-  const effective = new Set<string>(identityTags);
+  const dna = aggregateDna(lineage);
+  const identities = aggregateIdentities(lineage);
+  const subjectRaceLabel = subjectPick.info.race.label;
+  const subjectVariantLabel = subjectPick.variant?.label ?? null;
+  const headerMakeup = buildHeaderMakeup(identities, subjectRaceLabel);
 
-  if (origin === "parasitic") {
-    // Roll a host body, keep DNA + tags, replace identity with parasite.
-    gender = rollGender();
-    const host = pickHostForParasite(identity, ctx);
-    if (host) {
-      ctx.depth++;
-      const hostLineage = rollBirthableLineage(host, ctx, 1, gender);
-      ctx.depth--;
-      hijackedDna = aggregateDna(hostLineage);
-      // Inherit host's effective tags as plain tags on the subject.
-      const hostTags = resolveEffectiveTags(host.id, ctx.nodes, ctx.edges);
-      inheritedHostTags = Array.from(hostTags);
-      for (const t of hostTags) effective.add(t);
-      // Identity overwrites: lineage tree shows the host body (hidden under "Hijacked Host"),
-      // but the rendered identity is the parasite. We still expose the host lineage for inspection.
-      lineage = {
-        nodeId: identity.id,
-        label: identity.label,
-        type: identity.type,
-        reproduction_mode: identity.reproduction_mode,
-        effectiveTags: identityTags,
-        gender,
-        parents: [{ ...hostLineage, isHost: true }],
-        dnaShare: 1,
-      };
-    } else {
-      lineage = {
-        nodeId: identity.id, label: identity.label, type: identity.type,
-        reproduction_mode: identity.reproduction_mode, effectiveTags: identityTags,
-        gender, parents: [], dnaShare: 1,
-      };
-    }
-    // Parasite's own DNA = 100% itself for the visible DNA bar.
-    dna = [{ label: identity.label, pct: 100 }];
-  } else if (origin === "created") {
-    gender = rollGender();
-    const creator = pickCreator(identity, ctx);
-    const parents: LineageNode[] = [];
-    if (creator) {
-      ctx.depth++;
-      const cLin = rollBirthableLineage(creator, ctx, 0, rollGender());
-      ctx.depth--;
-      cLin.dnaShare = 0;
-      cLin.isCreator = true;
-      parents.push(cLin);
-    }
-    lineage = {
-      nodeId: identity.id, label: identity.label, type: identity.type,
-      reproduction_mode: identity.reproduction_mode, effectiveTags: identityTags,
-      gender, parents, dnaShare: 1,
-    };
-    dna = [{ label: identity.label, pct: 100 }];
-  } else {
-    // Born — sexual or asexual via reproduction_mode
-    gender = rollGender();
-    const leafNode = variant ?? identity;
-    if (identity.reproduction_mode === "asexual") {
-      lineage = rollBirthableLineage(leafNode, ctx, 1, gender);
-      dna = [{ label: identity.label, pct: 100 }];
-    } else {
-      lineage = rollBirthableLineage(leafNode, ctx, 1, gender);
-      dna = aggregateDna(lineage);
-    }
-  }
+  const secondaryIdentities = identities
+    .filter((i) => !(i.raceLabel === subjectRaceLabel && i.variantLabel === subjectVariantLabel))
+    .filter((i) => i.pct >= HEADER_MAKEUP_MIN_PCT)
+    .slice(0, 4);
 
-  // Apply transformations layered on top.
-  const transformations = applyTransformations(effective, options?.transformations ?? [], ctx);
-
-  // Compute secondary identities (race+variant pairs ≥ 25%, excluding the primary).
-  let secondaryIdentities: SecondaryIdentity[] = [];
-  if (origin === "born") {
-    const all = aggregateIdentities(lineage);
-    secondaryIdentities = all
-      .filter((i) => !(i.raceLabel === identity!.label && i.variantLabel === (variant?.label ?? null)) && i.pct >= 25)
-      .slice(0, 4);
-  } else if (origin === "parasitic" && lineage.parents.length > 0) {
-    const hostLineage = lineage.parents[0];
-    const all = aggregateIdentities(hostLineage);
-    secondaryIdentities = all.filter((i) => i.pct >= 25).slice(0, 4);
-  }
+  const tagSourceId = subjectPick.variant?.id ?? subjectPick.info.race.id;
+  const effective = Array.from(resolveEffectiveTags(tagSourceId, ctx.nodes, ctx.edges));
 
   return {
     initials: generateInitials(),
     gender,
-    identityNodeId: identity.id,
-    identityLabel: identity.label,
-    identityFamily: family?.label ?? null,
-    variantLabel: variant?.label ?? null,
-    reproduction_mode: identity.reproduction_mode,
-    origin_mode: origin,
+    identityNodeId: subjectPick.info.race.id,
+    identityLabel: subjectRaceLabel,
+    identityFamily: subjectPick.info.familyLabel,
+    variantLabel: subjectVariantLabel,
+    reproduction_mode: "sexual",
+    origin_mode: "born",
     lineage,
     dna,
+    headerMakeup,
     secondaryIdentities,
-    hijackedDna,
-    inheritedHostTags,
     traits: pickTraits(),
-    effectiveTags: Array.from(effective),
-    transformations,
+    effectiveTags: effective,
+    transformations: [],
   };
 }

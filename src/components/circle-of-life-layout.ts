@@ -39,6 +39,62 @@ export interface CircleLayout {
 
 export const ROOT_ID = "__root__";
 
+/** Families excluded from the active Racegen pool. The wheel hides them too. */
+const EXCLUDED_FAMILY_LABELS = new Set(["Undead", "Plant", "Construct", "Modron"]);
+
+/** Filter the raw node/edge graph to only the families/races/variants that
+ *  Racegen actively rolls. Used by the wheel and by Racegen itself so the
+ *  visual and the algorithm stay in sync. */
+export function filterActiveCircleGraph(
+  nodes: CircleNodeRow[],
+  edges: CircleEdgeRow[],
+): { nodes: CircleNodeRow[]; edges: CircleEdgeRow[] } {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const parentsOf = new Map<string, string[]>();
+  for (const n of nodes) parentsOf.set(n.id, []);
+  for (const e of edges) parentsOf.get(e.child_id)?.push(e.parent_id);
+
+  // Resolve any node's family ancestor by walking up until we hit a family node.
+  const familyOf = new Map<string, string | null>();
+  const walk = (id: string, seen: Set<string>): string | null => {
+    if (familyOf.has(id)) return familyOf.get(id)!;
+    if (seen.has(id)) return null;
+    seen.add(id);
+    const me = byId.get(id);
+    if (me?.type === "family") {
+      familyOf.set(id, me.label);
+      return me.label;
+    }
+    for (const p of parentsOf.get(id) ?? []) {
+      const r = walk(p, seen);
+      if (r) {
+        familyOf.set(id, r);
+        return r;
+      }
+    }
+    familyOf.set(id, null);
+    return null;
+  };
+  for (const n of nodes) walk(n.id, new Set());
+
+  const keep = (n: CircleNodeRow): boolean => {
+    if (n.is_carrier) return false;
+    // Exclude any node whose origin mode is non-born (parasitic/created) — these
+    // were the legacy transformation/created branches.
+    if (n.origin_mode && n.origin_mode !== "born") return false;
+    if (n.reproduction_mode && n.reproduction_mode !== "sexual") return false;
+    if (n.type === "family" && EXCLUDED_FAMILY_LABELS.has(n.label)) return false;
+    const fam = familyOf.get(n.id);
+    if (fam && EXCLUDED_FAMILY_LABELS.has(fam)) return false;
+    return true;
+  };
+
+  const keptNodes = nodes.filter(keep);
+  const keptIds = new Set(keptNodes.map((n) => n.id));
+  const keptEdges = edges.filter((e) => keptIds.has(e.parent_id) && keptIds.has(e.child_id));
+  return { nodes: keptNodes, edges: keptEdges };
+}
+
 const FAMILY_COLORS: Record<string, string> = {
   Aberration: "hsl(285 75% 55%)",
   Avian: "hsl(200 90% 55%)",
