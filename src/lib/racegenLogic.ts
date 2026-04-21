@@ -231,32 +231,37 @@ function pickMatePartner(subjectNode: EvoNode, ctx: Ctx): EvoNode | null {
   return subjectNode;
 }
 
-/** Recursive birthable lineage. Honors variant_inheritance quirk on the race.
- *  When `node` is a variant, the returned LineageNode wraps it and nests its
- *  parent race as a single child carrying the actual lineage recursion — so
- *  the tree shows BOTH the variant AND the race it descends from. */
+/** Recursive birthable lineage. Every node displayed is "Race (Variant)":
+ *  if `node` is a race we roll a variant for it; if it's a variant we look up
+ *  its parent race. The label always combines both so the tree never shows a
+ *  bare race or bare variant. DNA aggregation also keys on the race+variant pair. */
 function rollBirthableLineage(node: EvoNode, ctx: Ctx, share: number, gender: "M" | "F"): LineageNode {
+  let raceNode: EvoNode | undefined;
+  let variantNode: EvoNode | undefined;
+
   if (node.type === "variant") {
+    variantNode = node;
     const parentIds = getParentIds(node.id, ctx.edges);
-    const parentRace = parentIds
-      .map((id) => ctx.byId.get(id))
-      .find((n): n is EvoNode => !!n && n.type === "race");
-    if (parentRace) {
-      const variantTags = Array.from(resolveEffectiveTags(node.id, ctx.nodes, ctx.edges));
-      const inner = rollBirthableLineageInner(parentRace, ctx, share, gender);
-      return {
-        nodeId: node.id,
-        label: node.label,
-        type: node.type,
-        reproduction_mode: node.reproduction_mode,
-        effectiveTags: variantTags,
-        gender,
-        parents: [inner],
-        dnaShare: share,
-      };
-    }
+    raceNode = parentIds.map((id) => ctx.byId.get(id)).find((n): n is EvoNode => !!n && n.type === "race");
+  } else if (node.type === "race") {
+    raceNode = node;
+    variantNode = pickVariant(node.id, ctx) ?? undefined;
   }
-  return rollBirthableLineageInner(node, ctx, share, gender);
+
+  const displayRace = raceNode ?? node;
+  const combinedLabel = variantNode ? `${displayRace.label} (${variantNode.label})` : displayRace.label;
+  const tagSourceId = variantNode?.id ?? displayRace.id;
+  const effTags = Array.from(resolveEffectiveTags(tagSourceId, ctx.nodes, ctx.edges));
+
+  const inner = rollBirthableLineageInner(displayRace, ctx, share, gender);
+  // Override the inner node's display label/tags so it shows race+variant.
+  inner.label = combinedLabel;
+  inner.effectiveTags = effTags;
+  if (variantNode) {
+    // Tag the nodeId with the variant so DNA aggregation groups by race+variant pair.
+    inner.nodeId = `${displayRace.id}::${variantNode.id}`;
+  }
+  return inner;
 }
 
 function rollBirthableLineageInner(node: EvoNode, ctx: Ctx, share: number, gender: "M" | "F"): LineageNode {
@@ -332,25 +337,24 @@ function aggregateDna(lineage: LineageNode): { label: string; pct: number }[] {
     .sort((a, b) => b.pct - a.pct);
 }
 
-/** Aggregate DNA by (race, variant) pair — a variant wraps its parent race
- *  as its single child, so we track the most recent variant ancestor while
- *  walking, and credit each race-typed leaf with its enclosing variant. */
+/** Aggregate DNA by (race, variant) pair. Every leaf's label is "Race (Variant)"
+ *  (or just "Race" if the race has no variants), so we parse to recover the pair. */
 function aggregateIdentities(lineage: LineageNode): SecondaryIdentity[] {
   const map = new Map<string, SecondaryIdentity>();
-  const walk = (l: LineageNode, currentVariant: string | null) => {
-    const variantHere = l.type === "variant" ? l.label : currentVariant;
+  const walk = (l: LineageNode) => {
     if (l.parents.length === 0) {
-      const raceLabel = l.type === "race" ? l.label : (variantHere ?? l.label);
-      const variantLabel = l.type === "race" ? variantHere : null;
+      const m = l.label.match(/^(.+?)\s+\((.+)\)$/);
+      const raceLabel = m ? m[1] : l.label;
+      const variantLabel = m ? m[2] : null;
       const key = `${raceLabel}::${variantLabel ?? ""}`;
       const existing = map.get(key);
       if (existing) existing.pct += l.dnaShare * 100;
       else map.set(key, { raceLabel, variantLabel, pct: l.dnaShare * 100 });
       return;
     }
-    for (const p of l.parents) walk(p, variantHere);
+    for (const p of l.parents) walk(p);
   };
-  walk(lineage, null);
+  walk(lineage);
   return Array.from(map.values()).sort((a, b) => b.pct - a.pct);
 }
 
@@ -502,7 +506,7 @@ export function rollSubject(
   if (origin === "born") {
     const all = aggregateIdentities(lineage);
     secondaryIdentities = all
-      .filter((i) => i.raceLabel !== identity!.label && i.pct >= 25)
+      .filter((i) => !(i.raceLabel === identity!.label && i.variantLabel === (variant?.label ?? null)) && i.pct >= 25)
       .slice(0, 4);
   } else if (origin === "parasitic" && lineage.parents.length > 0) {
     const hostLineage = lineage.parents[0];
