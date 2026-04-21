@@ -458,7 +458,8 @@ function aggregateIdentities(lineage: LineageNode): SecondaryIdentity[] {
 function buildHeaderMakeup(
   identities: SecondaryIdentity[],
   primaryRaceLabel: string,
-): { raceLabel: string; pct: number; variants: { label: string; pct: number }[] }[] {
+  ctx: Ctx,
+): { raceLabel: string; familyLabel: string | null; pct: number; variants: { label: string; pct: number }[] }[] {
   const byRace = new Map<string, { pct: number; variants: { label: string; pct: number }[] }>();
   for (const id of identities) {
     const slot = byRace.get(id.raceLabel) ?? { pct: 0, variants: [] };
@@ -466,23 +467,56 @@ function buildHeaderMakeup(
     if (id.variantLabel) slot.variants.push({ label: id.variantLabel, pct: id.pct });
     byRace.set(id.raceLabel, slot);
   }
-  const out: { raceLabel: string; pct: number; variants: { label: string; pct: number }[] }[] = [];
+  const out: { raceLabel: string; familyLabel: string | null; pct: number; variants: { label: string; pct: number }[] }[] = [];
   for (const [raceLabel, slot] of byRace.entries()) {
     if (raceLabel === primaryRaceLabel || slot.pct >= HEADER_MAKEUP_MIN_PCT) {
+      const info = ctx.activeRaces.find((r) => r.race.label === raceLabel);
       out.push({
         raceLabel,
+        familyLabel: info?.familyLabel ?? null,
         pct: slot.pct,
         variants: slot.variants.sort((a, b) => b.pct - a.pct),
       });
     }
   }
-  // Primary first, then descending by share.
   out.sort((a, b) => {
     if (a.raceLabel === primaryRaceLabel) return -1;
     if (b.raceLabel === primaryRaceLabel) return 1;
     return b.pct - a.pct;
   });
   return out;
+}
+
+/** Group ALL DNA (no threshold filter) by family > race > variant for the bar viz. */
+function buildDnaGrouped(
+  identities: SecondaryIdentity[],
+  ctx: Ctx,
+): { familyLabel: string | null; pct: number; races: { raceLabel: string; pct: number; variants: { label: string; pct: number }[] }[] }[] {
+  const families = new Map<string, { pct: number; races: Map<string, { pct: number; variants: { label: string; pct: number }[] }> }>();
+  for (const id of identities) {
+    const info = ctx.activeRaces.find((r) => r.race.label === id.raceLabel);
+    const famKey = info?.familyLabel ?? "_none";
+    const fam = families.get(famKey) ?? { pct: 0, races: new Map() };
+    fam.pct += id.pct;
+    const race = fam.races.get(id.raceLabel) ?? { pct: 0, variants: [] };
+    race.pct += id.pct;
+    race.variants.push({ label: id.variantLabel ?? id.raceLabel, pct: id.pct });
+    fam.races.set(id.raceLabel, race);
+    families.set(famKey, fam);
+  }
+  return Array.from(families.entries())
+    .map(([key, fam]) => ({
+      familyLabel: key === "_none" ? null : key,
+      pct: fam.pct,
+      races: Array.from(fam.races.entries())
+        .map(([raceLabel, r]) => ({
+          raceLabel,
+          pct: r.pct,
+          variants: r.variants.sort((a, b) => b.pct - a.pct),
+        }))
+        .sort((a, b) => b.pct - a.pct),
+    }))
+    .sort((a, b) => b.pct - a.pct);
 }
 
 // ---------- public API ----------
