@@ -231,8 +231,35 @@ function pickMatePartner(subjectNode: EvoNode, ctx: Ctx): EvoNode | null {
   return subjectNode;
 }
 
-/** Recursive birthable lineage. Honors variant_inheritance quirk on the race. */
+/** Recursive birthable lineage. Honors variant_inheritance quirk on the race.
+ *  When `node` is a variant, the returned LineageNode wraps it and nests its
+ *  parent race as a single child carrying the actual lineage recursion — so
+ *  the tree shows BOTH the variant AND the race it descends from. */
 function rollBirthableLineage(node: EvoNode, ctx: Ctx, share: number, gender: "M" | "F"): LineageNode {
+  if (node.type === "variant") {
+    const parentIds = getParentIds(node.id, ctx.edges);
+    const parentRace = parentIds
+      .map((id) => ctx.byId.get(id))
+      .find((n): n is EvoNode => !!n && n.type === "race");
+    if (parentRace) {
+      const variantTags = Array.from(resolveEffectiveTags(node.id, ctx.nodes, ctx.edges));
+      const inner = rollBirthableLineageInner(parentRace, ctx, share, gender);
+      return {
+        nodeId: node.id,
+        label: node.label,
+        type: node.type,
+        reproduction_mode: node.reproduction_mode,
+        effectiveTags: variantTags,
+        gender,
+        parents: [inner],
+        dnaShare: share,
+      };
+    }
+  }
+  return rollBirthableLineageInner(node, ctx, share, gender);
+}
+
+function rollBirthableLineageInner(node: EvoNode, ctx: Ctx, share: number, gender: "M" | "F"): LineageNode {
   const tags = Array.from(resolveEffectiveTags(node.id, ctx.nodes, ctx.edges));
   const lineage: LineageNode = {
     nodeId: node.id,
@@ -255,9 +282,6 @@ function rollBirthableLineage(node: EvoNode, ctx: Ctx, share: number, gender: "M
     return lineage;
   }
 
-  // Sexual: P1 = same lineage. P2 = mate-up walk.
-  // variant_inheritance is a quirk on the *race* node; if this lineage entry is a variant,
-  // look up its parent race for the quirk flag.
   let raceForQuirk: EvoNode | undefined = node.type === "race" ? node : undefined;
   if (!raceForQuirk && node.type === "variant") {
     const parentIds = getParentIds(node.id, ctx.edges);
@@ -266,7 +290,6 @@ function rollBirthableLineage(node: EvoNode, ctx: Ctx, share: number, gender: "M
   const inheritance = raceForQuirk?.variant_inheritance ?? "random";
 
   ctx.depth++;
-  const p1Gender: "M" | "F" = gender === "M" ? "F" : "M"; // alternate
   const p1 = rollBirthableLineage(node, ctx, share / 2, "M");
   ctx.depth--;
 
@@ -275,10 +298,6 @@ function rollBirthableLineage(node: EvoNode, ctx: Ctx, share: number, gender: "M
   const p2 = rollBirthableLineage(p2Node, ctx, share / 2, "F");
   ctx.depth--;
 
-  // variant_inheritance quirk: if 'father'/'mother', force the child's variant
-  // identity to match that parent. Implementation note: variant determination happens
-  // upstream of lineage rolling (in rollSubject) — this hook is reserved for future
-  // per-generation variant tracking. The flag is consulted there.
   void inheritance;
 
   lineage.parents.push(p1, p2);
