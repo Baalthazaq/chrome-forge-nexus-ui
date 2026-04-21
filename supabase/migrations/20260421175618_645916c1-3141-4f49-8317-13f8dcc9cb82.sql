@@ -1,0 +1,1 @@
+ALTER TABLE public.quest_acceptances DROP CONSTRAINT IF EXISTS quest_acceptances_quest_id_user_id_key;
