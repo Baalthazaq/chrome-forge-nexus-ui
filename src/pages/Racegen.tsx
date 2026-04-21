@@ -6,16 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Loader2, Dices, ChevronDown, ChevronRight, Sparkles, Bug } from "lucide-react";
+import { ArrowLeft, Loader2, Dices, ChevronDown, ChevronRight, Bug } from "lucide-react";
 import { toast } from "sonner";
 import { EvoNode, EvoEdge, EvoTransformation } from "@/lib/evolutionGraph";
-import { LineageNode, RolledSubject, rollSubject } from "@/lib/racegenLogic";
-
-const MODE_BADGE: Record<string, { letter: string; tip: string; cls: string }> = {
-  asexual: { letter: "A", tip: "Asexual", cls: "bg-emerald-700/40 text-emerald-200 border-emerald-600/60" },
-  transformed: { letter: "T", tip: "Transformed", cls: "bg-fuchsia-700/40 text-fuchsia-200 border-fuchsia-600/60" },
-  created: { letter: "C", tip: "Created", cls: "bg-amber-700/40 text-amber-200 border-amber-600/60" },
-};
+import { LineageNode, RolledSubject, rollSubject, isActiveRace } from "@/lib/racegenLogic";
 
 const ORIGIN_BADGE: Record<string, { label: string; cls: string; icon?: any }> = {
   parasitic: { label: "Parasitic", cls: "bg-violet-900/50 text-violet-200 border-violet-700/60", icon: Bug },
@@ -25,7 +19,6 @@ const ORIGIN_BADGE: Record<string, { label: string; cls: string; icon?: any }> =
 function LineageTreeView({ node, depth = 0 }: { node: LineageNode; depth?: number }) {
   const [open, setOpen] = useState(depth < 2);
   const hasKids = node.parents.length > 0;
-  const badge = MODE_BADGE[node.reproduction_mode];
   const role = node.isHost ? "Hijacked Host" : node.isCreator ? "Creator" : null;
   return (
     <div className="text-xs" style={{ marginLeft: depth === 0 ? 0 : 12 }}>
@@ -40,13 +33,8 @@ function LineageTreeView({ node, depth = 0 }: { node: LineageNode; depth?: numbe
         <span className="text-muted-foreground">{node.gender === "M" ? "♂" : "♀"}</span>
         <span className="font-medium">{node.label}</span>
         {role && <Badge variant="outline" className="text-[9px] py-0 px-1 h-4">{role}</Badge>}
-        {badge && (
-          <span title={badge.tip} className={`inline-flex items-center justify-center text-[9px] font-bold w-4 h-4 rounded border ${badge.cls}`}>
-            {badge.letter}
-          </span>
-        )}
         {node.dnaShare > 0 && depth > 0 && (
-          <span className="text-muted-foreground text-[10px]">({(node.dnaShare * 100).toFixed(0)}%)</span>
+          <span className="text-muted-foreground text-[10px]">({(node.dnaShare * 100).toFixed(1)}%)</span>
         )}
       </div>
       {open && hasKids && (
@@ -60,12 +48,30 @@ function LineageTreeView({ node, depth = 0 }: { node: LineageNode; depth?: numbe
   );
 }
 
+/** Render the grouped header makeup line — e.g. "Dwarf 75% (Gold 50%, Shield 25%), Human 25% (Gunner 25%)". */
+function HeaderMakeup({ subject }: { subject: RolledSubject }) {
+  if (!subject.headerMakeup.length) return null;
+  return (
+    <div className="mt-1 text-xs text-muted-foreground space-y-0.5">
+      {subject.headerMakeup.map((race, i) => (
+        <div key={i}>
+          <span className="text-foreground font-medium">{race.raceLabel}</span>
+          <span className="ml-1">{race.pct.toFixed(0)}%</span>
+          {race.variants.length > 0 && (
+            <span className="ml-1">
+              ({race.variants.map((v) => `${v.pct.toFixed(0)}% ${v.label}`).join(", ")})
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function SubjectCard({ subject }: { subject: RolledSubject }) {
-  const badge = MODE_BADGE[subject.reproduction_mode];
   const originBadge = ORIGIN_BADGE[subject.origin_mode];
   const OriginIcon = originBadge?.icon;
-  const isParasitic = subject.origin_mode === "parasitic";
-  const visibleDna = isParasitic && subject.hijackedDna ? subject.hijackedDna : subject.dna;
+  const visibleDna = subject.dna;
 
   // Filter out the structural tags from chips
   const tagChips = subject.effectiveTags
@@ -83,17 +89,7 @@ function SubjectCard({ subject }: { subject: RolledSubject }) {
             {subject.variantLabel ? `${subject.variantLabel} ` : ""}
             <span className="text-foreground">{subject.identityLabel}</span>
           </div>
-          {(subject.secondaryIdentities?.length ?? 0) > 0 && (
-            <div className="mt-1 space-y-0.5">
-              {subject.secondaryIdentities!.map((s, i) => (
-                <div key={i} className="text-xs text-muted-foreground">
-                  {s.variantLabel ? `${s.variantLabel} ` : ""}
-                  <span className="text-foreground/80">{s.raceLabel}</span>
-                  <span className="ml-1 text-[10px]">({s.pct.toFixed(0)}%)</span>
-                </div>
-              ))}
-            </div>
-          )}
+          <HeaderMakeup subject={subject} />
         </div>
         <div className="flex flex-col items-end gap-1">
           {originBadge && (
@@ -102,41 +98,11 @@ function SubjectCard({ subject }: { subject: RolledSubject }) {
               {originBadge.label}
             </span>
           )}
-          {badge && (
-            <span title={badge.tip} className={`inline-flex items-center justify-center text-xs font-bold w-6 h-6 rounded border ${badge.cls}`}>
-              {badge.letter}
-            </span>
-          )}
         </div>
       </div>
 
-      {/* Transformations stack */}
-      {subject.transformations.length > 0 && (
-        <div className="space-y-1 border-l-2 border-fuchsia-600/40 pl-2">
-          <div className="text-[10px] uppercase text-muted-foreground tracking-wider flex items-center gap-1">
-            <Sparkles className="h-3 w-3" /> Transformations
-          </div>
-          {subject.transformations.map((t) => (
-            <div key={t.id} className="flex items-center gap-1.5 text-xs">
-              <Badge className="bg-fuchsia-900/40 text-fuchsia-100 border-fuchsia-700/60 hover:bg-fuchsia-900/40 text-[10px] py-0 px-1.5 h-5">
-                {t.label}
-              </Badge>
-              <span className="text-[10px] text-muted-foreground">
-                {t.acquisition === "afflicted" && t.carrierLabel
-                  ? `via ${t.carrierLabel}`
-                  : t.acquisition === "innate"
-                  ? "innate"
-                  : t.acquisition}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
       <div className="space-y-1">
-        <div className="text-[10px] uppercase text-muted-foreground tracking-wider">
-          {isParasitic ? "Hijacked DNA" : "DNA"}
-        </div>
+        <div className="text-[10px] uppercase text-muted-foreground tracking-wider">DNA</div>
         <div className="flex h-2 rounded overflow-hidden bg-muted">
           {visibleDna.map((d, i) => (
             <div
@@ -147,7 +113,7 @@ function SubjectCard({ subject }: { subject: RolledSubject }) {
           ))}
         </div>
         <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
-          {visibleDna.slice(0, 6).map((d, i) => (
+          {visibleDna.slice(0, 8).map((d, i) => (
             <span key={i}>{d.label} {d.pct.toFixed(1)}%</span>
           ))}
         </div>
@@ -181,7 +147,7 @@ function SubjectCard({ subject }: { subject: RolledSubject }) {
 
       <details className="text-xs">
         <summary className="cursor-pointer text-muted-foreground hover:text-foreground select-none">
-          {isParasitic ? "Host body lineage" : "Lineage"}
+          Lineage
         </summary>
         <div className="mt-2">
           <LineageTreeView node={subject.lineage} />
@@ -221,8 +187,8 @@ const Racegen = () => {
   }, []);
 
   const races = useMemo(
-    () => nodes.filter((n) => n.type === "race" && !n.is_carrier).sort((a, b) => a.label.localeCompare(b.label)),
-    [nodes]
+    () => nodes.filter((n) => isActiveRace(n, nodes, edges)).sort((a, b) => a.label.localeCompare(b.label)),
+    [nodes, edges]
   );
 
   const generate = () => {
