@@ -58,7 +58,13 @@ export interface RolledSubject {
   /** Aggregated DNA breakdown by leaf race+variant label (granular). */
   dna: { label: string; pct: number }[];
   /** Race-grouped header makeup, e.g. "Dwarf (50% Gold, 25% Shield)". */
-  headerMakeup: { raceLabel: string; pct: number; variants: { label: string; pct: number }[] }[];
+  headerMakeup: { raceLabel: string; familyLabel: string | null; pct: number; variants: { label: string; pct: number }[] }[];
+  /** Full DNA breakdown grouped by family > race > variant for visualization. */
+  dnaGrouped: {
+    familyLabel: string | null;
+    pct: number;
+    races: { raceLabel: string; pct: number; variants: { label: string; pct: number }[] }[];
+  }[];
   secondaryIdentities: SecondaryIdentity[];
   hijackedDna?: { label: string; pct: number }[];
   inheritedHostTags?: string[];
