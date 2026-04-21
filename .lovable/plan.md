@@ -1,143 +1,62 @@
 
+## Racegen ancestry fix
 
-# Racegen Restructure: Transformations, Parasites, Quirks
+### Problem to fix
+The current lineage logic now forces both parents to be the child’s exact node, which removed mixed ancestry entirely. At the same time, the display still needs every lineage row to remain `Race (Variant)`.
 
-## Conceptual model
+### What to change
 
-Three independent things, none hardcoded to a specific race:
+1. Restore mixed-ancestry partner selection in `src/lib/racegenLogic.ts`
+   - Re-enable the existing walk-up mate logic instead of cloning the child node for both parents.
+   - Use `pickMatePartner(...)` for the partner branch again so ancestry can climb to parent race/family/source tiers and come back down into a different compatible branch.
+   - Keep `pickMatePartner` as the mechanism that produces cross-race and cross-variant ancestry.
 
-### 1. Origin (how the subject came into being)
-Stored as `origin_mode` on each node. Drives lineage rolling.
+2. Separate “display identity” from “mating source”
+   - Keep every rendered lineage node formatted as `Race (Variant)`.
+   - Do not force the chosen mate to become the child’s exact variant.
+   - Instead, allow the mate picker to return a genuinely mixed partner, then normalize that partner into a displayable `Race (Variant)` node before rendering.
 
-| Mode | Meaning | Lineage behavior |
-|---|---|---|
-| `born` | Standard sexual/asexual reproduction | Walk-up-the-tree mate-up (current logic) |
-| `created` | Made by a Creator | Single "Creator" parent rolled from a node matching `host_required_tags`; 0% DNA contribution |
-| `parasitic` | Hijacks a host body, replaces race identity but inherits host's tags | Roll host's full birthable lineage, keep DNA breakdown, **keep host's accumulated tags as plain tags**, but replace race/family/variant identity with the parasite's own |
+3. Preserve race quirks like variant inheritance
+   - Use `variant_inheritance` on the race node to determine which parent controls the child’s final variant:
+     - `random`: child variant can come from either side / default behavior
+     - `mother`: child variant follows maternal side
+     - `father`: child variant follows paternal side
+   - This allows mixed-race ancestry while keeping cases like Spider’s father-led variant rule.
 
-Transformations are **not** an origin mode. They never produce a "new race" — they are modifiers layered on an already-rolled subject.
+4. Make lineage generation explicit about the two parent roles
+   - Parent A: the “same-line” parent anchored to the child’s line.
+   - Parent B: the partner selected via walk-up mate logic.
+   - The child’s final displayed identity should be resolved from those two parents plus the race quirk, not by rewriting both parents to match the child.
 
-### 2. Transformations (modifiers, not races)
-New table `evolution_transformations`. Each transformation:
-- `id`, `label`, `description`
-- `granted_tags text[]` — tags added to the subject when the transformation applies (e.g. Drider grants `Spider`; Vampire grants `Undead`)
-- `host_required_tags text[]` + `host_tag_match_mode` — what the subject must already be to receive it (Drider needs `Drow`; Queen needs `Spider`; Vampire needs `Humanoid` or similar)
-- `forbidden_tags text[]` — block stacking conflicts (e.g. Vampire forbids `Construct`)
-- `acquisition text` — `'innate' | 'afflicted'` (cosmetic; afflicted shows a "via carrier" chip)
-- `carrier_node_id uuid` (nullable) — points at an `evolution_nodes` row representing the affliction source (Vampire sire, Drider ritual, Queen pheromone). Carriers are normal nodes flagged `is_carrier`.
-- `stackable boolean` — can it stack with itself (no, in all current cases)
-- `stage int` — display/apply order so chains render predictably (Drider before Queen before Vampire)
+5. Keep DNA aggregation based on terminal lineage leaves
+   - Continue aggregating DNA from leaf nodes only.
+   - Because leaves remain `Race (Variant)`, the DNA bar and secondary identities will reflect real mixed ancestry again.
+   - Keep the `>= 25%` secondary identity rule unchanged.
 
-A subject can carry **multiple** transformations. They are stored on the rolled result, not the node graph. Lineage tree shows them as labeled chips above the identity row.
+6. Update Racegen card presentation in `src/pages/Racegen.tsx`
+   - Keep primary identity as the most prominent `Race + Variant`.
+   - Keep secondary identities underneath for any other `Race + Variant` at or above 25%.
+   - Do not display family in the header.
 
-### 3. Per-race quirks (data-driven flags on `evolution_nodes`)
-Already proposed and still correct, but **none are hardcoded to a race name**:
-- `variant_inheritance` — `random | mother | father` (Spider sets `father`)
-- `mate_variant_lock_tags text[]` — when picking a mate, force the mate's variant to be a sibling whose tags include all listed tags (empty = no lock). Used for transformation-driven mating constraints if needed.
-- `identity_overwrites_host boolean` — only meaningful when paired with `origin_mode = 'parasitic'`. When true, the parasite's own race/family/variant labels replace the host's identity row, but host's effective tags are preserved as plain tags on the subject.
+### Expected behavior after fix
+- Mixed ancestry returns.
+- A child can have one parent from their own line and another from a different variant/race/family depending on mate-up rolls.
+- Every visible lineage row still shows a full `Race (Variant)` label.
+- DNA percentages and secondary identities once again reflect genuine mixed lineage instead of forced purity.
 
-If a future race has the same quirks, you set the flags on its node — no code change.
+## Technical details
+- Main file: `src/lib/racegenLogic.ts`
+- Likely affected functions:
+  - `rollBirthableLineage`
+  - `rollBirthableLineageInner`
+  - `pickMatePartner`
+  - `pickLeafDescendant`
+  - identity resolution around `variant_inheritance`
+- UI file to verify: `src/pages/Racegen.tsx`
 
-## Spider re-modelled
-
-- **Spider race**: `variant_inheritance = 'father'`. Variants list = orbweaver, trapdoor, tank, stalker, etc. **Queen is removed from the variant list.**
-- **Queen** becomes a transformation in `evolution_transformations`:
-  - `host_required_tags = ['Spider']`
-  - `granted_tags = ['Spider Queen']`
-  - `acquisition = 'innate'` (occurs at birth via pheromone trigger; no carrier needed unless you want one)
-  - `stage = 1`
-- **Drider** becomes a transformation:
-  - `host_required_tags = ['Drow']` (or any tag you want it gated on)
-  - `granted_tags = ['Spider']` — Drider grants the Spider tag, which then makes the subject eligible for the Queen transformation.
-  - `acquisition = 'afflicted'`, `carrier_node_id` → "Drider ritual" carrier node
-  - `stage = 2`
-- **Vampire** becomes a transformation:
-  - `host_required_tags = ['Humanoid']` (or `[]` for "anything")
-  - `granted_tags = ['Undead', 'Vampire']`
-  - `acquisition = 'afflicted'`, `carrier_node_id` → "Vampire sire" carrier node
-  - `stage = 3`
-
-Your canonical character then resolves as:
-
-```
-Subject:        Female (rolled gender)
-Identity:       Infernis × Drow lineage (rolled normally as 'born')
-Transformations: Drider → Queen → Vampire
-Effective tags: Infernis, Drow, Spider, Spider Queen, Undead, Vampire
-```
-
-## Parasitic Fungril (origin example)
-
-- **Parasitic Fungril** is a node with:
-  - `origin_mode = 'parasitic'`
-  - `identity_overwrites_host = true`
-  - `host_required_tags = ['Humanoid']` (whatever bodies it can take)
-- Roller behavior:
-  1. Pick a host via tags → roll the host's full birthable lineage (sexual, with mate-ups).
-  2. Aggregate host's DNA breakdown — kept on the subject as `Hijacked DNA`.
-  3. Collect the host's accumulated effective tags (e.g. `Humanoid`, `Drow`, `Infernis`, `Elf`, `Fey`) → kept on the subject as plain tags.
-  4. **Replace** the subject's race / family / variant identity labels with the parasite's own (race = "Parasitic Fungril", family = "Plant" or whatever the parasite belongs to).
-  5. Subject card shows "Parasitic Fungril" as the identity, with host tags as plain chips and a separate `Hijacked DNA` panel for the breakdown.
-
-So a Parasitic Fungril hijacking a Drow Infernis presents as:
-
-```
-Identity:       Parasitic Fungril
-Tags:           Humanoid, Drow, Infernis, Elf, Fey  (inherited from host body)
-Hijacked DNA:   ~50% Drow, ~50% Infernis
-```
-
-## Tree restructure
-
-- Construct, Modron, Undead, and any other non-birthable family detach from The Source. They become independent roots in the wheel and tree.
-- The Source connects only to families whose members are `origin_mode = 'born'`.
-- Carrier nodes (Vampire sire, Drider ritual, Queen pheromone) live as small nodes in the graph attached to nothing structural; they're referenced only by `evolution_transformations.carrier_node_id`. They never appear in normal lineage rolls.
-
-## Lineage subject card layout
-
-```
-┌────────────────────────────────────────┐
-│ Female • Infernis × Drow              │
-│ ▸ Drider (via Drider Ritual)          │
-│ ▸ Queen (innate, triggered by Spider) │
-│ ▸ Vampire (via Vampire Sire)          │
-│ Tags: Infernis, Drow, Spider, Queen,  │
-│       Undead, Vampire                 │
-│ DNA:  47% Drow, 41% Infernis, ...     │
-└────────────────────────────────────────┘
-   Lineage tree (born portion only)
-   ├── Mother: Drow (Selunite)
-   └── Father: Infernis (Asmodean)
-```
-
-Transformations are surfaced as a stack above the lineage tree; they do not create extra parent rows.
-
-## Files touched
-
-- **DB migration**:
-  - Add columns to `evolution_nodes`: `origin_mode text default 'born'`, `is_carrier boolean default false`, `variant_inheritance text default 'random'`, `mate_variant_lock_tags text[] default '{}'`, `identity_overwrites_host boolean default false`.
-  - New table `evolution_transformations` (fields above) + RLS (admin manage, authenticated select).
-  - Backfill: detach Construct/Modron/Undead from Source; mark Parasitic Fungril; remove Queen from Spider variants; insert Drider/Queen/Vampire transformation rows with carrier nodes.
-- `src/lib/evolutionGraph.ts` — extend `EvoNode` interface; add `loadTransformations()` helper.
-- `src/lib/racegenLogic.ts`:
-  - `rollSubject` dispatches on `origin_mode` (`born`, `created`, `parasitic`).
-  - Parasitic branch: roll host lineage, copy host's effective tags onto subject, overwrite identity (race/family/variant labels) with parasite's own, store host DNA as `hijackedDna`.
-  - After lineage roll, run `applyTransformations(subject)`: walks `evolution_transformations` ordered by `stage`, picks each whose host requirements match current effective tags, with a configurable per-transformation chance. Applies `granted_tags`, recurses to allow newly granted tags to unlock further transformations (Drider→Spider→Queen).
-  - Quirks (`variant_inheritance`, `mate_variant_lock_tags`) consulted from node data — no race name in code.
-- `src/pages/Racegen.tsx` — render transformation chips with carrier label; render parasitic identity with inherited host tags + separate `Hijacked DNA` panel; never render carriers as lineage nodes.
-- `src/pages/CircleOfLife.tsx` + `circle-of-life-layout.ts` — root families that aren't `origin_mode = 'born'` detach from Source ring.
-- `src/pages/EvolutionAdmin.tsx` — add inputs for the new node fields and a transformations manager (CRUD on `evolution_transformations`, including carrier picker).
-
-## Out of scope
-
-- Auto-rolling specific named characters (your Infernis/Drider/Queen/Vampire is achievable but not auto-generated; transformation chances stay random per roll unless admin pins them).
-- Rebalancing existing mate-up probabilities.
-- Visual redesign of the wheel beyond detaching non-born roots.
-
-## Expected outcome
-
-- Transformations are first-class, data-driven modifiers — adding Werewolf, Lich, Mind-Flayer Thrall later means inserting a row, not editing code.
-- Parasites correctly overwrite race identity while preserving host tags and DNA breakdown.
-- Quirks like "father determines variant" sit on the race row, not in the algorithm.
-- Stacked transformations (Drider → Queen → Vampire) resolve in stage order with each one able to unlock the next via granted tags.
-
+## Validation
+After implementation, verify with seeded rolls that:
+- mixed dwarf/halfling/etc ancestry appears again,
+- direct parents are not nonsensically rewritten,
+- every lineage row is `Race (Variant)`,
+- secondary identities match the leaf DNA breakdown.
