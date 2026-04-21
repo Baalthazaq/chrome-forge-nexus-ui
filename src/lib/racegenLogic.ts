@@ -231,32 +231,37 @@ function pickMatePartner(subjectNode: EvoNode, ctx: Ctx): EvoNode | null {
   return subjectNode;
 }
 
-/** Recursive birthable lineage. Honors variant_inheritance quirk on the race.
- *  When `node` is a variant, the returned LineageNode wraps it and nests its
- *  parent race as a single child carrying the actual lineage recursion — so
- *  the tree shows BOTH the variant AND the race it descends from. */
+/** Recursive birthable lineage. Every node displayed is "Race (Variant)":
+ *  if `node` is a race we roll a variant for it; if it's a variant we look up
+ *  its parent race. The label always combines both so the tree never shows a
+ *  bare race or bare variant. DNA aggregation also keys on the race+variant pair. */
 function rollBirthableLineage(node: EvoNode, ctx: Ctx, share: number, gender: "M" | "F"): LineageNode {
+  let raceNode: EvoNode | undefined;
+  let variantNode: EvoNode | undefined;
+
   if (node.type === "variant") {
+    variantNode = node;
     const parentIds = getParentIds(node.id, ctx.edges);
-    const parentRace = parentIds
-      .map((id) => ctx.byId.get(id))
-      .find((n): n is EvoNode => !!n && n.type === "race");
-    if (parentRace) {
-      const variantTags = Array.from(resolveEffectiveTags(node.id, ctx.nodes, ctx.edges));
-      const inner = rollBirthableLineageInner(parentRace, ctx, share, gender);
-      return {
-        nodeId: node.id,
-        label: node.label,
-        type: node.type,
-        reproduction_mode: node.reproduction_mode,
-        effectiveTags: variantTags,
-        gender,
-        parents: [inner],
-        dnaShare: share,
-      };
-    }
+    raceNode = parentIds.map((id) => ctx.byId.get(id)).find((n): n is EvoNode => !!n && n.type === "race");
+  } else if (node.type === "race") {
+    raceNode = node;
+    variantNode = pickVariant(node.id, ctx) ?? undefined;
   }
-  return rollBirthableLineageInner(node, ctx, share, gender);
+
+  const displayRace = raceNode ?? node;
+  const combinedLabel = variantNode ? `${displayRace.label} (${variantNode.label})` : displayRace.label;
+  const tagSourceId = variantNode?.id ?? displayRace.id;
+  const effTags = Array.from(resolveEffectiveTags(tagSourceId, ctx.nodes, ctx.edges));
+
+  const inner = rollBirthableLineageInner(displayRace, ctx, share, gender);
+  // Override the inner node's display label/tags so it shows race+variant.
+  inner.label = combinedLabel;
+  inner.effectiveTags = effTags;
+  if (variantNode) {
+    // Tag the nodeId with the variant so DNA aggregation groups by race+variant pair.
+    inner.nodeId = `${displayRace.id}::${variantNode.id}`;
+  }
+  return inner;
 }
 
 function rollBirthableLineageInner(node: EvoNode, ctx: Ctx, share: number, gender: "M" | "F"): LineageNode {
