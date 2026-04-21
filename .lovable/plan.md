@@ -13,7 +13,7 @@ Stored as `origin_mode` on each node. Drives lineage rolling.
 |---|---|---|
 | `born` | Standard sexual/asexual reproduction | Walk-up-the-tree mate-up (current logic) |
 | `created` | Made by a Creator | Single "Creator" parent rolled from a node matching `host_required_tags`; 0% DNA contribution |
-| `parasitic` | Hijacks a host body, replaces identity | Roll host's full birthable lineage, keep DNA breakdown, **discard host identity & tags**, replace with parasite's own |
+| `parasitic` | Hijacks a host body, replaces race identity but inherits host's tags | Roll host's full birthable lineage, keep DNA breakdown, **keep host's accumulated tags as plain tags**, but replace race/family/variant identity with the parasite's own |
 
 Transformations are **not** an origin mode. They never produce a "new race" — they are modifiers layered on an already-rolled subject.
 
@@ -34,7 +34,7 @@ A subject can carry **multiple** transformations. They are stored on the rolled 
 Already proposed and still correct, but **none are hardcoded to a race name**:
 - `variant_inheritance` — `random | mother | father` (Spider sets `father`)
 - `mate_variant_lock_tags text[]` — when picking a mate, force the mate's variant to be a sibling whose tags include all listed tags (empty = no lock). Used for transformation-driven mating constraints if needed.
-- `identity_overwrites_host boolean` — only meaningful when paired with `origin_mode = 'parasitic'`
+- `identity_overwrites_host boolean` — only meaningful when paired with `origin_mode = 'parasitic'`. When true, the parasite's own race/family/variant labels replace the host's identity row, but host's effective tags are preserved as plain tags on the subject.
 
 If a future race has the same quirks, you set the flags on its node — no code change.
 
@@ -48,7 +48,7 @@ If a future race has the same quirks, you set the flags on its node — no code 
   - `stage = 1`
 - **Drider** becomes a transformation:
   - `host_required_tags = ['Drow']` (or any tag you want it gated on)
-  - `granted_tags = ['Spider']` — this is the key insight: Drider grants the Spider tag, which then makes the subject eligible for the Queen transformation.
+  - `granted_tags = ['Spider']` — Drider grants the Spider tag, which then makes the subject eligible for the Queen transformation.
   - `acquisition = 'afflicted'`, `carrier_node_id` → "Drider ritual" carrier node
   - `stage = 2`
 - **Vampire** becomes a transformation:
@@ -66,15 +66,26 @@ Transformations: Drider → Queen → Vampire
 Effective tags: Infernis, Drow, Spider, Spider Queen, Undead, Vampire
 ```
 
-Each transformation chip is rendered with its acquisition source ("via Drider Ritual", "via Vampire Sire").
-
 ## Parasitic Fungril (origin example)
 
 - **Parasitic Fungril** is a node with:
   - `origin_mode = 'parasitic'`
   - `identity_overwrites_host = true`
   - `host_required_tags = ['Humanoid']` (whatever bodies it can take)
-- Roller: pick a host via tags → roll the host's full birthable lineage (sexual, with mate-ups) → store the aggregated DNA → throw away host identity, family, variant, and tags → present as "Parasitic Fungril" with a `Hijacked DNA` panel listing the breakdown.
+- Roller behavior:
+  1. Pick a host via tags → roll the host's full birthable lineage (sexual, with mate-ups).
+  2. Aggregate host's DNA breakdown — kept on the subject as `Hijacked DNA`.
+  3. Collect the host's accumulated effective tags (e.g. `Humanoid`, `Drow`, `Infernis`, `Elf`, `Fey`) → kept on the subject as plain tags.
+  4. **Replace** the subject's race / family / variant identity labels with the parasite's own (race = "Parasitic Fungril", family = "Plant" or whatever the parasite belongs to).
+  5. Subject card shows "Parasitic Fungril" as the identity, with host tags as plain chips and a separate `Hijacked DNA` panel for the breakdown.
+
+So a Parasitic Fungril hijacking a Drow Infernis presents as:
+
+```
+Identity:       Parasitic Fungril
+Tags:           Humanoid, Drow, Infernis, Elf, Fey  (inherited from host body)
+Hijacked DNA:   ~50% Drow, ~50% Infernis
+```
 
 ## Tree restructure
 
@@ -110,9 +121,10 @@ Transformations are surfaced as a stack above the lineage tree; they do not crea
 - `src/lib/evolutionGraph.ts` — extend `EvoNode` interface; add `loadTransformations()` helper.
 - `src/lib/racegenLogic.ts`:
   - `rollSubject` dispatches on `origin_mode` (`born`, `created`, `parasitic`).
-  - After lineage roll, run `applyTransformations(subject)`: walks `evolution_transformations` ordered by `stage`, picks each whose host requirements match current effective tags, with a configurable per-transformation chance (default low; admin-set per row). Applies `granted_tags`, recurses to allow newly granted tags to unlock further transformations (Drider→Spider→Queen).
+  - Parasitic branch: roll host lineage, copy host's effective tags onto subject, overwrite identity (race/family/variant labels) with parasite's own, store host DNA as `hijackedDna`.
+  - After lineage roll, run `applyTransformations(subject)`: walks `evolution_transformations` ordered by `stage`, picks each whose host requirements match current effective tags, with a configurable per-transformation chance. Applies `granted_tags`, recurses to allow newly granted tags to unlock further transformations (Drider→Spider→Queen).
   - Quirks (`variant_inheritance`, `mate_variant_lock_tags`) consulted from node data — no race name in code.
-- `src/pages/Racegen.tsx` — render transformation chips with carrier label; render parasitic DNA panel; never render carriers as lineage nodes.
+- `src/pages/Racegen.tsx` — render transformation chips with carrier label; render parasitic identity with inherited host tags + separate `Hijacked DNA` panel; never render carriers as lineage nodes.
 - `src/pages/CircleOfLife.tsx` + `circle-of-life-layout.ts` — root families that aren't `origin_mode = 'born'` detach from Source ring.
 - `src/pages/EvolutionAdmin.tsx` — add inputs for the new node fields and a transformations manager (CRUD on `evolution_transformations`, including carrier picker).
 
@@ -125,7 +137,7 @@ Transformations are surfaced as a stack above the lineage tree; they do not crea
 ## Expected outcome
 
 - Transformations are first-class, data-driven modifiers — adding Werewolf, Lich, Mind-Flayer Thrall later means inserting a row, not editing code.
-- Parasites correctly overwrite identity while preserving DNA.
+- Parasites correctly overwrite race identity while preserving host tags and DNA breakdown.
 - Quirks like "father determines variant" sit on the race row, not in the algorithm.
 - Stacked transformations (Drider → Queen → Vampire) resolve in stage order with each one able to unlock the next via granted tags.
 
