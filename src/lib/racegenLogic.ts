@@ -294,20 +294,29 @@ function rollBirthableLineageInner(node: EvoNode, ctx: Ctx, share: number, gende
   }
   const inheritance = raceForQuirk?.variant_inheritance ?? "random";
 
-  // Both parents share the child's race+variant. Cross-variant mating is
-  // represented in the aggregated DNA / secondary identities, not by
-  // retroactively assigning a different variant to a direct parent.
+  // Decide which gender carries the child's same-line identity based on
+  // the race's variant_inheritance quirk. The other parent is the "mate"
+  // selected via walk-up logic, which can land on a different variant/race/family.
+  let sameLineGender: "M" | "F";
+  if (inheritance === "mother") sameLineGender = "F";
+  else if (inheritance === "father") sameLineGender = "M";
+  else sameLineGender = Math.random() < 0.5 ? "M" : "F";
+  const mateGender: "M" | "F" = sameLineGender === "M" ? "F" : "M";
+
+  // Same-line parent: anchored to the child's race+variant.
   ctx.depth++;
-  const p1 = rollBirthableLineage(node, ctx, share / 2, "M");
+  const sameLine = rollBirthableLineage(node, ctx, share / 2, sameLineGender);
   ctx.depth--;
 
+  // Mate parent: walk up the tree and descend into a (possibly different) leaf.
   ctx.depth++;
-  const p2 = rollBirthableLineage(node, ctx, share / 2, "F");
+  const mateNode = pickMatePartner(node, ctx) ?? node;
+  const mate = rollBirthableLineage(mateNode, ctx, share / 2, mateGender);
   ctx.depth--;
 
-  void inheritance;
-
-  lineage.parents.push(p1, p2);
+  // Push parents in M, F order for stable display.
+  if (sameLineGender === "M") lineage.parents.push(sameLine, mate);
+  else lineage.parents.push(mate, sameLine);
   return lineage;
 }
 
