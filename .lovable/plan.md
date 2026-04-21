@@ -1,75 +1,131 @@
 
 
-# Mate-Up: Walk-Up-The-Tree Algorithm
+# Racegen Restructure: Transformations, Parasites, Quirks
 
-## Problems
-1. **Tree shows "The Source"** as a lineage row when a wild-tier mate-up climbs to it. Should only appear in the Circle diagram, never in the lineage tree.
-2. **Variants are skipped during partner selection.** Current pools only contain `type === 'race'` nodes, so a Selunite never picks another Selunite — it jumps straight to a sibling race.
-3. **Mate-up tiers are coarse.** Current code does same-family / source-cousin / wild as one decision. The user wants a per-ancestor climb: at each level the `mate_up_probability` of the *current node* decides whether the partner stays here or climbs one more step up.
+## Conceptual model
 
-## New algorithm (replaces the 3-tier branch in `rollBirthableLineage`)
+Three independent things, none hardcoded to a specific race:
 
-For a sexual subject of node `N` (a variant or race), the partner is rolled by walking *up* `N`'s ancestors:
+### 1. Origin (how the subject came into being)
+Stored as `origin_mode` on each node. Drives lineage rolling.
+
+| Mode | Meaning | Lineage behavior |
+|---|---|---|
+| `born` | Standard sexual/asexual reproduction | Walk-up-the-tree mate-up (current logic) |
+| `created` | Made by a Creator | Single "Creator" parent rolled from a node matching `host_required_tags`; 0% DNA contribution |
+| `parasitic` | Hijacks a host body, replaces identity | Roll host's full birthable lineage, keep DNA breakdown, **discard host identity & tags**, replace with parasite's own |
+
+Transformations are **not** an origin mode. They never produce a "new race" — they are modifiers layered on an already-rolled subject.
+
+### 2. Transformations (modifiers, not races)
+New table `evolution_transformations`. Each transformation:
+- `id`, `label`, `description`
+- `granted_tags text[]` — tags added to the subject when the transformation applies (e.g. Drider grants `Spider`; Vampire grants `Undead`)
+- `host_required_tags text[]` + `host_tag_match_mode` — what the subject must already be to receive it (Drider needs `Drow`; Queen needs `Spider`; Vampire needs `Humanoid` or similar)
+- `forbidden_tags text[]` — block stacking conflicts (e.g. Vampire forbids `Construct`)
+- `acquisition text` — `'innate' | 'afflicted'` (cosmetic; afflicted shows a "via carrier" chip)
+- `carrier_node_id uuid` (nullable) — points at an `evolution_nodes` row representing the affliction source (Vampire sire, Drider ritual, Queen pheromone). Carriers are normal nodes flagged `is_carrier`.
+- `stackable boolean` — can it stack with itself (no, in all current cases)
+- `stage int` — display/apply order so chains render predictably (Drider before Queen before Vampire)
+
+A subject can carry **multiple** transformations. They are stored on the rolled result, not the node graph. Lineage tree shows them as labeled chips above the identity row.
+
+### 3. Per-race quirks (data-driven flags on `evolution_nodes`)
+Already proposed and still correct, but **none are hardcoded to a race name**:
+- `variant_inheritance` — `random | mother | father` (Spider sets `father`)
+- `mate_variant_lock_tags text[]` — when picking a mate, force the mate's variant to be a sibling whose tags include all listed tags (empty = no lock). Used for transformation-driven mating constraints if needed.
+- `identity_overwrites_host boolean` — only meaningful when paired with `origin_mode = 'parasitic'`
+
+If a future race has the same quirks, you set the flags on its node — no code change.
+
+## Spider re-modelled
+
+- **Spider race**: `variant_inheritance = 'father'`. Variants list = orbweaver, trapdoor, tank, stalker, etc. **Queen is removed from the variant list.**
+- **Queen** becomes a transformation in `evolution_transformations`:
+  - `host_required_tags = ['Spider']`
+  - `granted_tags = ['Spider Queen']`
+  - `acquisition = 'innate'` (occurs at birth via pheromone trigger; no carrier needed unless you want one)
+  - `stage = 1`
+- **Drider** becomes a transformation:
+  - `host_required_tags = ['Drow']` (or any tag you want it gated on)
+  - `granted_tags = ['Spider']` — this is the key insight: Drider grants the Spider tag, which then makes the subject eligible for the Queen transformation.
+  - `acquisition = 'afflicted'`, `carrier_node_id` → "Drider ritual" carrier node
+  - `stage = 2`
+- **Vampire** becomes a transformation:
+  - `host_required_tags = ['Humanoid']` (or `[]` for "anything")
+  - `granted_tags = ['Undead', 'Vampire']`
+  - `acquisition = 'afflicted'`, `carrier_node_id` → "Vampire sire" carrier node
+  - `stage = 3`
+
+Your canonical character then resolves as:
 
 ```
-level = N
-loop:
-  p = level.mate_up_probability
-  if random() < p AND level has a parent in the graph:
-      level = parent(level)
-      continue
-  else:
-      pick a leaf-race descendant under `level` (weighted)
-      break
+Subject:        Female (rolled gender)
+Identity:       Infernis × Drow lineage (rolled normally as 'born')
+Transformations: Drider → Queen → Vampire
+Effective tags: Infernis, Drow, Spider, Spider Queen, Undead, Vampire
 ```
 
-Concrete examples (matching the user's spec):
+Each transformation chip is rendered with its acquisition source ("via Drider Ritual", "via Vampire Sire").
 
-- **Selunite (p=0.33)** → 67% stays at Selunite, picks a Selunite partner. 33% climbs to **Drow**.
-- **Drow (p=0.20)** → 80% picks a Drow variant (weighted by `weight × mate_up_probability` of each variant). 20% climbs to **Elf**.
-- **Elf (p=0.33)** → 67% picks an Elf variant. 33% climbs to **Elven**.
-- **Elven (p=0.33)** → 67% picks an Elf-family race (currently only Elf). 33% climbs to **Fey**.
-- **Fey** → 67% picks anything in Fey weighted, 33% climbs to **The Source**.
-- **The Source** → picks anything under The Source weighted; this is the terminal level (no further climb).
+## Parasitic Fungril (origin example)
 
-Additional rules:
-- The climb walks the **first parent edge** at each level (nodes have one structural parent in this graph; if multiple, prefer non-source first).
-- The leaf pick at the chosen level recursively descends children: at each child layer, pick weighted by `weight × mate_up_probability` until a leaf node is reached. (For variant-having races, this naturally lands on a variant.)
-- **Sexual-only filter** stays: any node in the candidate pool with `reproduction_mode !== 'sexual'` is excluded.
-- **Self-exclusion**: the very first roll (staying at level `N`) excludes `N` itself only if `N` has no siblings/variants under its parent that qualify; otherwise siblings are allowed (a Selunite × Selunite is fine — they're different individuals of the same node).
-- **Generational decay** stays: multiply each level's `p` by `MATE_UP_DECAY ^ ctx.depth` so deeper recursive ancestors mate-up less often.
+- **Parasitic Fungril** is a node with:
+  - `origin_mode = 'parasitic'`
+  - `identity_overwrites_host = true`
+  - `host_required_tags = ['Humanoid']` (whatever bodies it can take)
+- Roller: pick a host via tags → roll the host's full birthable lineage (sexual, with mate-ups) → store the aggregated DNA → throw away host identity, family, variant, and tags → present as "Parasitic Fungril" with a `Hijacked DNA` panel listing the breakdown.
 
-## Identity vs. variant
-Today the rolled subject's `identityLabel` is the *race*; the chosen variant is rendered as a prefix label. The first parent (P1) currently inherits the same race but **not** the same variant. We'll fix P1 to also inherit the subject's variant when the subject is a variant, so a Selunite's "same-race parent" is also a Selunite (not a generic Drow).
+## Tree restructure
 
-## Tree rendering — hide The Source
-In `LineageTreeView` (`src/pages/Racegen.tsx`):
-- When rendering a `LineageNode` whose underlying graph node is type `source`, skip the row and render its children only (or terminate — Source is always a terminal pick, so render it as the final race chosen *under* Source instead).
-- Cleaner option: in `racegenLogic.ts`, never put a Source-typed node into the lineage. The leaf descent from Source already lands on a real race; just record that race as the partner. Source involvement is implicit (the partner is from a totally different family). No tree changes needed.
+- Construct, Modron, Undead, and any other non-birthable family detach from The Source. They become independent roots in the wheel and tree.
+- The Source connects only to families whose members are `origin_mode = 'born'`.
+- Carrier nodes (Vampire sire, Drider ritual, Queen pheromone) live as small nodes in the graph attached to nothing structural; they're referenced only by `evolution_transformations.carrier_node_id`. They never appear in normal lineage rolls.
 
-We'll go with the cleaner option: **Source never appears as a lineage node**, only as an intermediate climb step in the partner-rolling function.
+## Lineage subject card layout
 
-## Performance
-Add `effectiveWeight = weight * mate_up_probability` cached per node id in the rolling `Ctx` (built once per `rollSubject` call). Used everywhere a "weighted by w × p" pick happens. No DB changes.
+```
+┌────────────────────────────────────────┐
+│ Female • Infernis × Drow              │
+│ ▸ Drider (via Drider Ritual)          │
+│ ▸ Queen (innate, triggered by Spider) │
+│ ▸ Vampire (via Vampire Sire)          │
+│ Tags: Infernis, Drow, Spider, Queen,  │
+│       Undead, Vampire                 │
+│ DNA:  47% Drow, 41% Infernis, ...     │
+└────────────────────────────────────────┘
+   Lineage tree (born portion only)
+   ├── Mother: Drow (Selunite)
+   └── Father: Infernis (Asmodean)
+```
+
+Transformations are surfaced as a stack above the lineage tree; they do not create extra parent rows.
 
 ## Files touched
-- `src/lib/racegenLogic.ts`
-  - Replace the 3-tier mate-up branch with `pickMatePartner(subjectNode, ctx)` that walks up ancestors per the algorithm above.
-  - Add `effectiveWeight` cache to `Ctx`.
-  - When the subject has a variant, ensure the same-race parent (P1) also picks a variant under the same race (preferring the subject's own variant by weight, but allowing siblings).
-  - Remove dead code: `MAX_DEPTH` source-cousin / wild branches.
-- `src/pages/Racegen.tsx`
-  - No structural change needed once Source is never inserted into lineage. (If any stray Source label slips through, add a defensive `node.type === 'source'` skip in `LineageTreeView`.)
-- `src/lib/evolutionGraph.ts`
-  - No change; `getSourceAncestor` and `getNearestNonSourceFamily`-style helpers already exist.
+
+- **DB migration**:
+  - Add columns to `evolution_nodes`: `origin_mode text default 'born'`, `is_carrier boolean default false`, `variant_inheritance text default 'random'`, `mate_variant_lock_tags text[] default '{}'`, `identity_overwrites_host boolean default false`.
+  - New table `evolution_transformations` (fields above) + RLS (admin manage, authenticated select).
+  - Backfill: detach Construct/Modron/Undead from Source; mark Parasitic Fungril; remove Queen from Spider variants; insert Drider/Queen/Vampire transformation rows with carrier nodes.
+- `src/lib/evolutionGraph.ts` — extend `EvoNode` interface; add `loadTransformations()` helper.
+- `src/lib/racegenLogic.ts`:
+  - `rollSubject` dispatches on `origin_mode` (`born`, `created`, `parasitic`).
+  - After lineage roll, run `applyTransformations(subject)`: walks `evolution_transformations` ordered by `stage`, picks each whose host requirements match current effective tags, with a configurable per-transformation chance (default low; admin-set per row). Applies `granted_tags`, recurses to allow newly granted tags to unlock further transformations (Drider→Spider→Queen).
+  - Quirks (`variant_inheritance`, `mate_variant_lock_tags`) consulted from node data — no race name in code.
+- `src/pages/Racegen.tsx` — render transformation chips with carrier label; render parasitic DNA panel; never render carriers as lineage nodes.
+- `src/pages/CircleOfLife.tsx` + `circle-of-life-layout.ts` — root families that aren't `origin_mode = 'born'` detach from Source ring.
+- `src/pages/EvolutionAdmin.tsx` — add inputs for the new node fields and a transformations manager (CRUD on `evolution_transformations`, including carrier picker).
 
 ## Out of scope
-- DB schema or seed data changes.
-- Circle of Life visual diagram (Source stays there as designed).
-- Asexual / transformed / created lineages — unchanged.
+
+- Auto-rolling specific named characters (your Infernis/Drider/Queen/Vampire is achievable but not auto-generated; transformation chances stay random per roll unless admin pins them).
+- Rebalancing existing mate-up probabilities.
+- Visual redesign of the wheel beyond detaching non-born roots.
 
 ## Expected outcome
-- Selunite subjects produce mostly Selunite × Selunite, with rare Drow / Elf / Fey / cross-source partners following the compound probabilities (0.33 × 0.20 × 0.33 × 0.33 × ... ≈ very rare deep mixes).
-- Mixed heritage drops sharply; identity and lineage will line up visually.
-- "The Source" no longer appears in any lineage tree row.
+
+- Transformations are first-class, data-driven modifiers — adding Werewolf, Lich, Mind-Flayer Thrall later means inserting a row, not editing code.
+- Parasites correctly overwrite identity while preserving DNA.
+- Quirks like "father determines variant" sit on the race row, not in the algorithm.
+- Stacked transformations (Drider → Queen → Vampire) resolve in stage order with each one able to unlock the next via granted tags.
 
