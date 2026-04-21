@@ -1283,7 +1283,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
           <div className="flex gap-4">
             <div className="flex-1 min-w-0">
               <CircleOfLifeDiagram
-                nodes={nodes.map((n) => ({ id: n.id, label: n.label, type: n.type, color: n.color, y: getEffectiveXY(n).y, reproduction_mode: n.reproduction_mode }))}
+                nodes={nodes.map((n) => ({ id: n.id, label: n.label, type: n.type, color: n.color, y: getEffectiveXY(n).y, reproduction_mode: n.reproduction_mode, origin_mode: (n as any).origin_mode, is_carrier: (n as any).is_carrier }))}
                 edges={edges}
                 focusId={selectedId}
                 onFocusChange={setSelectedId}
