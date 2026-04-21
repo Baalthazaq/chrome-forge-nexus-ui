@@ -497,6 +497,19 @@ export function rollSubject(
   // Apply transformations layered on top.
   const transformations = applyTransformations(effective, options?.transformations ?? [], ctx);
 
+  // Compute secondary identities (race+variant pairs ≥ 25%, excluding the primary).
+  let secondaryIdentities: SecondaryIdentity[] = [];
+  if (origin === "born") {
+    const all = aggregateIdentities(lineage);
+    secondaryIdentities = all
+      .filter((i) => i.raceLabel !== identity!.label && i.pct >= 25)
+      .slice(0, 4);
+  } else if (origin === "parasitic" && lineage.parents.length > 0) {
+    const hostLineage = lineage.parents[0];
+    const all = aggregateIdentities(hostLineage);
+    secondaryIdentities = all.filter((i) => i.pct >= 25).slice(0, 4);
+  }
+
   return {
     initials: generateInitials(),
     gender,
@@ -508,6 +521,7 @@ export function rollSubject(
     origin_mode: origin,
     lineage,
     dna,
+    secondaryIdentities,
     hijackedDna,
     inheritedHostTags,
     traits: pickTraits(),
