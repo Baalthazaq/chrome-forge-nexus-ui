@@ -32,6 +32,12 @@ export interface AppliedTransformation {
   grantedTags: string[];
 }
 
+export interface SecondaryIdentity {
+  raceLabel: string;
+  variantLabel: string | null;
+  pct: number;
+}
+
 export interface RolledSubject {
   initials: string;
   gender: "M" | "F";
@@ -44,6 +50,8 @@ export interface RolledSubject {
   lineage: LineageNode;
   // Aggregated DNA breakdown by leaf race label.
   dna: { label: string; pct: number }[];
+  // Secondary races/variants whose DNA share is ≥ 25% (excludes the primary).
+  secondaryIdentities: SecondaryIdentity[];
   // For parasitic subjects: DNA of the hijacked host body. Identity DNA is N/A.
   hijackedDna?: { label: string; pct: number }[];
   // Tags inherited from a hijacked host (parasitic origin only).
@@ -223,8 +231,35 @@ function pickMatePartner(subjectNode: EvoNode, ctx: Ctx): EvoNode | null {
   return subjectNode;
 }
 
-/** Recursive birthable lineage. Honors variant_inheritance quirk on the race. */
+/** Recursive birthable lineage. Honors variant_inheritance quirk on the race.
+ *  When `node` is a variant, the returned LineageNode wraps it and nests its
+ *  parent race as a single child carrying the actual lineage recursion — so
+ *  the tree shows BOTH the variant AND the race it descends from. */
 function rollBirthableLineage(node: EvoNode, ctx: Ctx, share: number, gender: "M" | "F"): LineageNode {
+  if (node.type === "variant") {
+    const parentIds = getParentIds(node.id, ctx.edges);
+    const parentRace = parentIds
+      .map((id) => ctx.byId.get(id))
+      .find((n): n is EvoNode => !!n && n.type === "race");
+    if (parentRace) {
+      const variantTags = Array.from(resolveEffectiveTags(node.id, ctx.nodes, ctx.edges));
+      const inner = rollBirthableLineageInner(parentRace, ctx, share, gender);
+      return {
+        nodeId: node.id,
+        label: node.label,
+        type: node.type,
+        reproduction_mode: node.reproduction_mode,
+        effectiveTags: variantTags,
+        gender,
+        parents: [inner],
+        dnaShare: share,
+      };
+    }
+  }
+  return rollBirthableLineageInner(node, ctx, share, gender);
+}
+
+function rollBirthableLineageInner(node: EvoNode, ctx: Ctx, share: number, gender: "M" | "F"): LineageNode {
   const tags = Array.from(resolveEffectiveTags(node.id, ctx.nodes, ctx.edges));
   const lineage: LineageNode = {
     nodeId: node.id,
@@ -247,9 +282,6 @@ function rollBirthableLineage(node: EvoNode, ctx: Ctx, share: number, gender: "M
     return lineage;
   }
 
-  // Sexual: P1 = same lineage. P2 = mate-up walk.
-  // variant_inheritance is a quirk on the *race* node; if this lineage entry is a variant,
-  // look up its parent race for the quirk flag.
   let raceForQuirk: EvoNode | undefined = node.type === "race" ? node : undefined;
   if (!raceForQuirk && node.type === "variant") {
     const parentIds = getParentIds(node.id, ctx.edges);
@@ -258,7 +290,6 @@ function rollBirthableLineage(node: EvoNode, ctx: Ctx, share: number, gender: "M
   const inheritance = raceForQuirk?.variant_inheritance ?? "random";
 
   ctx.depth++;
-  const p1Gender: "M" | "F" = gender === "M" ? "F" : "M"; // alternate
   const p1 = rollBirthableLineage(node, ctx, share / 2, "M");
   ctx.depth--;
 
@@ -267,10 +298,6 @@ function rollBirthableLineage(node: EvoNode, ctx: Ctx, share: number, gender: "M
   const p2 = rollBirthableLineage(p2Node, ctx, share / 2, "F");
   ctx.depth--;
 
-  // variant_inheritance quirk: if 'father'/'mother', force the child's variant
-  // identity to match that parent. Implementation note: variant determination happens
-  // upstream of lineage rolling (in rollSubject) — this hook is reserved for future
-  // per-generation variant tracking. The flag is consulted there.
   void inheritance;
 
   lineage.parents.push(p1, p2);
@@ -303,6 +330,28 @@ function aggregateDna(lineage: LineageNode): { label: string; pct: number }[] {
   return Array.from(dnaMap.entries())
     .map(([label, share]) => ({ label, pct: share * 100 }))
     .sort((a, b) => b.pct - a.pct);
+}
+
+/** Aggregate DNA by (race, variant) pair — a variant wraps its parent race
+ *  as its single child, so we track the most recent variant ancestor while
+ *  walking, and credit each race-typed leaf with its enclosing variant. */
+function aggregateIdentities(lineage: LineageNode): SecondaryIdentity[] {
+  const map = new Map<string, SecondaryIdentity>();
+  const walk = (l: LineageNode, currentVariant: string | null) => {
+    const variantHere = l.type === "variant" ? l.label : currentVariant;
+    if (l.parents.length === 0) {
+      const raceLabel = l.type === "race" ? l.label : (variantHere ?? l.label);
+      const variantLabel = l.type === "race" ? variantHere : null;
+      const key = `${raceLabel}::${variantLabel ?? ""}`;
+      const existing = map.get(key);
+      if (existing) existing.pct += l.dnaShare * 100;
+      else map.set(key, { raceLabel, variantLabel, pct: l.dnaShare * 100 });
+      return;
+    }
+    for (const p of l.parents) walk(p, variantHere);
+  };
+  walk(lineage, null);
+  return Array.from(map.values()).sort((a, b) => b.pct - a.pct);
 }
 
 /** Apply transformations from the transformations table.
@@ -448,6 +497,19 @@ export function rollSubject(
   // Apply transformations layered on top.
   const transformations = applyTransformations(effective, options?.transformations ?? [], ctx);
 
+  // Compute secondary identities (race+variant pairs ≥ 25%, excluding the primary).
+  let secondaryIdentities: SecondaryIdentity[] = [];
+  if (origin === "born") {
+    const all = aggregateIdentities(lineage);
+    secondaryIdentities = all
+      .filter((i) => i.raceLabel !== identity!.label && i.pct >= 25)
+      .slice(0, 4);
+  } else if (origin === "parasitic" && lineage.parents.length > 0) {
+    const hostLineage = lineage.parents[0];
+    const all = aggregateIdentities(hostLineage);
+    secondaryIdentities = all.filter((i) => i.pct >= 25).slice(0, 4);
+  }
+
   return {
     initials: generateInitials(),
     gender,
@@ -459,6 +521,7 @@ export function rollSubject(
     origin_mode: origin,
     lineage,
     dna,
+    secondaryIdentities,
     hijackedDna,
     inheritedHostTags,
     traits: pickTraits(),
