@@ -379,8 +379,8 @@ function buildBranch(
   const fatherGender: "M" | "F" = "M";
 
   const motherSeed = { ...seed, gender: motherGender };
-  const fatherInfo = pickMateRace(seed.info, ctx);
-  const fatherSeed: AncestorPick = makePick(fatherInfo, fatherGender);
+  const fatherSeed = pickMateFor(motherSeed, ctx);
+  void fatherGender;
 
   if (remainingDepth <= 1) {
     // These ARE the leaves (great-grandparents at top recursion entry, or just leaves).
