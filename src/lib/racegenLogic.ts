@@ -337,25 +337,24 @@ function aggregateDna(lineage: LineageNode): { label: string; pct: number }[] {
     .sort((a, b) => b.pct - a.pct);
 }
 
-/** Aggregate DNA by (race, variant) pair — a variant wraps its parent race
- *  as its single child, so we track the most recent variant ancestor while
- *  walking, and credit each race-typed leaf with its enclosing variant. */
+/** Aggregate DNA by (race, variant) pair. Every leaf's label is "Race (Variant)"
+ *  (or just "Race" if the race has no variants), so we parse to recover the pair. */
 function aggregateIdentities(lineage: LineageNode): SecondaryIdentity[] {
   const map = new Map<string, SecondaryIdentity>();
-  const walk = (l: LineageNode, currentVariant: string | null) => {
-    const variantHere = l.type === "variant" ? l.label : currentVariant;
+  const walk = (l: LineageNode) => {
     if (l.parents.length === 0) {
-      const raceLabel = l.type === "race" ? l.label : (variantHere ?? l.label);
-      const variantLabel = l.type === "race" ? variantHere : null;
+      const m = l.label.match(/^(.+?)\s+\((.+)\)$/);
+      const raceLabel = m ? m[1] : l.label;
+      const variantLabel = m ? m[2] : null;
       const key = `${raceLabel}::${variantLabel ?? ""}`;
       const existing = map.get(key);
       if (existing) existing.pct += l.dnaShare * 100;
       else map.set(key, { raceLabel, variantLabel, pct: l.dnaShare * 100 });
       return;
     }
-    for (const p of l.parents) walk(p, variantHere);
+    for (const p of l.parents) walk(p);
   };
-  walk(lineage, null);
+  walk(lineage);
   return Array.from(map.values()).sort((a, b) => b.pct - a.pct);
 }
 
