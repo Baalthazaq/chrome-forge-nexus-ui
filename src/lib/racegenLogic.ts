@@ -205,12 +205,22 @@ function buildRaceInfo(race: EvoNode, ctx: Pick<Ctx, "nodes" | "edges" | "byId">
  *   - same family, different race    → mateChance
  *   - cross-family                   → mateChance * mateChance / 2
  */
+/** Families that can ONLY mate within their own family (no cross-family pairings). */
+const ENDOGAMOUS_FAMILY_LABELS = new Set(["Plant"]);
+
+function isCrossFamilyForbidden(a: RaceInfo, b: RaceInfo): boolean {
+  if (!a.familyLabel || !b.familyLabel) return false;
+  if (a.familyLabel === b.familyLabel) return false;
+  return ENDOGAMOUS_FAMILY_LABELS.has(a.familyLabel) || ENDOGAMOUS_FAMILY_LABELS.has(b.familyLabel);
+}
+
 function buildMateTable(bornRaces: RaceInfo[]): Map<string, { weight: number; raceId: string }[]> {
   const SAME_RACE_BIAS = 8;
   const out = new Map<string, { weight: number; raceId: string }[]>();
   for (const self of bornRaces) {
     const dist: { weight: number; raceId: string }[] = [];
     for (const other of bornRaces) {
+      if (isCrossFamilyForbidden(self, other)) continue;
       let mult: number;
       if (other.race.id === self.race.id) mult = SAME_RACE_BIAS;
       else if (other.familyLabel && other.familyLabel === self.familyLabel) mult = self.mateChance;
@@ -252,18 +262,18 @@ function pickRandomActiveRace(ctx: Ctx): RaceInfo {
 }
 
 function pickMateRace(self: RaceInfo, ctx: Ctx, mateChanceOverride?: number): RaceInfo {
-  // If an override mate-chance is supplied (e.g. "use the more open parent"),
-  // rebuild the row on the fly using the override.
   let dist = ctx.mateTable.get(self.race.id) ?? [];
   if (mateChanceOverride !== undefined && Math.abs(mateChanceOverride - self.mateChance) > 0.001) {
     const SAME_RACE_BIAS = 8;
-    dist = ctx.bornRaces.map((other) => {
-      let mult: number;
-      if (other.race.id === self.race.id) mult = SAME_RACE_BIAS;
-      else if (other.familyLabel && other.familyLabel === self.familyLabel) mult = mateChanceOverride;
-      else mult = mateChanceOverride * mateChanceOverride * 0.5;
-      return { weight: other.weight * mult, raceId: other.race.id };
-    });
+    dist = ctx.bornRaces
+      .filter((other) => !isCrossFamilyForbidden(self, other))
+      .map((other) => {
+        let mult: number;
+        if (other.race.id === self.race.id) mult = SAME_RACE_BIAS;
+        else if (other.familyLabel && other.familyLabel === self.familyLabel) mult = mateChanceOverride;
+        else mult = mateChanceOverride * mateChanceOverride * 0.5;
+        return { weight: other.weight * mult, raceId: other.race.id };
+      });
   }
   const items = dist.map((d) => ({ weight: d.weight, value: ctx.byRaceId.get(d.raceId)! })).filter((i) => i.value);
   const picked = weightedPick(items);
