@@ -277,6 +277,41 @@ function makePick(info: RaceInfo, gender: "M" | "F"): AncestorPick {
 }
 
 /**
+ * Pick a mate for `self` and resolve their variant in one step.
+ *
+ * Variant rule: when the mate ends up being the same race as `self`, they
+ * default to the *same variant* — Wood Elves marry Wood Elves. There is only
+ * a small chance (`mateChance`) that they pick a different variant of the
+ * same race. Cross-race mates use the normal weighted variant table.
+ */
+function pickMateFor(self: AncestorPick, ctx: Ctx, mateChanceOverride?: number): AncestorPick {
+  const mateChance = mateChanceOverride ?? self.info.mateChance;
+  const mateInfo = pickMateRace(self.info, ctx, mateChanceOverride);
+  const mateGender: "M" | "F" = self.gender === "F" ? "M" : "F";
+
+  let variant: EvoNode | null = null;
+  if (mateInfo.variants.length) {
+    if (mateInfo.race.id === self.info.race.id && self.variant) {
+      // Same race → strongly prefer same variant; only mate "up" to a different
+      // variant with probability mateChance.
+      if (Math.random() < mateChance) {
+        // Pick a *different* variant of the same race (if any), weighted normally.
+        const others = mateInfo.variants.filter((v) => v.id !== self.variant!.id);
+        variant = others.length
+          ? weightedPick(others.map((v) => ({ weight: Math.max(0.0001, v.weight ?? 1), value: v })))
+          : self.variant;
+      } else {
+        variant = self.variant;
+      }
+    } else {
+      variant = pickVariantFor(mateInfo);
+    }
+  }
+
+  return { info: mateInfo, variant, gender: mateGender };
+}
+
+/**
  * Roll the child of two parents:
  * - Race comes from one of the parents (50/50 weighted by their base weights).
  * - Variant follows variant_inheritance: random uses the chosen race's variant table,
@@ -344,8 +379,8 @@ function buildBranch(
   const fatherGender: "M" | "F" = "M";
 
   const motherSeed = { ...seed, gender: motherGender };
-  const fatherInfo = pickMateRace(seed.info, ctx);
-  const fatherSeed: AncestorPick = makePick(fatherInfo, fatherGender);
+  const fatherSeed = pickMateFor(motherSeed, ctx);
+  void fatherGender;
 
   if (remainingDepth <= 1) {
     // These ARE the leaves (great-grandparents at top recursion entry, or just leaves).
