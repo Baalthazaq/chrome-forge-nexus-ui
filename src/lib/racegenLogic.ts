@@ -251,7 +251,7 @@ function pickMateRace(self: RaceInfo, ctx: Ctx, mateChanceOverride?: number): Ra
   let dist = ctx.mateTable.get(self.race.id) ?? [];
   if (mateChanceOverride !== undefined && Math.abs(mateChanceOverride - self.mateChance) > 0.001) {
     const SAME_RACE_BIAS = 8;
-    dist = ctx.activeRaces.map((other) => {
+    dist = ctx.bornRaces.map((other) => {
       let mult: number;
       if (other.race.id === self.race.id) mult = SAME_RACE_BIAS;
       else if (other.familyLabel && other.familyLabel === self.familyLabel) mult = mateChanceOverride;
