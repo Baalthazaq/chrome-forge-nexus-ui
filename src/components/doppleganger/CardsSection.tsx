@@ -4,8 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, X, Layers, BookOpen, PenTool, Globe, Package, ChevronDown, Pencil, Archive, ArrowUp } from "lucide-react";
-import { useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Plus, X, Layers, BookOpen, PenTool, Globe, Package, ChevronDown, Pencil, Archive, ArrowUp, Filter } from "lucide-react";
+import { useState, useEffect } from "react";
 import type { CharacterSheet, GameCard, SelectedCard } from "@/data/gameCardTypes";
 import { getUnlockedSubclassTiers, getMulticlassInfo, type LevelUpChoices } from "@/lib/levelUpUtils";
 
