@@ -266,28 +266,36 @@ export const EncounterDialog = ({ encounter, open, onClose, onSaved }: Encounter
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-2 pt-2">
-              {environments.map((env, i) => (
-                <div key={i} className="flex items-center justify-between bg-emerald-500/10 rounded p-2 text-sm gap-2">
-                  <button
-                    type="button"
-                    onClick={() => env.id && setViewEnvironmentId(env.id)}
-                    className="flex items-center gap-2 flex-1 min-w-0 text-left hover:opacity-80"
-                  >
-                    <Thumb src={env.id ? thumbs.envs[env.id] : null} fallback={<TreePine className="h-4 w-4 text-emerald-400" />} color="bg-emerald-500/20" />
-                    <div className="min-w-0">
-                      <span className="font-semibold">{env.name}</span>
-                      {env.tier && <Badge variant="outline" className="text-xs ml-2">T{env.tier}</Badge>}
-                      {env.environment_type && <Badge variant="outline" className="text-xs ml-1">{env.environment_type}</Badge>}
-                    </div>
-                  </button>
-                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => env.id && setViewEnvironmentId(env.id)} title="View">
-                    <Eye className="h-3 w-3" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeEnvironment(i)}>
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                  </Button>
-                </div>
-              ))}
+              {environments.map((env, i) => {
+                const isCustom = !!env.custom;
+                const handleOpen = () => {
+                  if (isCustom) openCustomEnvEditor(i);
+                  else if (env.id) setViewEnvironmentId(env.id);
+                };
+                return (
+                  <div key={i} className="flex items-center justify-between bg-emerald-500/10 rounded p-2 text-sm gap-2">
+                    <button
+                      type="button"
+                      onClick={handleOpen}
+                      className="flex items-center gap-2 flex-1 min-w-0 text-left hover:opacity-80"
+                    >
+                      <Thumb src={isCustom ? env.image_url : (env.id ? thumbs.envs[env.id] : null)} fallback={<TreePine className="h-4 w-4 text-emerald-400" />} color="bg-emerald-500/20" />
+                      <div className="min-w-0">
+                        <span className="font-semibold">{env.name}</span>
+                        {isCustom && <Badge variant="outline" className="text-xs ml-2 border-amber-500/50 text-amber-400">Custom</Badge>}
+                        {env.tier && <Badge variant="outline" className="text-xs ml-2">T{env.tier}</Badge>}
+                        {env.environment_type && <Badge variant="outline" className="text-xs ml-1">{env.environment_type}</Badge>}
+                      </div>
+                    </button>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleOpen} title={isCustom ? 'Edit' : 'View'}>
+                      {isCustom ? <Pencil className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeEnvironment(i)}>
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </div>
+                );
+              })}
               {showEnvPicker ? (
                 <div className="border rounded p-3 space-y-2">
                   <div className="relative">
@@ -311,8 +319,15 @@ export const EncounterDialog = ({ encounter, open, onClose, onSaved }: Encounter
                   <Button size="sm" variant="ghost" onClick={() => setShowEnvPicker(false)}>Cancel</Button>
                 </div>
               ) : (
-                <Button size="sm" variant="outline" onClick={openEnvPicker}>
-                  <Plus className="h-3 w-3 mr-1" /> Add Environment
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={openEnvPicker}>
+                    <Plus className="h-3 w-3 mr-1" /> Add Environment
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => openCustomEnvEditor(null)}>
+                    <Sparkles className="h-3 w-3 mr-1" /> Create Custom
+                  </Button>
+                </div>
+              )}
                 </Button>
               )}
             </CollapsibleContent>
