@@ -43,6 +43,12 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
   const [description, setDescription] = useState('');
   const [features, setFeatures] = useState<{ name: string; type?: string; description?: string }[]>([]);
 
+  // Start-from-existing picker
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [available, setAvailable] = useState<any[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+
   useEffect(() => {
     if (open) {
       setName(initial?.name || '');
@@ -54,8 +60,47 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
       setImageUrl(initial?.image_url || '');
       setDescription(initial?.description || '');
       setFeatures(initial?.features || []);
+      setPickerOpen(false);
+      setPickerSearch('');
     }
   }, [open, initial]);
+
+  const loadAvailable = async () => {
+    setPickerLoading(true);
+    const { data } = await supabase
+      .from('environments')
+      .select('id, name, tier, environment_type, difficulty, impulses, potential_adversaries, image_url, features')
+      .order('name');
+    setAvailable(data || []);
+    setPickerLoading(false);
+  };
+
+  const openPicker = () => {
+    setPickerOpen(true);
+    if (!available.length) loadAvailable();
+  };
+
+  const applyTemplate = (env: any) => {
+    setName(env.name ? `${env.name} (Custom)` : '');
+    setTier(env.tier || 1);
+    setEnvType(env.environment_type || 'Standard');
+    setDifficulty(env.difficulty ? String(env.difficulty) : '');
+    setImpulses((env.impulses || []).join(', '));
+    setPotentialAdversaries(env.potential_adversaries || '');
+    setImageUrl(env.image_url || '');
+    setDescription('');
+    const feats = Array.isArray(env.features) ? env.features.map((f: any) => ({
+      name: f.name || '',
+      type: f.type || 'Passive',
+      description: f.description || '',
+    })) : [];
+    setFeatures(feats);
+    setPickerOpen(false);
+  };
+
+  const filteredAvailable = available.filter(a =>
+    !pickerSearch || a.name?.toLowerCase().includes(pickerSearch.toLowerCase())
+  );
 
   const addFeature = () => setFeatures(prev => [...prev, { name: '', type: 'Passive', description: '' }]);
   const updateFeature = (i: number, patch: Partial<{ name: string; type: string; description: string }>) =>
