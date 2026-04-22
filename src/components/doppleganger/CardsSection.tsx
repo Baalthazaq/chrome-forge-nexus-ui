@@ -273,11 +273,13 @@ export function CardsSection({
     else if (addType === 'other') list = otherCards;
     else return [];
 
+    const txt = filterText.trim().toLowerCase();
+
     return list.filter(c => {
       const meta = c.metadata as any;
-      // Max-level filter (applies to cards that have a level)
+      // Level filter (cards w/o level always pass)
       const lvl = meta?.level;
-      if (typeof lvl === 'number' && lvl > filterMaxLevel) return false;
+      if (typeof lvl === 'number' && !filterLevels.includes(lvl)) return false;
 
       if (addType === 'domain') {
         const dom = meta?.domain || c.source;
@@ -286,10 +288,14 @@ export function CardsSection({
 
       if (addType === 'other') {
         const restriction = meta?.class_restriction;
-        // If card has a class restriction, only show when that class is checked
         if (restriction) {
           if (filterClasses.length > 0 && !filterClasses.includes(restriction)) return false;
         }
+      }
+
+      if (txt) {
+        const hay = `${c.name} ${c.content || ''} ${c.source || ''} ${c.card_type} ${meta?.type || ''} ${meta?.category || ''}`.toLowerCase();
+        if (!hay.includes(txt)) return false;
       }
       return true;
     });
