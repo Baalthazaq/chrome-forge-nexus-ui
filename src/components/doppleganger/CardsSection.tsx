@@ -140,16 +140,21 @@ export function CardsSection({
       .filter(Boolean) as string[]
   )];
 
-  const getCardCategory = (sc: SelectedCard): string => {
-    if (sc.custom) return (sc as any).category || 'Custom';
-    const card = gameCards.find(c => c.id === sc.card_id);
-    if (!card) return 'Other';
-    // Special: Beast Shape gets its own category
+  const getDefaultCategory = (card: GameCard): string => {
     if (card.source === 'Beast Shape') return 'Beast Shape';
     if (card.card_type === 'domain') return 'Domain Cards';
     if (card.card_type === 'ancestry') return 'Ancestry';
     if (card.card_type === 'community') return 'Community';
     return 'Other';
+  };
+
+  const getCardCategory = (sc: SelectedCard): string => {
+    const override = (sc as any).category;
+    if (sc.custom) return override || 'Custom';
+    if (override) return override;
+    const card = gameCards.find(c => c.id === sc.card_id);
+    if (!card) return 'Other';
+    return getDefaultCategory(card);
   };
 
   const getCardDetails = (sc: SelectedCard) => {
@@ -194,7 +199,15 @@ export function CardsSection({
     if ((addType === 'domain' || addType === 'other') && cardId) {
       const card = gameCards.find(c => c.id === cardId);
       if (card) {
-        updateSheet({ selected_card_ids: [...selectedCards, { card_id: card.id }] });
+        const resolvedCategory = customCategory === '__new__'
+          ? newCategoryName
+          : (customCategory || getDefaultCategory(card));
+        const entry: any = { card_id: card.id };
+        // Only attach override if it differs from the natural default
+        if (resolvedCategory && resolvedCategory !== getDefaultCategory(card)) {
+          entry.category = resolvedCategory;
+        }
+        updateSheet({ selected_card_ids: [...selectedCards, entry] });
       }
     } else if (addType === 'blank' && customTitle) {
       const resolvedCategory = customCategory === '__new__' ? newCategoryName : customCategory;
@@ -390,7 +403,7 @@ export function CardsSection({
                 key={key}
                 variant={addType === key ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => { setAddType(key); setSelectedDomainId(''); }}
+                onClick={() => { setAddType(key); setSelectedDomainId(''); setCustomCategory(''); setNewCategoryName(''); }}
                 className={addType === key ? '' : 'border-gray-600 text-gray-400'}
               >
                 <Icon className="w-3 h-3 mr-1" />
@@ -496,7 +509,7 @@ export function CardsSection({
                 )}
               </div>
 
-              <Select value={selectedDomainId} onValueChange={setSelectedDomainId}>
+              <Select value={selectedDomainId} onValueChange={(v) => { setSelectedDomainId(v); setCustomCategory(''); setNewCategoryName(''); }}>
                 <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm">
                   <SelectValue placeholder={`Select a ${addType} card...`} />
                 </SelectTrigger>
@@ -513,11 +526,32 @@ export function CardsSection({
               </Select>
               {selectedDomainId && (() => {
                 const card = getListForType().find(c => c.id === selectedDomainId);
-                return card?.content ? (
-                  <div className="mt-2 p-3 bg-gray-800/60 border border-gray-700 rounded-md text-sm text-gray-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
-                    {card.content}
-                  </div>
-                ) : null;
+                if (!card) return null;
+                const defaultCat = getDefaultCategory(card);
+                const currentCat = customCategory || defaultCat;
+                return (
+                  <>
+                    {card.content && (
+                      <div className="mt-2 p-3 bg-gray-800/60 border border-gray-700 rounded-md text-sm text-gray-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                        {card.content}
+                      </div>
+                    )}
+                    <Select value={currentCat} onValueChange={setCustomCategory}>
+                      <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm">
+                        <SelectValue placeholder="Category..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[...new Set([defaultCat, ...categoryOptions, 'Other', 'Beast Shape'])].map(cat => (
+                          <SelectItem key={cat} value={cat}>{cat}{cat === defaultCat ? ' (default)' : ''}</SelectItem>
+                        ))}
+                        <SelectItem value="__new__">+ New Category...</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {customCategory === '__new__' && (
+                      <Input value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="New category name..." className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm" />
+                    )}
+                  </>
+                );
               })()}
               {getListForType().length === 0 && (
                 <div className="text-gray-500 text-xs mt-1">
