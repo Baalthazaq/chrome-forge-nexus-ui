@@ -140,16 +140,21 @@ export function CardsSection({
       .filter(Boolean) as string[]
   )];
 
-  const getCardCategory = (sc: SelectedCard): string => {
-    if (sc.custom) return (sc as any).category || 'Custom';
-    const card = gameCards.find(c => c.id === sc.card_id);
-    if (!card) return 'Other';
-    // Special: Beast Shape gets its own category
+  const getDefaultCategory = (card: GameCard): string => {
     if (card.source === 'Beast Shape') return 'Beast Shape';
     if (card.card_type === 'domain') return 'Domain Cards';
     if (card.card_type === 'ancestry') return 'Ancestry';
     if (card.card_type === 'community') return 'Community';
     return 'Other';
+  };
+
+  const getCardCategory = (sc: SelectedCard): string => {
+    const override = (sc as any).category;
+    if (sc.custom) return override || 'Custom';
+    if (override) return override;
+    const card = gameCards.find(c => c.id === sc.card_id);
+    if (!card) return 'Other';
+    return getDefaultCategory(card);
   };
 
   const getCardDetails = (sc: SelectedCard) => {
