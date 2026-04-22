@@ -12,6 +12,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Shield, ArrowLeft, ChevronDown, Plus, Search, Copy, Swords, TreePine, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { EncounterDialog } from '@/components/encounter/EncounterDialog';
+import { CreatureViewDialog } from '@/components/encounter/CreatureViewDialog';
+import { EnvironmentViewDialog } from '@/components/encounter/EnvironmentViewDialog';
+import { NPCViewDialog } from '@/components/encounter/NPCViewDialog';
 
 const EncounterBuilder = () => {
   const navigate = useNavigate();
@@ -24,6 +27,14 @@ const EncounterBuilder = () => {
   const [editEncounter, setEditEncounter] = useState<any | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [viewCreatureId, setViewCreatureId] = useState<string | null>(null);
+  const [viewEnvironmentId, setViewEnvironmentId] = useState<string | null>(null);
+  const [viewNpcId, setViewNpcId] = useState<string | null>(null);
+  const [thumbs, setThumbs] = useState<{
+    envs: Record<string, string | null>;
+    creatures: Record<string, string | null>;
+    npcs: Record<string, string | null>;
+  }>({ envs: {}, creatures: {}, npcs: {} });
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
@@ -44,8 +55,32 @@ const EncounterBuilder = () => {
       toast.error('Failed to load encounters');
     } else {
       setEncounters((data as any[]) || []);
+      loadThumbnails((data as any[]) || []);
     }
     setLoading(false);
+  };
+
+  const loadThumbnails = async (encs: any[]) => {
+    const envIds = new Set<string>();
+    const creatureIds = new Set<string>();
+    const npcIds = new Set<string>();
+    encs.forEach(e => {
+      (e.environments || []).forEach((x: any) => x.id && envIds.add(x.id));
+      (e.creatures || []).forEach((x: any) => x.id && creatureIds.add(x.id));
+      (e.npcs || []).forEach((x: any) => x.user_id && npcIds.add(x.user_id));
+    });
+    const [envRes, crRes, npRes] = await Promise.all([
+      envIds.size ? supabase.from('environments').select('id, image_url').in('id', [...envIds]) : Promise.resolve({ data: [] as any[] }),
+      creatureIds.size ? supabase.from('bestiary_creatures').select('id, image_url').in('id', [...creatureIds]) : Promise.resolve({ data: [] as any[] }),
+      npcIds.size ? supabase.from('profiles').select('user_id, avatar_url').in('user_id', [...npcIds]) : Promise.resolve({ data: [] as any[] }),
+    ]);
+    const envs: Record<string, string | null> = {};
+    (envRes.data || []).forEach((r: any) => { envs[r.id] = r.image_url; });
+    const creatures: Record<string, string | null> = {};
+    (crRes.data || []).forEach((r: any) => { creatures[r.id] = r.image_url; });
+    const npcs: Record<string, string | null> = {};
+    (npRes.data || []).forEach((r: any) => { npcs[r.user_id] = r.avatar_url; });
+    setThumbs({ envs, creatures, npcs });
   };
 
   const deleteEncounter = async (id: string) => {
@@ -184,13 +219,29 @@ const EncounterBuilder = () => {
                             <h4 className="text-sm font-semibold flex items-center gap-1 border-b border-border pb-1">
                               <TreePine className="h-4 w-4 text-emerald-400" /> Environments
                             </h4>
-                            {environments.map((env: any, i: number) => (
-                              <div key={i} className="bg-emerald-500/10 rounded p-2 text-sm">
-                                <span className="font-semibold">{env.name}</span>
-                                {env.tier && <Badge variant="outline" className="text-xs ml-2">T{env.tier}</Badge>}
-                                {env.environment_type && <Badge variant="outline" className="text-xs ml-1">{env.environment_type}</Badge>}
-                              </div>
-                            ))}
+                            {environments.map((env: any, i: number) => {
+                              const img = env.id ? thumbs.envs[env.id] : null;
+                              return (
+                                <button
+                                  key={i}
+                                  onClick={(e) => { e.stopPropagation(); env.id && setViewEnvironmentId(env.id); }}
+                                  className="w-full text-left bg-emerald-500/10 hover:bg-emerald-500/20 rounded p-2 text-sm flex items-center gap-2 transition-colors"
+                                >
+                                  {img ? (
+                                    <img src={img} alt="" className="h-10 w-10 object-cover rounded shrink-0" />
+                                  ) : (
+                                    <div className="h-10 w-10 rounded bg-emerald-500/20 flex items-center justify-center shrink-0">
+                                      <TreePine className="h-5 w-5 text-emerald-400" />
+                                    </div>
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <span className="font-semibold">{env.name}</span>
+                                    {env.tier && <Badge variant="outline" className="text-xs ml-2">T{env.tier}</Badge>}
+                                    {env.environment_type && <Badge variant="outline" className="text-xs ml-1">{env.environment_type}</Badge>}
+                                  </div>
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
 
@@ -200,13 +251,29 @@ const EncounterBuilder = () => {
                             <h4 className="text-sm font-semibold flex items-center gap-1 border-b border-border pb-1">
                               <Users className="h-4 w-4 text-blue-400" /> NPCs
                             </h4>
-                            {npcs.map((npc: any, i: number) => (
-                              <div key={i} className="bg-blue-500/10 rounded p-2 text-sm">
-                                <span className="font-semibold">{npc.character_name}</span>
-                                {npc.level && <span className="text-xs text-muted-foreground ml-2">Lv.{npc.level}</span>}
-                                {npc.character_class && <Badge variant="outline" className="text-xs ml-1">{npc.character_class}</Badge>}
-                              </div>
-                            ))}
+                            {npcs.map((npc: any, i: number) => {
+                              const img = npc.user_id ? thumbs.npcs[npc.user_id] : null;
+                              return (
+                                <button
+                                  key={i}
+                                  onClick={(e) => { e.stopPropagation(); npc.user_id && setViewNpcId(npc.user_id); }}
+                                  className="w-full text-left bg-blue-500/10 hover:bg-blue-500/20 rounded p-2 text-sm flex items-center gap-2 transition-colors"
+                                >
+                                  {img ? (
+                                    <img src={img} alt="" className="h-10 w-10 object-cover rounded shrink-0" />
+                                  ) : (
+                                    <div className="h-10 w-10 rounded bg-blue-500/20 flex items-center justify-center shrink-0">
+                                      <Users className="h-5 w-5 text-blue-400" />
+                                    </div>
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <span className="font-semibold">{npc.character_name}</span>
+                                    {npc.level && <span className="text-xs text-muted-foreground ml-2">Lv.{npc.level}</span>}
+                                    {npc.character_class && <Badge variant="outline" className="text-xs ml-1">{npc.character_class}</Badge>}
+                                  </div>
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
 
@@ -216,16 +283,32 @@ const EncounterBuilder = () => {
                             <h4 className="text-sm font-semibold flex items-center gap-1 border-b border-border pb-1">
                               <Swords className="h-4 w-4 text-red-400" /> Creatures
                             </h4>
-                            {creatures.map((c: any, i: number) => (
-                              <div key={i} className="bg-red-500/10 rounded p-2 text-sm flex items-center justify-between">
-                                <div>
-                                  <span className="font-semibold">{c.name}</span>
-                                  {c.tier && <Badge variant="outline" className="text-xs ml-2">T{c.tier}</Badge>}
-                                  {c.creature_type && <Badge variant="outline" className="text-xs ml-1">{c.creature_type}</Badge>}
-                                </div>
-                                <Badge variant="outline" className="text-xs">×{c.quantity || 1}</Badge>
-                              </div>
-                            ))}
+                            {creatures.map((c: any, i: number) => {
+                              const img = c.id ? thumbs.creatures[c.id] : null;
+                              return (
+                                <button
+                                  key={i}
+                                  onClick={(e) => { e.stopPropagation(); c.id && setViewCreatureId(c.id); }}
+                                  className="w-full text-left bg-red-500/10 hover:bg-red-500/20 rounded p-2 text-sm flex items-center justify-between gap-2 transition-colors"
+                                >
+                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    {img ? (
+                                      <img src={img} alt="" className="h-10 w-10 object-cover rounded shrink-0" />
+                                    ) : (
+                                      <div className="h-10 w-10 rounded bg-red-500/20 flex items-center justify-center shrink-0">
+                                        <Swords className="h-5 w-5 text-red-400" />
+                                      </div>
+                                    )}
+                                    <div>
+                                      <span className="font-semibold">{c.name}</span>
+                                      {c.tier && <Badge variant="outline" className="text-xs ml-2">T{c.tier}</Badge>}
+                                      {c.creature_type && <Badge variant="outline" className="text-xs ml-1">{c.creature_type}</Badge>}
+                                    </div>
+                                  </div>
+                                  <Badge variant="outline" className="text-xs">×{c.quantity || 1}</Badge>
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
 
@@ -305,6 +388,10 @@ const EncounterBuilder = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CreatureViewDialog creatureId={viewCreatureId} onClose={() => setViewCreatureId(null)} />
+      <EnvironmentViewDialog environmentId={viewEnvironmentId} onClose={() => setViewEnvironmentId(null)} />
+      <NPCViewDialog userId={viewNpcId} onClose={() => setViewNpcId(null)} />
     </div>
   );
 };
