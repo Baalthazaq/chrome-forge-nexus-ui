@@ -244,10 +244,30 @@ export function CardsSection({
   ];
 
   const getListForType = () => {
-    if (addType === 'domain') return availableDomains;
-    if (addType === 'open-domain') return allDomains;
-    if (addType === 'other') return otherCards;
-    return [];
+    let list: GameCard[] = [];
+    if (addType === 'domain') list = availableDomains;
+    else if (addType === 'open-domain') list = allDomains;
+    else if (addType === 'other') list = otherCards;
+    else return [];
+
+    return list.filter(c => {
+      const meta = c.metadata as any;
+      // Tier/level filter
+      if (filterTier !== 'all') {
+        const lvl = meta?.level ?? 0;
+        if (String(lvl) !== filterTier) return false;
+      }
+      // Class restriction filter (applies to "other" tab)
+      if (addType === 'other') {
+        const restriction = meta?.class_restriction;
+        if (filterClass === 'mine') {
+          if (restriction && restriction !== sheet.class) return false;
+        } else if (filterClass !== 'all') {
+          if (restriction !== filterClass) return false;
+        }
+      }
+      return true;
+    });
   };
 
   const renderCard = (sc: SelectedCard, globalIndex: number, showVaultButton = false) => {
