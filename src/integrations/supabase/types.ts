@@ -2015,12 +2015,48 @@ export type Database = {
         }
         Relationships: []
       }
+      tome_collaborators: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          id: string
+          role: string
+          tome_entry_id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          role?: string
+          tome_entry_id: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          role?: string
+          tome_entry_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tome_collaborators_tome_entry_id_fkey"
+            columns: ["tome_entry_id"]
+            isOneToOne: false
+            referencedRelation: "tome_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tome_entries: {
         Row: {
           content: string | null
           created_at: string
           id: string
           is_pinned: boolean | null
+          last_edited_by: string | null
           pages: number | null
           tags: string[] | null
           title: string
@@ -2032,6 +2068,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_pinned?: boolean | null
+          last_edited_by?: string | null
           pages?: number | null
           tags?: string[] | null
           title: string
@@ -2043,6 +2080,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_pinned?: boolean | null
+          last_edited_by?: string | null
           pages?: number | null
           tags?: string[] | null
           title?: string
@@ -2085,6 +2123,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tome_shares_tome_entry_id_fkey"
+            columns: ["tome_entry_id"]
+            isOneToOne: false
+            referencedRelation: "tome_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tome_versions: {
+        Row: {
+          content: string | null
+          created_at: string
+          edited_by: string | null
+          editor_name: string | null
+          id: string
+          title: string | null
+          tome_entry_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          edited_by?: string | null
+          editor_name?: string | null
+          id?: string
+          title?: string | null
+          tome_entry_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          edited_by?: string | null
+          editor_name?: string | null
+          id?: string
+          title?: string | null
+          tome_entry_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tome_versions_tome_entry_id_fkey"
             columns: ["tome_entry_id"]
             isOneToOne: false
             referencedRelation: "tome_entries"
@@ -2293,12 +2369,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_tome_access: {
+        Args: { _entry_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_active_stone_participant: {
         Args: { _stone_id: string; _user_id: string }
         Returns: boolean
       }
       is_stone_participant: {
         Args: { _stone_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_tome_owner: {
+        Args: { _entry_id: string; _user_id: string }
         Returns: boolean
       }
     }
