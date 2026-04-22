@@ -41,6 +41,8 @@ export function CardsSection({
   const [editCategory, setEditCategory] = useState('');
   const [editNewCategory, setEditNewCategory] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const [filterTier, setFilterTier] = useState<string>('all');
+  const [filterClass, setFilterClass] = useState<string>('all');
 
   const isSectionOpen = (key: string) => openSections[key] !== false;
   const toggleSection = (key: string, open: boolean) => setOpenSections(prev => ({ ...prev, [key]: open }));
@@ -115,11 +117,16 @@ export function CardsSection({
     if (c.card_type === 'ancestry' || c.card_type === 'community') return true;
     // Class-restricted "Other" categories (e.g. Beast Shape for Druids)
     const meta = c.metadata as any;
-    if (meta?.category && meta?.class_restriction) {
-      return meta.class_restriction === sheet.class && (meta?.level || 0) <= sheet.level;
-    }
+    if (meta?.category) return true;
     return false;
   });
+
+  // Class restriction options derived from "Other" cards
+  const otherClassRestrictions = [...new Set(
+    otherCards
+      .map(c => (c.metadata as any)?.class_restriction)
+      .filter(Boolean) as string[]
+  )];
 
   const getCardCategory = (sc: SelectedCard): string => {
     if (sc.custom) return (sc as any).category || 'Custom';
@@ -237,10 +244,30 @@ export function CardsSection({
   ];
 
   const getListForType = () => {
-    if (addType === 'domain') return availableDomains;
-    if (addType === 'open-domain') return allDomains;
-    if (addType === 'other') return otherCards;
-    return [];
+    let list: GameCard[] = [];
+    if (addType === 'domain') list = availableDomains;
+    else if (addType === 'open-domain') list = allDomains;
+    else if (addType === 'other') list = otherCards;
+    else return [];
+
+    return list.filter(c => {
+      const meta = c.metadata as any;
+      // Tier/level filter
+      if (filterTier !== 'all') {
+        const lvl = meta?.level ?? 0;
+        if (String(lvl) !== filterTier) return false;
+      }
+      // Class restriction filter (applies to "other" tab)
+      if (addType === 'other') {
+        const restriction = meta?.class_restriction;
+        if (filterClass === 'mine') {
+          if (restriction && restriction !== sheet.class) return false;
+        } else if (filterClass !== 'all') {
+          if (restriction !== filterClass) return false;
+        }
+      }
+      return true;
+    });
   };
 
   const renderCard = (sc: SelectedCard, globalIndex: number, showVaultButton = false) => {
@@ -342,7 +369,48 @@ export function CardsSection({
           </div>
 
           {addType !== 'blank' ? (
-            <div>
+            <div className="space-y-2">
+              {/* Filter dropdowns */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <Select value={addType} onValueChange={(v: any) => { setAddType(v); setSelectedDomainId(''); }}>
+                  <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-xs h-8">
+                    <SelectValue placeholder="Category..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="domain">Domain</SelectItem>
+                    <SelectItem value="open-domain">Open-Domain</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterTier} onValueChange={setFilterTier}>
+                  <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-xs h-8">
+                    <SelectValue placeholder="Level..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Levels</SelectItem>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                      <SelectItem key={n} value={String(n)}>Level {n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={filterClass}
+                  onValueChange={setFilterClass}
+                  disabled={addType !== 'other'}
+                >
+                  <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-xs h-8">
+                    <SelectValue placeholder="Class..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Classes</SelectItem>
+                    {sheet.class && <SelectItem value="mine">My Class ({sheet.class})</SelectItem>}
+                    {otherClassRestrictions.map(cls => (
+                      <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Select value={selectedDomainId} onValueChange={setSelectedDomainId}>
                 <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm">
                   <SelectValue placeholder={`Select a ${addType} card...`} />
@@ -353,7 +421,7 @@ export function CardsSection({
                     const label = c.card_type === 'domain'
                       ? `${c.name} (${c.source} Lv${meta?.level})${meta?.type ? ` — ${meta.type}` : ''}`
                       : c.card_type === 'ancestry' ? c.name
-                      : `${c.name} (${c.source || c.card_type})`;
+                      : `${c.name} (${c.source || c.card_type}${meta?.level ? ` Lv${meta.level}` : ''})`;
                     return <SelectItem key={c.id} value={c.id}>{label}</SelectItem>;
                   })}
                 </SelectContent>
@@ -370,7 +438,7 @@ export function CardsSection({
                 <div className="text-gray-500 text-xs mt-1">
                   {addType === 'domain' && domains.length === 0
                     ? 'Select a class first to see available domain cards.'
-                    : 'No matching cards for your level.'}
+                    : 'No matching cards for the selected filters.'}
                 </div>
               )}
             </div>
