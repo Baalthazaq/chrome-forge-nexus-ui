@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, X, Layers, BookOpen, PenTool, Globe, Package, ChevronDown, Pencil, Archive, ArrowUp, Filter } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { CharacterSheet, GameCard, SelectedCard } from "@/data/gameCardTypes";
-import { getUnlockedSubclassTiers, getMulticlassInfo, type LevelUpChoices } from "@/lib/levelUpUtils";
+import { getUnlockedSubclassTiers, getMulticlassInfo, getTier, type LevelUpChoices } from "@/lib/levelUpUtils";
 
 interface Props {
   sheet: CharacterSheet;
@@ -298,7 +298,16 @@ export function CardsSection({
       const meta = c.metadata as any;
       // Level filter (cards w/o level always pass)
       const lvl = meta?.level;
-      if (typeof lvl === 'number' && !filterLevels.includes(lvl)) return false;
+      if (typeof lvl === 'number') {
+        if (isBeastShape(c)) {
+          // Beast Shape `metadata.level` is actually a tier (1-4).
+          // Allow if any selected character level maps to that tier or higher.
+          const allowedTiers = new Set(filterLevels.map(getTier));
+          if (!allowedTiers.has(lvl)) return false;
+        } else {
+          if (!filterLevels.includes(lvl)) return false;
+        }
+      }
 
       if (addType === 'domain') {
         const dom = meta?.domain || c.source;
