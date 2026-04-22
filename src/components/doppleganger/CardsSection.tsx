@@ -199,7 +199,15 @@ export function CardsSection({
     if ((addType === 'domain' || addType === 'other') && cardId) {
       const card = gameCards.find(c => c.id === cardId);
       if (card) {
-        updateSheet({ selected_card_ids: [...selectedCards, { card_id: card.id }] });
+        const resolvedCategory = customCategory === '__new__'
+          ? newCategoryName
+          : (customCategory || getDefaultCategory(card));
+        const entry: any = { card_id: card.id };
+        // Only attach override if it differs from the natural default
+        if (resolvedCategory && resolvedCategory !== getDefaultCategory(card)) {
+          entry.category = resolvedCategory;
+        }
+        updateSheet({ selected_card_ids: [...selectedCards, entry] });
       }
     } else if (addType === 'blank' && customTitle) {
       const resolvedCategory = customCategory === '__new__' ? newCategoryName : customCategory;
