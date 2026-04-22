@@ -144,6 +144,8 @@ export function CardsSection({
     if (sc.custom) return (sc as any).category || 'Custom';
     const card = gameCards.find(c => c.id === sc.card_id);
     if (!card) return 'Other';
+    // Special: Beast Shape gets its own category
+    if (card.source === 'Beast Shape') return 'Beast Shape';
     if (card.card_type === 'domain') return 'Domain Cards';
     if (card.card_type === 'ancestry') return 'Ancestry';
     if (card.card_type === 'community') return 'Community';
