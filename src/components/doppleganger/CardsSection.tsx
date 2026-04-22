@@ -32,7 +32,7 @@ export function CardsSection({
   domainCards, domains, isEditing, classCards,
 }: Props) {
   const [showAddCard, setShowAddCard] = useState(false);
-  const [addType, setAddType] = useState<'domain' | 'open-domain' | 'other' | 'blank'>('domain');
+  const [addType, setAddType] = useState<'domain' | 'other' | 'blank'>('domain');
   const [selectedDomainId, setSelectedDomainId] = useState('');
   const [customTitle, setCustomTitle] = useState('');
   const [customContent, setCustomContent] = useState('');
@@ -44,8 +44,15 @@ export function CardsSection({
   const [editCategory, setEditCategory] = useState('');
   const [editNewCategory, setEditNewCategory] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
-  const [filterTier, setFilterTier] = useState<string>('all');
-  const [filterClass, setFilterClass] = useState<string>('all');
+  // Filter state — defaults to character's level/class/domains
+  const [filterMaxLevel, setFilterMaxLevel] = useState<number>(sheet.level || 1);
+  const [filterClasses, setFilterClasses] = useState<string[]>(sheet.class ? [sheet.class] : []);
+  const [filterDomains, setFilterDomains] = useState<string[]>(domains);
+
+  // Re-sync filter defaults when character changes
+  useEffect(() => { setFilterMaxLevel(sheet.level || 1); }, [sheet.level]);
+  useEffect(() => { setFilterClasses(sheet.class ? [sheet.class] : []); }, [sheet.class]);
+  useEffect(() => { setFilterDomains(domains); }, [domains.join('|')]);
 
   const isSectionOpen = (key: string) => openSections[key] !== false;
   const toggleSection = (key: string, open: boolean) => setOpenSections(prev => ({ ...prev, [key]: open }));
