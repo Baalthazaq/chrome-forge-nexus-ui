@@ -1,0 +1,1 @@
+UPDATE public.game_cards SET content = replace(content, '**', '') WHERE source = 'Beast Shape';
