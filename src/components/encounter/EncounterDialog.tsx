@@ -485,6 +485,12 @@ export const EncounterDialog = ({ encounter, open, onClose, onSaved }: Encounter
     <CreatureViewDialog creatureId={viewCreatureId} onClose={() => setViewCreatureId(null)} />
     <EnvironmentViewDialog environmentId={viewEnvironmentId} onClose={() => setViewEnvironmentId(null)} />
     <NPCViewDialog userId={viewNpcId} onClose={() => setViewNpcId(null)} />
+    <CustomEnvironmentEditor
+      open={customEnvOpen}
+      initial={customEnvEditingIdx !== null ? environments[customEnvEditingIdx] as CustomEnvironment : null}
+      onClose={() => { setCustomEnvOpen(false); setCustomEnvEditingIdx(null); }}
+      onSave={saveCustomEnvironment}
+    />
     </>
   );
 };
