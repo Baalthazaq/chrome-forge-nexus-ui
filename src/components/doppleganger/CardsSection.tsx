@@ -403,7 +403,7 @@ export function CardsSection({
                 key={key}
                 variant={addType === key ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => { setAddType(key); setSelectedDomainId(''); }}
+                onClick={() => { setAddType(key); setSelectedDomainId(''); setCustomCategory(''); setNewCategoryName(''); }}
                 className={addType === key ? '' : 'border-gray-600 text-gray-400'}
               >
                 <Icon className="w-3 h-3 mr-1" />
