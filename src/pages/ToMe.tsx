@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Search, BookOpen, StickyNote, Star, Clock, Edit3, Trash2, Pin, GripVertical, ChevronLeft, ChevronRight, X, FileText, List, Share2, Columns3, Download, Upload } from "lucide-react";
+import { ArrowLeft, Plus, Search, BookOpen, StickyNote, Star, Clock, Edit3, Trash2, Pin, GripVertical, ChevronLeft, ChevronRight, X, FileText, List, Share2, Columns3, Download, Upload, Users, Crown, History } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,6 +40,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { useDroppable } from '@dnd-kit/core';
 import { TomeShareDialog } from '@/components/TomeShareDialog';
 import { TomeShareNotifications } from '@/components/TomeShareNotifications';
+import { TomeAccessDialog } from '@/components/TomeAccessDialog';
+import { TomeHistoryDialog } from '@/components/TomeHistoryDialog';
 import { z } from 'zod';
 import { renderMarkdown } from '@/lib/markdownRenderer';
 
@@ -245,17 +247,32 @@ const ToMe = () => {
 
   const fetchData = async () => {
     if (!displayUser) return;
-    
+
     setLoading(true);
     try {
-      // Fetch tome entries
-      const { data: tomeData, error: tomeError } = await supabase
-        .from('tome_entries')
-        .select('*')
-        .eq('user_id', displayUser.user_id || displayUser.id)
-        .order('created_at', { ascending: false });
+      const myId = displayUser.user_id || displayUser.id;
 
-      if (tomeError) throw tomeError;
+      // Fetch all entries I'm a collaborator on (owner or editor)
+      const { data: collabRows, error: collabErr } = await supabase
+        .from('tome_collaborators')
+        .select('tome_entry_id, role')
+        .eq('user_id', myId);
+      if (collabErr) throw collabErr;
+
+      const entryIds = (collabRows || []).map((r) => r.tome_entry_id);
+      const roleMap: Record<string, 'owner' | 'editor'> = {};
+      (collabRows || []).forEach((r) => { roleMap[r.tome_entry_id] = r.role as any; });
+
+      let tomeData: any[] = [];
+      if (entryIds.length) {
+        const { data, error: tomeError } = await supabase
+          .from('tome_entries')
+          .select('*')
+          .in('id', entryIds)
+          .order('created_at', { ascending: false });
+        if (tomeError) throw tomeError;
+        tomeData = (data || []).map((e) => ({ ...e, my_role: roleMap[e.id] || 'editor' }));
+      }
 
       // Fetch quick notes
       const { data: notesData, error: notesError } = await supabase
