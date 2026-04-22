@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Share2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Share2, Copy, Users, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -29,142 +30,136 @@ interface TomeShareDialogProps {
   children: React.ReactNode;
 }
 
+type Mode = 'choose' | 'copy' | 'collaborate';
+
 export const TomeShareDialog = ({ tomeEntry, children }: TomeShareDialogProps) => {
   const { user } = useAuth();
   const { impersonatedUser } = useAdmin();
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [selectedRecipient, setSelectedRecipient] = useState("");
-  const [shareMessage, setShareMessage] = useState("");
+  const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
+  const [shareMessage, setShareMessage] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [mode, setMode] = useState<Mode>('choose');
 
-  const displayUser = impersonatedUser || user;
+  const displayUser: any = impersonatedUser || user;
+  const senderId = displayUser?.user_id || displayUser?.id;
 
   useEffect(() => {
-    if (isOpen) {
-      loadProfiles();
+    if (isOpen && mode !== 'choose') loadProfiles();
+  }, [isOpen, mode, displayUser]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      // reset on close
+      setTimeout(() => {
+        setMode('choose');
+        setSelectedRecipients([]);
+        setShareMessage('');
+      }, 200);
     }
-  }, [isOpen, displayUser]);
+  }, [isOpen]);
 
   const loadProfiles = async () => {
-    if (!displayUser) return;
-
+    if (!senderId) return;
     try {
-      // Get active contacts first
       const { data: contactsData, error: contactsError } = await supabase
         .from('contacts')
         .select('contact_user_id')
-        .eq('user_id', displayUser.user_id || displayUser.id)
+        .eq('user_id', senderId)
         .eq('is_active', true);
-
       if (contactsError) throw contactsError;
-
-      if (!contactsData || contactsData.length === 0) {
+      if (!contactsData?.length) {
         setProfiles([]);
         return;
       }
-
-      // Get profiles for all contacts
-      const contactUserIds = contactsData.map(contact => contact.contact_user_id);
+      const ids = contactsData.map((c) => c.contact_user_id);
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('*')
-        .in('user_id', contactUserIds);
-
+        .select('id, user_id, character_name')
+        .in('user_id', ids);
       if (profilesError) throw profilesError;
-
       setProfiles(profilesData || []);
-    } catch (error) {
-      console.error('Error loading profiles:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load contacts",
-        variant: "destructive",
-      });
+    } catch (err) {
+      console.error('Error loading profiles:', err);
+      toast({ title: 'Error', description: 'Failed to load contacts', variant: 'destructive' });
     }
   };
 
-  const shareTome = async () => {
-    if (!selectedRecipient || !displayUser) return;
+  const toggleRecipient = (uid: string) => {
+    setSelectedRecipients((prev) =>
+      prev.includes(uid) ? prev.filter((x) => x !== uid) : [...prev, uid]
+    );
+  };
 
+  const ensureStone = async (recipientId: string) => {
+    const { data: existing } = await supabase
+      .from('stones')
+      .select('id')
+      .or(
+        `and(participant_one_id.eq.${senderId},participant_two_id.eq.${recipientId}),and(participant_one_id.eq.${recipientId},participant_two_id.eq.${senderId})`
+      )
+      .maybeSingle();
+    if (existing?.id) return existing.id as string;
+    const { data: newStone, error } = await supabase
+      .from('stones')
+      .insert({ participant_one_id: senderId, participant_two_id: recipientId })
+      .select('id')
+      .single();
+    if (error) throw error;
+    return newStone.id as string;
+  };
+
+  const sendNotification = async (recipientId: string, label: string) => {
+    try {
+      const stoneId = await ensureStone(recipientId);
+      await supabase.from('casts').insert({
+        stone_id: stoneId,
+        sender_id: senderId,
+        message: `📚 ${label}: "${tomeEntry.title}" — check your ToMe section.`,
+      });
+    } catch (err) {
+      console.error('Notification error (non-fatal):', err);
+    }
+  };
+
+  const submit = async () => {
+    if (!senderId || selectedRecipients.length === 0) return;
     setIsSharing(true);
     try {
-      console.log('Sharing ToMe:', {
-        tomeEntry: tomeEntry.id,
-        sender: displayUser.user_id || displayUser.id,
-        recipient: selectedRecipient,
-        displayUser
-      });
+      const senderName = displayUser?.character_name || 'Someone';
+      const defaultMsg =
+        mode === 'collaborate'
+          ? `${senderName} invited you to collaborate on "${tomeEntry.title}".`
+          : `${senderName} shared a copy of "${tomeEntry.title}" with you.`;
 
-      // Create tome share entry
-      // If we're impersonating, use the admin's session for RLS but the NPC's ID as sender
-      const { error: shareError } = await supabase
-        .from('tome_shares')
-        .insert({
-          tome_entry_id: tomeEntry.id,
-          sender_id: displayUser.user_id || displayUser.id,
-          recipient_id: selectedRecipient,
-          message: shareMessage.trim() || `${displayUser.character_name || 'Someone'} has shared a ToMe entry with you: "${tomeEntry.title}"`
-        });
+      const rows = selectedRecipients.map((rid) => ({
+        tome_entry_id: tomeEntry.id,
+        sender_id: senderId,
+        recipient_id: rid,
+        share_type: mode,
+        message: shareMessage.trim() || defaultMsg,
+      }));
 
-      if (shareError) {
-        console.error('Share error:', shareError);
-        throw shareError;
-      }
+      const { error } = await supabase.from('tome_shares').insert(rows);
+      if (error) throw error;
 
-      // Create a notification message in Sending
-      const { data: existingStone } = await supabase
-        .from('stones')
-        .select('id')
-        .or(`and(participant_one_id.eq.${displayUser.user_id || displayUser.id},participant_two_id.eq.${selectedRecipient}),and(participant_one_id.eq.${selectedRecipient},participant_two_id.eq.${displayUser.user_id || displayUser.id})`)
-        .single();
-
-      let stoneId = existingStone?.id;
-
-      // Create stone if it doesn't exist
-      if (!stoneId) {
-        const { data: newStone, error: stoneError } = await supabase
-          .from('stones')
-          .insert({
-            participant_one_id: displayUser.user_id || displayUser.id,
-            participant_two_id: selectedRecipient
-          })
-          .select('id')
-          .single();
-
-        if (stoneError) throw stoneError;
-        stoneId = newStone.id;
-      }
-
-      // Send notification message
-      const notificationMessage = `📚 ToMe Share: "${tomeEntry.title}" has been shared with you! Check your ToMe section to accept or decline.`;
-      
-      const { error: castError } = await supabase
-        .from('casts')
-        .insert({
-          stone_id: stoneId,
-          sender_id: displayUser.user_id || displayUser.id,
-          message: notificationMessage
-        });
-
-      if (castError) throw castError;
+      // fire-and-forget notifications
+      const label = mode === 'collaborate' ? 'Collab Invite' : 'ToMe Copy';
+      await Promise.all(selectedRecipients.map((rid) => sendNotification(rid, label)));
 
       toast({
-        title: "Success",
-        description: "ToMe entry shared successfully!",
+        title: 'Sent',
+        description:
+          mode === 'collaborate'
+            ? `Collaboration invite sent to ${selectedRecipients.length} recipient(s).`
+            : `Copy sent to ${selectedRecipients.length} recipient(s).`,
       });
-
       setIsOpen(false);
-      setSelectedRecipient("");
-      setShareMessage("");
-    } catch (error) {
-      console.error('Error sharing tome:', error);
-      toast({
-        title: "Error", 
-        description: "Failed to share ToMe entry",
-        variant: "destructive",
-      });
+    } catch (err) {
+      console.error('Share error:', err);
+      toast({ title: 'Error', description: 'Failed to share ToMe entry', variant: 'destructive' });
     } finally {
       setIsSharing(false);
     }
@@ -172,56 +167,100 @@ export const TomeShareDialog = ({ tomeEntry, children }: TomeShareDialogProps) =
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
+            {mode !== 'choose' && (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setMode('choose')}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
             <Share2 className="h-5 w-5" />
             Share "{tomeEntry.title}"
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="recipient">Share with</Label>
-            <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a user..." />
-              </SelectTrigger>
-              <SelectContent>
-                {profiles.map((profile) => (
-                  <SelectItem key={profile.id} value={profile.user_id}>
-                    {profile.character_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div>
-            <Label htmlFor="message">Custom message (optional)</Label>
-            <Textarea
-              id="message"
-              value={shareMessage}
-              onChange={(e) => setShareMessage(e.target.value)}
-              placeholder="Add a personal message..."
-              rows={3}
-            />
-          </div>
 
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setIsOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={shareTome}
-              disabled={!selectedRecipient || isSharing}
+        {mode === 'choose' && (
+          <div className="grid gap-3 pt-2">
+            <button
+              onClick={() => setMode('copy')}
+              className="flex items-start gap-3 rounded-lg border border-border bg-card p-4 text-left transition hover:border-primary hover:bg-accent"
             >
-              {isSharing ? 'Sharing...' : 'Share'}
-            </Button>
+              <Copy className="mt-0.5 h-5 w-5 text-primary" />
+              <div>
+                <div className="font-semibold">Send a copy</div>
+                <div className="text-sm text-muted-foreground">
+                  Recipient gets their own independent copy. Edits don't sync back.
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => setMode('collaborate')}
+              className="flex items-start gap-3 rounded-lg border border-border bg-card p-4 text-left transition hover:border-primary hover:bg-accent"
+            >
+              <Users className="mt-0.5 h-5 w-5 text-primary" />
+              <div>
+                <div className="font-semibold">Invite to collaborate</div>
+                <div className="text-sm text-muted-foreground">
+                  Recipients join the same entry as editors. All changes are shared and version-tracked.
+                </div>
+              </div>
+            </button>
           </div>
-        </div>
+        )}
+
+        {mode !== 'choose' && (
+          <div className="space-y-4">
+            <div>
+              <Label>Recipients</Label>
+              {profiles.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">No contacts found.</p>
+              ) : (
+                <ScrollArea className="h-48 rounded-md border border-border p-2">
+                  <div className="space-y-1">
+                    {profiles.map((p) => (
+                      <label
+                        key={p.id}
+                        className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-accent cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={selectedRecipients.includes(p.user_id)}
+                          onCheckedChange={() => toggleRecipient(p.user_id)}
+                        />
+                        <span className="text-sm">{p.character_name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="message">Custom message (optional)</Label>
+              <Textarea
+                id="message"
+                value={shareMessage}
+                onChange={(e) => setShareMessage(e.target.value)}
+                placeholder="Add a personal message…"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={submit} disabled={selectedRecipients.length === 0 || isSharing}>
+                {isSharing
+                  ? 'Sending…'
+                  : mode === 'collaborate'
+                  ? `Invite ${selectedRecipients.length || ''}`.trim()
+                  : `Send ${selectedRecipients.length || ''} cop${selectedRecipients.length === 1 ? 'y' : 'ies'}`.trim()}
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
