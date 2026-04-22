@@ -171,8 +171,12 @@ export function CardsSection({
     const source = card.card_type === 'ancestry' ? ''
       : card.card_type === 'community' ? `Community: ${card.source || ''}`
       : `${card.source || ''} ${meta?.type || ''} Lv${meta?.level || '?'}`;
-    return { title: card.name, content: card.content || '', source, recallCost: meta?.recall_cost ?? null, cardId: card.id };
+    // Player overrides on title/content (non-custom cards)
+    const title = (sc as any).title || card.name;
+    const content = (sc as any).content ?? (card.content || '');
+    return { title, content, source, recallCost: meta?.recall_cost ?? null, cardId: card.id };
   };
+
 
   // Group selected cards by category, excluding vaulted domain cards
   const grouped: Record<string, { sc: SelectedCard; i: number }[]> = {};
@@ -251,10 +255,11 @@ export function CardsSection({
   };
 
   const startEdit = (index: number, sc: SelectedCard) => {
+    const details = getCardDetails(sc);
     setEditingIndex(index);
-    setEditTitle(sc.title || '');
-    setEditContent(sc.content || '');
-    setEditCategory((sc as any).category || 'Custom');
+    setEditTitle(details.title);
+    setEditContent(details.content);
+    setEditCategory(getCardCategory(sc));
     setEditNewCategory('');
   };
 
@@ -262,12 +267,36 @@ export function CardsSection({
     if (editingIndex === null) return;
     const resolvedCat = editCategory === '__new__' ? editNewCategory : editCategory;
     const updated = [...selectedCards];
-    updated[editingIndex] = { ...updated[editingIndex], title: editTitle, content: editContent, category: resolvedCat || 'Custom' } as any;
+    const original = updated[editingIndex];
+    if (original.custom) {
+      updated[editingIndex] = { ...original, title: editTitle, content: editContent, category: resolvedCat || 'Custom' } as any;
+    } else {
+      // Non-custom: store overrides only when they differ from the base card / default category
+      const card = gameCards.find(c => c.id === original.card_id);
+      const baseTitle = card?.name || '';
+      const baseContent = card?.content || '';
+      const defaultCat = card ? getDefaultCategory(card) : '';
+      const next: any = { card_id: original.card_id };
+      if (editTitle && editTitle !== baseTitle) next.title = editTitle;
+      if (editContent !== baseContent) next.content = editContent;
+      if (resolvedCat && resolvedCat !== defaultCat) next.category = resolvedCat;
+      updated[editingIndex] = next;
+    }
+    updateSheet({ selected_card_ids: updated });
+    setEditingIndex(null);
+  };
+
+  const resetCardOverrides = (index: number) => {
+    const sc = selectedCards[index];
+    if (!sc || sc.custom) return;
+    const updated = [...selectedCards];
+    updated[index] = { card_id: sc.card_id } as any;
     updateSheet({ selected_card_ids: updated });
     setEditingIndex(null);
   };
 
   const cancelEdit = () => setEditingIndex(null);
+
 
   const addTypeOptions: { key: typeof addType; label: string; icon: any }[] = [
     { key: 'domain', label: 'Domain', icon: BookOpen },
