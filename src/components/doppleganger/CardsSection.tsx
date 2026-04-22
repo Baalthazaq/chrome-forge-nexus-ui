@@ -45,12 +45,14 @@ export function CardsSection({
   const [editNewCategory, setEditNewCategory] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   // Filter state — defaults to character's level/class/domains
-  const [filterMaxLevel, setFilterMaxLevel] = useState<number>(sheet.level || 1);
+  const defaultLevels = (lvl: number) => Array.from({ length: Math.max(1, lvl) }, (_, i) => i + 1);
+  const [filterLevels, setFilterLevels] = useState<number[]>(defaultLevels(sheet.level || 1));
   const [filterClasses, setFilterClasses] = useState<string[]>(sheet.class ? [sheet.class] : []);
   const [filterDomains, setFilterDomains] = useState<string[]>(domains);
+  const [filterText, setFilterText] = useState('');
 
   // Re-sync filter defaults when character changes
-  useEffect(() => { setFilterMaxLevel(sheet.level || 1); }, [sheet.level]);
+  useEffect(() => { setFilterLevels(defaultLevels(sheet.level || 1)); }, [sheet.level]);
   useEffect(() => { setFilterClasses(sheet.class ? [sheet.class] : []); }, [sheet.class]);
   useEffect(() => { setFilterDomains(domains); }, [domains.join('|')]);
 
@@ -142,6 +144,8 @@ export function CardsSection({
     if (sc.custom) return (sc as any).category || 'Custom';
     const card = gameCards.find(c => c.id === sc.card_id);
     if (!card) return 'Other';
+    // Special: Beast Shape gets its own category
+    if (card.source === 'Beast Shape') return 'Beast Shape';
     if (card.card_type === 'domain') return 'Domain Cards';
     if (card.card_type === 'ancestry') return 'Ancestry';
     if (card.card_type === 'community') return 'Community';
@@ -269,11 +273,13 @@ export function CardsSection({
     else if (addType === 'other') list = otherCards;
     else return [];
 
+    const txt = filterText.trim().toLowerCase();
+
     return list.filter(c => {
       const meta = c.metadata as any;
-      // Max-level filter (applies to cards that have a level)
+      // Level filter (cards w/o level always pass)
       const lvl = meta?.level;
-      if (typeof lvl === 'number' && lvl > filterMaxLevel) return false;
+      if (typeof lvl === 'number' && !filterLevels.includes(lvl)) return false;
 
       if (addType === 'domain') {
         const dom = meta?.domain || c.source;
@@ -282,10 +288,14 @@ export function CardsSection({
 
       if (addType === 'other') {
         const restriction = meta?.class_restriction;
-        // If card has a class restriction, only show when that class is checked
         if (restriction) {
           if (filterClasses.length > 0 && !filterClasses.includes(restriction)) return false;
         }
+      }
+
+      if (txt) {
+        const hay = `${c.name} ${c.content || ''} ${c.source || ''} ${c.card_type} ${meta?.type || ''} ${meta?.category || ''}`.toLowerCase();
+        if (!hay.includes(txt)) return false;
       }
       return true;
     });
@@ -393,16 +403,39 @@ export function CardsSection({
             <div className="space-y-2">
               {/* Filter row */}
               <div className="flex flex-wrap gap-2 items-center">
-                <Select value={String(filterMaxLevel)} onValueChange={(v) => setFilterMaxLevel(Number(v))}>
-                  <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-xs h-8 w-auto min-w-[140px]">
-                    <SelectValue placeholder="Up to level..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                      <SelectItem key={n} value={String(n)}>Up to Level {n}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 border-gray-600 text-gray-300 text-xs">
+                      <Filter className="w-3 h-3 mr-1" />
+                      Levels ({filterLevels.length}/10)
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-44 bg-gray-900 border-gray-700 p-2">
+                    <div className="flex justify-between mb-2">
+                      <button onClick={() => setFilterLevels([1,2,3,4,5,6,7,8,9,10])} className="text-xs text-purple-400 hover:underline">All</button>
+                      <button onClick={() => setFilterLevels(defaultLevels(sheet.level || 1))} className="text-xs text-purple-400 hover:underline">Mine</button>
+                      <button onClick={() => setFilterLevels([])} className="text-xs text-purple-400 hover:underline">None</button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 max-h-64 overflow-y-auto">
+                      {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                        <label key={n} className="flex items-center gap-2 text-sm text-gray-200 cursor-pointer">
+                          <Checkbox
+                            checked={filterLevels.includes(n)}
+                            onCheckedChange={() => toggleInArray(filterLevels.map(String), String(n), (v) => setFilterLevels(v.map(Number)))}
+                          />
+                          <span>Lv {n}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                <Input
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  placeholder="Search name, type, text..."
+                  className="bg-gray-900/50 border-gray-600 text-gray-100 text-xs h-8 w-auto min-w-[180px] flex-1"
+                />
 
                 {addType === 'domain' && (
                   <Popover>
