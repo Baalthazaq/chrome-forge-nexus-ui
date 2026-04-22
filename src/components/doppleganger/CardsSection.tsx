@@ -45,12 +45,14 @@ export function CardsSection({
   const [editNewCategory, setEditNewCategory] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   // Filter state — defaults to character's level/class/domains
-  const [filterMaxLevel, setFilterMaxLevel] = useState<number>(sheet.level || 1);
+  const defaultLevels = (lvl: number) => Array.from({ length: Math.max(1, lvl) }, (_, i) => i + 1);
+  const [filterLevels, setFilterLevels] = useState<number[]>(defaultLevels(sheet.level || 1));
   const [filterClasses, setFilterClasses] = useState<string[]>(sheet.class ? [sheet.class] : []);
   const [filterDomains, setFilterDomains] = useState<string[]>(domains);
+  const [filterText, setFilterText] = useState('');
 
   // Re-sync filter defaults when character changes
-  useEffect(() => { setFilterMaxLevel(sheet.level || 1); }, [sheet.level]);
+  useEffect(() => { setFilterLevels(defaultLevels(sheet.level || 1)); }, [sheet.level]);
   useEffect(() => { setFilterClasses(sheet.class ? [sheet.class] : []); }, [sheet.class]);
   useEffect(() => { setFilterDomains(domains); }, [domains.join('|')]);
 
