@@ -1452,16 +1452,7 @@ const ToMe = () => {
       {/* Expanded Tome View */}
       {expandedTome && (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
-          <div className="flex items-center justify-between p-6 border-b border-gray-700">
-            <Button 
-              variant="ghost" 
-              onClick={() => setExpandedTome(null)}
-              className="text-gray-400 hover:text-white"
-            >
-              <X className="w-5 h-5 mr-2" />
-              Close
-            </Button>
-            
+          <div className="flex flex-col gap-3 p-4 sm:p-6 border-b border-gray-700">
             {(() => {
               const entry = tomeEntries.find(e => e.id === expandedTome);
               let chapters;
