@@ -115,19 +115,25 @@ export function CardsSection({
     }
   });
 
+  // Beast Shape cards are stored as card_type='domain' but belong under "Other"
+  const isBeastShape = (c: GameCard) => c.source === 'Beast Shape';
+
   const availableDomains = domainCards.filter(c => {
+    if (isBeastShape(c)) return false;
     const meta = c.metadata as any;
     return domains.includes(meta?.domain || c.source) && (meta?.level || 0) <= sheet.level;
   });
 
   const allDomains = domainCards.filter(c => {
+    if (isBeastShape(c)) return false;
     const meta = c.metadata as any;
     return (meta?.level || 0) <= sheet.level;
   });
 
   const otherCards = gameCards.filter(c => {
     if (c.card_type === 'ancestry' || c.card_type === 'community') return true;
-    // Class-restricted "Other" categories (e.g. Beast Shape for Druids)
+    if (isBeastShape(c)) return true;
+    // Class-restricted "Other" categories
     const meta = c.metadata as any;
     if (meta?.category) return true;
     return false;
