@@ -9,11 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Trash2, ChevronDown, TreePine, Users, Swords, Search, Eye } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, TreePine, Users, Swords, Search, Eye, Pencil, Sparkles } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CreatureViewDialog } from './CreatureViewDialog';
 import { EnvironmentViewDialog } from './EnvironmentViewDialog';
 import { NPCViewDialog } from './NPCViewDialog';
+import { CustomEnvironmentEditor, CustomEnvironment } from './CustomEnvironmentEditor';
 
 interface EncounterDialogProps {
   encounter: any | null;
