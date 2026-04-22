@@ -53,6 +53,10 @@ export const EncounterDialog = ({ encounter, open, onClose, onSaved }: Encounter
   const [viewEnvironmentId, setViewEnvironmentId] = useState<string | null>(null);
   const [viewNpcId, setViewNpcId] = useState<string | null>(null);
 
+  // Custom environment editor
+  const [customEnvOpen, setCustomEnvOpen] = useState(false);
+  const [customEnvEditingIdx, setCustomEnvEditingIdx] = useState<number | null>(null);
+
   // Collapsible sections
   const [envOpen, setEnvOpen] = useState(true);
   const [npcOpen, setNpcOpen] = useState(true);
