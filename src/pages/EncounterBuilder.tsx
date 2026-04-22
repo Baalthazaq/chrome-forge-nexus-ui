@@ -388,6 +388,10 @@ const EncounterBuilder = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CreatureViewDialog creatureId={viewCreatureId} onClose={() => setViewCreatureId(null)} />
+      <EnvironmentViewDialog environmentId={viewEnvironmentId} onClose={() => setViewEnvironmentId(null)} />
+      <NPCViewDialog userId={viewNpcId} onClose={() => setViewNpcId(null)} />
     </div>
   );
 };
