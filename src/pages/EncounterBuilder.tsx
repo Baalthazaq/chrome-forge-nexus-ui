@@ -12,6 +12,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Shield, ArrowLeft, ChevronDown, Plus, Search, Copy, Swords, TreePine, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { EncounterDialog } from '@/components/encounter/EncounterDialog';
+import { CreatureViewDialog } from '@/components/encounter/CreatureViewDialog';
+import { EnvironmentViewDialog } from '@/components/encounter/EnvironmentViewDialog';
+import { NPCViewDialog } from '@/components/encounter/NPCViewDialog';
 
 const EncounterBuilder = () => {
   const navigate = useNavigate();
@@ -24,6 +27,14 @@ const EncounterBuilder = () => {
   const [editEncounter, setEditEncounter] = useState<any | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [viewCreatureId, setViewCreatureId] = useState<string | null>(null);
+  const [viewEnvironmentId, setViewEnvironmentId] = useState<string | null>(null);
+  const [viewNpcId, setViewNpcId] = useState<string | null>(null);
+  const [thumbs, setThumbs] = useState<{
+    envs: Record<string, string | null>;
+    creatures: Record<string, string | null>;
+    npcs: Record<string, string | null>;
+  }>({ envs: {}, creatures: {}, npcs: {} });
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
