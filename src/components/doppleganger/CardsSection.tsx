@@ -117,11 +117,16 @@ export function CardsSection({
     if (c.card_type === 'ancestry' || c.card_type === 'community') return true;
     // Class-restricted "Other" categories (e.g. Beast Shape for Druids)
     const meta = c.metadata as any;
-    if (meta?.category && meta?.class_restriction) {
-      return meta.class_restriction === sheet.class && (meta?.level || 0) <= sheet.level;
-    }
+    if (meta?.category) return true;
     return false;
   });
+
+  // Class restriction options derived from "Other" cards
+  const otherClassRestrictions = [...new Set(
+    otherCards
+      .map(c => (c.metadata as any)?.class_restriction)
+      .filter(Boolean) as string[]
+  )];
 
   const getCardCategory = (sc: SelectedCard): string => {
     if (sc.custom) return (sc as any).category || 'Custom';
