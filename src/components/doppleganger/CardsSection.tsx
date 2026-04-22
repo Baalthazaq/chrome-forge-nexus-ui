@@ -382,9 +382,14 @@ export function CardsSection({
           {editCategory === '__new__' && (
             <Input value={editNewCategory} onChange={(e) => setEditNewCategory(e.target.value)} placeholder="New category name..." className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm" />
           )}
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button size="sm" onClick={saveEdit}>Save</Button>
             <Button size="sm" variant="outline" onClick={cancelEdit} className="border-gray-600 text-gray-300">Cancel</Button>
+            {!sc.custom && (
+              <Button size="sm" variant="outline" onClick={() => resetCardOverrides(globalIndex)} className="border-gray-600 text-gray-400 ml-auto" title="Discard customizations and revert to original card">
+                Reset to Original
+              </Button>
+            )}
           </div>
         </div>
       );
