@@ -55,8 +55,32 @@ const EncounterBuilder = () => {
       toast.error('Failed to load encounters');
     } else {
       setEncounters((data as any[]) || []);
+      loadThumbnails((data as any[]) || []);
     }
     setLoading(false);
+  };
+
+  const loadThumbnails = async (encs: any[]) => {
+    const envIds = new Set<string>();
+    const creatureIds = new Set<string>();
+    const npcIds = new Set<string>();
+    encs.forEach(e => {
+      (e.environments || []).forEach((x: any) => x.id && envIds.add(x.id));
+      (e.creatures || []).forEach((x: any) => x.id && creatureIds.add(x.id));
+      (e.npcs || []).forEach((x: any) => x.user_id && npcIds.add(x.user_id));
+    });
+    const [envRes, crRes, npRes] = await Promise.all([
+      envIds.size ? supabase.from('environments').select('id, image_url').in('id', [...envIds]) : Promise.resolve({ data: [] as any[] }),
+      creatureIds.size ? supabase.from('bestiary_creatures').select('id, image_url').in('id', [...creatureIds]) : Promise.resolve({ data: [] as any[] }),
+      npcIds.size ? supabase.from('profiles').select('user_id, avatar_url').in('user_id', [...npcIds]) : Promise.resolve({ data: [] as any[] }),
+    ]);
+    const envs: Record<string, string | null> = {};
+    (envRes.data || []).forEach((r: any) => { envs[r.id] = r.image_url; });
+    const creatures: Record<string, string | null> = {};
+    (crRes.data || []).forEach((r: any) => { creatures[r.id] = r.image_url; });
+    const npcs: Record<string, string | null> = {};
+    (npRes.data || []).forEach((r: any) => { npcs[r.user_id] = r.avatar_url; });
+    setThumbs({ envs, creatures, npcs });
   };
 
   const deleteEncounter = async (id: string) => {
