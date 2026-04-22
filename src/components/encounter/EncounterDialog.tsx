@@ -328,8 +328,6 @@ export const EncounterDialog = ({ encounter, open, onClose, onSaved }: Encounter
                   </Button>
                 </div>
               )}
-                </Button>
-              )}
             </CollapsibleContent>
           </Collapsible>
 
