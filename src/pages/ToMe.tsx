@@ -1533,48 +1533,65 @@ const ToMe = () => {
 
               return (
                 <>
-                  <h2 className="text-2xl font-bold text-white">{entry?.title}</h2>
-                  <div className="flex items-center space-x-4">
-                    {chapters.length > 1 && (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-gray-400 text-sm">Chapter:</span>
-                        <select
-                          value={flatPages[currentPage - 1]?.chapterIndex ?? 0}
-                          onChange={(e) => {
-                            const idx = parseInt(e.target.value);
-                            const target = chapterStartPages[idx];
-                            if (target) setCurrentPage(target.startPage);
-                          }}
-                          className="bg-gray-800 border border-gray-600 text-gray-300 rounded-md px-3 py-1.5 text-sm"
-                        >
-                          {chapterStartPages.map((ch, idx) => (
-                            <option key={idx} value={idx}>{ch.title}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
+                  {/* Row 1: Close + chapter + pagination */}
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
                     <Button
                       variant="ghost"
-                      disabled={currentPage <= 1}
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      className="text-gray-400 hover:text-white disabled:opacity-50"
+                      onClick={() => setExpandedTome(null)}
+                      className="text-gray-400 hover:text-white"
                     >
-                      <ChevronLeft className="w-5 h-5" />
-                      Previous
+                      <X className="w-5 h-5 mr-2" />
+                      Close
                     </Button>
-                    <span className="text-gray-300">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      disabled={currentPage >= totalPages}
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      className="text-gray-400 hover:text-white disabled:opacity-50"
-                    >
-                      Next
-                      <ChevronRight className="w-5 h-5" />
-                    </Button>
-                    <div className="border-l border-gray-600 pl-4 flex items-center space-x-2">
+                    <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+                      {chapters.length > 1 && (
+                        <div className="flex items-center space-x-2">
+                          <span className="text-gray-400 text-sm">Chapter:</span>
+                          <select
+                            value={flatPages[currentPage - 1]?.chapterIndex ?? 0}
+                            onChange={(e) => {
+                              const idx = parseInt(e.target.value);
+                              const target = chapterStartPages[idx];
+                              if (target) setCurrentPage(target.startPage);
+                            }}
+                            className="bg-gray-800 border border-gray-600 text-gray-300 rounded-md px-3 py-1.5 text-sm"
+                          >
+                            {chapterStartPages.map((ch, idx) => (
+                              <option key={idx} value={idx}>{ch.title}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={currentPage <= 1}
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        className="text-gray-400 hover:text-white disabled:opacity-50"
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                        <span className="hidden sm:inline ml-1">Previous</span>
+                      </Button>
+                      <span className="text-gray-300 text-sm whitespace-nowrap">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className="text-gray-400 hover:text-white disabled:opacity-50"
+                      >
+                        <span className="hidden sm:inline mr-1">Next</span>
+                        <ChevronRight className="w-5 h-5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Title + downloads */}
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <h2 className="text-xl sm:text-2xl font-bold text-white truncate min-w-0">{entry?.title}</h2>
+                    <div className="flex items-center space-x-2 shrink-0">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -1597,6 +1614,7 @@ const ToMe = () => {
                       </Button>
                     </div>
                   </div>
+                </>
                 </>
               );
             })()}
