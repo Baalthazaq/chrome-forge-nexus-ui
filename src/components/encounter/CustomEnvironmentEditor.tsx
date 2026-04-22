@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Search, Copy } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface CustomEnvironment {
   custom: true;
@@ -42,6 +43,12 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
   const [description, setDescription] = useState('');
   const [features, setFeatures] = useState<{ name: string; type?: string; description?: string }[]>([]);
 
+  // Start-from-existing picker
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [available, setAvailable] = useState<any[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+
   useEffect(() => {
     if (open) {
       setName(initial?.name || '');
@@ -53,8 +60,47 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
       setImageUrl(initial?.image_url || '');
       setDescription(initial?.description || '');
       setFeatures(initial?.features || []);
+      setPickerOpen(false);
+      setPickerSearch('');
     }
   }, [open, initial]);
+
+  const loadAvailable = async () => {
+    setPickerLoading(true);
+    const { data } = await supabase
+      .from('environments')
+      .select('id, name, tier, environment_type, difficulty, impulses, potential_adversaries, image_url, features')
+      .order('name');
+    setAvailable(data || []);
+    setPickerLoading(false);
+  };
+
+  const openPicker = () => {
+    setPickerOpen(true);
+    if (!available.length) loadAvailable();
+  };
+
+  const applyTemplate = (env: any) => {
+    setName(env.name ? `${env.name} (Custom)` : '');
+    setTier(env.tier || 1);
+    setEnvType(env.environment_type || 'Standard');
+    setDifficulty(env.difficulty ? String(env.difficulty) : '');
+    setImpulses((env.impulses || []).join(', '));
+    setPotentialAdversaries(env.potential_adversaries || '');
+    setImageUrl(env.image_url || '');
+    setDescription('');
+    const feats = Array.isArray(env.features) ? env.features.map((f: any) => ({
+      name: f.name || '',
+      type: f.type || 'Passive',
+      description: f.description || '',
+    })) : [];
+    setFeatures(feats);
+    setPickerOpen(false);
+  };
+
+  const filteredAvailable = available.filter(a =>
+    !pickerSearch || a.name?.toLowerCase().includes(pickerSearch.toLowerCase())
+  );
 
   const addFeature = () => setFeatures(prev => [...prev, { name: '', type: 'Passive', description: '' }]);
   const updateFeature = (i: number, patch: Partial<{ name: string; type: string; description: string }>) =>
@@ -89,6 +135,47 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
         </DialogHeader>
 
         <div className="space-y-4">
+          {!initial && (
+            <div className="space-y-2">
+              {!pickerOpen ? (
+                <Button size="sm" variant="outline" onClick={openPicker}>
+                  <Copy className="h-3 w-3 mr-1" /> Start from existing environment
+                </Button>
+              ) : (
+                <div className="border rounded p-3 space-y-2 bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Pick a template — fields will be pre-filled</Label>
+                    <Button size="sm" variant="ghost" onClick={() => setPickerOpen(false)}>Cancel</Button>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                    <Input placeholder="Search environments..." value={pickerSearch} onChange={(e) => setPickerSearch(e.target.value)} className="pl-7 h-8 text-sm" />
+                  </div>
+                  <ScrollArea className="max-h-48">
+                    <div className="space-y-1 pr-2">
+                      {pickerLoading && <div className="text-xs text-muted-foreground p-2">Loading...</div>}
+                      {!pickerLoading && filteredAvailable.map((env) => (
+                        <div key={env.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted cursor-pointer text-sm" onClick={() => applyTemplate(env)}>
+                          {env.image_url ? (
+                            <img src={env.image_url} alt="" className="h-8 w-8 object-cover rounded shrink-0" />
+                          ) : (
+                            <div className="h-8 w-8 rounded bg-emerald-500/20 shrink-0" />
+                          )}
+                          <span className="flex-1">{env.name}</span>
+                          {env.tier && <Badge variant="outline" className="text-xs">T{env.tier}</Badge>}
+                          <Badge variant="outline" className="text-xs">{env.environment_type}</Badge>
+                        </div>
+                      ))}
+                      {!pickerLoading && !filteredAvailable.length && (
+                        <div className="text-xs text-muted-foreground p-2">No environments found.</div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Name *</Label>
