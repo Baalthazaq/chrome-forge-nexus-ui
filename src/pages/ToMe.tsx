@@ -770,26 +770,36 @@ const ToMe = () => {
     }
   };
 
-  const deleteTomeEntry = async (entryId) => {
+  const deleteTomeEntry = async (entry: any) => {
+    const isOwner = entry.my_role === 'owner';
+    const myId = displayUser?.user_id || displayUser?.id;
+    const confirmMsg = isOwner
+      ? `Delete "${entry.title}" for everyone? This cannot be undone.`
+      : `Remove "${entry.title}" from your ToMe? The owner and other collaborators will keep their access.`;
+    if (!window.confirm(confirmMsg)) return;
     try {
-      const { error } = await supabase
-        .from('tome_entries')
-        .delete()
-        .eq('id', entryId);
-
-      if (error) throw error;
-
-      setTomeEntries(tomeEntries.filter(entry => entry.id !== entryId));
+      if (isOwner) {
+        const { error } = await supabase.from('tome_entries').delete().eq('id', entry.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('tome_collaborators')
+          .delete()
+          .eq('tome_entry_id', entry.id)
+          .eq('user_id', myId);
+        if (error) throw error;
+      }
+      setTomeEntries(tomeEntries.filter((e) => e.id !== entry.id));
       toast({
-        title: "Success",
-        description: "Tome entry deleted",
+        title: isOwner ? 'Deleted' : 'Removed',
+        description: isOwner ? 'Tome entry deleted for everyone' : 'Removed from your ToMe',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting tome entry:', error);
       toast({
-        title: "Error",
-        description: "Failed to delete tome entry",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to delete tome entry',
+        variant: 'destructive',
       });
     }
   };
@@ -1176,11 +1186,20 @@ const ToMe = () => {
                 <Card key={entry.id} className="p-6 bg-gray-900/30 border-gray-700/50 hover:border-purple-500/30 transition-all duration-300">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
+                      <div className="flex items-center space-x-3 mb-2 flex-wrap">
                         <h3 className="text-xl font-semibold text-white">{entry.title}</h3>
                         {entry.is_pinned && <Pin className="w-4 h-4 text-yellow-400" />}
+                        {entry.my_role === 'owner' ? (
+                          <Badge variant="outline" className="border-yellow-500/50 text-yellow-400 text-xs">
+                            <Crown className="w-3 h-3 mr-1" />Owner
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-blue-500/50 text-blue-400 text-xs">
+                            <Users className="w-3 h-3 mr-1" />Shared
+                          </Badge>
+                        )}
                       </div>
-                      <div className="flex items-center space-x-4 text-sm text-gray-400 mb-3">
+                      <div className="flex items-center space-x-4 text-sm text-gray-400 mb-3 flex-wrap">
                         <div className="flex items-center space-x-1">
                           <Clock className="w-4 h-4" />
                           <span>{formatDate(entry.created_at)}</span>
@@ -1191,27 +1210,45 @@ const ToMe = () => {
                             {entry.pages} {entry.pages === 1 ? 'page' : 'pages'}
                           </span>
                         </div>
+                        {entry.last_edited_by && (
+                          <div className="flex items-center space-x-1 text-xs">
+                            <Edit3 className="w-3 h-3" />
+                            <span>updated {formatDate(entry.updated_at)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex space-x-2">
+                      <TomeAccessDialog tomeEntryId={entry.id} tomeTitle={entry.title} onChanged={fetchData}>
+                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-blue-400" title="Manage access">
+                          <Users className="w-4 h-4" />
+                        </Button>
+                      </TomeAccessDialog>
+                      <TomeHistoryDialog tomeEntryId={entry.id} tomeTitle={entry.title} onRestored={fetchData}>
+                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-amber-400" title="Version history">
+                          <History className="w-4 h-4" />
+                        </Button>
+                      </TomeHistoryDialog>
                       <TomeShareDialog tomeEntry={entry}>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="text-gray-400 hover:text-purple-400"
+                          title="Share"
                         >
                           <Share2 className="w-4 h-4" />
                         </Button>
                       </TomeShareDialog>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="text-gray-400 hover:text-white"
+                        title="Edit"
                         onClick={() => {
                           setEditingTome(entry.id);
                           let chapters;
                           try {
-                            chapters = typeof entry.content === 'string' 
+                            chapters = typeof entry.content === 'string'
                               ? JSON.parse(entry.content)
                               : [{ title: 'Chapter 1', content: entry.content || '' }];
                             if (!Array.isArray(chapters)) chapters = [{ title: 'Chapter 1', content: entry.content || '' }];
@@ -1231,11 +1268,12 @@ const ToMe = () => {
                       >
                         <Edit3 className="w-4 h-4" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="text-gray-400 hover:text-red-400"
-                        onClick={() => deleteTomeEntry(entry.id)}
+                        title={entry.my_role === 'owner' ? 'Delete for everyone' : 'Remove from my ToMe'}
+                        onClick={() => deleteTomeEntry(entry)}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
