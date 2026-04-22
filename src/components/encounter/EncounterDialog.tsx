@@ -151,6 +151,20 @@ export const EncounterDialog = ({ encounter, open, onClose, onSaved }: Encounter
     setShowEnvPicker(false);
   };
 
+  const openCustomEnvEditor = (idx: number | null) => {
+    setCustomEnvEditingIdx(idx);
+    setCustomEnvOpen(true);
+  };
+
+  const saveCustomEnvironment = (env: CustomEnvironment) => {
+    if (customEnvEditingIdx !== null) {
+      setEnvironments(prev => prev.map((e, i) => i === customEnvEditingIdx ? env : e));
+    } else {
+      setEnvironments(prev => [...prev, env]);
+    }
+    setCustomEnvEditingIdx(null);
+  };
+
   const addNpc = (npc: any) => {
     setNpcs(prev => [...prev, { user_id: npc.user_id, character_name: npc.character_name, level: npc.level, character_class: npc.character_class, ancestry: npc.ancestry }]);
     setShowNpcPicker(false);
