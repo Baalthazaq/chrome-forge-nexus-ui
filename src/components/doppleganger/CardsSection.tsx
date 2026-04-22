@@ -171,8 +171,12 @@ export function CardsSection({
     const source = card.card_type === 'ancestry' ? ''
       : card.card_type === 'community' ? `Community: ${card.source || ''}`
       : `${card.source || ''} ${meta?.type || ''} Lv${meta?.level || '?'}`;
-    return { title: card.name, content: card.content || '', source, recallCost: meta?.recall_cost ?? null, cardId: card.id };
+    // Player overrides on title/content (non-custom cards)
+    const title = (sc as any).title || card.name;
+    const content = (sc as any).content ?? (card.content || '');
+    return { title, content, source, recallCost: meta?.recall_cost ?? null, cardId: card.id };
   };
+
 
   // Group selected cards by category, excluding vaulted domain cards
   const grouped: Record<string, { sc: SelectedCard; i: number }[]> = {};
@@ -251,10 +255,11 @@ export function CardsSection({
   };
 
   const startEdit = (index: number, sc: SelectedCard) => {
+    const details = getCardDetails(sc);
     setEditingIndex(index);
-    setEditTitle(sc.title || '');
-    setEditContent(sc.content || '');
-    setEditCategory((sc as any).category || 'Custom');
+    setEditTitle(details.title);
+    setEditContent(details.content);
+    setEditCategory(getCardCategory(sc));
     setEditNewCategory('');
   };
 
@@ -262,12 +267,36 @@ export function CardsSection({
     if (editingIndex === null) return;
     const resolvedCat = editCategory === '__new__' ? editNewCategory : editCategory;
     const updated = [...selectedCards];
-    updated[editingIndex] = { ...updated[editingIndex], title: editTitle, content: editContent, category: resolvedCat || 'Custom' } as any;
+    const original = updated[editingIndex];
+    if (original.custom) {
+      updated[editingIndex] = { ...original, title: editTitle, content: editContent, category: resolvedCat || 'Custom' } as any;
+    } else {
+      // Non-custom: store overrides only when they differ from the base card / default category
+      const card = gameCards.find(c => c.id === original.card_id);
+      const baseTitle = card?.name || '';
+      const baseContent = card?.content || '';
+      const defaultCat = card ? getDefaultCategory(card) : '';
+      const next: any = { card_id: original.card_id };
+      if (editTitle && editTitle !== baseTitle) next.title = editTitle;
+      if (editContent !== baseContent) next.content = editContent;
+      if (resolvedCat && resolvedCat !== defaultCat) next.category = resolvedCat;
+      updated[editingIndex] = next;
+    }
+    updateSheet({ selected_card_ids: updated });
+    setEditingIndex(null);
+  };
+
+  const resetCardOverrides = (index: number) => {
+    const sc = selectedCards[index];
+    if (!sc || sc.custom) return;
+    const updated = [...selectedCards];
+    updated[index] = { card_id: sc.card_id } as any;
     updateSheet({ selected_card_ids: updated });
     setEditingIndex(null);
   };
 
   const cancelEdit = () => setEditingIndex(null);
+
 
   const addTypeOptions: { key: typeof addType; label: string; icon: any }[] = [
     { key: 'domain', label: 'Domain', icon: BookOpen },
@@ -353,9 +382,14 @@ export function CardsSection({
           {editCategory === '__new__' && (
             <Input value={editNewCategory} onChange={(e) => setEditNewCategory(e.target.value)} placeholder="New category name..." className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm" />
           )}
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button size="sm" onClick={saveEdit}>Save</Button>
             <Button size="sm" variant="outline" onClick={cancelEdit} className="border-gray-600 text-gray-300">Cancel</Button>
+            {!sc.custom && (
+              <Button size="sm" variant="outline" onClick={() => resetCardOverrides(globalIndex)} className="border-gray-600 text-gray-400 ml-auto" title="Discard customizations and revert to original card">
+                Reset to Original
+              </Button>
+            )}
           </div>
         </div>
       );
@@ -377,8 +411,8 @@ export function CardsSection({
                 <Archive className="w-3 h-3" />
               </button>
             )}
-            {isEditing && sc.custom && (
-              <button onClick={() => startEdit(globalIndex, sc)} className="text-gray-500 hover:text-blue-400">
+            {isEditing && (
+              <button onClick={() => startEdit(globalIndex, sc)} className="text-gray-500 hover:text-blue-400" title={sc.custom ? 'Edit card' : 'Customize this card (does not affect the original)'}>
                 <Pencil className="w-3 h-3" />
               </button>
             )}
