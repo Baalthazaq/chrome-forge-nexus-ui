@@ -411,13 +411,8 @@ export function CardsSection({
                 <Archive className="w-3 h-3" />
               </button>
             )}
-            {isEditing && sc.custom && (
-              <button onClick={() => startEdit(globalIndex, sc)} className="text-gray-500 hover:text-blue-400">
-                <Pencil className="w-3 h-3" />
-              </button>
-            )}
-            {isEditing && !sc.custom && (
-              <button onClick={() => startEdit(globalIndex, sc)} className="text-gray-500 hover:text-blue-400" title="Customize this card (does not affect the original)">
+            {isEditing && (
+              <button onClick={() => startEdit(globalIndex, sc)} className="text-gray-500 hover:text-blue-400" title={sc.custom ? 'Edit card' : 'Customize this card (does not affect the original)'}>
                 <Pencil className="w-3 h-3" />
               </button>
             )}
