@@ -219,13 +219,29 @@ const EncounterBuilder = () => {
                             <h4 className="text-sm font-semibold flex items-center gap-1 border-b border-border pb-1">
                               <TreePine className="h-4 w-4 text-emerald-400" /> Environments
                             </h4>
-                            {environments.map((env: any, i: number) => (
-                              <div key={i} className="bg-emerald-500/10 rounded p-2 text-sm">
-                                <span className="font-semibold">{env.name}</span>
-                                {env.tier && <Badge variant="outline" className="text-xs ml-2">T{env.tier}</Badge>}
-                                {env.environment_type && <Badge variant="outline" className="text-xs ml-1">{env.environment_type}</Badge>}
-                              </div>
-                            ))}
+                            {environments.map((env: any, i: number) => {
+                              const img = env.id ? thumbs.envs[env.id] : null;
+                              return (
+                                <button
+                                  key={i}
+                                  onClick={(e) => { e.stopPropagation(); env.id && setViewEnvironmentId(env.id); }}
+                                  className="w-full text-left bg-emerald-500/10 hover:bg-emerald-500/20 rounded p-2 text-sm flex items-center gap-2 transition-colors"
+                                >
+                                  {img ? (
+                                    <img src={img} alt="" className="h-10 w-10 object-cover rounded shrink-0" />
+                                  ) : (
+                                    <div className="h-10 w-10 rounded bg-emerald-500/20 flex items-center justify-center shrink-0">
+                                      <TreePine className="h-5 w-5 text-emerald-400" />
+                                    </div>
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <span className="font-semibold">{env.name}</span>
+                                    {env.tier && <Badge variant="outline" className="text-xs ml-2">T{env.tier}</Badge>}
+                                    {env.environment_type && <Badge variant="outline" className="text-xs ml-1">{env.environment_type}</Badge>}
+                                  </div>
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
 
@@ -235,13 +251,29 @@ const EncounterBuilder = () => {
                             <h4 className="text-sm font-semibold flex items-center gap-1 border-b border-border pb-1">
                               <Users className="h-4 w-4 text-blue-400" /> NPCs
                             </h4>
-                            {npcs.map((npc: any, i: number) => (
-                              <div key={i} className="bg-blue-500/10 rounded p-2 text-sm">
-                                <span className="font-semibold">{npc.character_name}</span>
-                                {npc.level && <span className="text-xs text-muted-foreground ml-2">Lv.{npc.level}</span>}
-                                {npc.character_class && <Badge variant="outline" className="text-xs ml-1">{npc.character_class}</Badge>}
-                              </div>
-                            ))}
+                            {npcs.map((npc: any, i: number) => {
+                              const img = npc.user_id ? thumbs.npcs[npc.user_id] : null;
+                              return (
+                                <button
+                                  key={i}
+                                  onClick={(e) => { e.stopPropagation(); npc.user_id && setViewNpcId(npc.user_id); }}
+                                  className="w-full text-left bg-blue-500/10 hover:bg-blue-500/20 rounded p-2 text-sm flex items-center gap-2 transition-colors"
+                                >
+                                  {img ? (
+                                    <img src={img} alt="" className="h-10 w-10 object-cover rounded shrink-0" />
+                                  ) : (
+                                    <div className="h-10 w-10 rounded bg-blue-500/20 flex items-center justify-center shrink-0">
+                                      <Users className="h-5 w-5 text-blue-400" />
+                                    </div>
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <span className="font-semibold">{npc.character_name}</span>
+                                    {npc.level && <span className="text-xs text-muted-foreground ml-2">Lv.{npc.level}</span>}
+                                    {npc.character_class && <Badge variant="outline" className="text-xs ml-1">{npc.character_class}</Badge>}
+                                  </div>
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
 
@@ -251,16 +283,32 @@ const EncounterBuilder = () => {
                             <h4 className="text-sm font-semibold flex items-center gap-1 border-b border-border pb-1">
                               <Swords className="h-4 w-4 text-red-400" /> Creatures
                             </h4>
-                            {creatures.map((c: any, i: number) => (
-                              <div key={i} className="bg-red-500/10 rounded p-2 text-sm flex items-center justify-between">
-                                <div>
-                                  <span className="font-semibold">{c.name}</span>
-                                  {c.tier && <Badge variant="outline" className="text-xs ml-2">T{c.tier}</Badge>}
-                                  {c.creature_type && <Badge variant="outline" className="text-xs ml-1">{c.creature_type}</Badge>}
-                                </div>
-                                <Badge variant="outline" className="text-xs">×{c.quantity || 1}</Badge>
-                              </div>
-                            ))}
+                            {creatures.map((c: any, i: number) => {
+                              const img = c.id ? thumbs.creatures[c.id] : null;
+                              return (
+                                <button
+                                  key={i}
+                                  onClick={(e) => { e.stopPropagation(); c.id && setViewCreatureId(c.id); }}
+                                  className="w-full text-left bg-red-500/10 hover:bg-red-500/20 rounded p-2 text-sm flex items-center justify-between gap-2 transition-colors"
+                                >
+                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    {img ? (
+                                      <img src={img} alt="" className="h-10 w-10 object-cover rounded shrink-0" />
+                                    ) : (
+                                      <div className="h-10 w-10 rounded bg-red-500/20 flex items-center justify-center shrink-0">
+                                        <Swords className="h-5 w-5 text-red-400" />
+                                      </div>
+                                    )}
+                                    <div>
+                                      <span className="font-semibold">{c.name}</span>
+                                      {c.tier && <Badge variant="outline" className="text-xs ml-2">T{c.tier}</Badge>}
+                                      {c.creature_type && <Badge variant="outline" className="text-xs ml-1">{c.creature_type}</Badge>}
+                                    </div>
+                                  </div>
+                                  <Badge variant="outline" className="text-xs">×{c.quantity || 1}</Badge>
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
 
