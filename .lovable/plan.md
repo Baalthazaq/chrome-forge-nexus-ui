@@ -1,70 +1,34 @@
-## Beast Shape Cards — Druid-only, filterable picker
 
-### Part 1: Beast Shape data model
 
-Insert ~40 Beast Shape cards into `game_cards` with:
+## Fix Beast Shape Tier Filtering
 
-- `card_type: 'domain'` (so existing domain card loading paths handle them)
-- `source: 'Beast Shape'` (NOT Sage — this is the new "Other" category)
-- `metadata: { level: <tier>, recall_cost: <tier>, category: 'Beast Shape', class_restriction: 'Druid' }`
+Beast Shape cards store their value (1–4) in `metadata.level`, but it actually represents a **tier**, not a character level. Currently a level 3 character only sees Beast Shape "level" 1–3, when they should see tier 1–2 only (since they're a Tier 2 character).
 
-The `class_restriction: 'Druid'` flag gates these cards so only Druid characters see them in the picker.
+### Tier Mapping
+- Level 1 → Tier 1
+- Levels 2–4 → Tier 2
+- Levels 5–7 → Tier 3
+- Levels 8–10 → Tier 4
 
-**Card inventory (~40):**
+A character can use Beast Shapes of their tier and lower.
 
-- Tier 1 (6): Agile Scout, Nimble Grazer, Aquatic Scout, Household Friend, Pack Predator, Stalking Arachnid
-- Tier 2 (6): Armored Sentry, Mighty Strider, Pouncing Predator, Powerful Beast, Striking Serpent, Winged Beast
-- Tier 3 (5 named + 6 Legendary T1 upgrades = 11): Great Predator, Great Winged Beast, Mighty Lizard, Aquatic Predator, Legendary Hybrid + Legendary versions of all T1
-- Tier 4 (5 named + 6 Mythic T1 + 6 Mythic T2 = 17): Massive Behemoth, Mythic Aerial Hunter, Terrible Lizard, Epic Aquatic Beast, Mythic Hybrid + Mythic versions of all T1/T2
+### Change
 
-**Upgrade scaling:**
+In `src/components/doppleganger/CardsSection.tsx`, inside `getListForType()`'s level-filter step:
 
-- Legendary (T3 upgrade): +6 dmg, +1 trait, +2 Evasion
-- Mythic (T4 upgrade): +9 dmg, +2 trait, +3 Evasion, damage die +1 size
+- Detect Beast Shape cards (`source === 'Beast Shape'`).
+- For those cards, treat `metadata.level` as a tier and check it against the **set of tiers covered by `filterLevels`** (using a `levelToTier` helper, reusing `getTier` from `@/lib/levelUpUtils`).
+- Non-Beast-Shape cards keep current behavior (direct level membership in `filterLevels`).
 
-### Part 2: Filterable card picker in Doppleganger
-
-Update `src/components/doppleganger/CardsSection.tsx` so the "Add Card" button opens a picker dialog with **three filter tabs/segments**:
-
+Pseudocode:
 ```text
-┌─────────────────────────────────────┐
-│  [ Domain ] [ Open-Domain ] [ Other ]│
-├─────────────────────────────────────┤
-│  Search: [_________________]         │
-│  ─────────────────────────────────  │
-│  • Card 1                           │
-│  • Card 2                           │
-│  • Card 3                           │
-└─────────────────────────────────────┘
+const allowedTiers = new Set(filterLevels.map(getTier));
+if (isBeastShape(c)) {
+  if (typeof lvl === 'number' && !allowedTiers.has(lvl)) return false;
+} else {
+  if (typeof lvl === 'number' && !filterLevels.includes(lvl)) return false;
+}
 ```
 
-**Filter logic:**
+No DB changes. No UI changes to the level checkbox filter (it still selects character levels 1–10); only the matching logic for Beast Shape cards changes.
 
-- **Domain** — cards from the character's own domains (`source` matches one of `allDomains`), level ≤ character level
-- **Open-Domain** — domain cards from domains the character does NOT have (open multiclassing/sharing scenarios)
-- **Other** — non-standard categories. Beast Shape cards appear here, gated by `metadata.class_restriction` matching the character's class (Druid only)
-
-Selecting a card adds it to `selected_card_ids` as before.
-
-### Part 3: Class-restriction gating
-
-In the "Other" tab, filter logic:
-
-```typescript
-const otherCards = gameCards.filter(c => 
-  c.source === 'Beast Shape' && 
-  (!c.metadata?.class_restriction || c.metadata.class_restriction === sheet.class)
-);
-```
-
-This means future "class-specific" card categories can be added the same way (e.g., Wizard spellbook cards) without touching the picker UI.
-
-### Files touched
-
-- **Database (insert tool)**: ~40 rows into `game_cards`
-- `src/components/doppleganger/CardsSection.tsx`: refactor "Add Card" flow into filterable picker with Domain / Open-Domain / Other / Blank tabs, siilar to existing logic of existing buttons.
-- No changes to `Sage` domain cards — Beast Shape is fully separate
-
-### What the user will see
-
-A character clicking "Add Card" sees four tabs, prefiltered by their race/level/class/domains, but those can be manually switched off each time. 
