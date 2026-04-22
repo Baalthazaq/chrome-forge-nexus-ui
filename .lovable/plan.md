@@ -1,82 +1,70 @@
+## Beast Shape Cards — Druid-only, filterable picker
 
+### Part 1: Beast Shape data model
 
-## Racegen overhaul: data cleanup + new top-down lineage algorithm
+Insert ~40 Beast Shape cards into `game_cards` with:
 
-### Part 1 — Data cleanup (Circle of Life graph + wheel)
+- `card_type: 'domain'` (so existing domain card loading paths handle them)
+- `source: 'Beast Shape'` (NOT Sage — this is the new "Other" category)
+- `metadata: { level: <tier>, recall_cost: <tier>, category: 'Beast Shape', class_restriction: 'Druid' }`
 
-Remove from active generation pool and set aside (excluded from rolls, but kept in DB for reference):
-- All **Undead** family races
-- All **Plant** family races (Awakened Plant, Blight, Treant, Dryad)
-- All **Created** origin races (Constructs / Exotic Construct / Clank)
-- All **Transformations** (no longer applied to generated subjects)
+The `class_restriction: 'Druid'` flag gates these cards so only Druid characters see them in the picker.
 
-Reclassify:
-- **Fungril** moves from `Plant`/current family into the **Fey** family.
+**Card inventory (~40):**
 
-Remove mechanic entirely:
-- **Asexual reproduction** — every birthable race now reproduces sexually only.
+- Tier 1 (6): Agile Scout, Nimble Grazer, Aquatic Scout, Household Friend, Pack Predator, Stalking Arachnid
+- Tier 2 (6): Armored Sentry, Mighty Strider, Pouncing Predator, Powerful Beast, Striking Serpent, Winged Beast
+- Tier 3 (5 named + 6 Legendary T1 upgrades = 11): Great Predator, Great Winged Beast, Mighty Lizard, Aquatic Predator, Legendary Hybrid + Legendary versions of all T1
+- Tier 4 (5 named + 6 Mythic T1 + 6 Mythic T2 = 17): Massive Behemoth, Mythic Aerial Hunter, Terrible Lizard, Epic Aquatic Beast, Mythic Hybrid + Mythic versions of all T1/T2
 
-Reflected in:
-- `src/components/CircleOfLifeDiagram.tsx` (the wheel) — excluded families/origins no longer rendered as active; Fungril sits inside the Fey arc.
-- `src/components/circle-of-life-layout.ts` — layout updated to drop excluded families and re-slot Fungril.
-- `src/lib/evolutionGraph.ts` and the racegen logic — filtered node pool excludes the set-aside groups; reproduction-mode logic loses the asexual branch.
+**Upgrade scaling:**
 
-These categories are still queryable (e.g. for admin or future use), but Racegen will not roll them and the wheel/tree will not present them as active reproductive participants.
+- Legendary (T3 upgrade): +6 dmg, +1 trait, +2 Evasion
+- Mythic (T4 upgrade): +9 dmg, +2 trait, +3 Evasion, damage die +1 size
 
-### Part 2 — New top-down lineage algorithm
+### Part 2: Filterable card picker in Doppleganger
 
-Replace the current bottom-up recursive lineage with a **top-down generational walk** that starts from great-grandparents and walks down to the subject, accumulating mixed ancestry naturally.
-
-#### Per-race "mate chance" weighting (precomputed)
-
-For each birthable race we precompute a weighted mate distribution:
+Update `src/components/doppleganger/CardsSection.tsx` so the "Add Card" button opens a picker dialog with **three filter tabs/segments**:
 
 ```text
-mate_weight(target) = race.mate_chance(target) * target.base_weight
+┌─────────────────────────────────────┐
+│  [ Domain ] [ Open-Domain ] [ Other ]│
+├─────────────────────────────────────┤
+│  Search: [_________________]         │
+│  ─────────────────────────────────  │
+│  • Card 1                           │
+│  • Card 2                           │
+│  • Card 3                           │
+└─────────────────────────────────────┘
 ```
 
-This produces, for any given race, a normalized probability table of "who they are most likely to mate with" — covering same variant, other variant, same family, cross-family. This table is computed once per generation pass.
+**Filter logic:**
 
-#### Generation order (top-down, 3 generations: GGP → GP → P → Subject)
+- **Domain** — cards from the character's own domains (`source` matches one of `allDomains`), level ≤ character level
+- **Open-Domain** — domain cards from domains the character does NOT have (open multiclassing/sharing scenarios)
+- **Other** — non-standard categories. Beast Shape cards appear here, gated by `metadata.class_restriction` matching the character's class (Druid only)
 
-For each branch of the family tree (the subject has 2 parents, 4 grandparents, 8 great-grandparents):
+Selecting a card adds it to `selected_card_ids` as before.
 
-1. **Pick a great-grandparent (GGP).** First GGP on the seed branch is anchored to the requested seed race (or weighted random). Each GGP is a concrete `Race (Variant)`.
-2. **Pick that GGP's mate** by sampling from the GGP's precomputed mate-weight table.
-3. **Roll their child (the grandparent, GP):** the child's race/variant is chosen by combining both parents — same variant if both match, else weighted between the two parents' lines, with a small chance to drift into a related branch consistent with the mate table.
-4. **Pick the GP's mate** using the *higher of the GP's parents'* mate-chance values as the filter strength — i.e. the more "open" parent dominates how exotic the GP's mate can be.
-5. Repeat the same child-roll + mate-roll process to produce the parent (P), then again to produce the **subject**.
+### Part 3: Class-restriction gating
 
-Each leaf (the 8 GGPs) contributes equal DNA share. The subject's displayed identity is the result of the final child roll, but their full racial makeup is computed from the leaf composition.
+In the "Other" tab, filter logic:
 
-#### DNA aggregation and display rules
+```typescript
+const otherCards = gameCards.filter(c => 
+  c.source === 'Beast Shape' && 
+  (!c.metadata?.class_restriction || c.metadata.class_restriction === sheet.class)
+);
+```
 
-- Aggregate leaves by `(raceId, variantId)`.
-- Then group by `raceId` for display, combining variants of the same race into one line:
-  - Format: `Dwarf (50% Gold, 25% Shield), Human (25% Gunner)`
-- **Display threshold:** show a race in the header makeup only if it is the **subject's primary race** OR contributes **≥ 33%** of total DNA (was 25%).
-- The lineage tree still lists every individual ancestor as `Race (Variant)` — no grouping there.
+This means future "class-specific" card categories can be added the same way (e.g., Wizard spellbook cards) without touching the picker UI.
 
-#### Variant inheritance quirks
+### Files touched
 
-`variant_inheritance` (`mother` / `father` / `random`) still applies at each child-roll step, deciding which parent's variant the child inherits when the two parents differ.
+- **Database (insert tool)**: ~40 rows into `game_cards`
+- `src/components/doppleganger/CardsSection.tsx`: refactor "Add Card" flow into filterable picker with Domain / Open-Domain / Other / Blank tabs, siilar to existing logic of existing buttons.
+- No changes to `Sage` domain cards — Beast Shape is fully separate
 
-### Files to change
+### What the user will see
 
-- `src/lib/racegenLogic.ts` — full rewrite of lineage generation around the top-down algorithm; remove asexual mode; add precomputed mate-weight tables; update DNA aggregation + 33% threshold + grouped-by-race display.
-- `src/lib/evolutionGraph.ts` — filter helpers to exclude undead / plant / created / transformations from the active pool; drop asexual handling.
-- `src/components/CircleOfLifeDiagram.tsx` and `src/components/circle-of-life-layout.ts` — remove set-aside families from the wheel and move Fungril into Fey.
-- `src/pages/Racegen.tsx` — header makeup line uses the new grouped format and the 33% rule; lineage tree unchanged in structure.
-- `src/pages/CircleOfLife.tsx` — verify it still renders cleanly with the reduced set.
-- (Data) a one-time migration or admin helper to flip Fungril's family to Fey in `evolution_nodes`, and to mark undead/plant/created/transformations as inactive for generation (a boolean flag like `active_in_racegen`), so the source data is preserved.
-
-### Validation
-
-- The wheel shows only active families; Fungril sits inside Fey.
-- No subject ever rolls as undead, plant, created, or with a transformation.
-- No subject is ever asexual.
-- Subjects show clean grouped makeup like `Dwarf (50% Gold, 25% Shield), Human (25% Gunner)`.
-- Only the primary race or races with ≥ 33% DNA appear in the header line.
-- Lineage tree shows 8 great-grandparents → 4 grandparents → 2 parents → subject, every row a full `Race (Variant)`.
-- Mixed ancestry appears naturally and is driven by each race's mate-chance table, with the "more open" parent controlling the next mate filter.
-
+A character clicking "Add Card" sees four tabs, prefiltered by their race/level/class/domains, but those can be manually switched off each time. 
