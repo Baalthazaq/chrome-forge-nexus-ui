@@ -4,8 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, X, Layers, BookOpen, PenTool, Globe, Package, ChevronDown, Pencil, Archive, ArrowUp } from "lucide-react";
-import { useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Plus, X, Layers, BookOpen, PenTool, Globe, Package, ChevronDown, Pencil, Archive, ArrowUp, Filter } from "lucide-react";
+import { useState, useEffect } from "react";
 import type { CharacterSheet, GameCard, SelectedCard } from "@/data/gameCardTypes";
 import { getUnlockedSubclassTiers, getMulticlassInfo, type LevelUpChoices } from "@/lib/levelUpUtils";
 
@@ -29,7 +32,7 @@ export function CardsSection({
   domainCards, domains, isEditing, classCards,
 }: Props) {
   const [showAddCard, setShowAddCard] = useState(false);
-  const [addType, setAddType] = useState<'domain' | 'open-domain' | 'other' | 'blank'>('domain');
+  const [addType, setAddType] = useState<'domain' | 'other' | 'blank'>('domain');
   const [selectedDomainId, setSelectedDomainId] = useState('');
   const [customTitle, setCustomTitle] = useState('');
   const [customContent, setCustomContent] = useState('');
@@ -41,8 +44,15 @@ export function CardsSection({
   const [editCategory, setEditCategory] = useState('');
   const [editNewCategory, setEditNewCategory] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
-  const [filterTier, setFilterTier] = useState<string>('all');
-  const [filterClass, setFilterClass] = useState<string>('all');
+  // Filter state — defaults to character's level/class/domains
+  const [filterMaxLevel, setFilterMaxLevel] = useState<number>(sheet.level || 1);
+  const [filterClasses, setFilterClasses] = useState<string[]>(sheet.class ? [sheet.class] : []);
+  const [filterDomains, setFilterDomains] = useState<string[]>(domains);
+
+  // Re-sync filter defaults when character changes
+  useEffect(() => { setFilterMaxLevel(sheet.level || 1); }, [sheet.level]);
+  useEffect(() => { setFilterClasses(sheet.class ? [sheet.class] : []); }, [sheet.class]);
+  useEffect(() => { setFilterDomains(domains); }, [domains.join('|')]);
 
   const isSectionOpen = (key: string) => openSections[key] !== false;
   const toggleSection = (key: string, open: boolean) => setOpenSections(prev => ({ ...prev, [key]: open }));
@@ -177,7 +187,7 @@ export function CardsSection({
 
   const addCard = () => {
     const cardId = selectedDomainId;
-    if ((addType === 'domain' || addType === 'open-domain' || addType === 'other') && cardId) {
+    if ((addType === 'domain' || addType === 'other') && cardId) {
       const card = gameCards.find(c => c.id === cardId);
       if (card) {
         updateSheet({ selected_card_ids: [...selectedCards, { card_id: card.id }] });
@@ -238,32 +248,43 @@ export function CardsSection({
 
   const addTypeOptions: { key: typeof addType; label: string; icon: any }[] = [
     { key: 'domain', label: 'Domain', icon: BookOpen },
-    { key: 'open-domain', label: 'Open-Domain', icon: Globe },
     { key: 'other', label: 'Other', icon: Package },
     { key: 'blank', label: 'Blank', icon: PenTool },
   ];
 
+  // Master lists for checkbox filters
+  const allClassNames = [...new Set(classCards.map(c => c.name).filter(Boolean))].sort();
+  const allDomainNames = [...new Set(domainCards.map(c => {
+    const meta = c.metadata as any;
+    return meta?.domain || c.source;
+  }).filter(Boolean))].sort() as string[];
+
+  const toggleInArray = (arr: string[], value: string, setter: (v: string[]) => void) => {
+    setter(arr.includes(value) ? arr.filter(x => x !== value) : [...arr, value]);
+  };
+
   const getListForType = () => {
     let list: GameCard[] = [];
-    if (addType === 'domain') list = availableDomains;
-    else if (addType === 'open-domain') list = allDomains;
+    if (addType === 'domain') list = domainCards;
     else if (addType === 'other') list = otherCards;
     else return [];
 
     return list.filter(c => {
       const meta = c.metadata as any;
-      // Tier/level filter
-      if (filterTier !== 'all') {
-        const lvl = meta?.level ?? 0;
-        if (String(lvl) !== filterTier) return false;
+      // Max-level filter (applies to cards that have a level)
+      const lvl = meta?.level;
+      if (typeof lvl === 'number' && lvl > filterMaxLevel) return false;
+
+      if (addType === 'domain') {
+        const dom = meta?.domain || c.source;
+        if (filterDomains.length > 0 && !filterDomains.includes(dom)) return false;
       }
-      // Class restriction filter (applies to "other" tab)
+
       if (addType === 'other') {
         const restriction = meta?.class_restriction;
-        if (filterClass === 'mine') {
-          if (restriction && restriction !== sheet.class) return false;
-        } else if (filterClass !== 'all') {
-          if (restriction !== filterClass) return false;
+        // If card has a class restriction, only show when that class is checked
+        if (restriction) {
+          if (filterClasses.length > 0 && !filterClasses.includes(restriction)) return false;
         }
       }
       return true;
@@ -370,45 +391,76 @@ export function CardsSection({
 
           {addType !== 'blank' ? (
             <div className="space-y-2">
-              {/* Filter dropdowns */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <Select value={addType} onValueChange={(v: any) => { setAddType(v); setSelectedDomainId(''); }}>
-                  <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-xs h-8">
-                    <SelectValue placeholder="Category..." />
+              {/* Filter row */}
+              <div className="flex flex-wrap gap-2 items-center">
+                <Select value={String(filterMaxLevel)} onValueChange={(v) => setFilterMaxLevel(Number(v))}>
+                  <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-xs h-8 w-auto min-w-[140px]">
+                    <SelectValue placeholder="Up to level..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="domain">Domain</SelectItem>
-                    <SelectItem value="open-domain">Open-Domain</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={filterTier} onValueChange={setFilterTier}>
-                  <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-xs h-8">
-                    <SelectValue placeholder="Level..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Levels</SelectItem>
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                      <SelectItem key={n} value={String(n)}>Level {n}</SelectItem>
+                      <SelectItem key={n} value={String(n)}>Up to Level {n}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <Select
-                  value={filterClass}
-                  onValueChange={setFilterClass}
-                  disabled={addType !== 'other'}
-                >
-                  <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-xs h-8">
-                    <SelectValue placeholder="Class..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Classes</SelectItem>
-                    {sheet.class && <SelectItem value="mine">My Class ({sheet.class})</SelectItem>}
-                    {otherClassRestrictions.map(cls => (
-                      <SelectItem key={cls} value={cls}>{cls}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+                {addType === 'domain' && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-8 border-gray-600 text-gray-300 text-xs">
+                        <Filter className="w-3 h-3 mr-1" />
+                        Domains ({filterDomains.length}/{allDomainNames.length})
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 bg-gray-900 border-gray-700 p-2">
+                      <div className="flex justify-between mb-2">
+                        <button onClick={() => setFilterDomains(allDomainNames)} className="text-xs text-purple-400 hover:underline">All</button>
+                        <button onClick={() => setFilterDomains(domains)} className="text-xs text-purple-400 hover:underline">Mine</button>
+                        <button onClick={() => setFilterDomains([])} className="text-xs text-purple-400 hover:underline">None</button>
+                      </div>
+                      <div className="space-y-1 max-h-64 overflow-y-auto">
+                        {allDomainNames.map(d => (
+                          <label key={d} className="flex items-center gap-2 text-sm text-gray-200 cursor-pointer">
+                            <Checkbox
+                              checked={filterDomains.includes(d)}
+                              onCheckedChange={() => toggleInArray(filterDomains, d, setFilterDomains)}
+                            />
+                            <span>{d}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+
+                {addType === 'other' && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-8 border-gray-600 text-gray-300 text-xs">
+                        <Filter className="w-3 h-3 mr-1" />
+                        Classes ({filterClasses.length}/{allClassNames.length})
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 bg-gray-900 border-gray-700 p-2">
+                      <div className="flex justify-between mb-2">
+                        <button onClick={() => setFilterClasses(allClassNames)} className="text-xs text-purple-400 hover:underline">All</button>
+                        {sheet.class && <button onClick={() => setFilterClasses([sheet.class!])} className="text-xs text-purple-400 hover:underline">Mine</button>}
+                        <button onClick={() => setFilterClasses([])} className="text-xs text-purple-400 hover:underline">None</button>
+                      </div>
+                      <div className="space-y-1 max-h-64 overflow-y-auto">
+                        {allClassNames.map(cls => (
+                          <label key={cls} className="flex items-center gap-2 text-sm text-gray-200 cursor-pointer">
+                            <Checkbox
+                              checked={filterClasses.includes(cls)}
+                              onCheckedChange={() => toggleInArray(filterClasses, cls, setFilterClasses)}
+                            />
+                            <span>{cls}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
 
               <Select value={selectedDomainId} onValueChange={setSelectedDomainId}>
