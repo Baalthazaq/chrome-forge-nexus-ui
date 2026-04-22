@@ -248,32 +248,43 @@ export function CardsSection({
 
   const addTypeOptions: { key: typeof addType; label: string; icon: any }[] = [
     { key: 'domain', label: 'Domain', icon: BookOpen },
-    { key: 'open-domain', label: 'Open-Domain', icon: Globe },
     { key: 'other', label: 'Other', icon: Package },
     { key: 'blank', label: 'Blank', icon: PenTool },
   ];
 
+  // Master lists for checkbox filters
+  const allClassNames = [...new Set(classCards.map(c => c.name).filter(Boolean))].sort();
+  const allDomainNames = [...new Set(domainCards.map(c => {
+    const meta = c.metadata as any;
+    return meta?.domain || c.source;
+  }).filter(Boolean))].sort() as string[];
+
+  const toggleInArray = (arr: string[], value: string, setter: (v: string[]) => void) => {
+    setter(arr.includes(value) ? arr.filter(x => x !== value) : [...arr, value]);
+  };
+
   const getListForType = () => {
     let list: GameCard[] = [];
-    if (addType === 'domain') list = availableDomains;
-    else if (addType === 'open-domain') list = allDomains;
+    if (addType === 'domain') list = domainCards;
     else if (addType === 'other') list = otherCards;
     else return [];
 
     return list.filter(c => {
       const meta = c.metadata as any;
-      // Tier/level filter
-      if (filterTier !== 'all') {
-        const lvl = meta?.level ?? 0;
-        if (String(lvl) !== filterTier) return false;
+      // Max-level filter (applies to cards that have a level)
+      const lvl = meta?.level;
+      if (typeof lvl === 'number' && lvl > filterMaxLevel) return false;
+
+      if (addType === 'domain') {
+        const dom = meta?.domain || c.source;
+        if (filterDomains.length > 0 && !filterDomains.includes(dom)) return false;
       }
-      // Class restriction filter (applies to "other" tab)
+
       if (addType === 'other') {
         const restriction = meta?.class_restriction;
-        if (filterClass === 'mine') {
-          if (restriction && restriction !== sheet.class) return false;
-        } else if (filterClass !== 'all') {
-          if (restriction !== filterClass) return false;
+        // If card has a class restriction, only show when that class is checked
+        if (restriction) {
+          if (filterClasses.length > 0 && !filterClasses.includes(restriction)) return false;
         }
       }
       return true;
