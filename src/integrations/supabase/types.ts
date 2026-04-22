@@ -2096,6 +2096,7 @@ export type Database = {
           message: string | null
           recipient_id: string
           sender_id: string
+          share_type: string
           status: string | null
           tome_entry_id: string
           updated_at: string
@@ -2106,6 +2107,7 @@ export type Database = {
           message?: string | null
           recipient_id: string
           sender_id: string
+          share_type?: string
           status?: string | null
           tome_entry_id: string
           updated_at?: string
@@ -2116,6 +2118,7 @@ export type Database = {
           message?: string | null
           recipient_id?: string
           sender_id?: string
+          share_type?: string
           status?: string | null
           tome_entry_id?: string
           updated_at?: string
