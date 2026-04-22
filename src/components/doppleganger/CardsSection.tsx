@@ -41,6 +41,8 @@ export function CardsSection({
   const [editCategory, setEditCategory] = useState('');
   const [editNewCategory, setEditNewCategory] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const [filterTier, setFilterTier] = useState<string>('all');
+  const [filterClass, setFilterClass] = useState<string>('all');
 
   const isSectionOpen = (key: string) => openSections[key] !== false;
   const toggleSection = (key: string, open: boolean) => setOpenSections(prev => ({ ...prev, [key]: open }));
