@@ -411,6 +411,11 @@ export function CardsSection({
                 <Pencil className="w-3 h-3" />
               </button>
             )}
+            {isEditing && !sc.custom && (
+              <button onClick={() => startEdit(globalIndex, sc)} className="text-gray-500 hover:text-blue-400" title="Customize this card (does not affect the original)">
+                <Pencil className="w-3 h-3" />
+              </button>
+            )}
             {isEditing && (
               <button onClick={() => removeCard(globalIndex)} className="text-gray-500 hover:text-red-400">
                 <X className="w-3 h-3" />
