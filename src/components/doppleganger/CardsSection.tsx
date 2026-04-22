@@ -187,7 +187,7 @@ export function CardsSection({
 
   const addCard = () => {
     const cardId = selectedDomainId;
-    if ((addType === 'domain' || addType === 'open-domain' || addType === 'other') && cardId) {
+    if ((addType === 'domain' || addType === 'other') && cardId) {
       const card = gameCards.find(c => c.id === cardId);
       if (card) {
         updateSheet({ selected_card_ids: [...selectedCards, { card_id: card.id }] });
