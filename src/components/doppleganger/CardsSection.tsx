@@ -403,16 +403,39 @@ export function CardsSection({
             <div className="space-y-2">
               {/* Filter row */}
               <div className="flex flex-wrap gap-2 items-center">
-                <Select value={String(filterMaxLevel)} onValueChange={(v) => setFilterMaxLevel(Number(v))}>
-                  <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-xs h-8 w-auto min-w-[140px]">
-                    <SelectValue placeholder="Up to level..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                      <SelectItem key={n} value={String(n)}>Up to Level {n}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 border-gray-600 text-gray-300 text-xs">
+                      <Filter className="w-3 h-3 mr-1" />
+                      Levels ({filterLevels.length}/10)
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-44 bg-gray-900 border-gray-700 p-2">
+                    <div className="flex justify-between mb-2">
+                      <button onClick={() => setFilterLevels([1,2,3,4,5,6,7,8,9,10])} className="text-xs text-purple-400 hover:underline">All</button>
+                      <button onClick={() => setFilterLevels(defaultLevels(sheet.level || 1))} className="text-xs text-purple-400 hover:underline">Mine</button>
+                      <button onClick={() => setFilterLevels([])} className="text-xs text-purple-400 hover:underline">None</button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 max-h-64 overflow-y-auto">
+                      {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                        <label key={n} className="flex items-center gap-2 text-sm text-gray-200 cursor-pointer">
+                          <Checkbox
+                            checked={filterLevels.includes(n)}
+                            onCheckedChange={() => toggleInArray(filterLevels.map(String), String(n), (v) => setFilterLevels(v.map(Number)))}
+                          />
+                          <span>Lv {n}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                <Input
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  placeholder="Search name, type, text..."
+                  className="bg-gray-900/50 border-gray-600 text-gray-100 text-xs h-8 w-auto min-w-[180px] flex-1"
+                />
 
                 {addType === 'domain' && (
                   <Popover>
