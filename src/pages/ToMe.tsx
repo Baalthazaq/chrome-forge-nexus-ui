@@ -1218,7 +1218,7 @@ const ToMe = () => {
                         )}
                       </div>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex flex-wrap gap-1 justify-end shrink-0">
                       <TomeAccessDialog tomeEntryId={entry.id} tomeTitle={entry.title} onChanged={fetchData}>
                         <Button variant="ghost" size="sm" className="text-gray-400 hover:text-blue-400" title="Manage access">
                           <Users className="w-4 h-4" />
