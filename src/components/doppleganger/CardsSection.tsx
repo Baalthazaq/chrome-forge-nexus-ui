@@ -351,7 +351,7 @@ export function CardsSection({
                   {getListForType().map(c => {
                     const meta = c.metadata as any;
                     const label = c.card_type === 'domain'
-                      ? `${c.name} (${c.source} Lv${meta?.level}) — ${meta?.type}`
+                      ? `${c.name} (${c.source} Lv${meta?.level})${meta?.type ? ` — ${meta.type}` : ''}`
                       : c.card_type === 'ancestry' ? c.name
                       : `${c.name} (${c.source || c.card_type})`;
                     return <SelectItem key={c.id} value={c.id}>{label}</SelectItem>;
