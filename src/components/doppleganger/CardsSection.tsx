@@ -111,7 +111,15 @@ export function CardsSection({
     return (meta?.level || 0) <= sheet.level;
   });
 
-  const otherCards = gameCards.filter(c => c.card_type === 'ancestry' || c.card_type === 'community');
+  const otherCards = gameCards.filter(c => {
+    if (c.card_type === 'ancestry' || c.card_type === 'community') return true;
+    // Class-restricted "Other" categories (e.g. Beast Shape for Druids)
+    const meta = c.metadata as any;
+    if (meta?.category && meta?.class_restriction) {
+      return meta.class_restriction === sheet.class && (meta?.level || 0) <= sheet.level;
+    }
+    return false;
+  });
 
   const getCardCategory = (sc: SelectedCard): string => {
     if (sc.custom) return (sc as any).category || 'Custom';
