@@ -509,7 +509,7 @@ export function CardsSection({
                 )}
               </div>
 
-              <Select value={selectedDomainId} onValueChange={setSelectedDomainId}>
+              <Select value={selectedDomainId} onValueChange={(v) => { setSelectedDomainId(v); setCustomCategory(''); setNewCategoryName(''); }}>
                 <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm">
                   <SelectValue placeholder={`Select a ${addType} card...`} />
                 </SelectTrigger>
@@ -526,11 +526,32 @@ export function CardsSection({
               </Select>
               {selectedDomainId && (() => {
                 const card = getListForType().find(c => c.id === selectedDomainId);
-                return card?.content ? (
-                  <div className="mt-2 p-3 bg-gray-800/60 border border-gray-700 rounded-md text-sm text-gray-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
-                    {card.content}
-                  </div>
-                ) : null;
+                if (!card) return null;
+                const defaultCat = getDefaultCategory(card);
+                const currentCat = customCategory || defaultCat;
+                return (
+                  <>
+                    {card.content && (
+                      <div className="mt-2 p-3 bg-gray-800/60 border border-gray-700 rounded-md text-sm text-gray-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                        {card.content}
+                      </div>
+                    )}
+                    <Select value={currentCat} onValueChange={setCustomCategory}>
+                      <SelectTrigger className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm">
+                        <SelectValue placeholder="Category..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[...new Set([defaultCat, ...categoryOptions, 'Other', 'Beast Shape'])].map(cat => (
+                          <SelectItem key={cat} value={cat}>{cat}{cat === defaultCat ? ' (default)' : ''}</SelectItem>
+                        ))}
+                        <SelectItem value="__new__">+ New Category...</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {customCategory === '__new__' && (
+                      <Input value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="New category name..." className="bg-gray-900/50 border-gray-600 text-gray-100 text-sm" />
+                    )}
+                  </>
+                );
               })()}
               {getListForType().length === 0 && (
                 <div className="text-gray-500 text-xs mt-1">
