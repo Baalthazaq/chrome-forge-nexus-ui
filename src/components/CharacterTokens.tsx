@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { Search, Download, Circle, Square, Hexagon, Coins, FileImage, CheckSquar
 import { toast } from 'sonner';
 
 type TokenShape = 'circle' | 'square' | 'hex' | 'hex-flat';
+type TokenKind = 'profile' | 'creature';
 
 interface Profile {
   user_id: string;
@@ -21,6 +22,26 @@ interface Profile {
   avatar_url: string | null;
   level: number;
   ancestry: string | null;
+}
+
+interface Creature {
+  id: string;
+  name: string;
+  image_url: string | null;
+  tier: number | null;
+  creature_type: string | null;
+  is_custom: boolean | null;
+}
+
+interface TokenSubject {
+  key: string; // 'profile:<user_id>' | 'creature:<id>'
+  kind: TokenKind;
+  name: string;
+  imageUrl: string;
+  subtitle?: string;
+  level?: number;
+  tier?: number;
+  ancestry?: string;
 }
 
 interface GroupChat {
@@ -66,7 +87,6 @@ function drawTokenShape(
     ctx.lineTo(x, y + cornerRadius);
     ctx.quadraticCurveTo(x, y, x + cornerRadius, y);
   } else if (shape === 'hex') {
-    // Pointy-top hex
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI / 3) * i - Math.PI / 6;
       const px = cx + r * Math.cos(angle);
@@ -75,7 +95,6 @@ function drawTokenShape(
       else ctx.lineTo(px, py);
     }
   } else {
-    // Flat-top hex
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI / 3) * i;
       const px = cx + r * Math.cos(angle);
@@ -156,13 +175,13 @@ async function renderToken(
   return canvas.toDataURL('image/png');
 }
 
-interface SheetProfile {
-  profile: Profile;
+interface SheetEntry {
+  subject: TokenSubject;
   img: HTMLImageElement;
 }
 
 async function renderSheet(
-  profiles: SheetProfile[],
+  entries: SheetEntry[],
   shape: TokenShape,
   borderWidth: number,
   borderColor: string,
@@ -175,7 +194,6 @@ async function renderSheet(
   let positions: { x: number; y: number }[] = [];
 
   if (shape === 'square') {
-    // Seamless grid – no gaps
     const cols = Math.floor(usableW / tokenSize);
     const rows = Math.floor(usableH / tokenSize);
     const startX = SHEET_MARGIN + Math.floor((usableW - cols * tokenSize) / 2);
@@ -186,7 +204,6 @@ async function renderSheet(
       }
     }
   } else if (shape === 'circle') {
-    // Close grid, same as square spacing but with small gap
     const gap = 4;
     const step = tokenSize + gap;
     const cols = Math.floor(usableW / step);
@@ -199,7 +216,6 @@ async function renderSheet(
       }
     }
   } else if (shape === 'hex') {
-    // Pointy-top hex tessellation
     const r = tokenSize / 2;
     const colW = r * Math.sqrt(3);
     const rowH = r * 1.5;
@@ -219,7 +235,6 @@ async function renderSheet(
       }
     }
   } else {
-    // Flat-top hex tessellation
     const r = tokenSize / 2;
     const colW = r * 1.5;
     const rowH = r * Math.sqrt(3);
@@ -243,7 +258,7 @@ async function renderSheet(
   const perPage = positions.length;
   if (perPage === 0) return [];
 
-  const totalPages = Math.ceil(profiles.length / perPage);
+  const totalPages = Math.ceil(entries.length / perPage);
 
   for (let page = 0; page < totalPages; page++) {
     const canvas = document.createElement('canvas');
@@ -253,9 +268,9 @@ async function renderSheet(
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
 
-    const pageProfiles = profiles.slice(page * perPage, (page + 1) * perPage);
-    for (let i = 0; i < pageProfiles.length; i++) {
-      const { img } = pageProfiles[i];
+    const pageEntries = entries.slice(page * perPage, (page + 1) * perPage);
+    for (let i = 0; i < pageEntries.length; i++) {
+      const { img } = pageEntries[i];
       const pos = positions[i];
       drawImageClipped(ctx, img, shape, tokenSize, borderWidth, borderColor, pos.x, pos.y);
     }
@@ -267,15 +282,15 @@ async function renderSheet(
 }
 
 interface TokenCardProps {
-  profile: Profile;
+  subject: TokenSubject;
   shape: TokenShape;
   borderWidth: number;
   borderColor: string;
   selected: boolean;
-  onToggleSelect: (userId: string) => void;
+  onToggleSelect: (key: string) => void;
 }
 
-const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggleSelect }: TokenCardProps) => {
+const TokenCard = ({ subject, shape, borderWidth, borderColor, selected, onToggleSelect }: TokenCardProps) => {
   const [tokenDataUrl, setTokenDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
@@ -301,27 +316,27 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
   }, []);
 
   useEffect(() => {
-    if (!isVisible || !profile.avatar_url) return;
+    if (!isVisible) return;
     setLoading(true);
-    renderToken(profile.avatar_url, shape, borderWidth, borderColor)
+    renderToken(subject.imageUrl, shape, borderWidth, borderColor)
       .then(setTokenDataUrl)
       .catch(() => setTokenDataUrl(null))
       .finally(() => setLoading(false));
-  }, [isVisible, profile.avatar_url, shape, borderWidth, borderColor]);
+  }, [isVisible, subject.imageUrl, shape, borderWidth, borderColor]);
 
   const handleDownload = useCallback(() => {
     if (!tokenDataUrl) return;
     const link = document.createElement('a');
-    link.download = `${(profile.character_name || 'token').replace(/\s+/g, '_')}_token.png`;
+    link.download = `${subject.name.replace(/\s+/g, '_')}_token.png`;
     link.href = tokenDataUrl;
     link.click();
-    toast.success(`Downloaded ${profile.character_name}'s token`);
-  }, [tokenDataUrl, profile.character_name]);
+    toast.success(`Downloaded ${subject.name}'s token`);
+  }, [tokenDataUrl, subject.name]);
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
-    if (!tokenDataUrl || !profile.character_name) return;
+    if (!tokenDataUrl) return;
 
-    const filename = `${profile.character_name.replace(/\s+/g, '_')}_token.png`;
+    const filename = `${subject.name.replace(/\s+/g, '_')}_token.png`;
     const blob = dataUrlToBlob(tokenDataUrl);
     const objectUrl = URL.createObjectURL(blob);
 
@@ -332,20 +347,8 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
       e.dataTransfer.setDragImage(imgRef.current, 48, 48);
     }
 
-    // Keep URL alive long enough for OS drop target, then clean up
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
-  }, [tokenDataUrl, profile.character_name]);
-
-  if (!profile.avatar_url) {
-    return (
-      <div className="flex flex-col items-center gap-2 p-3 border border-dashed rounded-lg border-muted-foreground/30">
-        <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center text-muted-foreground text-xs text-center px-2">
-          No avatar
-        </div>
-        <span className="text-sm font-medium truncate max-w-[120px]">{profile.character_name || 'Unknown'}</span>
-      </div>
-    );
-  }
+  }, [tokenDataUrl, subject.name]);
 
   return (
     <div
@@ -353,12 +356,20 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
       className={`flex flex-col items-center gap-2 p-3 border rounded-lg transition-colors cursor-pointer ${
         selected ? 'bg-primary/10 border-primary' : 'bg-card hover:bg-accent/50'
       }`}
-      onClick={() => onToggleSelect(profile.user_id)}
+      onClick={() => onToggleSelect(subject.key)}
     >
-      <div className="w-full flex justify-end">
+      <div className="w-full flex items-center justify-between gap-1">
+        <Badge
+          variant="outline"
+          className={`text-[9px] px-1.5 py-0 ${
+            subject.kind === 'creature' ? 'border-red-500/50 text-red-400' : 'border-blue-500/50 text-blue-400'
+          }`}
+        >
+          {subject.kind === 'creature' ? 'Bestiary' : 'Character'}
+        </Badge>
         <Checkbox
           checked={selected}
-          onCheckedChange={() => onToggleSelect(profile.user_id)}
+          onCheckedChange={() => onToggleSelect(subject.key)}
           onClick={(e) => e.stopPropagation()}
         />
       </div>
@@ -368,7 +379,7 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
         <img
           ref={imgRef}
           src={tokenDataUrl}
-          alt={`${profile.character_name} token`}
+          alt={`${subject.name} token`}
           className="w-24 h-24 cursor-grab active:cursor-grabbing"
           draggable
           onDragStart={handleDragStart}
@@ -379,16 +390,23 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
           Error
         </div>
       )}
-      <span className="text-sm font-medium truncate max-w-[120px]">{profile.character_name || 'Unknown'}</span>
+      <span className="text-sm font-medium truncate max-w-[120px]">{subject.name}</span>
       <div className="flex gap-1 flex-wrap justify-center">
-        {profile.character_class && (
+        {subject.subtitle && (
           <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-            {profile.character_class}
+            {subject.subtitle}
           </Badge>
         )}
-        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-          Lv.{profile.level}
-        </Badge>
+        {subject.level !== undefined && (
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+            Lv.{subject.level}
+          </Badge>
+        )}
+        {subject.tier !== undefined && (
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+            T{subject.tier}
+          </Badge>
+        )}
       </div>
       <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDownload(); }} disabled={!tokenDataUrl} className="h-7 text-xs gap-1">
         <Download className="h-3 w-3" />
@@ -401,9 +419,12 @@ const TokenCard = ({ profile, shape, borderWidth, borderColor, selected, onToggl
 
 export const CharacterTokensPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [creatures, setCreatures] = useState<Creature[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [classFilter, setClassFilter] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'profile' | 'creature'>('all');
   const [shape, setShape] = useState<TokenShape>('circle');
   const [borderWidth, setBorderWidth] = useState(BORDER_WIDTH_DEFAULT);
   const [borderColor, setBorderColor] = useState('#d4af37');
@@ -411,10 +432,11 @@ export const CharacterTokensPage = () => {
   const [groupFilter, setGroupFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [generatingSheet, setGeneratingSheet] = useState(false);
+  const [preselectApplied, setPreselectApplied] = useState(false);
 
   useEffect(() => {
     const load = async () => {
-      const [profilesRes, stonesRes] = await Promise.all([
+      const [profilesRes, stonesRes, creaturesRes] = await Promise.all([
         supabase
           .from('profiles')
           .select('user_id, character_name, character_class, avatar_url, level, ancestry')
@@ -423,8 +445,13 @@ export const CharacterTokensPage = () => {
           .from('stones')
           .select('id, name, is_group')
           .eq('is_group', true),
+        supabase
+          .from('bestiary_creatures')
+          .select('id, name, image_url, tier, creature_type, is_custom')
+          .order('name'),
       ]);
       setProfiles(profilesRes.data || []);
+      setCreatures((creaturesRes.data || []) as Creature[]);
 
       if (stonesRes.data && stonesRes.data.length > 0) {
         const { data: participants } = await supabase
@@ -446,6 +473,55 @@ export const CharacterTokensPage = () => {
     load();
   }, []);
 
+  // All subjects (token candidates) — characters + bestiary
+  const allSubjects = useMemo<TokenSubject[]>(() => {
+    const out: TokenSubject[] = [];
+    for (const p of profiles) {
+      if (!p.avatar_url) continue;
+      out.push({
+        key: `profile:${p.user_id}`,
+        kind: 'profile',
+        name: p.character_name || 'Unknown',
+        imageUrl: p.avatar_url,
+        subtitle: p.character_class || undefined,
+        level: p.level,
+        ancestry: p.ancestry || undefined,
+      });
+    }
+    for (const c of creatures) {
+      if (!c.image_url) continue;
+      out.push({
+        key: `creature:${c.id}`,
+        kind: 'creature',
+        name: c.name,
+        imageUrl: c.image_url,
+        subtitle: c.creature_type || undefined,
+        tier: c.tier ?? undefined,
+      });
+    }
+    return out;
+  }, [profiles, creatures]);
+
+  // Apply ?select=... once data is loaded
+  useEffect(() => {
+    if (preselectApplied) return;
+    if (allSubjects.length === 0) return;
+    const raw = searchParams.get('select');
+    if (!raw) { setPreselectApplied(true); return; }
+    const requested = raw.split(',').map(s => s.trim()).filter(Boolean);
+    const validKeys = new Set(allSubjects.map(s => s.key));
+    const matched = requested.filter(k => validKeys.has(k));
+    if (matched.length > 0) {
+      setSelectedIds(new Set(matched));
+      setSourceFilter('all');
+      setClassFilter('all');
+      setGroupFilter('all');
+      setSearchTerm('');
+      toast.success(`${matched.length} token${matched.length === 1 ? '' : 's'} pre-selected from encounter`);
+    }
+    setPreselectApplied(true);
+  }, [allSubjects, searchParams, preselectApplied]);
+
   const classes = useMemo(() => {
     return profiles
       .map(p => p.character_class)
@@ -459,48 +535,63 @@ export const CharacterTokensPage = () => {
     return group ? new Set(group.participant_ids) : null;
   }, [groupFilter, groupChats]);
 
-  const filtered = useMemo(() => {
-    return profiles.filter(p => {
-      if (!p.avatar_url) return false;
-      const matchesSearch = !searchTerm ||
-        p.character_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.character_class?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.ancestry?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesClass = classFilter === 'all' || p.character_class === classFilter;
-      const matchesGroup = !groupMemberIds || groupMemberIds.has(p.user_id);
-      return matchesSearch && matchesClass && matchesGroup;
-    });
-  }, [profiles, searchTerm, classFilter, groupMemberIds]);
+  const filtered = useMemo<TokenSubject[]>(() => {
+    const term = searchTerm.toLowerCase();
+    return allSubjects.filter(s => {
+      if (sourceFilter !== 'all' && s.kind !== sourceFilter) return false;
 
-  const toggleSelect = useCallback((userId: string) => {
+      // Character-only filters
+      if (s.kind === 'profile') {
+        if (classFilter !== 'all' && s.subtitle !== classFilter) return false;
+        if (groupMemberIds) {
+          const userId = s.key.slice('profile:'.length);
+          if (!groupMemberIds.has(userId)) return false;
+        }
+      } else {
+        // creature: skip if a group filter is active and source filter isn't 'creature'
+        if (groupMemberIds && sourceFilter === 'profile') return false;
+        if (groupMemberIds && sourceFilter === 'all') return false;
+      }
+
+      if (!term) return true;
+      return (
+        s.name.toLowerCase().includes(term) ||
+        (s.subtitle && s.subtitle.toLowerCase().includes(term)) ||
+        (s.ancestry && s.ancestry.toLowerCase().includes(term)) ||
+        (s.tier !== undefined && `t${s.tier}`.includes(term))
+      );
+    });
+  }, [allSubjects, sourceFilter, searchTerm, classFilter, groupMemberIds]);
+
+  const toggleSelect = useCallback((key: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (next.has(userId)) next.delete(userId);
-      else next.add(userId);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }, []);
 
   const selectAll = useCallback(() => {
-    setSelectedIds(new Set(filtered.map(p => p.user_id)));
+    setSelectedIds(new Set(filtered.map(s => s.key)));
   }, [filtered]);
 
   const selectNone = useCallback(() => {
     setSelectedIds(new Set());
   }, []);
 
-  const downloadTargets = useMemo(() => {
-    if (selectedIds.size > 0) return filtered.filter(p => selectedIds.has(p.user_id));
+  // Download targets: prefer selection (across the entire pool, not just the filtered view)
+  const downloadTargets = useMemo<TokenSubject[]>(() => {
+    if (selectedIds.size > 0) return allSubjects.filter(s => selectedIds.has(s.key));
     return filtered;
-  }, [filtered, selectedIds]);
+  }, [allSubjects, filtered, selectedIds]);
 
   const handleDownloadSelected = useCallback(async () => {
-    for (const p of downloadTargets) {
-      if (!p.avatar_url) continue;
+    for (const s of downloadTargets) {
       try {
-        const dataUrl = await renderToken(p.avatar_url, shape, borderWidth, borderColor);
+        const dataUrl = await renderToken(s.imageUrl, shape, borderWidth, borderColor);
         const link = document.createElement('a');
-        link.download = `${(p.character_name || 'token').replace(/\s+/g, '_')}_token.png`;
+        link.download = `${s.name.replace(/\s+/g, '_')}_token.png`;
         link.href = dataUrl;
         link.click();
         await new Promise(r => setTimeout(r, 300));
@@ -516,12 +607,11 @@ export const CharacterTokensPage = () => {
     }
     setGeneratingSheet(true);
     try {
-      const loaded: SheetProfile[] = [];
-      for (const p of downloadTargets) {
-        if (!p.avatar_url) continue;
+      const loaded: SheetEntry[] = [];
+      for (const s of downloadTargets) {
         try {
-          const img = await loadImage(p.avatar_url);
-          loaded.push({ profile: p, img });
+          const img = await loadImage(s.imageUrl);
+          loaded.push({ subject: s, img });
         } catch { /* skip */ }
       }
 
@@ -566,7 +656,7 @@ export const CharacterTokensPage = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Name, class, ancestry..."
+                  placeholder="Name, class, type, tier..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -575,32 +665,48 @@ export const CharacterTokensPage = () => {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Class</Label>
-              <Select value={classFilter} onValueChange={setClassFilter}>
+              <Label>Source</Label>
+              <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as 'all' | 'profile' | 'creature')}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Classes</SelectItem>
-                  {classes.map(c => (
-                    <SelectItem key={c!} value={c!}>{c}</SelectItem>
-                  ))}
+                  <SelectItem value="all">All Sources</SelectItem>
+                  <SelectItem value="profile">Characters</SelectItem>
+                  <SelectItem value="creature">Bestiary</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Group Chat</Label>
-              <Select value={groupFilter} onValueChange={setGroupFilter}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Characters</SelectItem>
-                  {groupChats.map(g => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.name || 'Unnamed Group'} ({g.participant_ids.length})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {sourceFilter !== 'creature' && (
+              <div className="space-y-1.5">
+                <Label>Class</Label>
+                <Select value={classFilter} onValueChange={setClassFilter}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Classes</SelectItem>
+                    {classes.map(c => (
+                      <SelectItem key={c!} value={c!}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {sourceFilter !== 'creature' && (
+              <div className="space-y-1.5">
+                <Label>Group Chat</Label>
+                <Select value={groupFilter} onValueChange={setGroupFilter}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Characters</SelectItem>
+                    {groupChats.map(g => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.name || 'Unnamed Group'} ({g.participant_ids.length})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <Label>Border Color</Label>
@@ -693,20 +799,20 @@ export const CharacterTokensPage = () => {
 
         {/* Token grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-          {filtered.map(p => (
+          {filtered.map(s => (
             <TokenCard
-              key={p.user_id}
-              profile={p}
+              key={s.key}
+              subject={s}
               shape={shape}
               borderWidth={borderWidth}
               borderColor={borderColor}
-              selected={selectedIds.has(p.user_id)}
+              selected={selectedIds.has(s.key)}
               onToggleSelect={toggleSelect}
             />
           ))}
           {filtered.length === 0 && (
             <p className="col-span-full text-center text-muted-foreground py-8">
-              No characters with avatars match the filters
+              No tokens match the filters
             </p>
           )}
         </div>

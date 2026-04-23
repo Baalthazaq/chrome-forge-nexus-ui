@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Shield, ArrowLeft, ChevronDown, Plus, Search, Copy, Swords, TreePine, Users } from 'lucide-react';
+import { Shield, ArrowLeft, ChevronDown, Plus, Search, Copy, Swords, TreePine, Users, Coins } from 'lucide-react';
 import { toast } from 'sonner';
 import { EncounterDialog } from '@/components/encounter/EncounterDialog';
 import { CreatureViewDialog } from '@/components/encounter/CreatureViewDialog';
@@ -321,7 +321,7 @@ const EncounterBuilder = () => {
                         )}
 
                         {/* Actions */}
-                        <div className="flex gap-2 pt-2">
+                        <div className="flex flex-wrap gap-2 pt-2">
                           <Button size="sm" variant="outline" onClick={() => setEditEncounter(enc)}>
                             Edit
                           </Button>
@@ -331,6 +331,25 @@ const EncounterBuilder = () => {
                           }}>
                             <Copy className="h-3 w-3 mr-1" /> Duplicate
                           </Button>
+                          {(() => {
+                            const tokenKeys: string[] = [];
+                            (npcs || []).forEach((n: any) => {
+                              if (n.user_id && thumbs.npcs[n.user_id]) tokenKeys.push(`profile:${n.user_id}`);
+                            });
+                            (creatures || []).forEach((c: any) => {
+                              if (c.id && thumbs.creatures[c.id]) tokenKeys.push(`creature:${c.id}`);
+                            });
+                            if (tokenKeys.length === 0) return null;
+                            return (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => navigate(`/admin/tokens?select=${encodeURIComponent(tokenKeys.join(','))}`)}
+                              >
+                                <Coins className="h-3 w-3 mr-1" /> Tokens ({tokenKeys.length})
+                              </Button>
+                            );
+                          })()}
                           <Button size="sm" variant="destructive" onClick={() => setDeleteTarget(enc)}>
                             Delete
                           </Button>
