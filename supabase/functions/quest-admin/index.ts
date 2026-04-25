@@ -130,7 +130,7 @@ async function getAllQuests() {
 async function getSubmittedQuests() {
   const { data: submissions, error } = await supabase
     .from('quest_acceptances')
-    .select(`*, quests (id, title, description, reward, reward_min, client, job_type, downtime_cost)`)
+    .select(`*, quests (id, title, description, reward, reward_min, client, job_type, downtime_cost, difficulty)`)
     .eq('status', 'submitted')
     .order('submitted_at', { ascending: false })
   if (error) throw error
@@ -150,7 +150,7 @@ async function getSubmittedQuests() {
 async function getPendingApplications() {
   const { data: applications, error } = await supabase
     .from('quest_acceptances')
-    .select(`*, quests (id, title, description, reward, reward_min, client, job_type, pay_interval)`)
+    .select(`*, quests (id, title, description, reward, reward_min, client, job_type, pay_interval, difficulty)`)
     .eq('status', 'pending_approval')
     .order('created_at', { ascending: false })
   if (error) throw error
