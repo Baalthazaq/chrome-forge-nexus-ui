@@ -661,7 +661,7 @@ const Questseek = () => {
           </Select>
         </div>
 
-        <Tabs defaultValue="my_quests" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-gray-900/50 border border-gray-700/50">
             <TabsTrigger value="commissions">Commissions</TabsTrigger>
             <TabsTrigger value="full_time">Full-Time Jobs</TabsTrigger>
@@ -670,9 +670,12 @@ const Questseek = () => {
             </TabsTrigger>
             <TabsTrigger value="my_quests">My Jobs ({myJobsCount})</TabsTrigger>
             {myPostedQuests.length > 0 && (
-              <TabsTrigger value="my_posted">
-                My Posted {myPostedPendingCount > 0 && `(${myPostedPendingCount})`}
+              <TabsTrigger value="reviews">
+                Reviews {myPostedPendingCount > 0 && `(${myPostedPendingCount})`}
               </TabsTrigger>
+            )}
+            {myPostedQuests.length > 0 && (
+              <TabsTrigger value="my_posted">My Posted</TabsTrigger>
             )}
           </TabsList>
 
