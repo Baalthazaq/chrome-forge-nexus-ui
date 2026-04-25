@@ -959,7 +959,14 @@ const Questseek = () => {
                   <Card key={quest.id} className="p-4 bg-gray-900/30 border-amber-500/20">
                     <div className="flex justify-between items-start mb-3 gap-3">
                       <div className="min-w-0">
-                        <h4 className="text-white font-medium">{quest.title}</h4>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-white font-medium">{quest.title}</h4>
+                          {quest.difficulty && (
+                            <Badge className={`text-xs ${difficultyColors[quest.difficulty] || "bg-gray-800 text-gray-400"}`}>
+                              {quest.difficulty}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-400">
                           {quest.job_type === 'full_time' ? (
                             <Badge variant="outline" className="text-xs text-purple-400 border-purple-500/50 mr-2">Full-Time • {quest.pay_interval}</Badge>
