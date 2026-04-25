@@ -6,6 +6,15 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
+async function getCurrentGameDate(): Promise<{ day: number | null; month: number | null; year: number | null }> {
+  const { data } = await supabase.from('game_calendar').select('current_day, current_month, current_year').limit(1).maybeSingle();
+  return {
+    day: data?.current_day ?? null,
+    month: data?.current_month ?? null,
+    year: data?.current_year ?? null,
+  };
+}
+
 async function resolveUserId(authUserId: string, targetUserId?: string): Promise<string> {
   if (!targetUserId || targetUserId === authUserId) return authUserId;
   
