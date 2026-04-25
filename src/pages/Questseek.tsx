@@ -238,13 +238,23 @@ const Questseek = () => {
       toast({ title: "Enter a valid number of hours", variant: "destructive" });
       return;
     }
+    const unit = logHoursTarget.quests?.downtime_cost || 0;
+    const avail = logHoursTarget.quests?.available_quantity;
+    const banked = logHoursTarget.hours_logged || 0;
+    if (avail !== null && avail !== undefined) {
+      const cap = Math.max(0, unit * avail - banked);
+      if (hours > cap) {
+        toast({ title: `Max ${cap}h for this job`, description: `You can only bank up to ${unit * avail}h total (${avail} completion${avail === 1 ? "" : "s"} × ${unit}h).`, variant: "destructive" });
+        return;
+      }
+    }
     const { data, error } = await supabase.functions.invoke("quest-operations", {
       body: { operation: "log_quest_hours", questId: logHoursTarget.quest_id, hours, targetUserId: impersonatedUser?.user_id },
     });
     if (error || data?.error) {
       toast({ title: "Error", description: data?.error || "Failed to log hours", variant: "destructive" });
     } else {
-      toast({ title: `Logged ${hours}h — ${data.hoursLogged}/${data.totalRequired}h complete` });
+      toast({ title: `Logged ${hours}h — ${data.hoursLogged}/${data.totalRequired}h banked` });
       setLogHoursOpen(false);
       setLogHoursAmount("");
       loadData();
