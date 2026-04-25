@@ -433,7 +433,7 @@ const QuestseekAdmin = () => {
                           <div className="flex items-center gap-2 flex-wrap">
                             <h4 className="text-white font-medium">{sub.quests?.title}</h4>
                             {sub.quests?.difficulty && (
-                              <Badge className="text-xs">{sub.quests.difficulty}</Badge>
+                              <Badge className={`text-xs ${difficultyColors[sub.quests.difficulty] || "bg-gray-800 text-gray-400"}`}>{sub.quests.difficulty}</Badge>
                             )}
                           </div>
                           <p className="text-sm text-gray-400">
