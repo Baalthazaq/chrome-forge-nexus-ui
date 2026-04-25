@@ -1021,9 +1021,12 @@ const Questseek = () => {
                           <div key={sub.id} className="p-3 bg-yellow-900/10 border border-yellow-500/20 rounded-lg flex justify-between items-start">
                             <div>
                               <p className="text-sm text-white font-medium">{myPostedProfileMap[sub.user_id] || "Unknown"}</p>
-                              <div className="flex gap-2 mt-1 text-xs">
+                              <div className="flex gap-2 mt-1 text-xs flex-wrap items-center">
                                 {sub.roll_result != null && <Badge variant="outline" className="text-cyan-400 border-cyan-500/50">Roll: {sub.roll_result}</Badge>}
                                 {sub.roll_type && <Badge variant="outline" className="text-gray-400">{sub.roll_type}</Badge>}
+                                {sub.submitted_game_day && sub.submitted_game_month && sub.submitted_game_year && (
+                                  <span className="text-gray-500">Submitted: {formatGameDate({ day: sub.submitted_game_day, month: sub.submitted_game_month, year: sub.submitted_game_year })}</span>
+                                )}
                               </div>
                               {sub.notes && <p className="text-xs text-gray-400 mt-1 italic">"{sub.notes}"</p>}
                             </div>
