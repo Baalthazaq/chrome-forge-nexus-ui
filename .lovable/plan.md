@@ -1,67 +1,53 @@
+## Commission "Work Complete" overhaul + Reviews tab
 
+### 1. Log Hours input (Questseek front-end)
 
-## Bestiary Tokens + "Tokens for this Encounter" Button
+In `src/pages/Questseek.tsx`:
+- Default `logHoursAmount` to empty string (already is) — keep `<Input>` blank, no `0` placeholder. Confirm `min="1"`, no `defaultValue`.
+- Compute and pass a hard `max` to the input:
+  - `unitHours = quest.downtime_cost`
+  - `available = quest.available_quantity ?? 1` (treat null = unlimited; only cap when set)
+  - `maxHours = unitHours * available - already_logged_for_unit_remainder`
+  - Show helper text: `"Max ${maxHours}h (covers up to ${available} completion(s))"`.
+- Client-side guard before invoking: clamp `hours` and reject if > max.
 
-### 1. Character Tokens page (`src/components/CharacterTokens.tsx`)
+### 2. "Work Complete" = one-at-a-time completion
 
-Generalise the page so it sources tokens from **two pools**:
+Today, a single submit consumes all `hours_logged` ≥ `downtime_cost` and decrements `available_quantity` by 1, but leftover banked hours can be re-used silently. Change so that pressing **Work Complete**:
 
-- **Characters** — `profiles` rows with `avatar_url` (current behaviour).
-- **Bestiary** — `bestiary_creatures` rows with `image_url`.
+- Validates `hours_logged >= downtime_cost` for the unit.
+- Submits exactly **one** unit:
+  - Creates a **new submitted acceptance row** (one per completion) so each shows up as a distinct review in admin / poster's review box.
+  - Subtracts `downtime_cost` from `hours_logged` on the active acceptance (carry remainder forward).
+  - Decrements `quests.available_quantity` by 1.
+- Leaves the active acceptance in `accepted` status with the remaining banked hours so the player can press **Work Complete** again immediately if they have enough hours and slots remain.
+- Disables the button when `hours_logged < downtime_cost` OR `available_quantity <= 0`.
 
-Internal model becomes a unified `TokenSubject`:
+Edge function changes in `supabase/functions/quest-operations/index.ts`:
+- Refactor `submitQuest` (commission branch) to the new "split one completion off" semantics described above. Full-time path unchanged.
+- Cap `logQuestHours` so a single log call cannot push `hours_logged` above `downtime_cost * available_quantity` (re-fetched live), to defend against stale UI.
 
-```ts
-type TokenSubject = {
-  key: string;          // 'profile:<user_id>' | 'creature:<id>'
-  kind: 'profile' | 'creature';
-  name: string;
-  imageUrl: string;
-  // display badges
-  subtitle?: string;    // class / creature_type
-  level?: number;       // characters
-  tier?: number;        // creatures
-};
-```
+### 3. Per-completion review rows
 
-All current `profiles` references inside the page (filtering, selection set, sheet rendering, downloads) switch to `TokenSubject.key` instead of `user_id`. The `Profile` interface is kept only for fetch shape.
+Because each completion is its own `quest_acceptances` row with `status='submitted'`:
+- Admin Review box (`get_submitted_quests`) automatically lists each as a separate entry — no change needed.
+- Player-poster "My Posted" view automatically lists each submission separately — no change needed.
 
-**Data load**: in addition to `profiles` and group stones, fetch `bestiary_creatures` (id, name, image_url, tier, creature_type, is_custom). Skip rows with no `image_url`.
+### 4. Player-posted commission reviews → Reviews tab + default landing
 
-**Filters**:
-- New **Source** filter (toggle group): `All / Characters / Bestiary`. Defaults to `All`.
-- Class filter and Group filter only apply to characters; when source = Bestiary they are hidden/disabled.
-- Search matches across name, class/creature_type, ancestry, and tier.
-
-**Pre-selection via URL**: read `?select=` on mount.
-
-- Format: comma-separated keys, e.g. `?select=profile:UUID,profile:UUID,creature:UUID,creature:UUID`.
-- For each key found, add to `selectedIds` and ensure the source filter is set to `All` so they're visible.
-- Auto-scroll/toast: "12 tokens pre-selected from encounter".
-
-### 2. Encounter Builder button (`src/pages/EncounterBuilder.tsx`)
-
-Inside each expanded encounter card's actions row (next to Edit / Duplicate / Delete), add:
-
-```
-[Tokens] → /admin/tokens?select=<keys>
-```
-
-Button is shown only when the encounter has at least one NPC with `user_id` **or** at least one creature with an image. Build the `select` param by:
-
-- For each `npc` in `enc.npcs` with `user_id`: include `profile:<user_id>` if `thumbs.npcs[user_id]` is truthy (avatar exists).
-- For each `creature` in `enc.creatures` with `id`: include `creature:<id>` if `thumbs.creatures[id]` is truthy. If `quantity > 1`, the key still appears once — selection is a set; the printable sheet will use the existing "Generate Sheet" flow (one slot per selection). If a future need arises for duplicates, it can be revisited.
-- Environments are excluded (no token concept).
-
-Click → `navigate(\`/admin/tokens?select=${encodeURIComponent(keys.join(','))}\`)`.
-
-### 3. Sheet / PNG generation
-
-`renderSheet` and `handleDownloadSelected` already operate on a list of "subjects with images"; they're refactored to take `TokenSubject[]` instead of `Profile[]`. Filenames use `subject.name`. No format changes to PNG/PDF output.
+In `src/pages/Questseek.tsx`:
+- Compute `pendingPlayerReviews` = sum of `submitted` + `pending_approval` acceptances across `myPostedQuests`.
+- Add new **Reviews** tab (value `reviews`) placed immediately after **My Jobs**:
+  - Trigger label: `Reviews (${pendingPlayerReviews})`, only rendered when the user has any posted quests.
+  - Content reuses the existing "Submissions" / "Applications" panels currently inside the **My Posted** tab, filtered to entries that need action.
+- Keep the existing **My Posted** tab for full management of posted jobs (active/completed history).
+- Default tab logic:
+  - If `pendingPlayerReviews > 0` → default `reviews`.
+  - Else fall back to current default `my_quests`.
+- Implement via `Tabs` controlled `value` with `useState` initialized from the computed default.
 
 ### Out of scope
 
-- Tokens for environments.
-- Quantity-aware multiplication of creature tokens on the sheet (one entry per selection for now).
-- Persisting the last-used selection across navigations beyond the URL param.
-
+- Full-time job semantics (unchanged).
+- Changing how downtime balance is deducted at log time (still up-front).
+- Backfilling past mis-logged hours.

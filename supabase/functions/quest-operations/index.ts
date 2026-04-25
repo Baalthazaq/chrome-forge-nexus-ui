@@ -338,74 +338,95 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
     })
   }
 
-  // Check downtime cost (account for already-logged hours)
-  if (quest.downtime_cost > 0) {
-    // Get the acceptance to check hours_logged
-    const { data: acceptance } = await supabase
-      .from('quest_acceptances')
-      .select('hours_logged')
-      .eq('quest_id', questId)
-      .eq('user_id', userId)
-      .eq('status', 'accepted')
-      .single()
+  // Get the active acceptance
+  const { data: acceptance } = await supabase
+    .from('quest_acceptances')
+    .select('*')
+    .eq('quest_id', questId)
+    .eq('user_id', userId)
+    .eq('status', 'accepted')
+    .single()
 
-    const hoursAlreadyLogged = acceptance?.hours_logged || 0
-    const remainingHours = Math.max(0, quest.downtime_cost - hoursAlreadyLogged)
-
-    if (remainingHours > 0) {
-      const { data: downtime } = await supabase
-        .from('downtime_balances')
-        .select('*')
-        .eq('user_id', userId)
-        .single()
-
-      const currentBalance = downtime?.balance || 0
-
-      if (currentBalance < remainingHours) {
-        return new Response(JSON.stringify({ error: `Not enough downtime. Need ${remainingHours} more hours (${hoursAlreadyLogged}/${quest.downtime_cost} already logged), have ${currentBalance}.` }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-      }
-
-      // Deduct remaining downtime
-      await supabase
-        .from('downtime_balances')
-        .update({ balance: currentBalance - remainingHours, updated_at: new Date().toISOString() })
-        .eq('user_id', userId)
-
-      // Log the downtime activity
-      await supabase
-        .from('downtime_activities')
-        .insert({
-          user_id: userId,
-          activity_type: 'quest_work',
-          hours_spent: remainingHours,
-          notes: `Quest: ${quest.title} (final ${remainingHours}h)`,
-        })
-    }
+  if (!acceptance) {
+    return new Response(JSON.stringify({ error: 'No active acceptance for this quest' }), {
+      status: 404,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
   }
 
-  const { error: updateError } = await supabase
+  // FULL-TIME path — unchanged semantics: just flip status to submitted
+  if (quest.job_type === 'full_time') {
+    await supabase
+      .from('quest_acceptances')
+      .update({
+        status: 'submitted',
+        submitted_at: new Date().toISOString(),
+        notes: notes || '',
+        roll_result: rollResult ?? null,
+        roll_type: rollType ?? null,
+      })
+      .eq('id', acceptance.id)
+
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // COMMISSION path — submit ONE completion at a time.
+  const unitCost = quest.downtime_cost || 0
+  const hoursLogged = acceptance.hours_logged || 0
+
+  // Slot check
+  if (quest.available_quantity !== null && quest.available_quantity <= 0) {
+    return new Response(JSON.stringify({ error: 'No more slots available for this commission' }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Hours check (must already have enough banked)
+  if (unitCost > 0 && hoursLogged < unitCost) {
+    return new Response(JSON.stringify({ error: `Need ${unitCost}h logged for one completion (have ${hoursLogged}h). Use Work to log more.` }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Spawn a NEW submitted row representing this single completion
+  const { error: insertError } = await supabase
     .from('quest_acceptances')
-    .update({
+    .insert({
+      quest_id: questId,
+      user_id: userId,
       status: 'submitted',
       submitted_at: new Date().toISOString(),
       notes: notes || '',
       roll_result: rollResult ?? null,
-      roll_type: rollType ?? null
+      roll_type: rollType ?? null,
+      hours_logged: unitCost,
     })
-    .eq('quest_id', questId)
-    .eq('user_id', userId)
-    .eq('status', 'accepted')
 
-  if (updateError) throw updateError
+  if (insertError) throw insertError
 
-  if (quest.job_type === 'commission' && quest.available_quantity !== null) {
+  // Subtract the unit cost from the active acceptance's banked hours
+  await supabase
+    .from('quest_acceptances')
+    .update({ hours_logged: Math.max(0, hoursLogged - unitCost) })
+    .eq('id', acceptance.id)
+
+  // Decrement available quantity
+  if (quest.available_quantity !== null) {
+    const newQty = Math.max(0, quest.available_quantity - 1)
     await supabase
       .from('quests')
-      .update({ available_quantity: Math.max(0, quest.available_quantity - 1) })
+      .update({ available_quantity: newQty })
       .eq('id', questId)
+
+    // If we just consumed the last slot, retire the active acceptance
+    if (newQty <= 0) {
+      await supabase
+        .from('quest_acceptances')
+        .update({ status: 'resigned' })
+        .eq('id', acceptance.id)
+    }
   }
 
   return new Response(JSON.stringify({ success: true }), {
@@ -819,7 +840,7 @@ async function logQuestHours(userId: string, { questId, hours }: { questId: stri
 
   const { data: quest } = await supabase
     .from('quests')
-    .select('downtime_cost, title')
+    .select('downtime_cost, title, available_quantity, job_type')
     .eq('id', questId)
     .single()
 
@@ -830,8 +851,19 @@ async function logQuestHours(userId: string, { questId, hours }: { questId: stri
     })
   }
 
-  // Allow logging any number of hours (no cap) — surplus is banked for next pay cycle
-  const hoursToLog = hours
+  // Cap hours so we never bank more than (downtime_cost * available_quantity)
+  // for commissions with limited slots. Full-time and unlimited (null) are uncapped.
+  let hoursToLog = hours
+  if (quest.job_type === 'commission' && quest.available_quantity !== null) {
+    const maxBankable = quest.downtime_cost * Math.max(0, quest.available_quantity)
+    const room = Math.max(0, maxBankable - (acceptance.hours_logged || 0))
+    if (room <= 0) {
+      return new Response(JSON.stringify({ error: 'You already have enough hours banked for every remaining slot.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    hoursToLog = Math.min(hours, room)
+  }
 
   // Check downtime balance
   const { data: downtime } = await supabase

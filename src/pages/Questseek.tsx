@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -111,6 +111,10 @@ const Questseek = () => {
   const [commissionPage, setCommissionPage] = useState(1);
   const [fullTimePage, setFullTimePage] = useState(1);
   const [communityPage, setCommunityPage] = useState(1);
+
+  // Active tab (controlled so we can auto-default to Reviews when there are pending player reviews)
+  const [activeTab, setActiveTab] = useState<string>("my_quests");
+  const tabAutoSetRef = useRef(false);
 
   useEffect(() => {
     supabase.from("game_calendar").select("*").limit(1).single().then(({ data }) => {
@@ -238,13 +242,23 @@ const Questseek = () => {
       toast({ title: "Enter a valid number of hours", variant: "destructive" });
       return;
     }
+    const unit = logHoursTarget.quests?.downtime_cost || 0;
+    const avail = logHoursTarget.quests?.available_quantity;
+    const banked = logHoursTarget.hours_logged || 0;
+    if (avail !== null && avail !== undefined) {
+      const cap = Math.max(0, unit * avail - banked);
+      if (hours > cap) {
+        toast({ title: `Max ${cap}h for this job`, description: `You can only bank up to ${unit * avail}h total (${avail} completion${avail === 1 ? "" : "s"} × ${unit}h).`, variant: "destructive" });
+        return;
+      }
+    }
     const { data, error } = await supabase.functions.invoke("quest-operations", {
       body: { operation: "log_quest_hours", questId: logHoursTarget.quest_id, hours, targetUserId: impersonatedUser?.user_id },
     });
     if (error || data?.error) {
       toast({ title: "Error", description: data?.error || "Failed to log hours", variant: "destructive" });
     } else {
-      toast({ title: `Logged ${hours}h — ${data.hoursLogged}/${data.totalRequired}h complete` });
+      toast({ title: `Logged ${hours}h — ${data.hoursLogged}/${data.totalRequired}h banked` });
       setLogHoursOpen(false);
       setLogHoursAmount("");
       loadData();
@@ -432,6 +446,14 @@ const Questseek = () => {
   // Count pending submissions + pending applications on my posted quests
   const myPostedPendingCount = myPostedQuests.reduce((sum, q) => 
     sum + (q.quest_acceptances?.filter((a: any) => a.status === 'submitted' || a.status === 'pending_approval').length || 0), 0);
+
+  // On first load, if the player has pending reviews on jobs they posted, land on the Reviews tab.
+  useEffect(() => {
+    if (loading) return;
+    if (tabAutoSetRef.current) return;
+    tabAutoSetRef.current = true;
+    if (myPostedPendingCount > 0) setActiveTab("reviews");
+  }, [loading, myPostedPendingCount]);
 
   const formatRewardRange = (quest: Quest) => {
     if (quest.reward_min > 0 && quest.reward_min !== quest.reward) {
@@ -651,7 +673,7 @@ const Questseek = () => {
           </Select>
         </div>
 
-        <Tabs defaultValue="my_quests" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-gray-900/50 border border-gray-700/50">
             <TabsTrigger value="commissions">Commissions</TabsTrigger>
             <TabsTrigger value="full_time">Full-Time Jobs</TabsTrigger>
@@ -660,9 +682,12 @@ const Questseek = () => {
             </TabsTrigger>
             <TabsTrigger value="my_quests">My Jobs ({myJobsCount})</TabsTrigger>
             {myPostedQuests.length > 0 && (
-              <TabsTrigger value="my_posted">
-                My Posted {myPostedPendingCount > 0 && `(${myPostedPendingCount})`}
+              <TabsTrigger value="reviews">
+                Reviews {myPostedPendingCount > 0 && `(${myPostedPendingCount})`}
               </TabsTrigger>
+            )}
+            {myPostedQuests.length > 0 && (
+              <TabsTrigger value="my_posted">My Posted</TabsTrigger>
             )}
           </TabsList>
 
@@ -779,12 +804,21 @@ const Questseek = () => {
                                 <Hammer className="w-3 h-3 mr-1" /> Work
                               </Button>
                             )}
-                            {qa.quests?.job_type !== "full_time" && (
-                              <Button size="sm" onClick={() => openSubmitDialog(qa)}
-                                className="bg-gradient-to-r from-emerald-500 to-teal-500">
-                                Mark Complete
-                              </Button>
-                            )}
+                            {qa.quests?.job_type !== "full_time" && (() => {
+                              const unit = qa.quests?.downtime_cost || 0;
+                              const banked = qa.hours_logged || 0;
+                              const noSlots = qa.quests?.available_quantity !== null && qa.quests?.available_quantity !== undefined && qa.quests.available_quantity <= 0;
+                              const notReady = unit > 0 && banked < unit;
+                              const disabled = noSlots || notReady;
+                              return (
+                                <Button size="sm" onClick={() => openSubmitDialog(qa)}
+                                  disabled={disabled}
+                                  title={notReady ? `Need ${unit}h banked (have ${banked}h)` : noSlots ? "No slots remain" : ""}
+                                  className="bg-gradient-to-r from-emerald-500 to-teal-500 disabled:opacity-50">
+                                  Work Complete
+                                </Button>
+                              );
+                            })()}
                             <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300"
                               onClick={() => resignQuest(qa.quest_id)}>
                               {qa.quests?.job_type === "full_time" ? "Quit" : "Abandon"}
@@ -893,6 +927,95 @@ const Questseek = () => {
             )}
           </TabsContent>
 
+          {/* Reviews Tab — pending submissions/applications across jobs I posted */}
+          {myPostedQuests.length > 0 && (
+            <TabsContent value="reviews" className="space-y-4">
+              {myPostedPendingCount === 0 ? (
+                <Card className="p-8 bg-gray-900/30 border-gray-700/50 text-center text-gray-400">
+                  No pending reviews. Submissions and applications on jobs you posted will appear here.
+                </Card>
+              ) : (
+                myPostedQuests
+                  .filter(quest => (quest.quest_acceptances || []).some((a: any) => a.status === 'submitted' || a.status === 'pending_approval'))
+                  .map(quest => {
+                    const submissions = quest.quest_acceptances?.filter((a: any) => a.status === 'submitted') || [];
+                    const pendingApps = quest.quest_acceptances?.filter((a: any) => a.status === 'pending_approval') || [];
+                    return (
+                      <Card key={quest.id} className="p-4 bg-gray-900/30 border-amber-500/20">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h4 className="text-white font-medium">{quest.title}</h4>
+                            <p className="text-sm text-gray-400">
+                              {quest.job_type === 'full_time' ? (
+                                <Badge variant="outline" className="text-xs text-purple-400 border-purple-500/50 mr-2">Full-Time • {quest.pay_interval}</Badge>
+                              ) : null}
+                              Reward: {formatRewardRange(quest)}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
+                            {pendingApps.length > 0 ? `${pendingApps.length} applicants • ` : ''}{submissions.length} to review
+                          </Badge>
+                        </div>
+
+                        {pendingApps.length > 0 && (
+                          <div className="space-y-2 mt-3">
+                            <p className="text-xs text-blue-400 font-medium">Applications</p>
+                            {pendingApps.map((app: any) => (
+                              <div key={app.id} className="p-3 bg-blue-900/10 border border-blue-500/20 rounded-lg flex justify-between items-center">
+                                <div>
+                                  <p className="text-sm text-white font-medium">{myPostedProfileMap[app.user_id] || "Unknown"}</p>
+                                  <p className="text-xs text-gray-500">Wants to work this job</p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button size="sm" onClick={() => approvePlayerApplication(app.id)}
+                                    className="bg-gradient-to-r from-emerald-500 to-teal-500">
+                                    <Check className="w-3 h-3 mr-1" /> Hire
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="border-red-500/50 text-red-400 hover:bg-red-900/30"
+                                    onClick={() => rejectPlayerApplication(app.id)}>
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {submissions.length > 0 && (
+                          <div className="space-y-2 mt-3">
+                            <p className="text-xs text-yellow-400 font-medium">Submissions</p>
+                            {submissions.map((sub: any) => (
+                              <div key={sub.id} className="p-3 bg-yellow-900/10 border border-yellow-500/20 rounded-lg flex justify-between items-start">
+                                <div>
+                                  <p className="text-sm text-white font-medium">{myPostedProfileMap[sub.user_id] || "Unknown"}</p>
+                                  <div className="flex gap-2 mt-1 text-xs">
+                                    {sub.roll_result != null && <Badge variant="outline" className="text-cyan-400 border-cyan-500/50">Roll: {sub.roll_result}</Badge>}
+                                    {sub.roll_type && <Badge variant="outline" className="text-gray-400">{sub.roll_type}</Badge>}
+                                    {sub.submitted_at && <span className="text-gray-500">{new Date(sub.submitted_at).toLocaleString()}</span>}
+                                  </div>
+                                  {sub.notes && <p className="text-xs text-gray-400 mt-1 italic">"{sub.notes}"</p>}
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button size="sm" onClick={() => openApproveDialog(sub, quest)}
+                                    className="bg-gradient-to-r from-emerald-500 to-teal-500">
+                                    <Check className="w-3 h-3 mr-1" /> Pay
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="border-red-500/50 text-red-400 hover:bg-red-900/30"
+                                    onClick={() => rejectPlayerSubmission(sub.id)}>
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </Card>
+                    );
+                  })
+              )}
+            </TabsContent>
+          )}
+
           {/* My Posted Quests Tab */}
           {myPostedQuests.length > 0 && (
             <TabsContent value="my_posted" className="space-y-4">
@@ -986,25 +1109,38 @@ const Questseek = () => {
           <DialogHeader>
             <DialogTitle className="text-white">Log Hours</DialogTitle>
             <DialogDescription className="text-gray-400">
-              {logHoursTarget?.quests?.title} — {logHoursTarget?.hours_logged || 0}/{logHoursTarget?.quests?.downtime_cost || 0}h completed
+              {logHoursTarget?.quests?.title} — {logHoursTarget?.hours_logged || 0}/{logHoursTarget?.quests?.downtime_cost || 0}h banked
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-gray-300">Hours to log</Label>
-              <Input
-                type="number"
-                min="1"
-                value={logHoursAmount}
-                onChange={(e) => setLogHoursAmount(e.target.value)}
-                placeholder="Hours to work"
-                className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-500"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Available downtime: {downtimeBalance}h • Logged: {logHoursTarget?.hours_logged || 0}/{logHoursTarget?.quests?.downtime_cost || 0}h
-              </p>
-            </div>
-          </div>
+          {(() => {
+            const unit = logHoursTarget?.quests?.downtime_cost || 0;
+            const avail = logHoursTarget?.quests?.available_quantity;
+            const banked = logHoursTarget?.hours_logged || 0;
+            const cap = avail === null || avail === undefined
+              ? Number.POSITIVE_INFINITY
+              : Math.max(0, unit * avail - banked);
+            const maxLabel = isFinite(cap) ? `${cap}` : "∞";
+            return (
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-gray-300">Hours to log</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={isFinite(cap) ? cap : undefined}
+                    value={logHoursAmount}
+                    onChange={(e) => setLogHoursAmount(e.target.value)}
+                    placeholder="Hours to work"
+                    className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-500"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Available downtime: {downtimeBalance}h • Max for this job: {maxLabel}h
+                    {avail !== null && avail !== undefined && ` (covers up to ${avail} completion${avail === 1 ? "" : "s"})`}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
           <DialogFooter>
             <Button variant="ghost" className="text-gray-300 hover:text-white" onClick={() => setLogHoursOpen(false)}>Cancel</Button>
             <Button onClick={logQuestHours} className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white">
