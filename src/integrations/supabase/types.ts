@@ -1569,6 +1569,9 @@ export type Database = {
           roll_type: string | null
           status: string | null
           submitted_at: string | null
+          submitted_game_day: number | null
+          submitted_game_month: number | null
+          submitted_game_year: number | null
           times_completed: number
           updated_at: string
           user_id: string
@@ -1586,6 +1589,9 @@ export type Database = {
           roll_type?: string | null
           status?: string | null
           submitted_at?: string | null
+          submitted_game_day?: number | null
+          submitted_game_month?: number | null
+          submitted_game_year?: number | null
           times_completed?: number
           updated_at?: string
           user_id: string
@@ -1603,6 +1609,9 @@ export type Database = {
           roll_type?: string | null
           status?: string | null
           submitted_at?: string | null
+          submitted_game_day?: number | null
+          submitted_game_month?: number | null
+          submitted_game_year?: number | null
           times_completed?: number
           updated_at?: string
           user_id?: string
@@ -1629,6 +1638,9 @@ export type Database = {
           job_type: string
           pay_interval: string | null
           posted_by_user_id: string | null
+          posted_game_day: number | null
+          posted_game_month: number | null
+          posted_game_year: number | null
           reward: number
           reward_min: number
           status: string | null
@@ -1648,6 +1660,9 @@ export type Database = {
           job_type?: string
           pay_interval?: string | null
           posted_by_user_id?: string | null
+          posted_game_day?: number | null
+          posted_game_month?: number | null
+          posted_game_year?: number | null
           reward?: number
           reward_min?: number
           status?: string | null
@@ -1667,6 +1682,9 @@ export type Database = {
           job_type?: string
           pay_interval?: string | null
           posted_by_user_id?: string | null
+          posted_game_day?: number | null
+          posted_game_month?: number | null
+          posted_game_year?: number | null
           reward?: number
           reward_min?: number
           status?: string | null
