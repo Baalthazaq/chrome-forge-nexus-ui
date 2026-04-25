@@ -598,6 +598,62 @@ async function getMyPostedQuests(userId: string) {
   })
 }
 
+async function deletePlayerQuest(userId: string, { questId }: { questId: string }) {
+  if (!questId) {
+    return new Response(JSON.stringify({ error: 'questId required' }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Verify ownership
+  const { data: quest, error: qErr } = await supabase
+    .from('quests')
+    .select('id, posted_by_user_id')
+    .eq('id', questId)
+    .single()
+
+  if (qErr || !quest) {
+    return new Response(JSON.stringify({ error: 'Quest not found' }), {
+      status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Check admin override
+  const { data: role } = await supabase
+    .from('user_roles')
+    .select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle();
+  const isAdmin = !!role;
+
+  if (!isAdmin && quest.posted_by_user_id !== userId) {
+    return new Response(JSON.stringify({ error: 'Not authorized' }), {
+      status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Block deletion if there are pending reviews (submitted or pending_approval)
+  const { data: pending, error: pErr } = await supabase
+    .from('quest_acceptances')
+    .select('id, status')
+    .eq('quest_id', questId)
+    .in('status', ['submitted', 'pending_approval'])
+
+  if (pErr) throw pErr
+  if ((pending?.length || 0) > 0) {
+    return new Response(JSON.stringify({ error: 'Cannot remove: there are pending reviews. Resolve them first.' }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Delete acceptances then quest
+  await supabase.from('quest_acceptances').delete().eq('quest_id', questId)
+  const { error: delErr } = await supabase.from('quests').delete().eq('id', questId)
+  if (delErr) throw delErr
+
+  return new Response(JSON.stringify({ success: true }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
 async function approvePlayerQuest(posterId: string, { acceptanceId, finalPayment }: { acceptanceId: string, finalPayment: number }) {
   // Get acceptance + quest
   const { data: acceptance, error: getErr } = await supabase
