@@ -6,6 +6,15 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
+async function getCurrentGameDate(): Promise<{ day: number | null; month: number | null; year: number | null }> {
+  const { data } = await supabase.from('game_calendar').select('current_day, current_month, current_year').limit(1).maybeSingle();
+  return {
+    day: data?.current_day ?? null,
+    month: data?.current_month ?? null,
+    year: data?.current_year ?? null,
+  };
+}
+
 async function resolveUserId(authUserId: string, targetUserId?: string): Promise<string> {
   if (!targetUserId || targetUserId === authUserId) return authUserId;
   
@@ -74,6 +83,8 @@ Deno.serve(async (req) => {
         return await rejectPlayerApplication(effectiveUserId, params)
       case 'log_quest_hours':
         return await logQuestHours(effectiveUserId, params)
+      case 'delete_player_quest':
+        return await deletePlayerQuest(effectiveUserId, params)
       default:
         return new Response(JSON.stringify({ error: 'Invalid operation' }), {
           status: 400,
@@ -354,6 +365,8 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
     })
   }
 
+  const submitGd = await getCurrentGameDate();
+
   // FULL-TIME path — unchanged semantics: just flip status to submitted
   if (quest.job_type === 'full_time') {
     await supabase
@@ -361,6 +374,9 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
       .update({
         status: 'submitted',
         submitted_at: new Date().toISOString(),
+        submitted_game_day: submitGd.day,
+        submitted_game_month: submitGd.month,
+        submitted_game_year: submitGd.year,
         notes: notes || '',
         roll_result: rollResult ?? null,
         roll_type: rollType ?? null,
@@ -398,6 +414,9 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
       user_id: userId,
       status: 'submitted',
       submitted_at: new Date().toISOString(),
+      submitted_game_day: submitGd.day,
+      submitted_game_month: submitGd.month,
+      submitted_game_year: submitGd.year,
       notes: notes || '',
       roll_result: rollResult ?? null,
       roll_type: rollType ?? null,
@@ -504,6 +523,8 @@ async function createPlayerQuest(userId: string, params: any) {
   const jobType = params.job_type || 'commission';
   const payInterval = params.pay_interval || 'daily';
 
+  const gd = await getCurrentGameDate();
+
   const { error } = await supabase.from('quests').insert({
     title,
     description: description || null,
@@ -519,6 +540,9 @@ async function createPlayerQuest(userId: string, params: any) {
     pay_interval: jobType === 'full_time' ? payInterval : null,
     posted_by_user_id: userId,
     status: 'active',
+    posted_game_day: gd.day,
+    posted_game_month: gd.month,
+    posted_game_year: gd.year,
   })
 
   if (error) throw error
@@ -554,7 +578,7 @@ async function getCommunityQuests() {
 async function getMyPostedQuests(userId: string) {
   const { data, error } = await supabase
     .from('quests')
-    .select(`*, quest_acceptances (id, user_id, status, submitted_at, roll_result, roll_type, notes, final_payment, admin_notes)`)
+    .select(`*, quest_acceptances (id, user_id, status, submitted_at, submitted_game_day, submitted_game_month, submitted_game_year, roll_result, roll_type, notes, final_payment, admin_notes)`)
     .eq('posted_by_user_id', userId)
     .order('created_at', { ascending: false })
 
@@ -570,6 +594,62 @@ async function getMyPostedQuests(userId: string) {
   }
 
   return new Response(JSON.stringify({ quests: data || [], profileMap }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
+
+async function deletePlayerQuest(userId: string, { questId }: { questId: string }) {
+  if (!questId) {
+    return new Response(JSON.stringify({ error: 'questId required' }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Verify ownership
+  const { data: quest, error: qErr } = await supabase
+    .from('quests')
+    .select('id, posted_by_user_id')
+    .eq('id', questId)
+    .single()
+
+  if (qErr || !quest) {
+    return new Response(JSON.stringify({ error: 'Quest not found' }), {
+      status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Check admin override
+  const { data: role } = await supabase
+    .from('user_roles')
+    .select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle();
+  const isAdmin = !!role;
+
+  if (!isAdmin && quest.posted_by_user_id !== userId) {
+    return new Response(JSON.stringify({ error: 'Not authorized' }), {
+      status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Block deletion if there are pending reviews (submitted or pending_approval)
+  const { data: pending, error: pErr } = await supabase
+    .from('quest_acceptances')
+    .select('id, status')
+    .eq('quest_id', questId)
+    .in('status', ['submitted', 'pending_approval'])
+
+  if (pErr) throw pErr
+  if ((pending?.length || 0) > 0) {
+    return new Response(JSON.stringify({ error: 'Cannot remove: there are pending reviews. Resolve them first.' }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  // Delete acceptances then quest
+  await supabase.from('quest_acceptances').delete().eq('quest_id', questId)
+  const { error: delErr } = await supabase.from('quests').delete().eq('id', questId)
+  if (delErr) throw delErr
+
+  return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })
 }

@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun, RotateCcw, CheckCircle, XCircle, HourglassIcon, Plus, Check, X, Users, Search, Filter, ChevronLeft, ChevronRight, Hammer } from "lucide-react";
+import { ArrowLeft, Clock, User, Briefcase, Timer, Package, AlertTriangle, Moon, Sun, RotateCcw, CheckCircle, XCircle, HourglassIcon, Plus, Check, X, Users, Search, Filter, ChevronLeft, ChevronRight, Hammer, Trash2 } from "lucide-react";
+import { formatGameDate } from "@/lib/gameCalendar";
 import { Link } from "react-router-dom";
 import RestDialog from "@/components/RestDialog";
 import { formatHexDenomination, formatHex, formatHexRounded } from "@/lib/currency";
@@ -336,6 +337,23 @@ const Questseek = () => {
     }
   };
 
+  const deleteMyPostedQuest = async (questId: string, title: string) => {
+    if (!confirm(`Remove "${title}"? This cannot be undone.`)) return;
+    const { data, error } = await supabase.functions.invoke("quest-operations", {
+      body: {
+        operation: "delete_player_quest",
+        questId,
+        targetUserId: impersonatedUser?.user_id,
+      },
+    });
+    if (error || data?.error) {
+      toast({ title: "Cannot remove", description: data?.error || "Failed", variant: "destructive" });
+    } else {
+      toast({ title: "Job removed" });
+      loadData();
+    }
+  };
+
   const approvePlayerApplication = async (acceptanceId: string) => {
     const { data, error } = await supabase.functions.invoke("quest-operations", {
       body: {
@@ -452,7 +470,7 @@ const Questseek = () => {
     if (loading) return;
     if (tabAutoSetRef.current) return;
     tabAutoSetRef.current = true;
-    if (myPostedPendingCount > 0) setActiveTab("reviews");
+    if (myPostedPendingCount > 0) setActiveTab("my_posted");
   }, [loading, myPostedPendingCount]);
 
   const formatRewardRange = (quest: Quest) => {
@@ -682,12 +700,9 @@ const Questseek = () => {
             </TabsTrigger>
             <TabsTrigger value="my_quests">My Jobs ({myJobsCount})</TabsTrigger>
             {myPostedQuests.length > 0 && (
-              <TabsTrigger value="reviews">
-                Reviews {myPostedPendingCount > 0 && `(${myPostedPendingCount})`}
+              <TabsTrigger value="my_posted">
+                My Posted {myPostedPendingCount > 0 && `(${myPostedPendingCount})`}
               </TabsTrigger>
-            )}
-            {myPostedQuests.length > 0 && (
-              <TabsTrigger value="my_posted">My Posted</TabsTrigger>
             )}
           </TabsList>
 
@@ -928,94 +943,6 @@ const Questseek = () => {
           </TabsContent>
 
           {/* Reviews Tab — pending submissions/applications across jobs I posted */}
-          {myPostedQuests.length > 0 && (
-            <TabsContent value="reviews" className="space-y-4">
-              {myPostedPendingCount === 0 ? (
-                <Card className="p-8 bg-gray-900/30 border-gray-700/50 text-center text-gray-400">
-                  No pending reviews. Submissions and applications on jobs you posted will appear here.
-                </Card>
-              ) : (
-                myPostedQuests
-                  .filter(quest => (quest.quest_acceptances || []).some((a: any) => a.status === 'submitted' || a.status === 'pending_approval'))
-                  .map(quest => {
-                    const submissions = quest.quest_acceptances?.filter((a: any) => a.status === 'submitted') || [];
-                    const pendingApps = quest.quest_acceptances?.filter((a: any) => a.status === 'pending_approval') || [];
-                    return (
-                      <Card key={quest.id} className="p-4 bg-gray-900/30 border-amber-500/20">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h4 className="text-white font-medium">{quest.title}</h4>
-                            <p className="text-sm text-gray-400">
-                              {quest.job_type === 'full_time' ? (
-                                <Badge variant="outline" className="text-xs text-purple-400 border-purple-500/50 mr-2">Full-Time • {quest.pay_interval}</Badge>
-                              ) : null}
-                              Reward: {formatRewardRange(quest)}
-                            </p>
-                          </div>
-                          <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
-                            {pendingApps.length > 0 ? `${pendingApps.length} applicants • ` : ''}{submissions.length} to review
-                          </Badge>
-                        </div>
-
-                        {pendingApps.length > 0 && (
-                          <div className="space-y-2 mt-3">
-                            <p className="text-xs text-blue-400 font-medium">Applications</p>
-                            {pendingApps.map((app: any) => (
-                              <div key={app.id} className="p-3 bg-blue-900/10 border border-blue-500/20 rounded-lg flex justify-between items-center">
-                                <div>
-                                  <p className="text-sm text-white font-medium">{myPostedProfileMap[app.user_id] || "Unknown"}</p>
-                                  <p className="text-xs text-gray-500">Wants to work this job</p>
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button size="sm" onClick={() => approvePlayerApplication(app.id)}
-                                    className="bg-gradient-to-r from-emerald-500 to-teal-500">
-                                    <Check className="w-3 h-3 mr-1" /> Hire
-                                  </Button>
-                                  <Button size="sm" variant="outline" className="border-red-500/50 text-red-400 hover:bg-red-900/30"
-                                    onClick={() => rejectPlayerApplication(app.id)}>
-                                    <X className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {submissions.length > 0 && (
-                          <div className="space-y-2 mt-3">
-                            <p className="text-xs text-yellow-400 font-medium">Submissions</p>
-                            {submissions.map((sub: any) => (
-                              <div key={sub.id} className="p-3 bg-yellow-900/10 border border-yellow-500/20 rounded-lg flex justify-between items-start">
-                                <div>
-                                  <p className="text-sm text-white font-medium">{myPostedProfileMap[sub.user_id] || "Unknown"}</p>
-                                  <div className="flex gap-2 mt-1 text-xs">
-                                    {sub.roll_result != null && <Badge variant="outline" className="text-cyan-400 border-cyan-500/50">Roll: {sub.roll_result}</Badge>}
-                                    {sub.roll_type && <Badge variant="outline" className="text-gray-400">{sub.roll_type}</Badge>}
-                                    {sub.submitted_at && <span className="text-gray-500">{new Date(sub.submitted_at).toLocaleString()}</span>}
-                                  </div>
-                                  {sub.notes && <p className="text-xs text-gray-400 mt-1 italic">"{sub.notes}"</p>}
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button size="sm" onClick={() => openApproveDialog(sub, quest)}
-                                    className="bg-gradient-to-r from-emerald-500 to-teal-500">
-                                    <Check className="w-3 h-3 mr-1" /> Pay
-                                  </Button>
-                                  <Button size="sm" variant="outline" className="border-red-500/50 text-red-400 hover:bg-red-900/30"
-                                    onClick={() => rejectPlayerSubmission(sub.id)}>
-                                    <X className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </Card>
-                    );
-                  })
-              )}
-            </TabsContent>
-          )}
-
           {/* My Posted Quests Tab */}
           {myPostedQuests.length > 0 && (
             <TabsContent value="my_posted" className="space-y-4">
@@ -1024,10 +951,14 @@ const Questseek = () => {
                 const pendingApps = quest.quest_acceptances?.filter((a: any) => a.status === 'pending_approval') || [];
                 const accepted = quest.quest_acceptances?.filter((a: any) => a.status === 'accepted') || [];
                 const completed = quest.quest_acceptances?.filter((a: any) => a.status === 'completed') || [];
+                const hasPendingReviews = submissions.length > 0 || pendingApps.length > 0;
+                const postedDateStr = quest.posted_game_day && quest.posted_game_month && quest.posted_game_year
+                  ? formatGameDate({ day: quest.posted_game_day, month: quest.posted_game_month, year: quest.posted_game_year })
+                  : null;
                 return (
                   <Card key={quest.id} className="p-4 bg-gray-900/30 border-amber-500/20">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
+                    <div className="flex justify-between items-start mb-3 gap-3">
+                      <div className="min-w-0">
                         <h4 className="text-white font-medium">{quest.title}</h4>
                         <p className="text-sm text-gray-400">
                           {quest.job_type === 'full_time' ? (
@@ -1036,10 +967,25 @@ const Questseek = () => {
                           Reward: {formatRewardRange(quest)}
                           {quest.status !== 'active' && <span className="text-red-400 ml-2">({quest.status})</span>}
                         </p>
+                        {postedDateStr && (
+                          <p className="text-xs text-gray-500 mt-1">Posted: {postedDateStr}</p>
+                        )}
                       </div>
-                      <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
-                        {pendingApps.length > 0 ? `${pendingApps.length} applicants • ` : ''}{accepted.length} working • {submissions.length} submitted • {completed.length} done
-                      </Badge>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
+                          {pendingApps.length > 0 ? `${pendingApps.length} applicants • ` : ''}{accepted.length} working • {submissions.length} submitted • {completed.length} done
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-red-500/50 text-red-400 hover:bg-red-900/30 h-7 px-2"
+                          disabled={hasPendingReviews}
+                          title={hasPendingReviews ? "Resolve all pending reviews before removing" : "Remove this job"}
+                          onClick={() => deleteMyPostedQuest(quest.id, quest.title)}
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" /> Remove
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Pending applications (full-time) */}
@@ -1075,9 +1021,12 @@ const Questseek = () => {
                           <div key={sub.id} className="p-3 bg-yellow-900/10 border border-yellow-500/20 rounded-lg flex justify-between items-start">
                             <div>
                               <p className="text-sm text-white font-medium">{myPostedProfileMap[sub.user_id] || "Unknown"}</p>
-                              <div className="flex gap-2 mt-1 text-xs">
+                              <div className="flex gap-2 mt-1 text-xs flex-wrap items-center">
                                 {sub.roll_result != null && <Badge variant="outline" className="text-cyan-400 border-cyan-500/50">Roll: {sub.roll_result}</Badge>}
                                 {sub.roll_type && <Badge variant="outline" className="text-gray-400">{sub.roll_type}</Badge>}
+                                {sub.submitted_game_day && sub.submitted_game_month && sub.submitted_game_year && (
+                                  <span className="text-gray-500">Submitted: {formatGameDate({ day: sub.submitted_game_day, month: sub.submitted_game_month, year: sub.submitted_game_year })}</span>
+                                )}
                               </div>
                               {sub.notes && <p className="text-xs text-gray-400 mt-1 italic">"{sub.notes}"</p>}
                             </div>
