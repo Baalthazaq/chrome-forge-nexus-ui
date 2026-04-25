@@ -386,7 +386,12 @@ const QuestseekAdmin = () => {
                     <Card key={app.id} className="p-4 bg-blue-900/10 border-blue-500/30">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="text-white font-medium">{app.quests?.title}</h4>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="text-white font-medium">{app.quests?.title}</h4>
+                            {app.quests?.difficulty && (
+                              <Badge className="text-xs">{app.quests.difficulty}</Badge>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-400">
                             Applicant: {profileMap[app.user_id] || "Unknown"} • Pay: {formatHexRounded(app.quests?.reward || 0)} / {app.quests?.pay_interval || "daily"}
                           </p>
@@ -419,7 +424,12 @@ const QuestseekAdmin = () => {
                     <Card key={sub.id} className="p-4 bg-yellow-900/10 border-yellow-500/30">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="text-white font-medium">{sub.quests?.title}</h4>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="text-white font-medium">{sub.quests?.title}</h4>
+                            {sub.quests?.difficulty && (
+                              <Badge className="text-xs">{sub.quests.difficulty}</Badge>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-400">
                             By: {profileMap[sub.user_id] || "Unknown"} • Range: {formatHexRounded(sub.quests?.reward_min || 0, 'down')} – {formatHexRounded(sub.quests?.reward || 0, 'up')}
                           </p>
