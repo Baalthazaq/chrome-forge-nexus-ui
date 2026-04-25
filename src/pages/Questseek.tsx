@@ -336,6 +336,23 @@ const Questseek = () => {
     }
   };
 
+  const deleteMyPostedQuest = async (questId: string, title: string) => {
+    if (!confirm(`Remove "${title}"? This cannot be undone.`)) return;
+    const { data, error } = await supabase.functions.invoke("quest-operations", {
+      body: {
+        operation: "delete_player_quest",
+        questId,
+        targetUserId: impersonatedUser?.user_id,
+      },
+    });
+    if (error || data?.error) {
+      toast({ title: "Cannot remove", description: data?.error || "Failed", variant: "destructive" });
+    } else {
+      toast({ title: "Job removed" });
+      loadData();
+    }
+  };
+
   const approvePlayerApplication = async (acceptanceId: string) => {
     const { data, error } = await supabase.functions.invoke("quest-operations", {
       body: {
