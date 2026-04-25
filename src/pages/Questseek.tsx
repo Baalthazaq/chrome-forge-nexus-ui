@@ -804,12 +804,21 @@ const Questseek = () => {
                                 <Hammer className="w-3 h-3 mr-1" /> Work
                               </Button>
                             )}
-                            {qa.quests?.job_type !== "full_time" && (
-                              <Button size="sm" onClick={() => openSubmitDialog(qa)}
-                                className="bg-gradient-to-r from-emerald-500 to-teal-500">
-                                Mark Complete
-                              </Button>
-                            )}
+                            {qa.quests?.job_type !== "full_time" && (() => {
+                              const unit = qa.quests?.downtime_cost || 0;
+                              const banked = qa.hours_logged || 0;
+                              const noSlots = qa.quests?.available_quantity !== null && qa.quests?.available_quantity !== undefined && qa.quests.available_quantity <= 0;
+                              const notReady = unit > 0 && banked < unit;
+                              const disabled = noSlots || notReady;
+                              return (
+                                <Button size="sm" onClick={() => openSubmitDialog(qa)}
+                                  disabled={disabled}
+                                  title={notReady ? `Need ${unit}h banked (have ${banked}h)` : noSlots ? "No slots remain" : ""}
+                                  className="bg-gradient-to-r from-emerald-500 to-teal-500 disabled:opacity-50">
+                                  Work Complete
+                                </Button>
+                              );
+                            })()}
                             <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300"
                               onClick={() => resignQuest(qa.quest_id)}>
                               {qa.quests?.job_type === "full_time" ? "Quit" : "Abandon"}
