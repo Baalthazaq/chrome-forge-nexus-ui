@@ -452,7 +452,7 @@ const Questseek = () => {
     if (loading) return;
     if (tabAutoSetRef.current) return;
     tabAutoSetRef.current = true;
-    if (myPostedPendingCount > 0) setActiveTab("reviews");
+    if (myPostedPendingCount > 0) setActiveTab("my_posted");
   }, [loading, myPostedPendingCount]);
 
   const formatRewardRange = (quest: Quest) => {
