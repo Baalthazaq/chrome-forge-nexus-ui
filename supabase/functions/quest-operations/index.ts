@@ -363,6 +363,8 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
     })
   }
 
+  const submitGd = await getCurrentGameDate();
+
   // FULL-TIME path — unchanged semantics: just flip status to submitted
   if (quest.job_type === 'full_time') {
     await supabase
@@ -370,6 +372,9 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
       .update({
         status: 'submitted',
         submitted_at: new Date().toISOString(),
+        submitted_game_day: submitGd.day,
+        submitted_game_month: submitGd.month,
+        submitted_game_year: submitGd.year,
         notes: notes || '',
         roll_result: rollResult ?? null,
         roll_type: rollType ?? null,
@@ -407,6 +412,9 @@ async function submitQuest(userId: string, { questId, notes, rollResult, rollTyp
       user_id: userId,
       status: 'submitted',
       submitted_at: new Date().toISOString(),
+      submitted_game_day: submitGd.day,
+      submitted_game_month: submitGd.month,
+      submitted_game_year: submitGd.year,
       notes: notes || '',
       roll_result: rollResult ?? null,
       roll_type: rollType ?? null,
