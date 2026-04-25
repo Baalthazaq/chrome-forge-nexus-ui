@@ -951,10 +951,14 @@ const Questseek = () => {
                 const pendingApps = quest.quest_acceptances?.filter((a: any) => a.status === 'pending_approval') || [];
                 const accepted = quest.quest_acceptances?.filter((a: any) => a.status === 'accepted') || [];
                 const completed = quest.quest_acceptances?.filter((a: any) => a.status === 'completed') || [];
+                const hasPendingReviews = submissions.length > 0 || pendingApps.length > 0;
+                const postedDateStr = quest.posted_game_day && quest.posted_game_month && quest.posted_game_year
+                  ? formatGameDate({ day: quest.posted_game_day, month: quest.posted_game_month, year: quest.posted_game_year })
+                  : null;
                 return (
                   <Card key={quest.id} className="p-4 bg-gray-900/30 border-amber-500/20">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
+                    <div className="flex justify-between items-start mb-3 gap-3">
+                      <div className="min-w-0">
                         <h4 className="text-white font-medium">{quest.title}</h4>
                         <p className="text-sm text-gray-400">
                           {quest.job_type === 'full_time' ? (
@@ -963,10 +967,25 @@ const Questseek = () => {
                           Reward: {formatRewardRange(quest)}
                           {quest.status !== 'active' && <span className="text-red-400 ml-2">({quest.status})</span>}
                         </p>
+                        {postedDateStr && (
+                          <p className="text-xs text-gray-500 mt-1">Posted: {postedDateStr}</p>
+                        )}
                       </div>
-                      <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
-                        {pendingApps.length > 0 ? `${pendingApps.length} applicants • ` : ''}{accepted.length} working • {submissions.length} submitted • {completed.length} done
-                      </Badge>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
+                          {pendingApps.length > 0 ? `${pendingApps.length} applicants • ` : ''}{accepted.length} working • {submissions.length} submitted • {completed.length} done
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-red-500/50 text-red-400 hover:bg-red-900/30 h-7 px-2"
+                          disabled={hasPendingReviews}
+                          title={hasPendingReviews ? "Resolve all pending reviews before removing" : "Remove this job"}
+                          onClick={() => deleteMyPostedQuest(quest.id, quest.title)}
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" /> Remove
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Pending applications (full-time) */}
