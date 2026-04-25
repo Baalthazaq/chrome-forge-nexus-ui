@@ -513,6 +513,8 @@ async function createPlayerQuest(userId: string, params: any) {
   const jobType = params.job_type || 'commission';
   const payInterval = params.pay_interval || 'daily';
 
+  const gd = await getCurrentGameDate();
+
   const { error } = await supabase.from('quests').insert({
     title,
     description: description || null,
@@ -528,6 +530,9 @@ async function createPlayerQuest(userId: string, params: any) {
     pay_interval: jobType === 'full_time' ? payInterval : null,
     posted_by_user_id: userId,
     status: 'active',
+    posted_game_day: gd.day,
+    posted_game_month: gd.month,
+    posted_game_year: gd.year,
   })
 
   if (error) throw error
