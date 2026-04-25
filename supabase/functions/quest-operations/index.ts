@@ -840,7 +840,7 @@ async function logQuestHours(userId: string, { questId, hours }: { questId: stri
 
   const { data: quest } = await supabase
     .from('quests')
-    .select('downtime_cost, title')
+    .select('downtime_cost, title, available_quantity, job_type')
     .eq('id', questId)
     .single()
 
@@ -851,8 +851,19 @@ async function logQuestHours(userId: string, { questId, hours }: { questId: stri
     })
   }
 
-  // Allow logging any number of hours (no cap) — surplus is banked for next pay cycle
-  const hoursToLog = hours
+  // Cap hours so we never bank more than (downtime_cost * available_quantity)
+  // for commissions with limited slots. Full-time and unlimited (null) are uncapped.
+  let hoursToLog = hours
+  if (quest.job_type === 'commission' && quest.available_quantity !== null) {
+    const maxBankable = quest.downtime_cost * Math.max(0, quest.available_quantity)
+    const room = Math.max(0, maxBankable - (acceptance.hours_logged || 0))
+    if (room <= 0) {
+      return new Response(JSON.stringify({ error: 'You already have enough hours banked for every remaining slot.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    hoursToLog = Math.min(hours, room)
+  }
 
   // Check downtime balance
   const { data: downtime } = await supabase
