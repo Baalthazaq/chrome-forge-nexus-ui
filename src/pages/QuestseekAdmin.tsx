@@ -511,7 +511,7 @@ const QuestseekAdmin = () => {
                           {quest.job_type === "full_time" ? "Full-Time" : "Commission"}
                         </Badge>
                         {quest.difficulty && (
-                          <Badge className="text-xs">{quest.difficulty}</Badge>
+                          <Badge className={`text-xs ${difficultyColors[quest.difficulty] || "bg-gray-800 text-gray-400"}`}>{quest.difficulty}</Badge>
                         )}
                       </div>
                       <p className="text-sm text-gray-400">
