@@ -986,25 +986,38 @@ const Questseek = () => {
           <DialogHeader>
             <DialogTitle className="text-white">Log Hours</DialogTitle>
             <DialogDescription className="text-gray-400">
-              {logHoursTarget?.quests?.title} — {logHoursTarget?.hours_logged || 0}/{logHoursTarget?.quests?.downtime_cost || 0}h completed
+              {logHoursTarget?.quests?.title} — {logHoursTarget?.hours_logged || 0}/{logHoursTarget?.quests?.downtime_cost || 0}h banked
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-gray-300">Hours to log</Label>
-              <Input
-                type="number"
-                min="1"
-                value={logHoursAmount}
-                onChange={(e) => setLogHoursAmount(e.target.value)}
-                placeholder="Hours to work"
-                className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-500"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Available downtime: {downtimeBalance}h • Logged: {logHoursTarget?.hours_logged || 0}/{logHoursTarget?.quests?.downtime_cost || 0}h
-              </p>
-            </div>
-          </div>
+          {(() => {
+            const unit = logHoursTarget?.quests?.downtime_cost || 0;
+            const avail = logHoursTarget?.quests?.available_quantity;
+            const banked = logHoursTarget?.hours_logged || 0;
+            const cap = avail === null || avail === undefined
+              ? Number.POSITIVE_INFINITY
+              : Math.max(0, unit * avail - banked);
+            const maxLabel = isFinite(cap) ? `${cap}` : "∞";
+            return (
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-gray-300">Hours to log</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={isFinite(cap) ? cap : undefined}
+                    value={logHoursAmount}
+                    onChange={(e) => setLogHoursAmount(e.target.value)}
+                    placeholder="Hours to work"
+                    className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-500"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Available downtime: {downtimeBalance}h • Max for this job: {maxLabel}h
+                    {avail !== null && avail !== undefined && ` (covers up to ${avail} completion${avail === 1 ? "" : "s"})`}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
           <DialogFooter>
             <Button variant="ghost" className="text-gray-300 hover:text-white" onClick={() => setLogHoursOpen(false)}>Cancel</Button>
             <Button onClick={logQuestHours} className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white">
