@@ -17,6 +17,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 
+const difficultyColors: Record<string, string> = {
+  "Low Risk": "bg-green-900/30 text-green-400 border-green-500/50",
+  "Medium Risk": "bg-yellow-900/30 text-yellow-400 border-yellow-500/50",
+  "High Risk": "bg-red-900/30 text-red-400 border-red-500/50",
+};
+
 const QuestseekAdmin = () => {
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
@@ -389,7 +395,7 @@ const QuestseekAdmin = () => {
                           <div className="flex items-center gap-2 flex-wrap">
                             <h4 className="text-white font-medium">{app.quests?.title}</h4>
                             {app.quests?.difficulty && (
-                              <Badge className="text-xs">{app.quests.difficulty}</Badge>
+                              <Badge className={`text-xs ${difficultyColors[app.quests.difficulty] || "bg-gray-800 text-gray-400"}`}>{app.quests.difficulty}</Badge>
                             )}
                           </div>
                           <p className="text-sm text-gray-400">
@@ -427,7 +433,7 @@ const QuestseekAdmin = () => {
                           <div className="flex items-center gap-2 flex-wrap">
                             <h4 className="text-white font-medium">{sub.quests?.title}</h4>
                             {sub.quests?.difficulty && (
-                              <Badge className="text-xs">{sub.quests.difficulty}</Badge>
+                              <Badge className={`text-xs ${difficultyColors[sub.quests.difficulty] || "bg-gray-800 text-gray-400"}`}>{sub.quests.difficulty}</Badge>
                             )}
                           </div>
                           <p className="text-sm text-gray-400">
@@ -505,7 +511,7 @@ const QuestseekAdmin = () => {
                           {quest.job_type === "full_time" ? "Full-Time" : "Commission"}
                         </Badge>
                         {quest.difficulty && (
-                          <Badge className="text-xs">{quest.difficulty}</Badge>
+                          <Badge className={`text-xs ${difficultyColors[quest.difficulty] || "bg-gray-800 text-gray-400"}`}>{quest.difficulty}</Badge>
                         )}
                       </div>
                       <p className="text-sm text-gray-400">
