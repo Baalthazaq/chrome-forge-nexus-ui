@@ -682,12 +682,9 @@ const Questseek = () => {
             </TabsTrigger>
             <TabsTrigger value="my_quests">My Jobs ({myJobsCount})</TabsTrigger>
             {myPostedQuests.length > 0 && (
-              <TabsTrigger value="reviews">
-                Reviews {myPostedPendingCount > 0 && `(${myPostedPendingCount})`}
+              <TabsTrigger value="my_posted">
+                My Posted {myPostedPendingCount > 0 && `(${myPostedPendingCount})`}
               </TabsTrigger>
-            )}
-            {myPostedQuests.length > 0 && (
-              <TabsTrigger value="my_posted">My Posted</TabsTrigger>
             )}
           </TabsList>
 
