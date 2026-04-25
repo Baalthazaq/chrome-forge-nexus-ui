@@ -17,6 +17,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 
+const difficultyColors: Record<string, string> = {
+  "Low Risk": "bg-green-900/30 text-green-400 border-green-500/50",
+  "Medium Risk": "bg-yellow-900/30 text-yellow-400 border-yellow-500/50",
+  "High Risk": "bg-red-900/30 text-red-400 border-red-500/50",
+};
+
 const QuestseekAdmin = () => {
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
