@@ -83,6 +83,8 @@ Deno.serve(async (req) => {
         return await rejectPlayerApplication(effectiveUserId, params)
       case 'log_quest_hours':
         return await logQuestHours(effectiveUserId, params)
+      case 'delete_player_quest':
+        return await deletePlayerQuest(effectiveUserId, params)
       default:
         return new Response(JSON.stringify({ error: 'Invalid operation' }), {
           status: 400,
