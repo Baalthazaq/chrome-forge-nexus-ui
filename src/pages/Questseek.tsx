@@ -112,6 +112,10 @@ const Questseek = () => {
   const [fullTimePage, setFullTimePage] = useState(1);
   const [communityPage, setCommunityPage] = useState(1);
 
+  // Active tab (controlled so we can auto-default to Reviews when there are pending player reviews)
+  const [activeTab, setActiveTab] = useState<string>("my_quests");
+  const tabAutoSetRef = useRef(false);
+
   useEffect(() => {
     supabase.from("game_calendar").select("*").limit(1).single().then(({ data }) => {
       if (data) setGameDate({ day: data.current_day, month: data.current_month, year: data.current_year });
