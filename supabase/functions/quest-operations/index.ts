@@ -578,7 +578,7 @@ async function getCommunityQuests() {
 async function getMyPostedQuests(userId: string) {
   const { data, error } = await supabase
     .from('quests')
-    .select(`*, quest_acceptances (id, user_id, status, submitted_at, roll_result, roll_type, notes, final_payment, admin_notes)`)
+    .select(`*, quest_acceptances (id, user_id, status, submitted_at, submitted_game_day, submitted_game_month, submitted_game_year, roll_result, roll_type, notes, final_payment, admin_notes)`)
     .eq('posted_by_user_id', userId)
     .order('created_at', { ascending: false })
 
