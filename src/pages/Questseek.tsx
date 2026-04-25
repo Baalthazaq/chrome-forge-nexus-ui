@@ -447,6 +447,14 @@ const Questseek = () => {
   const myPostedPendingCount = myPostedQuests.reduce((sum, q) => 
     sum + (q.quest_acceptances?.filter((a: any) => a.status === 'submitted' || a.status === 'pending_approval').length || 0), 0);
 
+  // On first load, if the player has pending reviews on jobs they posted, land on the Reviews tab.
+  useEffect(() => {
+    if (loading) return;
+    if (tabAutoSetRef.current) return;
+    tabAutoSetRef.current = true;
+    if (myPostedPendingCount > 0) setActiveTab("reviews");
+  }, [loading, myPostedPendingCount]);
+
   const formatRewardRange = (quest: Quest) => {
     if (quest.reward_min > 0 && quest.reward_min !== quest.reward) {
       return `${formatHexRounded(quest.reward_min, 'down')} – ${formatHexRounded(quest.reward, 'up')}`;
