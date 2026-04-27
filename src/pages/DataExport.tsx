@@ -20,6 +20,10 @@ const TABLE_NAMES = [
   'user_roles', 'reputation_tags', 'shop_items', 'succubus_profiles',
   'suggestions', 'tome_entries', 'tome_shares', 'user_activity',
   'user_augmentations', 'wishlist_items',
+  'bestiary_creatures', 'bestiary_features',
+  'encounters', 'environments', 'environment_features',
+  'evolution_nodes', 'evolution_edges', 'evolution_transformations',
+  'tome_collaborators', 'tome_versions',
 ] as const;
 
 type TableName = typeof TABLE_NAMES[number];
