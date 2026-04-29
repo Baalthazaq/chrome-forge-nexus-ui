@@ -102,6 +102,18 @@ const TimestopAdmin = () => {
     },
   });
 
+  const { data: annualEvents = [] } = useQuery({
+    queryKey: ["calendar-events-admin-annual", viewYear],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("calendar_events").select("*");
+      if (error) throw error;
+      return (data as CalendarEvent[]).filter(
+        (e) => e.event_year === null || e.event_year === viewYear
+      );
+    },
+    enabled: viewMode === "annual",
+  });
+
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-all"],
     queryFn: async () => {
