@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, FastForward, Loader2, Calendar, ChevronDown, ChevronUp, Search, Pencil, Home, Clock, Timer } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Star, FastForward, Loader2, Calendar, ChevronDown, ChevronUp, Search, Pencil, Home, Clock, Timer, List } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,6 +35,7 @@ const TimestopAdmin = () => {
   const queryClient = useQueryClient();
   const [viewMonth, setViewMonth] = useState(1);
   const [viewYear, setViewYear] = useState(2626);
+  const [viewMode, setViewMode] = useState<"monthly" | "annual">("monthly");
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [advanceDays, setAdvanceDays] = useState(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -99,6 +100,18 @@ const TimestopAdmin = () => {
         (e) => (e.event_year === null || e.event_year === prevMonthYear) && e.event_day_end && e.event_day_end > 28
       );
     },
+  });
+
+  const { data: annualEvents = [] } = useQuery({
+    queryKey: ["calendar-events-admin-annual", viewYear],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("calendar_events").select("*");
+      if (error) throw error;
+      return (data as CalendarEvent[]).filter(
+        (e) => e.event_year === null || e.event_year === viewYear
+      );
+    },
+    enabled: viewMode === "annual",
   });
 
   const { data: profiles = [] } = useQuery({
@@ -423,6 +436,85 @@ const TimestopAdmin = () => {
           </div>
         </Card>
 
+        {/* View Mode Toggle */}
+        <div className="flex justify-center gap-2 mb-4">
+          <Button size="sm" variant={viewMode === "monthly" ? "default" : "ghost"} onClick={() => setViewMode("monthly")} className={viewMode === "monthly" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
+            <Calendar className="w-3 h-3 mr-1" /> Monthly
+          </Button>
+          <Button size="sm" variant={viewMode === "annual" ? "default" : "ghost"} onClick={() => setViewMode("annual")} className={viewMode === "annual" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
+            <List className="w-3 h-3 mr-1" /> Annual
+          </Button>
+        </div>
+
+        {viewMode === "annual" ? (
+          /* Annual Timeline View */
+          <Card className="bg-gray-900/40 border-gray-700/50 p-5 mb-6">
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <button onClick={() => setViewYear((y) => y - 1)} className="text-gray-400 hover:text-amber-300 transition-colors">
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <p className="text-amber-300/80 font-mono text-sm">Year {viewYear} — Full Timeline</p>
+              <button onClick={() => setViewYear((y) => y + 1)} className="text-gray-400 hover:text-amber-300 transition-colors">
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              {MONTHS.map((month) => {
+                const monthEvts = annualEvents
+                  .filter((e) => e.event_month === month.number)
+                  .sort((a, b) => a.event_day - b.event_day);
+                if (monthEvts.length === 0) return null;
+                const isCurrent = month.number === currentDate.month && viewYear === currentDate.year;
+                return (
+                  <div key={month.number} className={`p-3 rounded border ${isCurrent ? "border-amber-500/30 bg-amber-500/5" : "border-gray-700/40 bg-gray-900/20"}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className={`font-mono text-sm font-medium ${isCurrent ? "text-amber-300" : "text-gray-300"}`}>{month.name}</h3>
+                      {month.season !== "-" && <span className="text-gray-600 font-mono text-xs">({month.season})</span>}
+                      {isCurrent && <span className="text-amber-500/60 text-xs font-mono">← current</span>}
+                      <span className="text-gray-600 text-xs font-mono ml-auto">{monthEvts.length} event(s)</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {monthEvts.map((event) => {
+                        const dayLabel = event.event_day === 0
+                          ? "All month"
+                          : event.event_day_end && event.event_day_end > event.event_day
+                            ? (event.event_day_end > 28
+                                ? `${event.event_day}–${event.event_day_end - 28} (next mo.)`
+                                : `${event.event_day}–${event.event_day_end}`)
+                            : `Day ${event.event_day}`;
+                        return (
+                          <div key={event.id} className={`p-2 rounded flex items-center gap-2 ${event.is_holiday ? "bg-amber-500/5 border border-amber-500/20" : event.user_id ? "bg-cyan-500/5 border border-cyan-500/20" : "bg-emerald-500/5 border border-emerald-500/20"}`}>
+                            {event.is_holiday && <Star className="w-3 h-3 text-amber-400 shrink-0" />}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className={`text-xs font-medium ${event.is_holiday ? "text-amber-300" : event.user_id ? "text-cyan-300" : "text-emerald-300"}`}>
+                                  {event.title}
+                                </p>
+                                <span className="text-gray-600 text-xs font-mono">{dayLabel}</span>
+                                <span className="text-gray-500 text-xs">— {event.is_holiday ? "Holiday" : getCharName(event.user_id)}</span>
+                              </div>
+                              {event.description && <p className="text-gray-500 text-xs mt-0.5">{event.description}</p>}
+                            </div>
+                            <Button size="sm" variant="ghost" onClick={() => startEditing(event)} className="text-gray-400 hover:text-white h-6 w-6 p-0 shrink-0">
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => deleteEvent.mutate(event.id)} className="text-red-400 hover:text-red-300 h-6 w-6 p-0 shrink-0">
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              {annualEvents.length === 0 && (
+                <p className="text-center text-gray-500 text-sm py-6">No events in Year {viewYear}.</p>
+              )}
+            </div>
+          </Card>
+        ) : (
+        <>
         {/* Calendar Grid */}
         <Card className="bg-gray-900/40 border-gray-700/50 p-5 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -635,6 +727,8 @@ const TimestopAdmin = () => {
               </div>
             )}
           </Card>
+        )}
+        </>
         )}
 
         {/* Edit Event Dialog */}
