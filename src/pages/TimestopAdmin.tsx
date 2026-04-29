@@ -35,6 +35,7 @@ const TimestopAdmin = () => {
   const queryClient = useQueryClient();
   const [viewMonth, setViewMonth] = useState(1);
   const [viewYear, setViewYear] = useState(2626);
+  const [viewMode, setViewMode] = useState<"monthly" | "annual">("monthly");
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [advanceDays, setAdvanceDays] = useState(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
