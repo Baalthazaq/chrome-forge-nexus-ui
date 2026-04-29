@@ -728,6 +728,8 @@ const TimestopAdmin = () => {
             )}
           </Card>
         )}
+        </>
+        )}
 
         {/* Edit Event Dialog */}
         <Dialog open={editEventOpen} onOpenChange={setEditEventOpen}>
