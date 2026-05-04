@@ -48,6 +48,7 @@ const QuestseekAdmin = () => {
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [finalPayment, setFinalPayment] = useState("");
+  const [downtimeAdjustment, setDowntimeAdjustment] = useState("0");
   const [participants, setParticipants] = useState<string[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
 
