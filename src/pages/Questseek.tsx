@@ -481,9 +481,15 @@ const Questseek = () => {
   };
 
   const QuestCard = ({ quest, showAccept = true, posterName }: { quest: Quest & { quest_acceptances?: any[] }; showAccept?: boolean; posterName?: string }) => {
-    const isAlreadyAccepted = myQuests.some(
-      mq => mq.quest_id === quest.id && (mq.status === "accepted" || mq.status === "submitted" || mq.status === "pending_approval")
+    const hasAcceptedQuest = myQuests.some(
+      mq => mq.quest_id === quest.id && mq.status === "accepted"
     );
+    const hasPendingApproval = myQuests.some(
+      mq => mq.quest_id === quest.id && mq.status === "pending_approval"
+    );
+    const isAlreadyAccepted = quest.job_type === "full_time"
+      ? hasAcceptedQuest || hasPendingApproval
+      : hasAcceptedQuest;
     const isOwnQuest = quest.posted_by_user_id === effectiveUserId;
     const isPositionFilled = quest.job_type === "full_time" && quest.quest_acceptances?.some((a: any) => a.status === "accepted");
 
@@ -569,7 +575,7 @@ const Questseek = () => {
           )}
           {isAlreadyAccepted && !isOwnQuest && (
             <Badge className="bg-emerald-900/30 text-emerald-400 border-emerald-500/50">
-              {myQuests.find(mq => mq.quest_id === quest.id && mq.status === "pending_approval") ? "Applied" : "In Progress"}
+              {hasPendingApproval ? "Applied" : "In Progress"}
             </Badge>
           )}
         </div>
