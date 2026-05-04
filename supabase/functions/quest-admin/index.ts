@@ -167,7 +167,7 @@ async function getPendingApplications() {
   })
 }
 
-async function completeQuest({ acceptanceId, finalPayment, participants = [] }: { acceptanceId: string, finalPayment: number, participants?: string[] }) {
+async function completeQuest({ acceptanceId, finalPayment, downtimeAdjustment = 0, participants = [] }: { acceptanceId: string, finalPayment: number, downtimeAdjustment?: number, participants?: string[] }) {
   const { data: acceptance, error: acceptanceError } = await supabase
     .from('quest_acceptances')
     .select(`*, quests (id, title, reward, job_type, available_quantity)`)
@@ -179,7 +179,8 @@ async function completeQuest({ acceptanceId, finalPayment, participants = [] }: 
   const totalParticipants = participants.length > 0 ? participants.length : 1
   const paymentPerParticipant = Math.floor(finalPayment / totalParticipants)
   const participantIds = participants.length > 0 ? participants : [acceptance.user_id]
-  
+  const dt = Math.trunc(Number(downtimeAdjustment) || 0)
+
   for (const participantId of participantIds) {
     const { data: profile } = await supabase.from('profiles').select('credits').eq('user_id', participantId).single()
     if (!profile) continue
@@ -194,17 +195,34 @@ async function completeQuest({ acceptanceId, finalPayment, participants = [] }: 
       status: 'completed',
       metadata: { quest_id: acceptance.quest_id, acceptance_id: acceptanceId, original_reward: acceptance.quests.reward, final_payment: finalPayment, roll_result: acceptance.roll_result, roll_type: acceptance.roll_type }
     })
+
+    if (dt !== 0) {
+      const { data: bal } = await supabase.from('downtime_balances').select('id, balance').eq('user_id', participantId).maybeSingle()
+      if (bal) {
+        await supabase.from('downtime_balances').update({ balance: (bal.balance || 0) + dt, updated_at: new Date().toISOString() }).eq('id', bal.id)
+      } else {
+        await supabase.from('downtime_balances').insert({ user_id: participantId, balance: dt })
+      }
+      await supabase.from('downtime_activities').insert({
+        user_id: participantId,
+        activity_type: 'quest_adjustment',
+        hours_spent: -dt,
+        notes: `${dt > 0 ? 'Granted' : 'Penalty'} ${Math.abs(dt)}h — ${acceptance.quests.title}${acceptance.roll_result != null ? ` (roll ${acceptance.roll_result}${acceptance.roll_type ? ` ${acceptance.roll_type}` : ''})` : ''}`,
+      })
+    }
   }
 
+  const dtNote = dt !== 0 ? ` ${dt > 0 ? '+' : ''}${dt}h downtime` : ''
+  const rollNote = acceptance.roll_result != null ? ` Roll: ${acceptance.roll_result}${acceptance.roll_type ? ` (${acceptance.roll_type})` : ''}.` : ''
   await supabase.from('quest_acceptances').update({
     status: 'completed',
     completed_at: new Date().toISOString(),
     final_payment: finalPayment,
     times_completed: (acceptance.times_completed || 0) + 1,
-    admin_notes: `Approved. Paid ${finalPayment} to ${participantIds.length} participant(s).`
+    admin_notes: `Approved. Paid ${finalPayment} credits${dtNote} to ${participantIds.length} participant(s).${rollNote}`
   }).eq('id', acceptanceId)
 
-  return new Response(JSON.stringify({ success: true, participantsPaid: participantIds.length, paymentPerParticipant }), {
+  return new Response(JSON.stringify({ success: true, participantsPaid: participantIds.length, paymentPerParticipant, downtimeAdjustment: dt }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })
 }

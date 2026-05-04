@@ -48,6 +48,7 @@ const QuestseekAdmin = () => {
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [finalPayment, setFinalPayment] = useState("");
+  const [downtimeAdjustment, setDowntimeAdjustment] = useState("0");
   const [participants, setParticipants] = useState<string[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
 
@@ -158,9 +159,48 @@ const QuestseekAdmin = () => {
     }
   };
 
+  const dcForRisk = (d: string) => d === "High Risk" ? 16 : d === "Medium Risk" ? 13 : 10;
+
+  const computeSuggestion = (sub: any) => {
+    const q = sub?.quests || {};
+    const min = q.reward_min || 0;
+    const max = q.reward || 0;
+    const roll = sub?.roll_result;
+    const rollType = sub?.roll_type;
+    const dc = dcForRisk(q.difficulty || "Low Risk");
+    const unitHours = q.downtime_cost || 0;
+
+    let credits = max;
+    let hours = 0;
+    let banner: { text: string; tone: "fail" | "crit" | "info" } | null = null;
+
+    if (roll == null) {
+      banner = { text: `DC ${dc}`, tone: "info" };
+    } else if (rollType === "critical_success") {
+      credits = max;
+      hours = Math.max(1, Math.ceil(unitHours / 2));
+      banner = { text: `Critical Success — full payout + ${hours}h refund suggested`, tone: "crit" };
+    } else if (roll < dc) {
+      credits = min;
+      hours = 0;
+      banner = { text: `Failed roll (${roll} vs DC ${dc}) — minimum payout suggested`, tone: "fail" };
+    } else {
+      const span = Math.max(1, 30 - dc);
+      const range = Math.max(0, max - min - 1);
+      credits = Math.round(min + 1 + Math.min(roll - dc, span) * range / span);
+      credits = Math.max(min + 1, Math.min(max, credits));
+      if (rollType === "hope") hours = 1;
+      else if (rollType === "fear") hours = -1;
+      banner = { text: `DC ${dc} • Rolled ${roll}${rollType ? ` (${rollType.replace("_", " ")})` : ""}`, tone: "info" };
+    }
+    return { credits, hours, banner, dc, min, max };
+  };
+
   const openCompleteDialog = (sub: any) => {
     setSelectedSubmission(sub);
-    setFinalPayment(sub.quests?.reward?.toString() || "0");
+    const s = computeSuggestion(sub);
+    setFinalPayment(String(s.credits));
+    setDowntimeAdjustment(String(s.hours));
     setParticipants([sub.user_id]);
     setCompleteDialogOpen(true);
   };
@@ -172,6 +212,7 @@ const QuestseekAdmin = () => {
         operation: "complete_quest",
         acceptanceId: selectedSubmission.id,
         finalPayment: parseInt(finalPayment) || 0,
+        downtimeAdjustment: parseInt(downtimeAdjustment) || 0,
         participants,
       },
     });
@@ -705,13 +746,34 @@ const QuestseekAdmin = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {selectedSubmission && (() => {
+              const s = computeSuggestion(selectedSubmission);
+              const toneClass = s.banner?.tone === "fail"
+                ? "bg-red-900/30 border-red-500/50 text-red-300"
+                : s.banner?.tone === "crit"
+                ? "bg-yellow-900/30 border-yellow-500/50 text-yellow-300"
+                : "bg-gray-800/60 border-gray-600 text-gray-300";
+              return (
+                <div className={`text-xs px-3 py-2 rounded border ${toneClass}`}>
+                  {s.banner?.text} • Suggested {formatHex(s.credits)}{s.hours !== 0 ? ` + ${s.hours}h` : ""}
+                </div>
+              );
+            })()}
             <div>
               <Label className="text-gray-300">Final Payment (⏣ Hex)</Label>
               <Input type="number" value={finalPayment} onChange={e => setFinalPayment(e.target.value)}
                 className="bg-gray-800 border-gray-600 text-white" />
               <p className="text-xs text-gray-500 mt-1">
-                Range: {formatHex(selectedSubmission?.quests?.reward_min || 0)} – {formatHex(selectedSubmission?.quests?.reward || 0)}
+                Job range: {formatHex(selectedSubmission?.quests?.reward_min || 0)} – {formatHex(selectedSubmission?.quests?.reward || 0)} (suggestion only — admin may override)
                 {participants.length > 1 && ` • Split: ${formatHex(Math.floor((parseInt(finalPayment) || 0) / participants.length))} each`}
+              </p>
+            </div>
+            <div>
+              <Label className="text-gray-300">Downtime Adjustment (hours)</Label>
+              <Input type="number" value={downtimeAdjustment} onChange={e => setDowntimeAdjustment(e.target.value)}
+                className="bg-gray-800 border-gray-600 text-white" />
+              <p className="text-xs text-gray-500 mt-1">
+                Positive = grant hours, negative = penalty. Applied to each participant.
               </p>
             </div>
             <div>
