@@ -1,53 +1,57 @@
-## Commission "Work Complete" overhaul + Reviews tab
+## Goal
+Upgrade the Questseek admin "Approve" dialog so admins can pay in **credits and/or downtime hours**, apply downtime **penalties**, and get a **suggested payout** based on the player's roll vs. the job's risk DC. Suggestions are hints — admin can always override (no min/max clamp on the inputs). All suggested numbers are whole integers.
 
-### 1. Log Hours input (Questseek front-end)
+## Suggestion logic
 
-In `src/pages/Questseek.tsx`:
-- Default `logHoursAmount` to empty string (already is) — keep `<Input>` blank, no `0` placeholder. Confirm `min="1"`, no `defaultValue`.
-- Compute and pass a hard `max` to the input:
-  - `unitHours = quest.downtime_cost`
-  - `available = quest.available_quantity ?? 1` (treat null = unlimited; only cap when set)
-  - `maxHours = unitHours * available - already_logged_for_unit_remainder`
-  - Show helper text: `"Max ${maxHours}h (covers up to ${available} completion(s))"`.
-- Client-side guard before invoking: clamp `hours` and reject if > max.
+DC by risk:
+- Low Risk → 10
+- Medium Risk → 13
+- High Risk → 16
 
-### 2. "Work Complete" = one-at-a-time completion
+Inputs: `min = quest.reward_min`, `max = quest.reward`, `roll`, `DC`, `unitHours = quest.downtime_cost`.
 
-Today, a single submit consumes all `hours_logged` ≥ `downtime_cost` and decrements `available_quantity` by 1, but leftover banked hours can be re-used silently. Change so that pressing **Work Complete**:
+- **Failure (roll < DC)** → suggest `min` credits, downtime adj `0`. Banner: "Failed roll — minimum payout suggested" (red).
+- **Success (roll ≥ DC)** → linear ramp where `roll = DC` yields `min + 1`, `roll ≥ 30` yields `max`.
+  - `suggested = Math.round(min + 1 + (roll - DC) * (max - min - 1) / (30 - DC))`
+  - Clamp to `[min + 1, max]`. Guard when `max ≤ min + 1` (just use `max`).
+- **Hope roll** → downtime adjustment `+1` hour.
+- **Fear roll** → downtime adjustment `-1` hour.
+- **Critical Success** → suggest `max` credits AND refund `Math.max(1, Math.ceil(unitHours / 2))` hours.
 
-- Validates `hours_logged >= downtime_cost` for the unit.
-- Submits exactly **one** unit:
-  - Creates a **new submitted acceptance row** (one per completion) so each shows up as a distinct review in admin / poster's review box.
-  - Subtracts `downtime_cost` from `hours_logged` on the active acceptance (carry remainder forward).
-  - Decrements `quests.available_quantity` by 1.
-- Leaves the active acceptance in `accepted` status with the remaining banked hours so the player can press **Work Complete** again immediately if they have enough hours and slots remain.
-- Disables the button when `hours_logged < downtime_cost` OR `available_quantity <= 0`.
+(No critical-failure handling — Daggerheart has no crit fail.)
 
-Edge function changes in `supabase/functions/quest-operations/index.ts`:
-- Refactor `submitQuest` (commission branch) to the new "split one completion off" semantics described above. Full-time path unchanged.
-- Cap `logQuestHours` so a single log call cannot push `hours_logged` above `downtime_cost * available_quantity` (re-fetched live), to defend against stale UI.
+All suggested values are integers via `Math.round` / `Math.ceil`. Admin inputs accept any integer (positive, negative, above max, below min).
 
-### 3. Per-completion review rows
+## Admin dialog changes (`src/pages/QuestseekAdmin.tsx`)
 
-Because each completion is its own `quest_acceptances` row with `status='submitted'`:
-- Admin Review box (`get_submitted_quests`) automatically lists each as a separate entry — no change needed.
-- Player-poster "My Posted" view automatically lists each submission separately — no change needed.
+- Add state: `downtimeAdjustment` (string, signed integer hours; positive = grant, negative = penalty).
+- On opening dialog, compute suggested credits + hours from roll/risk and pre-fill both fields.
+- Banner above inputs:
+  - Red "Failed roll — minimum payout suggested" for failure
+  - Gold "Critical Success — full payout + hours refund suggested" for crit success
+  - Otherwise neutral context line: `"DC ${dc} • Rolled ${roll} (${rollType})"`
+- New input row: **Downtime adjustment (hours)** with helper text "positive = grant hours, negative = penalty".
+- Relabel credit field helper to: `"Suggested ⏣X • job range ⏣min – ⏣max"`.
 
-### 4. Player-posted commission reviews → Reviews tab + default landing
+## Edge function changes (`supabase/functions/quest-admin/index.ts`)
 
-In `src/pages/Questseek.tsx`:
-- Compute `pendingPlayerReviews` = sum of `submitted` + `pending_approval` acceptances across `myPostedQuests`.
-- Add new **Reviews** tab (value `reviews`) placed immediately after **My Jobs**:
-  - Trigger label: `Reviews (${pendingPlayerReviews})`, only rendered when the user has any posted quests.
-  - Content reuses the existing "Submissions" / "Applications" panels currently inside the **My Posted** tab, filtered to entries that need action.
-- Keep the existing **My Posted** tab for full management of posted jobs (active/completed history).
-- Default tab logic:
-  - If `pendingPlayerReviews > 0` → default `reviews`.
-  - Else fall back to current default `my_quests`.
-- Implement via `Tabs` controlled `value` with `useState` initialized from the computed default.
+`complete_quest` accepts new param `downtimeAdjustment` (signed int, default 0):
 
-### Out of scope
+1. Pay credits as today (split across participants).
+2. For each participant, if `downtimeAdjustment !== 0`:
+   - Upsert `downtime_balances` (`balance += downtimeAdjustment`); allow negative (no floor here).
+   - Insert a `downtime_activities` row (`activity_type = 'quest_adjustment'`, `hours_spent = -downtimeAdjustment`, notes referencing quest title + roll).
+3. Update `admin_notes` to include both credit and downtime info, e.g.:
+   `"Approved. Paid ⏣500 + 2h downtime to Trinker. Roll: 14 (hope) vs DC 13."`
+4. Return `{ participantsPaid, paymentPerParticipant, downtimeAdjustment }`.
 
-- Full-time job semantics (unchanged).
-- Changing how downtime balance is deducted at log time (still up-front).
-- Backfilling past mis-logged hours.
+## Notification surface
+
+`useAppNotifications` already flags `quest_acceptances` rows with non-null `admin_notes`. The richer notes (credits + hours + roll) automatically show up in the player's My Jobs view.
+
+## Files touched
+
+- `src/pages/QuestseekAdmin.tsx` — dialog UI, suggestion calc, new state, send `downtimeAdjustment`
+- `supabase/functions/quest-admin/index.ts` — extend `complete_quest` to apply downtime + write richer notes
+
+No DB schema changes needed.
