@@ -159,9 +159,48 @@ const QuestseekAdmin = () => {
     }
   };
 
+  const dcForRisk = (d: string) => d === "High Risk" ? 16 : d === "Medium Risk" ? 13 : 10;
+
+  const computeSuggestion = (sub: any) => {
+    const q = sub?.quests || {};
+    const min = q.reward_min || 0;
+    const max = q.reward || 0;
+    const roll = sub?.roll_result;
+    const rollType = sub?.roll_type;
+    const dc = dcForRisk(q.difficulty || "Low Risk");
+    const unitHours = q.downtime_cost || 0;
+
+    let credits = max;
+    let hours = 0;
+    let banner: { text: string; tone: "fail" | "crit" | "info" } | null = null;
+
+    if (roll == null) {
+      banner = { text: `DC ${dc}`, tone: "info" };
+    } else if (rollType === "critical_success") {
+      credits = max;
+      hours = Math.max(1, Math.ceil(unitHours / 2));
+      banner = { text: `Critical Success — full payout + ${hours}h refund suggested`, tone: "crit" };
+    } else if (roll < dc) {
+      credits = min;
+      hours = 0;
+      banner = { text: `Failed roll (${roll} vs DC ${dc}) — minimum payout suggested`, tone: "fail" };
+    } else {
+      const span = Math.max(1, 30 - dc);
+      const range = Math.max(0, max - min - 1);
+      credits = Math.round(min + 1 + Math.min(roll - dc, span) * range / span);
+      credits = Math.max(min + 1, Math.min(max, credits));
+      if (rollType === "hope") hours = 1;
+      else if (rollType === "fear") hours = -1;
+      banner = { text: `DC ${dc} • Rolled ${roll}${rollType ? ` (${rollType.replace("_", " ")})` : ""}`, tone: "info" };
+    }
+    return { credits, hours, banner, dc, min, max };
+  };
+
   const openCompleteDialog = (sub: any) => {
     setSelectedSubmission(sub);
-    setFinalPayment(sub.quests?.reward?.toString() || "0");
+    const s = computeSuggestion(sub);
+    setFinalPayment(String(s.credits));
+    setDowntimeAdjustment(String(s.hours));
     setParticipants([sub.user_id]);
     setCompleteDialogOpen(true);
   };
@@ -173,6 +212,7 @@ const QuestseekAdmin = () => {
         operation: "complete_quest",
         acceptanceId: selectedSubmission.id,
         finalPayment: parseInt(finalPayment) || 0,
+        downtimeAdjustment: parseInt(downtimeAdjustment) || 0,
         participants,
       },
     });
