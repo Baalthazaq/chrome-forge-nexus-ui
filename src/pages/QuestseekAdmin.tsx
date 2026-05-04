@@ -746,13 +746,34 @@ const QuestseekAdmin = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {selectedSubmission && (() => {
+              const s = computeSuggestion(selectedSubmission);
+              const toneClass = s.banner?.tone === "fail"
+                ? "bg-red-900/30 border-red-500/50 text-red-300"
+                : s.banner?.tone === "crit"
+                ? "bg-yellow-900/30 border-yellow-500/50 text-yellow-300"
+                : "bg-gray-800/60 border-gray-600 text-gray-300";
+              return (
+                <div className={`text-xs px-3 py-2 rounded border ${toneClass}`}>
+                  {s.banner?.text} • Suggested {formatHex(s.credits)}{s.hours !== 0 ? ` + ${s.hours}h` : ""}
+                </div>
+              );
+            })()}
             <div>
               <Label className="text-gray-300">Final Payment (⏣ Hex)</Label>
               <Input type="number" value={finalPayment} onChange={e => setFinalPayment(e.target.value)}
                 className="bg-gray-800 border-gray-600 text-white" />
               <p className="text-xs text-gray-500 mt-1">
-                Range: {formatHex(selectedSubmission?.quests?.reward_min || 0)} – {formatHex(selectedSubmission?.quests?.reward || 0)}
+                Job range: {formatHex(selectedSubmission?.quests?.reward_min || 0)} – {formatHex(selectedSubmission?.quests?.reward || 0)} (suggestion only — admin may override)
                 {participants.length > 1 && ` • Split: ${formatHex(Math.floor((parseInt(finalPayment) || 0) / participants.length))} each`}
+              </p>
+            </div>
+            <div>
+              <Label className="text-gray-300">Downtime Adjustment (hours)</Label>
+              <Input type="number" value={downtimeAdjustment} onChange={e => setDowntimeAdjustment(e.target.value)}
+                className="bg-gray-800 border-gray-600 text-white" />
+              <p className="text-xs text-gray-500 mt-1">
+                Positive = grant hours, negative = penalty. Applied to each participant.
               </p>
             </div>
             <div>
