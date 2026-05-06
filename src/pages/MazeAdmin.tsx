@@ -439,7 +439,7 @@ const MazeAdmin = () => {
                 ))}
               </div>
               <InteractiveMap
-                locations={maze.locations}
+                locations={maze.locations.filter(l => !l.off_map)}
                 areas={maze.areas}
                 routeNodes={maze.routeNodes}
                 routeEdges={maze.routeEdges}
