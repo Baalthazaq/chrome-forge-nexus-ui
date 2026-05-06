@@ -61,7 +61,7 @@ const MazeAdmin = () => {
       // Pre-fill the form with existing data
       const existing = maze.locations.find(l => l.id === relocatingLocationId);
       if (existing) {
-        setLocForm({ name: existing.name, description: existing.description || '', icon_type: existing.icon_type, image_url: existing.image_url || '', is_public: existing.is_public, marker_color: existing.marker_color || '#14b8a6' });
+        setLocForm({ name: existing.name, description: existing.description || '', icon_type: existing.icon_type, image_url: existing.image_url || '', is_public: existing.is_public, marker_color: existing.marker_color || '#14b8a6', off_map: !!existing.off_map, off_map_direction: (existing.off_map_direction as any) || 'north', off_map_distance_miles: existing.off_map_distance_miles != null ? String(existing.off_map_distance_miles) : '' });
       }
       setRelocatingLocationId(null);
     } else {
