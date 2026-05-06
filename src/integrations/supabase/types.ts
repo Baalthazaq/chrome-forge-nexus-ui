@@ -1307,18 +1307,21 @@ export type Database = {
       map_route_nodes: {
         Row: {
           created_at: string
+          edge_direction: string | null
           id: string
           x: number
           y: number
         }
         Insert: {
           created_at?: string
+          edge_direction?: string | null
           id?: string
           x: number
           y: number
         }
         Update: {
           created_at?: string
+          edge_direction?: string | null
           id?: string
           x?: number
           y?: number

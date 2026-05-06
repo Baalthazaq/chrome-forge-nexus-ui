@@ -42,7 +42,11 @@ const Maze = () => {
   const onMapLocations = visibleLocations.filter(l => !l.off_map);
   const offMapLocations = visibleLocations.filter(l => l.off_map);
 
-  const dirAbbrev = (d?: string | null) => d ? d.charAt(0).toUpperCase() : '';
+  const dirAbbrev = (d?: string | null) => {
+    if (!d) return '';
+    const map: Record<string, string> = { north: 'N', south: 'S', east: 'E', west: 'W', northeast: 'NE', northwest: 'NW', southeast: 'SE', southwest: 'SW' };
+    return map[d] || d.charAt(0).toUpperCase();
+  };
 
   // Combined route options: locations + off-map locations + areas (prefixed)
   const routeOptions: { id: string; label: string; type: 'location' | 'area' }[] = [

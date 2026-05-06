@@ -17,6 +17,18 @@ import { ArrowLeft, Shield, MapPin, Layers, Route, Plus, Trash2, Pencil, X, Save
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 
+type OffMapDirection = 'north' | 'east' | 'south' | 'west' | 'northeast' | 'southeast' | 'northwest' | 'southwest';
+const OFF_MAP_DIRECTIONS: { value: OffMapDirection; label: string }[] = [
+  { value: 'north', label: 'North' },
+  { value: 'northeast', label: 'Northeast' },
+  { value: 'east', label: 'East' },
+  { value: 'southeast', label: 'Southeast' },
+  { value: 'south', label: 'South' },
+  { value: 'southwest', label: 'Southwest' },
+  { value: 'west', label: 'West' },
+  { value: 'northwest', label: 'Northwest' },
+];
+
 const MazeAdmin = () => {
   const navigate = useNavigate();
   const { isAdmin, isLoading: adminLoading } = useAdmin();
@@ -31,7 +43,7 @@ const MazeAdmin = () => {
   const [editingLocation, setEditingLocation] = useState<Partial<MapLocation> | null>(null);
   const [placingLocation, setPlacingLocation] = useState(false);
   const [relocatingLocationId, setRelocatingLocationId] = useState<string | null>(null);
-  const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6', off_map: false, off_map_direction: 'north' as 'north' | 'east' | 'south' | 'west', off_map_distance_miles: '' as string });
+  const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6', off_map: false, off_map_direction: 'north' as OffMapDirection, off_map_distance_miles: '' as string });
 
   // Area state
   const [editingArea, setEditingArea] = useState<Partial<MapArea> | null>(null);
@@ -501,11 +513,15 @@ const MazeAdmin = () => {
                       <div className="flex items-center gap-2 min-w-0">
                         <LocIcon className="w-3 h-3 flex-shrink-0" style={{ color: loc.marker_color || '#14b8a6' }} />
                         <span className="truncate">{loc.name}</span>
-                        {loc.off_map && (
-                          <span className="text-[10px] font-mono px-1 py-0.5 rounded bg-amber-900/30 text-amber-400 border border-amber-700/40 flex-shrink-0">
-                            Off-map · {loc.off_map_distance_miles ?? '?'}mi {loc.off_map_direction?.charAt(0).toUpperCase()}
-                          </span>
-                        )}
+                        {loc.off_map && (() => {
+                          const abbrMap: Record<string, string> = { north: 'N', south: 'S', east: 'E', west: 'W', northeast: 'NE', northwest: 'NW', southeast: 'SE', southwest: 'SW' };
+                          const abbr = loc.off_map_direction ? (abbrMap[loc.off_map_direction] || loc.off_map_direction.charAt(0).toUpperCase()) : '?';
+                          return (
+                            <span className="text-[10px] font-mono px-1 py-0.5 rounded bg-amber-900/30 text-amber-400 border border-amber-700/40 flex-shrink-0">
+                              Off-map · {loc.off_map_distance_miles ?? '?'}mi {abbr}
+                            </span>
+                          );
+                        })()}
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
                         <button
@@ -581,15 +597,29 @@ const MazeAdmin = () => {
                     {maze.routeNodes.map(node => (
                       <div
                         key={node.id}
-                        className={`flex items-center justify-between p-1 rounded text-xs font-mono cursor-pointer transition-colors ${
+                        className={`flex items-center justify-between gap-1 p-1 rounded text-xs font-mono cursor-pointer transition-colors ${
                           selectedRouteNodeId === node.id
                             ? 'bg-purple-600/30 border border-purple-500/60 text-purple-300'
                             : 'bg-gray-900/50 border border-gray-700/30 text-gray-400 hover:bg-gray-800/50'
                         }`}
                         onClick={() => setSelectedRouteNodeId(prev => prev === node.id ? null : node.id)}
                       >
-                        <span>({node.x.toFixed(1)}, {node.y.toFixed(1)})</span>
-                        <button onClick={(e) => { e.stopPropagation(); maze.deleteRouteNode.mutate(node.id); setSelectedRouteNodeId(null); toast.success('Node deleted'); }} className="p-1 text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                        <span className="flex-shrink-0">({node.x.toFixed(1)}, {node.y.toFixed(1)})</span>
+                        <Select
+                          value={node.edge_direction || 'none'}
+                          onValueChange={(v) => maze.updateRouteNode.mutate({ id: node.id, edge_direction: v === 'none' ? null : v })}
+                        >
+                          <SelectTrigger className="h-6 px-1 py-0 bg-gray-800 border-gray-700 text-gray-200 text-[10px] flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                            <SelectValue placeholder="—" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-gray-800 border-gray-700">
+                            <SelectItem value="none" className="text-gray-400 text-xs">— No edge —</SelectItem>
+                            {OFF_MAP_DIRECTIONS.map(d => (
+                              <SelectItem key={d.value} value={d.value} className="text-gray-200 text-xs">{d.label} edge</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <button onClick={(e) => { e.stopPropagation(); maze.deleteRouteNode.mutate(node.id); setSelectedRouteNodeId(null); toast.success('Node deleted'); }} className="p-1 text-gray-400 hover:text-red-400 flex-shrink-0"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     ))}
                   </div>
@@ -664,10 +694,9 @@ const MazeAdmin = () => {
                   <Select value={locForm.off_map_direction} onValueChange={(v: any) => setLocForm(f => ({ ...f, off_map_direction: v }))}>
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-gray-800 border-gray-700">
-                      <SelectItem value="north" className="text-gray-200">North</SelectItem>
-                      <SelectItem value="east" className="text-gray-200">East</SelectItem>
-                      <SelectItem value="south" className="text-gray-200">South</SelectItem>
-                      <SelectItem value="west" className="text-gray-200">West</SelectItem>
+                      {OFF_MAP_DIRECTIONS.map(d => (
+                        <SelectItem key={d.value} value={d.value} className="text-gray-200">{d.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
