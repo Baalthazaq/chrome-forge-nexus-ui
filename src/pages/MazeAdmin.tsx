@@ -676,10 +676,9 @@ const MazeAdmin = () => {
                   <Select value={locForm.off_map_direction} onValueChange={(v: any) => setLocForm(f => ({ ...f, off_map_direction: v }))}>
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-gray-800 border-gray-700">
-                      <SelectItem value="north" className="text-gray-200">North</SelectItem>
-                      <SelectItem value="east" className="text-gray-200">East</SelectItem>
-                      <SelectItem value="south" className="text-gray-200">South</SelectItem>
-                      <SelectItem value="west" className="text-gray-200">West</SelectItem>
+                      {OFF_MAP_DIRECTIONS.map(d => (
+                        <SelectItem key={d.value} value={d.value} className="text-gray-200">{d.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
