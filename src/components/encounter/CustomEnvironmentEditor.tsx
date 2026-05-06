@@ -6,9 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Search, Copy } from 'lucide-react';
+import { Plus, Trash2, Search, Copy, Library } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
+import { EnvironmentFeatureLibraryPicker } from '@/components/bestiary/EnvironmentFeatureLibraryPicker';
+import type { FeatureItem } from '@/components/bestiary/FeatureLibraryPicker';
 
 export interface CustomEnvironment {
   custom: true;
@@ -48,6 +50,7 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
   const [pickerSearch, setPickerSearch] = useState('');
   const [available, setAvailable] = useState<any[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -231,9 +234,14 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Features</Label>
-              <Button size="sm" variant="outline" onClick={addFeature}>
-                <Plus className="h-3 w-3 mr-1" /> Add Feature
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setShowLibrary(true)}>
+                  <Library className="h-3 w-3 mr-1" /> From Library
+                </Button>
+                <Button size="sm" variant="outline" onClick={addFeature}>
+                  <Plus className="h-3 w-3 mr-1" /> Add Feature
+                </Button>
+              </div>
             </div>
             {features.length > 0 && (
               <ScrollArea className="max-h-72">
@@ -268,6 +276,11 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
           <Button onClick={handleSave} disabled={!name.trim()}>{initial ? 'Update' : 'Add to Encounter'}</Button>
         </DialogFooter>
       </DialogContent>
+      <EnvironmentFeatureLibraryPicker
+        open={showLibrary}
+        onClose={() => setShowLibrary(false)}
+        onSelect={(f: FeatureItem) => setFeatures(prev => [...prev, { ...f }])}
+      />
     </Dialog>
   );
 };
