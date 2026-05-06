@@ -513,11 +513,15 @@ const MazeAdmin = () => {
                       <div className="flex items-center gap-2 min-w-0">
                         <LocIcon className="w-3 h-3 flex-shrink-0" style={{ color: loc.marker_color || '#14b8a6' }} />
                         <span className="truncate">{loc.name}</span>
-                        {loc.off_map && (
-                          <span className="text-[10px] font-mono px-1 py-0.5 rounded bg-amber-900/30 text-amber-400 border border-amber-700/40 flex-shrink-0">
-                            Off-map · {loc.off_map_distance_miles ?? '?'}mi {loc.off_map_direction?.charAt(0).toUpperCase()}
-                          </span>
-                        )}
+                        {loc.off_map && (() => {
+                          const abbrMap: Record<string, string> = { north: 'N', south: 'S', east: 'E', west: 'W', northeast: 'NE', northwest: 'NW', southeast: 'SE', southwest: 'SW' };
+                          const abbr = loc.off_map_direction ? (abbrMap[loc.off_map_direction] || loc.off_map_direction.charAt(0).toUpperCase()) : '?';
+                          return (
+                            <span className="text-[10px] font-mono px-1 py-0.5 rounded bg-amber-900/30 text-amber-400 border border-amber-700/40 flex-shrink-0">
+                              Off-map · {loc.off_map_distance_miles ?? '?'}mi {abbr}
+                            </span>
+                          );
+                        })()}
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
                         <button
