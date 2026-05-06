@@ -234,9 +234,14 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Features</Label>
-              <Button size="sm" variant="outline" onClick={addFeature}>
-                <Plus className="h-3 w-3 mr-1" /> Add Feature
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setShowLibrary(true)}>
+                  <Library className="h-3 w-3 mr-1" /> From Library
+                </Button>
+                <Button size="sm" variant="outline" onClick={addFeature}>
+                  <Plus className="h-3 w-3 mr-1" /> Add Feature
+                </Button>
+              </div>
             </div>
             {features.length > 0 && (
               <ScrollArea className="max-h-72">
