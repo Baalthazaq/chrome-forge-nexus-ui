@@ -205,15 +205,21 @@ const Maze = () => {
         </div>
         {routePath && routePath.length > 1 && (() => {
           const nodes = routePath.length - 1;
-          const walkMin = nodes >= 1 ? 3 + Math.max(0, nodes - 1) * 12 : 0;
-          const driveMin = nodes >= 1 ? 6 + Math.max(0, nodes - 1) * 3 : 0;
-          const publicMin = nodes * 4;
+          let walkMin = nodes >= 1 ? 3 + Math.max(0, nodes - 1) * 12 : 0;
+          let driveMin = nodes >= 1 ? 6 + Math.max(0, nodes - 1) * 3 : 0;
+          let publicMin = nodes * 4;
+          if (offMapMiles > 0) {
+            walkMin += Math.round(offMapMiles * 20);
+            driveMin += Math.round(offMapMiles * 3);
+            publicMin += Math.round(offMapMiles * 6);
+          }
           const fmt = (m: number) => m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
           return (
-            <div className="flex gap-4 bg-gray-900/60 border border-gray-700/50 rounded-lg px-3 py-2 text-xs text-gray-300 font-mono">
+            <div className="flex flex-wrap gap-4 bg-gray-900/60 border border-gray-700/50 rounded-lg px-3 py-2 text-xs text-gray-300 font-mono">
               <span>🚶 Walking: <span className="text-teal-400">{fmt(walkMin)}</span></span>
               <span>🚌 Public: <span className="text-teal-400">{fmt(publicMin)}</span></span>
               <span>🚗 Private: <span className="text-teal-400">{fmt(driveMin)}</span></span>
+              {offMapMiles > 0 && <span className="text-amber-400">+ {offMapMiles}mi off-map</span>}
             </div>
           );
         })()}
@@ -222,7 +228,7 @@ const Maze = () => {
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
             <InteractiveMap
-              locations={publicLocations}
+              locations={onMapLocations}
               areas={maze.areas}
               routeNodes={maze.routeNodes}
               routeEdges={maze.routeEdges}
