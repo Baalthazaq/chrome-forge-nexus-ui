@@ -1,0 +1,1 @@
+ALTER TABLE public.map_route_nodes ADD COLUMN IF NOT EXISTS edge_direction text;
