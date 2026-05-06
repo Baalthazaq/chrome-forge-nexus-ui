@@ -501,6 +501,11 @@ const MazeAdmin = () => {
                       <div className="flex items-center gap-2 min-w-0">
                         <LocIcon className="w-3 h-3 flex-shrink-0" style={{ color: loc.marker_color || '#14b8a6' }} />
                         <span className="truncate">{loc.name}</span>
+                        {loc.off_map && (
+                          <span className="text-[10px] font-mono px-1 py-0.5 rounded bg-amber-900/30 text-amber-400 border border-amber-700/40 flex-shrink-0">
+                            Off-map · {loc.off_map_distance_miles ?? '?'}mi {loc.off_map_direction?.charAt(0).toUpperCase()}
+                          </span>
+                        )}
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
                         <button
@@ -511,7 +516,9 @@ const MazeAdmin = () => {
                           {loc.is_public ? <Globe className="w-3 h-3 text-teal-400" /> : <EyeOff className="w-3 h-3 text-amber-500" />}
                         </button>
                         <button onClick={() => startEditLocation(loc)} className="p-1 text-gray-400 hover:text-white" title="Edit"><Pencil className="w-3 h-3" /></button>
-                        <button onClick={() => startRelocateLocation(loc)} className="p-1 text-gray-400 hover:text-cyan-400" title="Move location"><Move className="w-3 h-3" /></button>
+                        {!loc.off_map && (
+                          <button onClick={() => startRelocateLocation(loc)} className="p-1 text-gray-400 hover:text-cyan-400" title="Move location"><Move className="w-3 h-3" /></button>
+                        )}
                         <button onClick={() => { maze.deleteLocation.mutate(loc.id); toast.success('Deleted'); }} className="p-1 text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
