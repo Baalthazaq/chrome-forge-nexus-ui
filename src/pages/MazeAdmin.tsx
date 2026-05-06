@@ -51,7 +51,7 @@ const MazeAdmin = () => {
   const startPlaceLocation = () => {
     setMapMode('place-location');
     setPlacingLocation(true);
-    setLocForm({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6' });
+    setLocForm({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6', off_map: false, off_map_direction: 'north', off_map_distance_miles: '' });
     toast.info('Click on the map to place a location');
   };
 
