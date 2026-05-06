@@ -31,7 +31,7 @@ const MazeAdmin = () => {
   const [editingLocation, setEditingLocation] = useState<Partial<MapLocation> | null>(null);
   const [placingLocation, setPlacingLocation] = useState(false);
   const [relocatingLocationId, setRelocatingLocationId] = useState<string | null>(null);
-  const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6' });
+  const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6', off_map: false, off_map_direction: 'north' as 'north' | 'east' | 'south' | 'west', off_map_distance_miles: '' as string });
 
   // Area state
   const [editingArea, setEditingArea] = useState<Partial<MapArea> | null>(null);
@@ -51,7 +51,7 @@ const MazeAdmin = () => {
   const startPlaceLocation = () => {
     setMapMode('place-location');
     setPlacingLocation(true);
-    setLocForm({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6' });
+    setLocForm({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6', off_map: false, off_map_direction: 'north', off_map_distance_miles: '' });
     toast.info('Click on the map to place a location');
   };
 
@@ -61,7 +61,7 @@ const MazeAdmin = () => {
       // Pre-fill the form with existing data
       const existing = maze.locations.find(l => l.id === relocatingLocationId);
       if (existing) {
-        setLocForm({ name: existing.name, description: existing.description || '', icon_type: existing.icon_type, image_url: existing.image_url || '', is_public: existing.is_public, marker_color: existing.marker_color || '#14b8a6' });
+        setLocForm({ name: existing.name, description: existing.description || '', icon_type: existing.icon_type, image_url: existing.image_url || '', is_public: existing.is_public, marker_color: existing.marker_color || '#14b8a6', off_map: !!existing.off_map, off_map_direction: (existing.off_map_direction as any) || 'north', off_map_distance_miles: existing.off_map_distance_miles != null ? String(existing.off_map_distance_miles) : '' });
       }
       setRelocatingLocationId(null);
     } else {
@@ -78,8 +78,18 @@ const MazeAdmin = () => {
     toast.info(`Click on the map to move "${loc.name}"`);
   };
 
+  const startCreateOffMap = () => {
+    setLocForm({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6', off_map: true, off_map_direction: 'north', off_map_distance_miles: '1' });
+    setEditingLocation({ x: 0, y: 0 });
+  };
+
   const saveLocation = async () => {
     if (!editingLocation || !locForm.name || !user) return;
+    const offMapPayload = {
+      off_map: locForm.off_map,
+      off_map_direction: locForm.off_map ? locForm.off_map_direction : null,
+      off_map_distance_miles: locForm.off_map ? Number(locForm.off_map_distance_miles || 0) : null,
+    };
     try {
       if (editingLocation.id) {
         await maze.updateLocation.mutateAsync({
@@ -92,7 +102,8 @@ const MazeAdmin = () => {
           marker_color: locForm.marker_color,
           ...(editingLocation.x !== undefined ? { x: editingLocation.x } : {}),
           ...(editingLocation.y !== undefined ? { y: editingLocation.y } : {}),
-        });
+          ...offMapPayload,
+        } as any);
         toast.success('Location updated');
       } else {
         await maze.createLocation.mutateAsync({
@@ -100,13 +111,14 @@ const MazeAdmin = () => {
           description: locForm.description || null,
           icon_type: locForm.icon_type,
           image_url: locForm.image_url || null,
-          x: editingLocation.x!,
-          y: editingLocation.y!,
+          x: editingLocation.x ?? 0,
+          y: editingLocation.y ?? 0,
           is_public: locForm.is_public,
           marker_color: locForm.marker_color,
           user_id: user.id,
           environment_card: {},
-        });
+          ...offMapPayload,
+        } as any);
         toast.success('Location created');
       }
       setEditingLocation(null);
@@ -117,7 +129,7 @@ const MazeAdmin = () => {
 
   const startEditLocation = (loc: MapLocation) => {
     setEditingLocation(loc);
-    setLocForm({ name: loc.name, description: loc.description || '', icon_type: loc.icon_type, image_url: loc.image_url || '', is_public: loc.is_public, marker_color: loc.marker_color || '#14b8a6' });
+    setLocForm({ name: loc.name, description: loc.description || '', icon_type: loc.icon_type, image_url: loc.image_url || '', is_public: loc.is_public, marker_color: loc.marker_color || '#14b8a6', off_map: !!loc.off_map, off_map_direction: (loc.off_map_direction as any) || 'north', off_map_distance_miles: loc.off_map_distance_miles != null ? String(loc.off_map_distance_miles) : '' });
   };
 
   // --- Area Handlers ---
@@ -427,7 +439,7 @@ const MazeAdmin = () => {
                 ))}
               </div>
               <InteractiveMap
-                locations={maze.locations}
+                locations={maze.locations.filter(l => !l.off_map)}
                 areas={maze.areas}
                 routeNodes={maze.routeNodes}
                 routeEdges={maze.routeEdges}
@@ -465,6 +477,14 @@ const MazeAdmin = () => {
                 >
                   {mapMode === 'place-location' ? <><X className="w-3 h-3 mr-1" /> Cancel Placing</> : <><Plus className="w-3 h-3 mr-1" /> Place Location</>}
                 </Button>
+                <Button
+                  onClick={startCreateOffMap}
+                  size="sm"
+                  variant="outline"
+                  className="w-full border-amber-700 text-amber-400 hover:bg-amber-900/20"
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Add Off-Map Location
+                </Button>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => exportData('locations')} className="flex-1 border-gray-600 text-gray-300 text-xs">
                     <Download className="w-3 h-3 mr-1" /> Export
@@ -481,6 +501,11 @@ const MazeAdmin = () => {
                       <div className="flex items-center gap-2 min-w-0">
                         <LocIcon className="w-3 h-3 flex-shrink-0" style={{ color: loc.marker_color || '#14b8a6' }} />
                         <span className="truncate">{loc.name}</span>
+                        {loc.off_map && (
+                          <span className="text-[10px] font-mono px-1 py-0.5 rounded bg-amber-900/30 text-amber-400 border border-amber-700/40 flex-shrink-0">
+                            Off-map · {loc.off_map_distance_miles ?? '?'}mi {loc.off_map_direction?.charAt(0).toUpperCase()}
+                          </span>
+                        )}
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
                         <button
@@ -491,7 +516,9 @@ const MazeAdmin = () => {
                           {loc.is_public ? <Globe className="w-3 h-3 text-teal-400" /> : <EyeOff className="w-3 h-3 text-amber-500" />}
                         </button>
                         <button onClick={() => startEditLocation(loc)} className="p-1 text-gray-400 hover:text-white" title="Edit"><Pencil className="w-3 h-3" /></button>
-                        <button onClick={() => startRelocateLocation(loc)} className="p-1 text-gray-400 hover:text-cyan-400" title="Move location"><Move className="w-3 h-3" /></button>
+                        {!loc.off_map && (
+                          <button onClick={() => startRelocateLocation(loc)} className="p-1 text-gray-400 hover:text-cyan-400" title="Move location"><Move className="w-3 h-3" /></button>
+                        )}
                         <button onClick={() => { maze.deleteLocation.mutate(loc.id); toast.success('Deleted'); }} className="p-1 text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
@@ -626,6 +653,30 @@ const MazeAdmin = () => {
               <Switch checked={locForm.is_public} onCheckedChange={v => setLocForm(f => ({ ...f, is_public: v }))} />
               <Label className="text-gray-300">Public</Label>
             </div>
+            <div className="flex items-center gap-2 pt-2 border-t border-gray-700/50">
+              <Switch checked={locForm.off_map} onCheckedChange={v => setLocForm(f => ({ ...f, off_map: v }))} />
+              <Label className="text-gray-300">Off-map location</Label>
+            </div>
+            {locForm.off_map && (
+              <div className="grid grid-cols-2 gap-2 pl-2 border-l-2 border-amber-700/50">
+                <div>
+                  <Label className="text-gray-400 text-xs">Direction</Label>
+                  <Select value={locForm.off_map_direction} onValueChange={(v: any) => setLocForm(f => ({ ...f, off_map_direction: v }))}>
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      <SelectItem value="north" className="text-gray-200">North</SelectItem>
+                      <SelectItem value="east" className="text-gray-200">East</SelectItem>
+                      <SelectItem value="south" className="text-gray-200">South</SelectItem>
+                      <SelectItem value="west" className="text-gray-200">West</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-gray-400 text-xs">Distance (miles)</Label>
+                  <Input type="number" min="0" value={locForm.off_map_distance_miles} onChange={e => setLocForm(f => ({ ...f, off_map_distance_miles: e.target.value }))} className="bg-gray-800 border-gray-700 text-gray-200" />
+                </div>
+              </div>
+            )}
             <div className="flex gap-2 pt-2">
               <Button onClick={saveLocation} disabled={!locForm.name} className="bg-teal-600 hover:bg-teal-700 flex-1"><Save className="w-3 h-3 mr-1" /> Save</Button>
               <Button variant="outline" onClick={() => setEditingLocation(null)} className="border-gray-600 text-gray-300">Cancel</Button>
