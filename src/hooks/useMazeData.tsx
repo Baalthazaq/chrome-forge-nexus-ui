@@ -14,6 +14,9 @@ export interface MapLocation {
   is_public: boolean;
   user_id: string;
   environment_card: EnvironmentCard;
+  off_map?: boolean;
+  off_map_direction?: 'north' | 'east' | 'south' | 'west' | null;
+  off_map_distance_miles?: number | null;
   created_at: string;
   updated_at: string;
 }
