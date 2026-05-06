@@ -477,6 +477,14 @@ const MazeAdmin = () => {
                 >
                   {mapMode === 'place-location' ? <><X className="w-3 h-3 mr-1" /> Cancel Placing</> : <><Plus className="w-3 h-3 mr-1" /> Place Location</>}
                 </Button>
+                <Button
+                  onClick={startCreateOffMap}
+                  size="sm"
+                  variant="outline"
+                  className="w-full border-amber-700 text-amber-400 hover:bg-amber-900/20"
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Add Off-Map Location
+                </Button>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => exportData('locations')} className="flex-1 border-gray-600 text-gray-300 text-xs">
                     <Download className="w-3 h-3 mr-1" /> Export
