@@ -632,7 +632,7 @@ const MazeAdmin = () => {
 
       {/* Location Edit Dialog */}
       <Dialog open={!!editingLocation} onOpenChange={(open) => !open && setEditingLocation(null)}>
-        <DialogContent className="bg-gray-900 border-gray-700 text-gray-200 max-w-md">
+        <DialogContent className="bg-gray-900 border-gray-700 text-gray-200 max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-teal-400">{editingLocation?.id ? 'Edit' : 'New'} Location</DialogTitle>
             <DialogDescription className="text-gray-400">
