@@ -31,7 +31,7 @@ const MazeAdmin = () => {
   const [editingLocation, setEditingLocation] = useState<Partial<MapLocation> | null>(null);
   const [placingLocation, setPlacingLocation] = useState(false);
   const [relocatingLocationId, setRelocatingLocationId] = useState<string | null>(null);
-  const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6' });
+  const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6', off_map: false, off_map_direction: 'north' as 'north' | 'east' | 'south' | 'west', off_map_distance_miles: '' as string });
 
   // Area state
   const [editingArea, setEditingArea] = useState<Partial<MapArea> | null>(null);
