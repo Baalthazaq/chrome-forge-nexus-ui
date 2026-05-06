@@ -653,6 +653,30 @@ const MazeAdmin = () => {
               <Switch checked={locForm.is_public} onCheckedChange={v => setLocForm(f => ({ ...f, is_public: v }))} />
               <Label className="text-gray-300">Public</Label>
             </div>
+            <div className="flex items-center gap-2 pt-2 border-t border-gray-700/50">
+              <Switch checked={locForm.off_map} onCheckedChange={v => setLocForm(f => ({ ...f, off_map: v }))} />
+              <Label className="text-gray-300">Off-map location</Label>
+            </div>
+            {locForm.off_map && (
+              <div className="grid grid-cols-2 gap-2 pl-2 border-l-2 border-amber-700/50">
+                <div>
+                  <Label className="text-gray-400 text-xs">Direction</Label>
+                  <Select value={locForm.off_map_direction} onValueChange={(v: any) => setLocForm(f => ({ ...f, off_map_direction: v }))}>
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      <SelectItem value="north" className="text-gray-200">North</SelectItem>
+                      <SelectItem value="east" className="text-gray-200">East</SelectItem>
+                      <SelectItem value="south" className="text-gray-200">South</SelectItem>
+                      <SelectItem value="west" className="text-gray-200">West</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-gray-400 text-xs">Distance (miles)</Label>
+                  <Input type="number" min="0" value={locForm.off_map_distance_miles} onChange={e => setLocForm(f => ({ ...f, off_map_distance_miles: e.target.value }))} className="bg-gray-800 border-gray-700 text-gray-200" />
+                </div>
+              </div>
+            )}
             <div className="flex gap-2 pt-2">
               <Button onClick={saveLocation} disabled={!locForm.name} className="bg-teal-600 hover:bg-teal-700 flex-1"><Save className="w-3 h-3 mr-1" /> Save</Button>
               <Button variant="outline" onClick={() => setEditingLocation(null)} className="border-gray-600 text-gray-300">Cancel</Button>
