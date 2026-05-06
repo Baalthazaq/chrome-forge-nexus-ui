@@ -75,9 +75,7 @@ const Maze = () => {
     const from = resolveEndpoint(routeFrom);
     const to = resolveEndpoint(routeTo);
     if (!from || !to) { toast.error('Select both locations'); return; }
-    console.log('[Maze] findRoute', { from, to, nodes: maze.routeNodes.length, edges: maze.routeEdges.length });
     const result = findRoute(from, to, maze.routeNodes, maze.routeEdges);
-    console.log('[Maze] result', result);
     if (result) {
       setRoutePath(result.path);
       setOffMapMiles(result.offMapMilesStart + result.offMapMilesEnd);
