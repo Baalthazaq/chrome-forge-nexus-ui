@@ -276,6 +276,11 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
           <Button onClick={handleSave} disabled={!name.trim()}>{initial ? 'Update' : 'Add to Encounter'}</Button>
         </DialogFooter>
       </DialogContent>
+      <EnvironmentFeatureLibraryPicker
+        open={showLibrary}
+        onClose={() => setShowLibrary(false)}
+        onSelect={(f: FeatureItem) => setFeatures(prev => [...prev, { ...f }])}
+      />
     </Dialog>
   );
 };
