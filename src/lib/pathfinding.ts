@@ -114,25 +114,48 @@ export interface RouteResult {
 
 function findEdgeNode(direction: string, nodes: MapRouteNode[]): MapRouteNode | null {
   if (nodes.length === 0) return null;
-  let best = nodes[0];
+  // Prefer manually-tagged edge nodes
+  const tagged = nodes.find(n => n.edge_direction === direction);
+  if (tagged) return tagged;
+  // Fallback: pick best by direction vector from map center (50,50)
+  const dirs: Record<string, { dx: number; dy: number }> = {
+    north:     { dx:  0, dy: -1 },
+    south:     { dx:  0, dy:  1 },
+    east:      { dx:  1, dy:  0 },
+    west:      { dx: -1, dy:  0 },
+    northeast: { dx:  1, dy: -1 },
+    northwest: { dx: -1, dy: -1 },
+    southeast: { dx:  1, dy:  1 },
+    southwest: { dx: -1, dy:  1 },
+  };
+  const d = dirs[direction] || dirs.north;
+  const len = Math.hypot(d.dx, d.dy);
+  const ux = d.dx / len, uy = d.dy / len;
+  let best = nodes[0], bestScore = -Infinity;
   for (const n of nodes) {
-    if (direction === 'north' && n.y < best.y) best = n;
-    else if (direction === 'south' && n.y > best.y) best = n;
-    else if (direction === 'west' && n.x < best.x) best = n;
-    else if (direction === 'east' && n.x > best.x) best = n;
+    // Project node offset from center onto direction unit vector
+    const score = (n.x - 50) * ux + (n.y - 50) * uy;
+    if (score > bestScore) { bestScore = score; best = n; }
   }
   return best;
 }
 
 function offmapExitPoint(node: MapRouteNode, direction: string): { x: number; y: number } {
-  // Push slightly toward the corresponding map edge for visual hint
-  switch (direction) {
-    case 'north': return { x: node.x, y: Math.max(0, node.y - 8) };
-    case 'south': return { x: node.x, y: Math.min(100, node.y + 8) };
-    case 'west':  return { x: Math.max(0, node.x - 8), y: node.y };
-    case 'east':  return { x: Math.min(100, node.x + 8), y: node.y };
-    default: return { x: node.x, y: node.y };
-  }
+  const offsets: Record<string, { dx: number; dy: number }> = {
+    north:     { dx:  0, dy: -8 },
+    south:     { dx:  0, dy:  8 },
+    east:      { dx:  8, dy:  0 },
+    west:      { dx: -8, dy:  0 },
+    northeast: { dx:  6, dy: -6 },
+    northwest: { dx: -6, dy: -6 },
+    southeast: { dx:  6, dy:  6 },
+    southwest: { dx: -6, dy:  6 },
+  };
+  const o = offsets[direction] || offsets.north;
+  return {
+    x: Math.max(0, Math.min(100, node.x + o.dx)),
+    y: Math.max(0, Math.min(100, node.y + o.dy)),
+  };
 }
 
 export function findRoute(
