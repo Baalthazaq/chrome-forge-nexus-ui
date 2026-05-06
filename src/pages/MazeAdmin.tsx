@@ -78,8 +78,18 @@ const MazeAdmin = () => {
     toast.info(`Click on the map to move "${loc.name}"`);
   };
 
+  const startCreateOffMap = () => {
+    setLocForm({ name: '', description: '', icon_type: 'default', image_url: '', is_public: true, marker_color: '#14b8a6', off_map: true, off_map_direction: 'north', off_map_distance_miles: '1' });
+    setEditingLocation({ x: 0, y: 0 });
+  };
+
   const saveLocation = async () => {
     if (!editingLocation || !locForm.name || !user) return;
+    const offMapPayload = {
+      off_map: locForm.off_map,
+      off_map_direction: locForm.off_map ? locForm.off_map_direction : null,
+      off_map_distance_miles: locForm.off_map ? Number(locForm.off_map_distance_miles || 0) : null,
+    };
     try {
       if (editingLocation.id) {
         await maze.updateLocation.mutateAsync({
@@ -92,7 +102,8 @@ const MazeAdmin = () => {
           marker_color: locForm.marker_color,
           ...(editingLocation.x !== undefined ? { x: editingLocation.x } : {}),
           ...(editingLocation.y !== undefined ? { y: editingLocation.y } : {}),
-        });
+          ...offMapPayload,
+        } as any);
         toast.success('Location updated');
       } else {
         await maze.createLocation.mutateAsync({
@@ -100,13 +111,14 @@ const MazeAdmin = () => {
           description: locForm.description || null,
           icon_type: locForm.icon_type,
           image_url: locForm.image_url || null,
-          x: editingLocation.x!,
-          y: editingLocation.y!,
+          x: editingLocation.x ?? 0,
+          y: editingLocation.y ?? 0,
           is_public: locForm.is_public,
           marker_color: locForm.marker_color,
           user_id: user.id,
           environment_card: {},
-        });
+          ...offMapPayload,
+        } as any);
         toast.success('Location created');
       }
       setEditingLocation(null);
