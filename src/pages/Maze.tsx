@@ -214,8 +214,8 @@ const Maze = () => {
           let publicMin = nodes * 4;
           if (offMapMiles > 0) {
             walkMin += Math.round(offMapMiles * 20);
-            driveMin += Math.round(offMapMiles * 3);
-            publicMin += Math.round(offMapMiles * 6);
+            publicMin += Math.round(offMapMiles * 2);
+            driveMin += Math.round(offMapMiles * 1);
           }
           const fmt = (m: number) => m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
           return (
@@ -223,7 +223,6 @@ const Maze = () => {
               <span>🚶 Walking: <span className="text-teal-400">{fmt(walkMin)}</span></span>
               <span>🚌 Public: <span className="text-teal-400">{fmt(publicMin)}</span></span>
               <span>🚗 Private: <span className="text-teal-400">{fmt(driveMin)}</span></span>
-              {offMapMiles > 0 && <span className="text-amber-400">+ {offMapMiles}mi off-map</span>}
             </div>
           );
         })()}
