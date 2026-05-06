@@ -1177,6 +1177,9 @@ export type Database = {
           is_public: boolean
           marker_color: string
           name: string
+          off_map: boolean
+          off_map_direction: string | null
+          off_map_distance_miles: number | null
           updated_at: string
           user_id: string
           x: number
@@ -1192,6 +1195,9 @@ export type Database = {
           is_public?: boolean
           marker_color?: string
           name: string
+          off_map?: boolean
+          off_map_direction?: string | null
+          off_map_distance_miles?: number | null
           updated_at?: string
           user_id: string
           x: number
@@ -1207,6 +1213,9 @@ export type Database = {
           is_public?: boolean
           marker_color?: string
           name?: string
+          off_map?: boolean
+          off_map_direction?: string | null
+          off_map_distance_miles?: number | null
           updated_at?: string
           user_id?: string
           x?: number
