@@ -15,7 +15,7 @@ export interface MapLocation {
   user_id: string;
   environment_card: EnvironmentCard;
   off_map?: boolean;
-  off_map_direction?: 'north' | 'east' | 'south' | 'west' | null;
+  off_map_direction?: 'north' | 'east' | 'south' | 'west' | 'northeast' | 'southeast' | 'northwest' | 'southwest' | null;
   off_map_distance_miles?: number | null;
   created_at: string;
   updated_at: string;
@@ -51,6 +51,7 @@ export interface MapRouteNode {
   id: string;
   x: number;
   y: number;
+  edge_direction?: string | null;
   created_at: string;
 }
 
@@ -209,6 +210,14 @@ export const useMazeData = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['map-route-nodes'] }),
   });
 
+  const updateRouteNode = useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; edge_direction?: string | null }) => {
+      const { error } = await supabase.from('map_route_nodes').update(updates as any).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['map-route-nodes'] }),
+  });
+
   const deleteRouteNode = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('map_route_nodes').delete().eq('id', id);
@@ -310,6 +319,7 @@ export const useMazeData = () => {
     updateArea,
     deleteArea,
     createRouteNode,
+    updateRouteNode,
     deleteRouteNode,
     createRouteEdge,
     deleteRouteEdge,
