@@ -101,94 +101,120 @@ function nodesInArea(area: MapArea, nodes: MapRouteNode[]): MapRouteNode[] {
   return [];
 }
 
-export type RouteEndpoint = 
+export type RouteEndpoint =
   | { type: 'location'; location: MapLocation }
-  | { type: 'area'; area: MapArea };
+  | { type: 'area'; area: MapArea }
+  | { type: 'offmap'; location: MapLocation };
+
+export interface RouteResult {
+  path: { x: number; y: number }[];
+  offMapMilesStart: number;
+  offMapMilesEnd: number;
+}
+
+function findEdgeNode(direction: string, nodes: MapRouteNode[]): MapRouteNode | null {
+  if (nodes.length === 0) return null;
+  let best = nodes[0];
+  for (const n of nodes) {
+    if (direction === 'north' && n.y < best.y) best = n;
+    else if (direction === 'south' && n.y > best.y) best = n;
+    else if (direction === 'west' && n.x < best.x) best = n;
+    else if (direction === 'east' && n.x > best.x) best = n;
+  }
+  return best;
+}
+
+function offmapExitPoint(node: MapRouteNode, direction: string): { x: number; y: number } {
+  // Push slightly toward the corresponding map edge for visual hint
+  switch (direction) {
+    case 'north': return { x: node.x, y: Math.max(0, node.y - 8) };
+    case 'south': return { x: node.x, y: Math.min(100, node.y + 8) };
+    case 'west':  return { x: Math.max(0, node.x - 8), y: node.y };
+    case 'east':  return { x: Math.min(100, node.x + 8), y: node.y };
+    default: return { x: node.x, y: node.y };
+  }
+}
 
 export function findRoute(
   from: RouteEndpoint | MapLocation,
   to: RouteEndpoint | MapLocation,
   nodes: MapRouteNode[],
   edges: MapRouteEdge[]
-): { x: number; y: number }[] | null {
+): RouteResult | null {
   const adj = buildAdjacencyList(edges);
-
-  // Normalize to RouteEndpoint
   const fromEp: RouteEndpoint = 'type' in from ? from : { type: 'location', location: from };
   const toEp: RouteEndpoint = 'type' in to ? to : { type: 'location', location: to };
 
-  // Resolve start node(s)
-  let startNodeId: string | null = null;
-  let startCoord: { x: number; y: number } | null = null;
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+  let offMapMilesStart = 0;
+  let offMapMilesEnd = 0;
 
+  // Resolve start "anchor" node id and prefix coords
+  let startNodeId: string | null = null;
+  const prefixCoords: { x: number; y: number }[] = [];
   if (fromEp.type === 'location') {
     startNodeId = findNearestNode(fromEp.location, nodes);
-    startCoord = { x: fromEp.location.x, y: fromEp.location.y };
+    prefixCoords.push({ x: fromEp.location.x, y: fromEp.location.y });
+  } else if (fromEp.type === 'offmap') {
+    const dir = fromEp.location.off_map_direction || 'north';
+    const edge = findEdgeNode(dir, nodes);
+    if (!edge) return null;
+    startNodeId = edge.id;
+    offMapMilesStart = Number(fromEp.location.off_map_distance_miles || 0);
+    prefixCoords.push(offmapExitPoint(edge, dir));
+  } else {
+    // area: pick first node in area as start anchor
+    const ans = nodesInArea(fromEp.area, nodes);
+    if (ans.length === 0) return null;
+    startNodeId = ans[0].id;
   }
 
-  // Resolve end
+  // Resolve end target node ids and suffix coords
+  let endTargets: string[] = [];
+  const suffixCoords: { x: number; y: number }[] = [];
   if (toEp.type === 'location') {
-    const endNodeId = findNearestNode(toEp.location, nodes);
-    if (!startNodeId || !endNodeId) return null;
-
-    const nodePath = bfs(adj, startNodeId, endNodeId);
-    if (!nodePath) return null;
-
-    const nodeMap = new Map(nodes.map(n => [n.id, n]));
-    return [
-      startCoord!,
-      ...nodePath.map(id => { const n = nodeMap.get(id)!; return { x: n.x, y: n.y }; }),
-      { x: toEp.location.x, y: toEp.location.y },
-    ];
+    const n = findNearestNode(toEp.location, nodes);
+    if (!n) return null;
+    endTargets = [n];
+    suffixCoords.push({ x: toEp.location.x, y: toEp.location.y });
+  } else if (toEp.type === 'offmap') {
+    const dir = toEp.location.off_map_direction || 'north';
+    const edge = findEdgeNode(dir, nodes);
+    if (!edge) return null;
+    endTargets = [edge.id];
+    offMapMilesEnd = Number(toEp.location.off_map_distance_miles || 0);
+    suffixCoords.push(offmapExitPoint(edge, dir));
+  } else {
+    const ans = nodesInArea(toEp.area, nodes);
+    if (ans.length === 0) return null;
+    endTargets = ans.map(n => n.id);
   }
 
-  // To is an area — find node inside area with fewest hops from start
-  if (fromEp.type === 'area') {
-    // Both are areas: find the pair of (nodeInFrom, nodeInTo) with fewest hops
-    const fromNodes = nodesInArea(fromEp.area, nodes);
-    const toNodes = nodesInArea(toEp.area, nodes);
-    if (fromNodes.length === 0 || toNodes.length === 0) return null;
+  if (!startNodeId) return null;
 
-    let bestPath: string[] | null = null;
-    let bestFromNode: MapRouteNode | null = null;
-    let bestToNode: MapRouteNode | null = null;
+  // For area starts, try every start node and pick shortest
+  const startCandidates: string[] = fromEp.type === 'area'
+    ? nodesInArea(fromEp.area, nodes).map(n => n.id)
+    : [startNodeId];
 
-    for (const fn of fromNodes) {
-      const distances = bfsDistances(adj, fn.id);
-      for (const tn of toNodes) {
-        const d = distances.get(tn.id);
-        if (d !== undefined && (!bestPath || d < bestPath.length - 1)) {
-          const path = bfs(adj, fn.id, tn.id);
-          if (path) { bestPath = path; bestFromNode = fn; bestToNode = tn; }
-        }
+  let bestPath: string[] | null = null;
+  for (const s of startCandidates) {
+    const distances = bfsDistances(adj, s);
+    for (const t of endTargets) {
+      const d = distances.get(t);
+      if (d !== undefined && (!bestPath || d < bestPath.length - 1)) {
+        const p = bfs(adj, s, t);
+        if (p) bestPath = p;
       }
     }
-
-    if (!bestPath || !bestFromNode || !bestToNode) return null;
-    const nodeMap = new Map(nodes.map(n => [n.id, n]));
-    return bestPath.map(id => { const n = nodeMap.get(id)!; return { x: n.x, y: n.y }; });
   }
+  if (!bestPath) return null;
 
-  // From is location, To is area
-  if (!startNodeId) return null;
-  const areaNodes = nodesInArea(toEp.area, nodes);
-  if (areaNodes.length === 0) return null;
-
-  const distances = bfsDistances(adj, startNodeId);
-  let bestNode: MapRouteNode | null = null;
-  let bestDist = Infinity;
-  for (const an of areaNodes) {
-    const d = distances.get(an.id);
-    if (d !== undefined && d < bestDist) { bestDist = d; bestNode = an; }
-  }
-
-  if (!bestNode) return null;
-  const nodePath = bfs(adj, startNodeId, bestNode.id);
-  if (!nodePath) return null;
-
-  const nodeMap = new Map(nodes.map(n => [n.id, n]));
-  return [
-    startCoord!,
-    ...nodePath.map(id => { const n = nodeMap.get(id)!; return { x: n.x, y: n.y }; }),
+  const path = [
+    ...prefixCoords,
+    ...bestPath.map(id => { const n = nodeMap.get(id)!; return { x: n.x, y: n.y }; }),
+    ...suffixCoords,
   ];
+
+  return { path, offMapMilesStart, offMapMilesEnd };
 }
