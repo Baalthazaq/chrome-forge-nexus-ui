@@ -30,6 +30,7 @@ const Maze = () => {
   const [routeFrom, setRouteFrom] = useState<string>('');
   const [routeTo, setRouteTo] = useState<string>('');
   const [routePath, setRoutePath] = useState<{ x: number; y: number }[] | null>(null);
+  const [offMapMiles, setOffMapMiles] = useState<number>(0);
 
   // Add location
   const [placingLocation, setPlacingLocation] = useState(false);
@@ -37,11 +38,20 @@ const Maze = () => {
   const [newLocCoords, setNewLocCoords] = useState<{ x: number; y: number } | null>(null);
   const [locForm, setLocForm] = useState({ name: '', description: '', icon_type: 'default', image_url: '', marker_color: '#14b8a6' });
 
-  const publicLocations = maze.locations.filter(l => l.is_public || l.user_id === user?.id);
+  const visibleLocations = maze.locations.filter(l => l.is_public || l.user_id === user?.id);
+  const onMapLocations = visibleLocations.filter(l => !l.off_map);
+  const offMapLocations = visibleLocations.filter(l => l.off_map);
 
-  // Combined route options: locations + areas (prefixed)
+  const dirAbbrev = (d?: string | null) => d ? d.charAt(0).toUpperCase() : '';
+
+  // Combined route options: locations + off-map locations + areas (prefixed)
   const routeOptions: { id: string; label: string; type: 'location' | 'area' }[] = [
-    ...publicLocations.map(l => ({ id: `loc:${l.id}`, label: l.name, type: 'location' as const })),
+    ...onMapLocations.map(l => ({ id: `loc:${l.id}`, label: l.name, type: 'location' as const })),
+    ...offMapLocations.map(l => ({
+      id: `off:${l.id}`,
+      label: `${l.name} (${l.off_map_distance_miles ?? '?'}mi ${dirAbbrev(l.off_map_direction)})`,
+      type: 'location' as const,
+    })),
     ...maze.areas.map(a => ({ id: `area:${a.id}`, label: `📍 ${a.name}`, type: 'area' as const })),
   ];
 
