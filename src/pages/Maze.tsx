@@ -60,6 +60,10 @@ const Maze = () => {
       const loc = maze.locations.find(l => l.id === key.slice(4));
       return loc ? { type: 'location', location: loc } : null;
     }
+    if (key.startsWith('off:')) {
+      const loc = maze.locations.find(l => l.id === key.slice(4));
+      return loc ? { type: 'offmap', location: loc } : null;
+    }
     if (key.startsWith('area:')) {
       const area = maze.areas.find(a => a.id === key.slice(5));
       return area ? { type: 'area', area } : null;
@@ -71,12 +75,14 @@ const Maze = () => {
     const from = resolveEndpoint(routeFrom);
     const to = resolveEndpoint(routeTo);
     if (!from || !to) { toast.error('Select both locations'); return; }
-    const path = findRoute(from, to, maze.routeNodes, maze.routeEdges);
-    if (path) {
-      setRoutePath(path);
+    const result = findRoute(from, to, maze.routeNodes, maze.routeEdges);
+    if (result) {
+      setRoutePath(result.path);
+      setOffMapMiles(result.offMapMilesStart + result.offMapMilesEnd);
       toast.success('Route found!');
     } else {
       setRoutePath(null);
+      setOffMapMiles(0);
       toast.error('No route available');
     }
   };
