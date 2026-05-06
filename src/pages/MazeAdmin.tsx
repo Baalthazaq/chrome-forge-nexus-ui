@@ -117,7 +117,7 @@ const MazeAdmin = () => {
 
   const startEditLocation = (loc: MapLocation) => {
     setEditingLocation(loc);
-    setLocForm({ name: loc.name, description: loc.description || '', icon_type: loc.icon_type, image_url: loc.image_url || '', is_public: loc.is_public, marker_color: loc.marker_color || '#14b8a6' });
+    setLocForm({ name: loc.name, description: loc.description || '', icon_type: loc.icon_type, image_url: loc.image_url || '', is_public: loc.is_public, marker_color: loc.marker_color || '#14b8a6', off_map: !!loc.off_map, off_map_direction: (loc.off_map_direction as any) || 'north', off_map_distance_miles: loc.off_map_distance_miles != null ? String(loc.off_map_distance_miles) : '' });
   };
 
   // --- Area Handlers ---
