@@ -128,6 +128,7 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
