@@ -50,6 +50,7 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
   const [pickerSearch, setPickerSearch] = useState('');
   const [available, setAvailable] = useState<any[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
 
   useEffect(() => {
     if (open) {
