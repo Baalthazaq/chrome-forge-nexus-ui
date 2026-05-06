@@ -593,15 +593,29 @@ const MazeAdmin = () => {
                     {maze.routeNodes.map(node => (
                       <div
                         key={node.id}
-                        className={`flex items-center justify-between p-1 rounded text-xs font-mono cursor-pointer transition-colors ${
+                        className={`flex items-center justify-between gap-1 p-1 rounded text-xs font-mono cursor-pointer transition-colors ${
                           selectedRouteNodeId === node.id
                             ? 'bg-purple-600/30 border border-purple-500/60 text-purple-300'
                             : 'bg-gray-900/50 border border-gray-700/30 text-gray-400 hover:bg-gray-800/50'
                         }`}
                         onClick={() => setSelectedRouteNodeId(prev => prev === node.id ? null : node.id)}
                       >
-                        <span>({node.x.toFixed(1)}, {node.y.toFixed(1)})</span>
-                        <button onClick={(e) => { e.stopPropagation(); maze.deleteRouteNode.mutate(node.id); setSelectedRouteNodeId(null); toast.success('Node deleted'); }} className="p-1 text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                        <span className="flex-shrink-0">({node.x.toFixed(1)}, {node.y.toFixed(1)})</span>
+                        <Select
+                          value={node.edge_direction || 'none'}
+                          onValueChange={(v) => maze.updateRouteNode.mutate({ id: node.id, edge_direction: v === 'none' ? null : v })}
+                        >
+                          <SelectTrigger className="h-6 px-1 py-0 bg-gray-800 border-gray-700 text-gray-200 text-[10px] flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                            <SelectValue placeholder="—" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-gray-800 border-gray-700">
+                            <SelectItem value="none" className="text-gray-400 text-xs">— No edge —</SelectItem>
+                            {OFF_MAP_DIRECTIONS.map(d => (
+                              <SelectItem key={d.value} value={d.value} className="text-gray-200 text-xs">{d.label} edge</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <button onClick={(e) => { e.stopPropagation(); maze.deleteRouteNode.mutate(node.id); setSelectedRouteNodeId(null); toast.success('Node deleted'); }} className="p-1 text-gray-400 hover:text-red-400 flex-shrink-0"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     ))}
                   </div>
