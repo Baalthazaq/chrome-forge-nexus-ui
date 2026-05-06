@@ -71,7 +71,7 @@ export const EnvironmentFeatureLibraryPicker = ({ open, onClose, onSelect }: Pro
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => onClose()}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Environment Feature Library</DialogTitle>

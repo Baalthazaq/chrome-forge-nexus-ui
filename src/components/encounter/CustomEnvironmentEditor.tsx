@@ -128,6 +128,7 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -276,11 +277,12 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
           <Button onClick={handleSave} disabled={!name.trim()}>{initial ? 'Update' : 'Add to Encounter'}</Button>
         </DialogFooter>
       </DialogContent>
-      <EnvironmentFeatureLibraryPicker
-        open={showLibrary}
-        onClose={() => setShowLibrary(false)}
-        onSelect={(f: FeatureItem) => setFeatures(prev => [...prev, { ...f }])}
-      />
     </Dialog>
+    <EnvironmentFeatureLibraryPicker
+      open={showLibrary}
+      onClose={() => setShowLibrary(false)}
+      onSelect={(f: FeatureItem) => setFeatures(prev => [...prev, { ...f }])}
+    />
+    </>
   );
 };
