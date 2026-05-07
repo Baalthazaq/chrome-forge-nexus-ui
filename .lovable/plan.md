@@ -1,62 +1,32 @@
 ## Goal
 
-Let admins create **off-map locations** that don't render on the map but show up in the route picker. Routing to/from one walks the player to the closest edge node in the chosen direction, then adds extra travel time based on the off-map distance.
+Add new Daggerheart adversaries (added by Demiplane after our last seed) into `bestiary_creatures`, skipping the 124 already-seeded ones.
 
-## Data model
+## Blocker: source data
 
-Extend `map_locations` with three nullable columns (migration):
-- `off_map` boolean default false
-- `off_map_direction` text — one of `north|east|south|west` (null on regular pins)
-- `off_map_distance_miles` numeric
+Demiplane's adversary pages are gated behind login and rendered client-side, so I cannot scrape them from the sandbox (the fetch returns a blank shell). I need the new creature data from you in one of these forms:
 
-Off-map rows ignore `x`/`y` (we'll just store 0,0). They are excluded from map rendering but included in pickers and pathfinding.
+1. **Paste names + stat blocks** in chat (preferred — I'll convert them).
+2. **Drop a JSON/markdown export** if Demiplane offers one.
+3. **Just paste the new creature names** and I'll fill stats from the public Daggerheart SRD where available.
 
-## Admin UI (`MazeAdmin.tsx`)
+## Already in DB (will be skipped)
 
-In the Add/Edit Location dialog, add a checkbox **"Off-map location"**. When checked:
-- Hide the "place on map" requirement
-- Show a Direction select (N/E/S/W) and a "Distance from map edge (miles)" number input
-- Save row with `off_map=true`, no map placement step needed
+124 creatures including all base SRD adversaries (Acid Burrower → Zombie Pack), Volcanic Dragon trio, Fallen Warlords, Vault Guardians, Jagged Knife gang, Outer Realms set, oozes, demons, etc. Anything you paste matching these names by case-insensitive comparison will be ignored.
 
-List view marks off-map entries with a small chip ("Off-map · 4mi N").
+## Implementation
 
-## Player UI (`Maze.tsx` + `InteractiveMap.tsx`)
+1. **Update `supabase/functions/seed-bestiary/index.ts`**
+   - Remove the blanket `delete().eq('is_custom', false)` at the top (destructive on re-run).
+   - Switch to a name-based skip: fetch existing names, then `insert` only creatures whose lowercased name isn't present.
+   - Append the new creature objects to the existing array (matching the current shape: `name, tier, creature_type, description, motives_tactics, difficulty, thresholds, hp, stress, attack_modifier, weapon_name, weapon_range, damage, experience, features[], horde_value, is_custom: false`).
+   - Return `{ inserted, skipped, total }` for visibility.
 
-- `publicLocations` includes off-map rows in the route dropdowns (labelled e.g. `"Smuggler's Bay (4mi W)"`).
-- `InteractiveMap` filters out `off_map` locations from the rendered pins/icons (no marker shown).
-- When a route involves an off-map endpoint, draw the on-map portion as today, then draw a dashed line from the edge node out toward the map border in the chosen direction (purely visual hint, fixed short length).
+2. **Run the function** from `BestiaryAdmin` (existing "Seed from Source" button already invokes `seed-bestiary`).
+   - I'll add a small toast that reports `inserted` vs `skipped` counts.
 
-## Pathfinding (`src/lib/pathfinding.ts`)
+3. **Verify** via the bestiary admin list — new creatures should appear, existing ones untouched (including any custom ones).
 
-Add `RouteEndpoint` variant `{ type: 'offmap'; location: MapLocation }`.
+## Next step
 
-Helper `findEdgeNode(direction, nodes)` picks the node with the min/max `y` (N/S) or `x` (E/W).
-
-Behavior:
-- Off-map → on-map: find edge node for the off-map's direction, BFS from there to destination node/area, prepend a synthetic point representing the off-map "exit" (same coord as edge node, used by Maze.tsx to know it's an off-map leg).
-- On-map → off-map: BFS to edge node, append synthetic point.
-- Off-map → off-map: BFS between the two edge nodes; prepend + append.
-
-Return the path as today (array of `{x,y}`), but also expose the off-map leg miles so Maze.tsx can add time.
-
-Cleanest: change `findRoute` to return `{ path, offMapMilesStart, offMapMilesEnd }` instead of bare array. Update the single caller in `Maze.tsx`.
-
-## Travel time extension (`Maze.tsx`)
-
-Total off-map miles = `offMapMilesStart + offMapMilesEnd`. Add to existing minute totals:
-- Walking: +20 min/mile
-- Public transit: +6 min/mile (assumes a bus/route exists out there)
-- Private drive: +3 min/mile
-
-Append the existing `walkMin`/`publicMin`/`driveMin` calc with these offsets before formatting.
-
-## Files touched
-
-- new migration: add 3 columns to `map_locations`
-- `src/pages/MazeAdmin.tsx` — off-map fields in location dialog + list chip
-- `src/hooks/useMazeData.tsx` — extend `MapLocation` interface
-- `src/components/maze/InteractiveMap.tsx` — skip rendering off-map pins; draw dashed edge-exit line when route has off-map leg
-- `src/lib/pathfinding.ts` — endpoint variant, edge-node finder, return shape change
-- `src/pages/Maze.tsx` — include off-map in pickers, label with distance, add travel-time miles, pass off-map info to map
-
-No RLS changes needed (existing policies cover the new columns).
+Reply with the new creature data (or a Demiplane export). Once I have it I'll update the edge function in one shot and you can hit Seed.
