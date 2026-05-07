@@ -11,8 +11,13 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Delete existing non-custom creatures
-    await supabase.from("bestiary_creatures").delete().eq("is_custom", false);
+    // Skip existing creatures by name (case-insensitive) — preserves custom + already-seeded
+    const { data: existing } = await supabase
+      .from("bestiary_creatures")
+      .select("name");
+    const existingNames = new Set(
+      (existing || []).map((r: { name: string }) => r.name.toLowerCase())
+    );
 
     const creatures = [
       {
@@ -2469,9 +2474,15 @@ Deno.serve(async (req) => {
       }
     ];
 
+    // Filter out creatures that already exist (by name)
+    const toInsert = creatures.filter(
+      (c) => !existingNames.has(c.name.toLowerCase())
+    );
+    const skipped = creatures.length - toInsert.length;
+
     // Insert in batches of 20
-    for (let i = 0; i < creatures.length; i += 20) {
-      const batch = creatures.slice(i, i + 20);
+    for (let i = 0; i < toInsert.length; i += 20) {
+      const batch = toInsert.slice(i, i + 20);
       const { error } = await supabase.from("bestiary_creatures").insert(batch);
       if (error) {
         console.error(`Batch ${i} error:`, error);
@@ -2480,7 +2491,13 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, count: creatures.length }),
+      JSON.stringify({
+        success: true,
+        count: toInsert.length,
+        inserted: toInsert.length,
+        skipped,
+        total: creatures.length,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
