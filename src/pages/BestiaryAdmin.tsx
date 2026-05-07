@@ -134,6 +134,10 @@ const BestiaryAdmin = () => {
             <Badge variant="outline">{filtered.length} / {creatures.length}</Badge>
           </div>
           <div className="flex gap-2">
+            <Button onClick={seedBestiary} size="sm" variant="outline" disabled={seeding}>
+              <RefreshCw className={`h-4 w-4 mr-1 ${seeding ? 'animate-spin' : ''}`} />
+              {seeding ? 'Seeding...' : 'Seed from Source'}
+            </Button>
             <Button onClick={() => setShowCreateDialog(true)} size="sm">
               <Plus className="h-4 w-4 mr-1" /> Add Creature
             </Button>
