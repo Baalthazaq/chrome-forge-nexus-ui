@@ -57,7 +57,7 @@ const BestiaryAdmin = () => {
     try {
       const { data, error } = await supabase.functions.invoke('seed-bestiary');
       if (error) throw error;
-      toast.success(`Seeded ${data.count} creatures`);
+      toast.success(`Inserted ${data.inserted ?? data.count} new, skipped ${data.skipped ?? 0} existing`);
       loadCreatures();
     } catch (e: any) {
       toast.error('Failed to seed: ' + e.message);
