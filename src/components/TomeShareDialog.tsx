@@ -145,9 +145,8 @@ export const TomeShareDialog = ({ tomeEntry, children }: TomeShareDialogProps) =
       const { error } = await supabase.from('tome_shares').insert(rows);
       if (error) throw error;
 
-      // fire-and-forget notifications
-      const label = mode === 'collaborate' ? 'Collab Invite' : 'ToMe Copy';
-      await Promise.all(selectedRecipients.map((rid) => sendNotification(rid, label)));
+      // Recipients see pending shares via the TomeShareNotifications card —
+      // no Sending Stone casts needed (those clutter the sender's chat list).
 
       toast({
         title: 'Sent',
