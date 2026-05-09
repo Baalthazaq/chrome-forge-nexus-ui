@@ -245,8 +245,8 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
               </div>
             </div>
             {features.length > 0 && (
-              <ScrollArea className="max-h-72">
-                <div className="space-y-2 pr-2">
+              <div className="space-y-2">
+                <div className="space-y-2">
                   {features.map((f, i) => (
                     <div key={i} className="border rounded p-2 space-y-2 bg-muted/30">
                       <div className="flex gap-2">
