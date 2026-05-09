@@ -32,7 +32,7 @@ export const EnvironmentViewDialog = ({ environmentId, inlineEnvironment, onClos
 
   return (
     <>
-      <Dialog open={!!environmentId} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <Dialog open={!!environmentId || !!inlineEnvironment} onOpenChange={(o) => { if (!o) onClose(); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 flex-wrap">
