@@ -29,6 +29,7 @@ const EncounterBuilder = () => {
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [viewCreatureId, setViewCreatureId] = useState<string | null>(null);
   const [viewEnvironmentId, setViewEnvironmentId] = useState<string | null>(null);
+  const [viewInlineEnv, setViewInlineEnv] = useState<any | null>(null);
   const [viewNpcId, setViewNpcId] = useState<string | null>(null);
   const [thumbs, setThumbs] = useState<{
     envs: Record<string, string | null>;
