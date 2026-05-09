@@ -225,7 +225,7 @@ const EncounterBuilder = () => {
                               return (
                                 <button
                                   key={i}
-                                  onClick={(e) => { e.stopPropagation(); env.id && setViewEnvironmentId(env.id); }}
+                                  onClick={(e) => { e.stopPropagation(); if (env.id) setViewEnvironmentId(env.id); else setViewInlineEnv(env); }}
                                   className="w-full text-left bg-emerald-500/10 hover:bg-emerald-500/20 rounded p-2 text-sm flex items-center gap-2 transition-colors"
                                 >
                                   {img ? (
