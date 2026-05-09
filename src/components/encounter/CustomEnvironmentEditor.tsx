@@ -267,7 +267,7 @@ export const CustomEnvironmentEditor = ({ open, initial, onClose, onSave }: Prop
                     </div>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
             )}
           </div>
         </div>
