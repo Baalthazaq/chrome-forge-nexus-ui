@@ -118,13 +118,20 @@ const NexusWire = () => {
     if (calRes.data) setGameDate({ day: calRes.data.current_day, month: calRes.data.current_month, year: calRes.data.current_year });
   };
 
-  // Filter articles: only show those whose game publish date <= current game date
+  // Filter and sort articles: only show those whose game publish date <= current game date, ordered by publish date descending
   const articles = useMemo(() => {
     if (!gameDate) return [];
-    return allArticles.filter(a => {
+    const filtered = allArticles.filter(a => {
       // If no game date set on article, show it (legacy or player-submitted)
       if (!a.publish_day || !a.publish_month || !a.publish_year) return true;
       return gameDateLte({ day: a.publish_day, month: a.publish_month, year: a.publish_year }, gameDate);
+    });
+    return filtered.sort((a, b) => {
+      const dateA = { year: a.publish_year ?? 0, month: a.publish_month ?? 0, day: a.publish_day ?? 0 };
+      const dateB = { year: b.publish_year ?? 0, month: b.publish_month ?? 0, day: b.publish_day ?? 0 };
+      if (dateB.year !== dateA.year) return dateB.year - dateA.year;
+      if (dateB.month !== dateA.month) return dateB.month - dateA.month;
+      return dateB.day - dateA.day;
     });
   }, [allArticles, gameDate]);
 
