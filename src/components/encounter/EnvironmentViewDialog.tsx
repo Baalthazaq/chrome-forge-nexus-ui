@@ -8,21 +8,23 @@ import { ImageLightbox } from './ImageLightbox';
 
 interface Props {
   environmentId: string | null;
+  inlineEnvironment?: any | null;
   onClose: () => void;
 }
 
-export const EnvironmentViewDialog = ({ environmentId, onClose }: Props) => {
+export const EnvironmentViewDialog = ({ environmentId, inlineEnvironment, onClose }: Props) => {
   const [data, setData] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [openFeatures, setOpenFeatures] = useState<Record<number, boolean>>({});
   const [lightbox, setLightbox] = useState<string | null>(null);
 
   useEffect(() => {
+    if (inlineEnvironment) { setData(inlineEnvironment); return; }
     if (!environmentId) { setData(null); return; }
     setLoading(true);
     supabase.from('environments').select('*').eq('id', environmentId).maybeSingle()
       .then(({ data }) => { setData(data); setLoading(false); });
-  }, [environmentId]);
+  }, [environmentId, inlineEnvironment]);
 
   const features: any[] = Array.isArray(data?.features)
     ? data.features
@@ -30,7 +32,7 @@ export const EnvironmentViewDialog = ({ environmentId, onClose }: Props) => {
 
   return (
     <>
-      <Dialog open={!!environmentId} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <Dialog open={!!environmentId || !!inlineEnvironment} onOpenChange={(o) => { if (!o) onClose(); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 flex-wrap">

@@ -29,6 +29,7 @@ const EncounterBuilder = () => {
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [viewCreatureId, setViewCreatureId] = useState<string | null>(null);
   const [viewEnvironmentId, setViewEnvironmentId] = useState<string | null>(null);
+  const [viewInlineEnv, setViewInlineEnv] = useState<any | null>(null);
   const [viewNpcId, setViewNpcId] = useState<string | null>(null);
   const [thumbs, setThumbs] = useState<{
     envs: Record<string, string | null>;
@@ -224,7 +225,7 @@ const EncounterBuilder = () => {
                               return (
                                 <button
                                   key={i}
-                                  onClick={(e) => { e.stopPropagation(); env.id && setViewEnvironmentId(env.id); }}
+                                  onClick={(e) => { e.stopPropagation(); if (env.id) setViewEnvironmentId(env.id); else setViewInlineEnv(env); }}
                                   className="w-full text-left bg-emerald-500/10 hover:bg-emerald-500/20 rounded p-2 text-sm flex items-center gap-2 transition-colors"
                                 >
                                   {img ? (
@@ -409,7 +410,7 @@ const EncounterBuilder = () => {
       </AlertDialog>
 
       <CreatureViewDialog creatureId={viewCreatureId} onClose={() => setViewCreatureId(null)} />
-      <EnvironmentViewDialog environmentId={viewEnvironmentId} onClose={() => setViewEnvironmentId(null)} />
+      <EnvironmentViewDialog environmentId={viewEnvironmentId} inlineEnvironment={viewInlineEnv} onClose={() => { setViewEnvironmentId(null); setViewInlineEnv(null); }} />
       <NPCViewDialog userId={viewNpcId} onClose={() => setViewNpcId(null)} />
     </div>
   );
