@@ -410,7 +410,7 @@ const EncounterBuilder = () => {
       </AlertDialog>
 
       <CreatureViewDialog creatureId={viewCreatureId} onClose={() => setViewCreatureId(null)} />
-      <EnvironmentViewDialog environmentId={viewEnvironmentId} onClose={() => setViewEnvironmentId(null)} />
+      <EnvironmentViewDialog environmentId={viewEnvironmentId} inlineEnvironment={viewInlineEnv} onClose={() => { setViewEnvironmentId(null); setViewInlineEnv(null); }} />
       <NPCViewDialog userId={viewNpcId} onClose={() => setViewNpcId(null)} />
     </div>
   );
