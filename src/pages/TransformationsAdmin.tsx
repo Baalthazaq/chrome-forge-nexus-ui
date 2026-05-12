@@ -294,6 +294,7 @@ export default function TransformationsAdmin() {
           onCheckedChange={(v) => onChange({ ...draft, stackable: v })}
         />
         <Label className="text-xs">Stackable with itself</Label>
+      </div>
       <div className="md:col-span-2 space-y-2 border-t pt-3 mt-2">
         <div className="flex items-center justify-between">
           <Label className="text-xs uppercase tracking-wide">Powers</Label>
