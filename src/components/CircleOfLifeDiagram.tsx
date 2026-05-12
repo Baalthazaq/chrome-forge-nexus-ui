@@ -188,14 +188,14 @@ export function CircleOfLifeDiagram({
     <Card className={`p-4 ${className ?? ""}`.trim()}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold">Circle of Life</h2>
-          <p className="text-sm text-muted-foreground">
-            Click a node to focus — the wheel rotates so it sits to the right of The Source. Click the background to reset.
-          </p>
+          <h2 className="text-2xl font-bold">{title}</h2>
+          <p className="text-sm text-muted-foreground">{subtitle}</p>
         </div>
-        <Button variant="outline" onClick={handleExportSvg} className="gap-2">
-          <Download className="h-4 w-4" /> Export SVG
-        </Button>
+        {!hideExport && (
+          <Button variant="outline" onClick={handleExportSvg} className="gap-2">
+            <Download className="h-4 w-4" /> Export SVG
+          </Button>
+        )}
       </div>
 
       <div className="w-full">
@@ -204,7 +204,7 @@ export function CircleOfLifeDiagram({
           viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
           preserveAspectRatio="xMidYMid meet"
           className="block w-full transition-all duration-500 ease-in-out"
-          style={{ height: "85vh" }}
+          style={{ height: heightStyle }}
           onClick={(e) => { if (e.target === e.currentTarget) setFocusId(null); }}
         >
           {/* Rotate the entire wheel around its center so the focused node lands at 3 o'clock */}
