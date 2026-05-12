@@ -39,6 +39,7 @@ export function CircleOfLifeDiagram({
   focusId: focusIdProp,
   onFocusChange,
   centerLabel = "The Source",
+  centerColor,
   title = "Circle of Life",
   subtitle = "Click a node to focus — the wheel rotates so it sits to the right of The Source. Click the background to reset.",
   heightStyle = "85vh",
