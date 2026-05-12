@@ -294,6 +294,52 @@ export default function TransformationsAdmin() {
           onCheckedChange={(v) => onChange({ ...draft, stackable: v })}
         />
         <Label className="text-xs">Stackable with itself</Label>
+      <div className="md:col-span-2 space-y-2 border-t pt-3 mt-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs uppercase tracking-wide">Powers</Label>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => onChange({ ...draft, powers: [...draft.powers, { name: "", description: "" }] })}
+          >
+            <Plus className="h-3 w-3 mr-1" /> Add power
+          </Button>
+        </div>
+        {draft.powers.length === 0 && (
+          <p className="text-[11px] text-muted-foreground">No powers yet.</p>
+        )}
+        {draft.powers.map((p, i) => (
+          <div key={i} className="grid grid-cols-1 md:grid-cols-[1fr_2fr_auto] gap-2 items-start">
+            <Input
+              placeholder="POWER NAME"
+              value={p.name}
+              onChange={(e) => {
+                const next = [...draft.powers];
+                next[i] = { ...next[i], name: e.target.value };
+                onChange({ ...draft, powers: next });
+              }}
+            />
+            <Textarea
+              rows={2}
+              placeholder="Power description"
+              value={p.description}
+              onChange={(e) => {
+                const next = [...draft.powers];
+                next[i] = { ...next[i], description: e.target.value };
+                onChange({ ...draft, powers: next });
+              }}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => onChange({ ...draft, powers: draft.powers.filter((_, j) => j !== i) })}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
       </div>
     </div>
   );
