@@ -1312,6 +1312,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                   <div className={multi ? "grid gap-4 grid-cols-1 xl:grid-cols-2" : ""}>
                     {sources.map((src) => {
                       const sub = filterToSource(mappedNodes, edges, src.id);
+                      const centerColor = src.color || FAMILY_COLORS[src.label] || "hsl(45 90% 70%)";
                       return (
                         <CircleOfLifeDiagram
                           key={src.id}
@@ -1320,6 +1321,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                           focusId={selectedId}
                           onFocusChange={setSelectedId}
                           centerLabel={src.label}
+                          centerColor={centerColor}
                           title={src.label}
                           subtitle={`Lineages descending from ${src.label}.`}
                           heightStyle={multi ? "60vh" : "85vh"}
