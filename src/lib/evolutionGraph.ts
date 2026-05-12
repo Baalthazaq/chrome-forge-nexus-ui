@@ -39,6 +39,7 @@ export interface EvoTransformation {
   stackable: boolean;
   stage: number;
   chance: number;
+  powers?: { name: string; description: string }[] | null;
 }
 
 /**
