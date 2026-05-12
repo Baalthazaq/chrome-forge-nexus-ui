@@ -115,6 +115,7 @@ const App = () => (
             <Route path="/admin/circle-of-life" element={<CircleOfLife />} />
             <Route path="/admin/racegen" element={<Racegen />} />
             <Route path="/admin/transformations" element={<TransformationsAdmin />} />
+            <Route path="/transformations" element={<Transformations />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
