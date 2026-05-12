@@ -1550,6 +1550,20 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Sheet open={transformationsOpen} onOpenChange={setTransformationsOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Transformations</SheetTitle>
+            <SheetDescription>
+              Modifiers layered on top of a creature's lineage. Innate or afflicted via a carrier.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-4">
+            <TransformationsList compact />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
