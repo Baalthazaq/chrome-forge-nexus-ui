@@ -178,6 +178,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const [addOpen, setAddOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"tree" | "circle">(initialView);
   const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [transformationsOpen, setTransformationsOpen] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newType, setNewType] = useState("race");
   const [newColor, setNewColor] = useState<string>(Object.values(FAMILY_COLORS)[0]);
