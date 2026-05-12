@@ -59,8 +59,13 @@ export function CircleOfLifeDiagram({
 
   const layout = useMemo(() => {
     const filtered = filterActiveCircleGraph(nodes, edges);
-    return buildCircleLayout(filtered.nodes, filtered.edges);
-  }, [nodes, edges]);
+    const built = buildCircleLayout(filtered.nodes, filtered.edges);
+    if (centerColor) {
+      const root = built.nodes.find((n) => n.id === ROOT_ID);
+      if (root) root.color = centerColor;
+    }
+    return built;
+  }, [nodes, edges, centerColor]);
 
   const childMap = useMemo(() => {
     const map = new Map<string, string[]>();
