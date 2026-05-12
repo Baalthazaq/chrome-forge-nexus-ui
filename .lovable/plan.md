@@ -1,32 +1,53 @@
 ## Goal
 
-Add new Daggerheart adversaries (added by Demiplane after our last seed) into `bestiary_creatures`, skipping the 124 already-seeded ones.
+1. Add a new top-level **Source** layer above families. Today there's an implicit `__root__` "The Source" — promote it to real, renamable, multi-instance data so families can be re-parented later.
+2. Render the Circle of Life as **one wheel per Source** in a wrapped grid.
+3. Pull **Transformations** out of the Circle entirely: dedicated `/transformations` player page + a "Transformations" button on `/circle-of-life` that opens a side panel. Existing wheel transformations data stays as-is for now; the Daggerheart official ones will be added later.
 
-## Blocker: source data
+## Changes
 
-Demiplane's adversary pages are gated behind login and rendered client-side, so I cannot scrape them from the sandbox (the fetch returns a blank shell). I need the new creature data from you in one of these forms:
+### 1. Data model — add real Source nodes
 
-1. **Paste names + stat blocks** in chat (preferred — I'll convert them).
-2. **Drop a JSON/markdown export** if Demiplane offers one.
-3. **Just paste the new creature names** and I'll fill stats from the public Daggerheart SRD where available.
+Schema migration:
+- Use the existing `evolution_nodes` table. Add one seed node `{ type: 'source', label: 'The Source' }` (only one for now — admins can add more later).
+- Re-parent every current root family (one not already a child of a `source`) by inserting an edge `parent = The Source → child = family`.
+- No new columns needed; `type='source'` already exists in the schema and `circle-of-life-layout.ts` already filters Source nodes out of label-tagging.
 
-## Already in DB (will be skipped)
+(Migration tool for the type/seed; insert tool for the data inserts.)
 
-124 creatures including all base SRD adversaries (Acid Burrower → Zombie Pack), Volcanic Dragon trio, Fallen Warlords, Vault Guardians, Jagged Knife gang, Outer Realms set, oozes, demons, etc. Anything you paste matching these names by case-insensitive comparison will be ignored.
+### 2. Circle of Life — multi-wheel grid
 
-## Implementation
+`src/components/circle-of-life-layout.ts`:
+- `buildCircleLayout` currently always emits a single `__root__` "The Source" at center. Refactor to accept an optional `sourceId` filter: when given, only families descending from that source (and their subtree) are laid out, and the center node uses that source's label/color instead of the synthetic `__root__`.
+- Keep `ROOT_ID` for backward compat (acts as the synthetic center when no real source exists).
 
-1. **Update `supabase/functions/seed-bestiary/index.ts`**
-   - Remove the blanket `delete().eq('is_custom', false)` at the top (destructive on re-run).
-   - Switch to a name-based skip: fetch existing names, then `insert` only creatures whose lowercased name isn't present.
-   - Append the new creature objects to the existing array (matching the current shape: `name, tier, creature_type, description, motives_tactics, difficulty, thresholds, hp, stress, attack_modifier, weapon_name, weapon_range, damage, experience, features[], horde_value, is_custom: false`).
-   - Return `{ inserted, skipped, total }` for visibility.
+`src/components/CircleOfLifeDiagram.tsx`:
+- Accept `sourceLabel` / `sourceColor` props for the center caption ("The Source" → dynamic).
+- No other behavioral changes.
 
-2. **Run the function** from `BestiaryAdmin` (existing "Seed from Source" button already invokes `seed-bestiary`).
-   - I'll add a small toast that reports `inserted` vs `skipped` counts.
+`src/pages/CircleOfLife.tsx`:
+- In circle view, query distinct `source` nodes from `nodes`. For each, render a `<CircleOfLifeDiagram>` in a responsive grid (`grid-cols-1 lg:grid-cols-2`), each filtered to that source's subtree. Single source → single full-width wheel (today's behavior).
+- Tree view (admin editor) is unchanged; `source`-typed nodes show up like any other node and can be linked/edited.
 
-3. **Verify** via the bestiary admin list — new creatures should appear, existing ones untouched (including any custom ones).
+### 3. Transformations split
 
-## Next step
+- New player page **`/transformations`** (`src/pages/Transformations.tsx`): read-only list/grid of `evolution_transformations`, grouped by stage, showing label, description, granted tags, host requirements, acquisition, carrier. Accessible to all signed-in users.
+- Add route in `src/App.tsx`.
+- Add a **"Transformations"** button to the Circle of Life page header that opens a `Sheet` (right-side panel) showing the same list. Reuse a shared `TransformationsList` component between the page and the panel.
+- `TransformationsAdmin` stays as the admin editor (unchanged).
 
-Reply with the new creature data (or a Demiplane export). Once I have it I'll update the edge function in one shot and you can hit Seed.
+### 4. Memory
+
+Update `mem://apps/circle-of-life` (new) noting: Source is a real node type; wheel renders one circle per Source; Transformations live at `/transformations` + Circle side panel, never on the wheel.
+
+## Out of scope (deferred)
+
+- Importing official Daggerheart transformations — user will provide a list later.
+- Splitting "The Source" into multiple named sources — schema/UI will already support it; just an admin task at that point.
+- Any change to Racegen rolling logic.
+
+## Technical notes
+
+- `filterActiveCircleGraph` already excludes carriers and certain families; per-source filter will compose with it (run per-source filter first, then active filter).
+- `circle-of-life-layout.ts` already auto-tags labels as tags except for `type='source'`, so introducing real source nodes won't pollute the tag set used by transformations.
+- Wheel sizing: at one source, keep current 85vh. With multiple sources, drop each to ~50vh inside grid cells.
