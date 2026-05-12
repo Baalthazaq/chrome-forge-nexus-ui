@@ -95,6 +95,34 @@ export function filterActiveCircleGraph(
   return { nodes: keptNodes, edges: keptEdges };
 }
 
+/** Restrict the graph to descendants of a given source node (the source itself
+ *  is dropped — the wheel renders its own synthetic center). */
+export function filterToSource(
+  nodes: CircleNodeRow[],
+  edges: CircleEdgeRow[],
+  sourceId: string,
+): { nodes: CircleNodeRow[]; edges: CircleEdgeRow[] } {
+  const childrenOf = new Map<string, string[]>();
+  for (const e of edges) {
+    if (!childrenOf.has(e.parent_id)) childrenOf.set(e.parent_id, []);
+    childrenOf.get(e.parent_id)!.push(e.child_id);
+  }
+  const reach = new Set<string>();
+  const stack = [sourceId];
+  while (stack.length) {
+    const cur = stack.pop()!;
+    for (const c of childrenOf.get(cur) ?? []) {
+      if (reach.has(c)) continue;
+      reach.add(c);
+      stack.push(c);
+    }
+  }
+  const keptNodes = nodes.filter((n) => reach.has(n.id));
+  const keptIds = new Set(keptNodes.map((n) => n.id));
+  const keptEdges = edges.filter((e) => keptIds.has(e.parent_id) && keptIds.has(e.child_id));
+  return { nodes: keptNodes, edges: keptEdges };
+}
+
 const FAMILY_COLORS: Record<string, string> = {
   Aberration: "hsl(285 75% 55%)",
   Avian: "hsl(200 90% 55%)",
