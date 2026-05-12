@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   PanelRightClose,
   PanelRightOpen,
+  Sparkles,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import CircleOfLifeDiagram from "@/components/CircleOfLifeDiagram";
