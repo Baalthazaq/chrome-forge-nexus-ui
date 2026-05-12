@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import CircleOfLifeDiagram from "@/components/CircleOfLifeDiagram";
+import { filterToSource } from "@/components/circle-of-life-layout";
 import {
   Dialog,
   DialogContent,
