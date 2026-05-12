@@ -1,53 +1,64 @@
 ## Goal
 
-1. Add a new top-level **Source** layer above families. Today there's an implicit `__root__` "The Source" — promote it to real, renamable, multi-instance data so families can be re-parented later.
-2. Render the Circle of Life as **one wheel per Source** in a wrapped grid.
-3. Pull **Transformations** out of the Circle entirely: dedicated `/transformations` player page + a "Transformations" button on `/circle-of-life` that opens a side panel. Existing wheel transformations data stays as-is for now; the Daggerheart official ones will be added later.
+Promote **Undead**, **Construct**, and **Aberration** from families to **Sources** (their own top-level layer), and link **Gith** to both the Aberration source and the Humanoid family so it appears as a multi-parent race.
+
+After this, the Circle of Life renders four wheels: The Source, Aberration, Undead, Construct.
 
 ## Changes
 
-### 1. Data model — add real Source nodes
+### 1. Data — promote families to sources, re-parent Gith
 
-Schema migration:
-- Use the existing `evolution_nodes` table. Add one seed node `{ type: 'source', label: 'The Source' }` (only one for now — admins can add more later).
-- Re-parent every current root family (one not already a child of a `source`) by inserting an edge `parent = The Source → child = family`.
-- No new columns needed; `type='source'` already exists in the schema and `circle-of-life-layout.ts` already filters Source nodes out of label-tagging.
+One migration (schema-safe data update):
 
-(Migration tool for the type/seed; insert tool for the data inserts.)
+- `UPDATE evolution_nodes SET type='source' WHERE label IN ('Aberration','Undead','Construct')`. All existing children stay attached because edges reference node ids, not types.
+- `DELETE FROM evolution_edges` where `parent_id = 'The Source'` AND `child_id` is one of the three (they're no longer descendants of The Source — they ARE sources).
+- `INSERT INTO evolution_edges (parent_id, child_id)` linking **Humanoid (family) → Gith (race)**. Gith keeps its existing Aberration parent, gaining Humanoid as a second parent. The layout's `primaryParentOf` already handles multi-parent races by picking the deepest parent, so Gith will visually cluster under whichever is deeper (Aberration source if Humanoid stays at family depth — fine).
 
-### 2. Circle of Life — multi-wheel grid
+No schema changes — `type='source'` already exists; multi-parent edges are already supported.
 
-`src/components/circle-of-life-layout.ts`:
-- `buildCircleLayout` currently always emits a single `__root__` "The Source" at center. Refactor to accept an optional `sourceId` filter: when given, only families descending from that source (and their subtree) are laid out, and the center node uses that source's label/color instead of the synthetic `__root__`.
-- Keep `ROOT_ID` for backward compat (acts as the synthetic center when no real source exists).
+### 2. Circle of Life rendering
 
-`src/components/CircleOfLifeDiagram.tsx`:
-- Accept `sourceLabel` / `sourceColor` props for the center caption ("The Source" → dynamic).
-- No other behavioral changes.
+`circle-of-life-layout.ts`:
+- Add `FAMILY_COLORS` entries for the three labels at the source level (Aberration already has one, add for Undead/Construct as source-tier shades) — used by the per-wheel center color.
+- Remove `Undead` from `EXCLUDED_FAMILY_LABELS` (it's now an active source layer; user explicitly wants it shown). Construct stays active. Modron stays excluded.
+- `filterToSource(...)` already exists from the prior step — the page passes each source's id.
 
-`src/pages/CircleOfLife.tsx`:
-- In circle view, query distinct `source` nodes from `nodes`. For each, render a `<CircleOfLifeDiagram>` in a responsive grid (`grid-cols-1 lg:grid-cols-2`), each filtered to that source's subtree. Single source → single full-width wheel (today's behavior).
-- Tree view (admin editor) is unchanged; `source`-typed nodes show up like any other node and can be linked/edited.
+`CircleOfLifeDiagram.tsx`:
+- Already accepts dynamic source label/color from the prior step. No further changes needed beyond confirming the center caption uses the source's label and color.
 
-### 3. Transformations split
+`pages/CircleOfLife.tsx`:
+- Already queries distinct `source` nodes and renders one wheel per source in a wrapped grid. With four sources the grid (`grid-cols-1 lg:grid-cols-2`) yields a 2×2 layout. Reduce per-wheel height when more than one source is present (already in plan).
 
-- New player page **`/transformations`** (`src/pages/Transformations.tsx`): read-only list/grid of `evolution_transformations`, grouped by stage, showing label, description, granted tags, host requirements, acquisition, carrier. Accessible to all signed-in users.
-- Add route in `src/App.tsx`.
-- Add a **"Transformations"** button to the Circle of Life page header that opens a `Sheet` (right-side panel) showing the same list. Reuse a shared `TransformationsList` component between the page and the panel.
-- `TransformationsAdmin` stays as the admin editor (unchanged).
+### 3. Tag/effective-tag handling
+
+`resolveEffectiveTags` already auto-tags every non-source node with its own label. So:
+- "Aberration" stops being auto-added as a tag for descendants (it's a source now). If transformations rely on the tag `Aberration`, add `Aberration` to the explicit `tags` array on the Aberration source node so it still propagates. Same for `Undead` and `Construct`.
+
+This is a one-line per node data update included in the same migration.
 
 ### 4. Memory
 
-Update `mem://apps/circle-of-life` (new) noting: Source is a real node type; wheel renders one circle per Source; Transformations live at `/transformations` + Circle side panel, never on the wheel.
+Update `mem://apps/circle-of-life` to record: Aberration, Undead, Construct are sources (not families); Gith is multi-parent (Aberration + Humanoid); wheel renders one circle per source.
 
-## Out of scope (deferred)
+## Out of scope
 
-- Importing official Daggerheart transformations — user will provide a list later.
-- Splitting "The Source" into multiple named sources — schema/UI will already support it; just an admin task at that point.
-- Any change to Racegen rolling logic.
+- Reorganizing Modron (still nested under Construct as its own family — fine).
+- Splitting/renaming "The Source".
+- Any racegen logic changes — multi-parent already supported.
 
 ## Technical notes
 
-- `filterActiveCircleGraph` already excludes carriers and certain families; per-source filter will compose with it (run per-source filter first, then active filter).
-- `circle-of-life-layout.ts` already auto-tags labels as tags except for `type='source'`, so introducing real source nodes won't pollute the tag set used by transformations.
-- Wheel sizing: at one source, keep current 85vh. With multiple sources, drop each to ~50vh inside grid cells.
+```text
+Before:                          After:
+The Source                       The Source        Aberration   Undead     Construct
+├─ Aberration (family)           ├─ Beastfolk      ├─ Beholder  ├─ Ghost   ├─ Clank
+│  └─ Gith                       ├─ Draconic       ├─ Gith ◄─┐  ├─ Zombie  ├─ Golems
+├─ Humanoid                      ├─ Elemental      ├─ Spider │  └─ ...     └─ Modron
+│  └─ Human, Dwarf...            ├─ Elven          └─ ...    │
+├─ Undead (family, hidden)       ├─ Fey                      │
+└─ Construct (family)            ├─ Giant                    │
+                                 ├─ Goblinoid                │
+                                 ├─ Humanoid ────────────────┘ (also parents Gith)
+                                 │  └─ Human, Dwarf, Halfling, Gith
+                                 ├─ Planar, Plant, Reptilian, Fey...
+```
