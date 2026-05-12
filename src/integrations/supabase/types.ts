@@ -954,6 +954,7 @@ export type Database = {
           host_tag_match_mode: string
           id: string
           label: string
+          powers: Json
           stackable: boolean
           stage: number
           updated_at: string
@@ -970,6 +971,7 @@ export type Database = {
           host_tag_match_mode?: string
           id?: string
           label: string
+          powers?: Json
           stackable?: boolean
           stage?: number
           updated_at?: string
@@ -986,6 +988,7 @@ export type Database = {
           host_tag_match_mode?: string
           id?: string
           label?: string
+          powers?: Json
           stackable?: boolean
           stage?: number
           updated_at?: string
