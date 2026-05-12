@@ -20,6 +20,8 @@ interface CircleOfLifeDiagramProps {
   onFocusChange?: (id: string | null) => void;
   /** Caption for the central node. Defaults to "The Source". */
   centerLabel?: string;
+  /** Color for the central node. Defaults to the warm "Source" yellow. */
+  centerColor?: string;
   /** Optional title shown in the card header. Defaults to "Circle of Life". */
   title?: string;
   /** Optional subtitle. */
@@ -37,6 +39,7 @@ export function CircleOfLifeDiagram({
   focusId: focusIdProp,
   onFocusChange,
   centerLabel = "The Source",
+  centerColor,
   title = "Circle of Life",
   subtitle = "Click a node to focus — the wheel rotates so it sits to the right of The Source. Click the background to reset.",
   heightStyle = "85vh",
@@ -56,8 +59,13 @@ export function CircleOfLifeDiagram({
 
   const layout = useMemo(() => {
     const filtered = filterActiveCircleGraph(nodes, edges);
-    return buildCircleLayout(filtered.nodes, filtered.edges);
-  }, [nodes, edges]);
+    const built = buildCircleLayout(filtered.nodes, filtered.edges);
+    if (centerColor) {
+      const root = built.nodes.find((n) => n.id === ROOT_ID);
+      if (root) root.color = centerColor;
+    }
+    return built;
+  }, [nodes, edges, centerColor]);
 
   const childMap = useMemo(() => {
     const map = new Map<string, string[]>();

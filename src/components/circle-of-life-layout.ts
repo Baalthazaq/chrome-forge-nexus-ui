@@ -42,7 +42,9 @@ export const ROOT_ID = "__root__";
 /** Families excluded from the active Racegen pool. The wheel hides them too.
  *  Plant and Construct are now active again — Construct uses a "created" flow
  *  (a constructed subject + a generated creator). */
-const EXCLUDED_FAMILY_LABELS = new Set(["Undead", "Modron"]);
+// Undead & Construct are now top-level Sources (their own wheels), not families.
+// Modron remains nested under Construct but is hidden from active rolls.
+const EXCLUDED_FAMILY_LABELS = new Set(["Modron"]);
 
 /** Filter the raw node/edge graph to only the families/races/variants that
  *  Racegen actively rolls. Used by the wheel and by Racegen itself so the
