@@ -53,6 +53,7 @@ import DiceRoller from "./pages/DiceRoller";
 import CircleOfLife from "./pages/CircleOfLife";
 import Racegen from "./pages/Racegen";
 import TransformationsAdmin from "./pages/TransformationsAdmin";
+import Transformations from "./pages/Transformations";
 
 const queryClient = new QueryClient();
 
@@ -114,6 +115,7 @@ const App = () => (
             <Route path="/admin/circle-of-life" element={<CircleOfLife />} />
             <Route path="/admin/racegen" element={<Racegen />} />
             <Route path="/admin/transformations" element={<TransformationsAdmin />} />
+            <Route path="/transformations" element={<Transformations />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

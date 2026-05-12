@@ -19,9 +19,11 @@ import {
   ArrowLeft,
   PanelRightClose,
   PanelRightOpen,
+  Sparkles,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import CircleOfLifeDiagram from "@/components/CircleOfLifeDiagram";
+import { filterToSource } from "@/components/circle-of-life-layout";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +39,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import TransformationsList from "@/components/TransformationsList";
 
 interface NodeRow {
   id: string;
@@ -176,6 +180,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const [addOpen, setAddOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"tree" | "circle">(initialView);
   const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [transformationsOpen, setTransformationsOpen] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newType, setNewType] = useState("race");
   const [newColor, setNewColor] = useState<string>(Object.values(FAMILY_COLORS)[0]);
@@ -1234,6 +1239,13 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
           <Button
             size="sm"
             variant="outline"
+            onClick={() => setTransformationsOpen(true)}
+          >
+            <Sparkles className="h-4 w-4 mr-1" /> Transformations
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
             onClick={() => setInspectorOpen((v) => !v)}
             title={inspectorOpen ? "Hide inspector" : "Show inspector"}
           >
@@ -1282,12 +1294,41 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
         {viewMode === "circle" ? (
           <div className="flex gap-4">
             <div className="flex-1 min-w-0">
-              <CircleOfLifeDiagram
-                nodes={nodes.map((n) => ({ id: n.id, label: n.label, type: n.type, color: n.color, y: getEffectiveXY(n).y, reproduction_mode: n.reproduction_mode, origin_mode: (n as any).origin_mode, is_carrier: (n as any).is_carrier }))}
-                edges={edges}
-                focusId={selectedId}
-                onFocusChange={setSelectedId}
-              />
+              {(() => {
+                const sources = nodes.filter((n) => n.type === "source");
+                const mappedNodes = nodes.map((n) => ({ id: n.id, label: n.label, type: n.type, color: n.color, y: getEffectiveXY(n).y, reproduction_mode: n.reproduction_mode, origin_mode: (n as any).origin_mode, is_carrier: (n as any).is_carrier }));
+                if (sources.length === 0) {
+                  return (
+                    <CircleOfLifeDiagram
+                      nodes={mappedNodes}
+                      edges={edges}
+                      focusId={selectedId}
+                      onFocusChange={setSelectedId}
+                    />
+                  );
+                }
+                const multi = sources.length > 1;
+                return (
+                  <div className={multi ? "grid gap-4 grid-cols-1 xl:grid-cols-2" : ""}>
+                    {sources.map((src) => {
+                      const sub = filterToSource(mappedNodes, edges, src.id);
+                      return (
+                        <CircleOfLifeDiagram
+                          key={src.id}
+                          nodes={sub.nodes}
+                          edges={sub.edges}
+                          focusId={selectedId}
+                          onFocusChange={setSelectedId}
+                          centerLabel={src.label}
+                          title={src.label}
+                          subtitle={`Lineages descending from ${src.label}.`}
+                          heightStyle={multi ? "60vh" : "85vh"}
+                        />
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
             {inspectorOpen && inspectorPanel}
           </div>
@@ -1509,6 +1550,20 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Sheet open={transformationsOpen} onOpenChange={setTransformationsOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Transformations</SheetTitle>
+            <SheetDescription>
+              Modifiers layered on top of a creature's lineage. Innate or afflicted via a carrier.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-4">
+            <TransformationsList compact />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

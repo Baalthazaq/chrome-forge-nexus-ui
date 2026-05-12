@@ -18,6 +18,16 @@ interface CircleOfLifeDiagramProps {
   /** Controlled focus. When provided, internal focus state is ignored. */
   focusId?: string | null;
   onFocusChange?: (id: string | null) => void;
+  /** Caption for the central node. Defaults to "The Source". */
+  centerLabel?: string;
+  /** Optional title shown in the card header. Defaults to "Circle of Life". */
+  title?: string;
+  /** Optional subtitle. */
+  subtitle?: string;
+  /** Override SVG height (e.g. "50vh"). Default "85vh". */
+  heightStyle?: string;
+  /** Hide the export button. */
+  hideExport?: boolean;
 }
 
 export function CircleOfLifeDiagram({
@@ -26,6 +36,11 @@ export function CircleOfLifeDiagram({
   className,
   focusId: focusIdProp,
   onFocusChange,
+  centerLabel = "The Source",
+  title = "Circle of Life",
+  subtitle = "Click a node to focus — the wheel rotates so it sits to the right of The Source. Click the background to reset.",
+  heightStyle = "85vh",
+  hideExport = false,
 }: CircleOfLifeDiagramProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -173,14 +188,14 @@ export function CircleOfLifeDiagram({
     <Card className={`p-4 ${className ?? ""}`.trim()}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold">Circle of Life</h2>
-          <p className="text-sm text-muted-foreground">
-            Click a node to focus — the wheel rotates so it sits to the right of The Source. Click the background to reset.
-          </p>
+          <h2 className="text-2xl font-bold">{title}</h2>
+          <p className="text-sm text-muted-foreground">{subtitle}</p>
         </div>
-        <Button variant="outline" onClick={handleExportSvg} className="gap-2">
-          <Download className="h-4 w-4" /> Export SVG
-        </Button>
+        {!hideExport && (
+          <Button variant="outline" onClick={handleExportSvg} className="gap-2">
+            <Download className="h-4 w-4" /> Export SVG
+          </Button>
+        )}
       </div>
 
       <div className="w-full">
@@ -189,7 +204,7 @@ export function CircleOfLifeDiagram({
           viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
           preserveAspectRatio="xMidYMid meet"
           className="block w-full transition-all duration-500 ease-in-out"
-          style={{ height: "85vh" }}
+          style={{ height: heightStyle }}
           onClick={(e) => { if (e.target === e.currentTarget) setFocusId(null); }}
         >
           {/* Rotate the entire wheel around its center so the focused node lands at 3 o'clock */}
@@ -281,11 +296,11 @@ export function CircleOfLifeDiagram({
               })}
             </g>
 
-            {/* "The Source" caption — counter-rotate so it stays horizontal */}
+            {/* Center caption — counter-rotate so it stays horizontal */}
             <g transform={`translate(${cx} ${cy + 50}) rotate(${-rotationDeg})`}>
               <text x={0} y={0} textAnchor="middle"
                 fontSize={14} fill="hsl(var(--muted-foreground))" fontStyle="italic">
-                The Source
+                {centerLabel}
               </text>
             </g>
           </g>
