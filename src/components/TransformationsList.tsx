@@ -104,6 +104,16 @@ export default function TransformationsList({ compact = false }: Props) {
                       ))}
                     </div>
                   )}
+                  {(r.powers ?? []).length > 0 && (
+                    <div className="space-y-1.5 pt-1 border-t border-border/50">
+                      {r.powers!.map((p, i) => (
+                        <div key={i} className="text-sm">
+                          <span className="font-bold tracking-wide">{p.name}:</span>{" "}
+                          <span className="text-muted-foreground whitespace-pre-wrap">{p.description}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {(r.host_required_tags ?? []).length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       <span className="text-[10px] uppercase text-muted-foreground mr-1">
