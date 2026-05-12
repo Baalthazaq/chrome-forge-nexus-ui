@@ -1300,7 +1300,6 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                 return (
                   <div className={multi ? "grid gap-4 grid-cols-1 xl:grid-cols-2" : ""}>
                     {sources.map((src) => {
-                      const { filterToSource } = require("@/components/circle-of-life-layout");
                       const sub = filterToSource(mappedNodes, edges, src.id);
                       return (
                         <CircleOfLifeDiagram
