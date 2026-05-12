@@ -1282,12 +1282,42 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
         {viewMode === "circle" ? (
           <div className="flex gap-4">
             <div className="flex-1 min-w-0">
-              <CircleOfLifeDiagram
-                nodes={nodes.map((n) => ({ id: n.id, label: n.label, type: n.type, color: n.color, y: getEffectiveXY(n).y, reproduction_mode: n.reproduction_mode, origin_mode: (n as any).origin_mode, is_carrier: (n as any).is_carrier }))}
-                edges={edges}
-                focusId={selectedId}
-                onFocusChange={setSelectedId}
-              />
+              {(() => {
+                const sources = nodes.filter((n) => n.type === "source");
+                const mappedNodes = nodes.map((n) => ({ id: n.id, label: n.label, type: n.type, color: n.color, y: getEffectiveXY(n).y, reproduction_mode: n.reproduction_mode, origin_mode: (n as any).origin_mode, is_carrier: (n as any).is_carrier }));
+                if (sources.length === 0) {
+                  return (
+                    <CircleOfLifeDiagram
+                      nodes={mappedNodes}
+                      edges={edges}
+                      focusId={selectedId}
+                      onFocusChange={setSelectedId}
+                    />
+                  );
+                }
+                const multi = sources.length > 1;
+                return (
+                  <div className={multi ? "grid gap-4 grid-cols-1 xl:grid-cols-2" : ""}>
+                    {sources.map((src) => {
+                      const { filterToSource } = require("@/components/circle-of-life-layout");
+                      const sub = filterToSource(mappedNodes, edges, src.id);
+                      return (
+                        <CircleOfLifeDiagram
+                          key={src.id}
+                          nodes={sub.nodes}
+                          edges={sub.edges}
+                          focusId={selectedId}
+                          onFocusChange={setSelectedId}
+                          centerLabel={src.label}
+                          title={src.label}
+                          subtitle={`Lineages descending from ${src.label}.`}
+                          heightStyle={multi ? "60vh" : "85vh"}
+                        />
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
             {inspectorOpen && inspectorPanel}
           </div>
