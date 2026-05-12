@@ -53,6 +53,7 @@ import DiceRoller from "./pages/DiceRoller";
 import CircleOfLife from "./pages/CircleOfLife";
 import Racegen from "./pages/Racegen";
 import TransformationsAdmin from "./pages/TransformationsAdmin";
+import Transformations from "./pages/Transformations";
 
 const queryClient = new QueryClient();
 
