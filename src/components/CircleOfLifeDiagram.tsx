@@ -296,11 +296,11 @@ export function CircleOfLifeDiagram({
               })}
             </g>
 
-            {/* "The Source" caption — counter-rotate so it stays horizontal */}
+            {/* Center caption — counter-rotate so it stays horizontal */}
             <g transform={`translate(${cx} ${cy + 50}) rotate(${-rotationDeg})`}>
               <text x={0} y={0} textAnchor="middle"
                 fontSize={14} fill="hsl(var(--muted-foreground))" fontStyle="italic">
-                The Source
+                {centerLabel}
               </text>
             </g>
           </g>
