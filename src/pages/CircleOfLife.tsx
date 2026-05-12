@@ -1235,6 +1235,13 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
           <Button
             size="sm"
             variant="outline"
+            onClick={() => setTransformationsOpen(true)}
+          >
+            <Sparkles className="h-4 w-4 mr-1" /> Transformations
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
             onClick={() => setInspectorOpen((v) => !v)}
             title={inspectorOpen ? "Hide inspector" : "Show inspector"}
           >
