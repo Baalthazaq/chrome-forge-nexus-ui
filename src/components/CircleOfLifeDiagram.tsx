@@ -18,6 +18,16 @@ interface CircleOfLifeDiagramProps {
   /** Controlled focus. When provided, internal focus state is ignored. */
   focusId?: string | null;
   onFocusChange?: (id: string | null) => void;
+  /** Caption for the central node. Defaults to "The Source". */
+  centerLabel?: string;
+  /** Optional title shown in the card header. Defaults to "Circle of Life". */
+  title?: string;
+  /** Optional subtitle. */
+  subtitle?: string;
+  /** Override SVG height (e.g. "50vh"). Default "85vh". */
+  heightStyle?: string;
+  /** Hide the export button. */
+  hideExport?: boolean;
 }
 
 export function CircleOfLifeDiagram({
@@ -26,6 +36,11 @@ export function CircleOfLifeDiagram({
   className,
   focusId: focusIdProp,
   onFocusChange,
+  centerLabel = "The Source",
+  title = "Circle of Life",
+  subtitle = "Click a node to focus — the wheel rotates so it sits to the right of The Source. Click the background to reset.",
+  heightStyle = "85vh",
+  hideExport = false,
 }: CircleOfLifeDiagramProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
