@@ -20,6 +20,7 @@ import { Loader2, Plus, Save, Trash2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import type { EvoTransformation, EvoNode } from "@/lib/evolutionGraph";
 
+interface PowerDraft { name: string; description: string }
 interface Draft {
   id?: string;
   label: string;
@@ -33,6 +34,7 @@ interface Draft {
   stackable: boolean;
   stage: string;
   chance: string;
+  powers: PowerDraft[];
 }
 
 const empty = (): Draft => ({
@@ -47,6 +49,7 @@ const empty = (): Draft => ({
   stackable: false,
   stage: "0",
   chance: "5",
+  powers: [],
 });
 
 const fromRow = (r: EvoTransformation): Draft => ({
