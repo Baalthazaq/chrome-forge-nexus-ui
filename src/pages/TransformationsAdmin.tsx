@@ -65,6 +65,7 @@ const fromRow = (r: EvoTransformation): Draft => ({
   stackable: !!r.stackable,
   stage: String(r.stage ?? 0),
   chance: String(Math.round((r.chance ?? 0) * 100)),
+  powers: Array.isArray(r.powers) ? r.powers.map((p) => ({ name: p?.name ?? "", description: p?.description ?? "" })) : [],
 });
 
 const toPayload = (d: Draft) => ({
@@ -79,6 +80,7 @@ const toPayload = (d: Draft) => ({
   stackable: d.stackable,
   stage: Math.max(0, Math.floor(Number(d.stage) || 0)),
   chance: Math.min(1, Math.max(0, (Number(d.chance) || 0) / 100)),
+  powers: d.powers.map((p) => ({ name: p.name.trim(), description: p.description.trim() })).filter((p) => p.name || p.description),
 });
 
 export default function TransformationsAdmin() {
