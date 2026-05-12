@@ -1,0 +1,1 @@
+ALTER TABLE public.evolution_transformations ADD COLUMN IF NOT EXISTS powers jsonb NOT NULL DEFAULT '[]'::jsonb;
