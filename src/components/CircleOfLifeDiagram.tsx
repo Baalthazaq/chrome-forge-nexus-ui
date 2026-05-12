@@ -20,6 +20,8 @@ interface CircleOfLifeDiagramProps {
   onFocusChange?: (id: string | null) => void;
   /** Caption for the central node. Defaults to "The Source". */
   centerLabel?: string;
+  /** Color for the central node. Defaults to the warm "Source" yellow. */
+  centerColor?: string;
   /** Optional title shown in the card header. Defaults to "Circle of Life". */
   title?: string;
   /** Optional subtitle. */
