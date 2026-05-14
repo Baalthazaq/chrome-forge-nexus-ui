@@ -182,9 +182,9 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [transformationsOpen, setTransformationsOpen] = useState(false);
   const [newLabel, setNewLabel] = useState("");
-  const [newType, setNewType] = useState("race");
+  
   const [newColor, setNewColor] = useState<string>(Object.values(FAMILY_COLORS)[0]);
-  const [editBuffer, setEditBuffer] = useState<{ label: string; type: string; color: string; weight: string; mate_up_probability: string; reproduction_mode: string; tags: string; host_required_tags: string; host_tag_match_mode: string; origin_mode: string; is_carrier: boolean; variant_inheritance: string; identity_overwrites_host: boolean } | null>(null);
+  const [editBuffer, setEditBuffer] = useState<{ label: string; color: string; weight: string; mate_up_probability: string; reproduction_mode: string; tags: string; mate_tags: string; is_carrier: boolean } | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragState = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
@@ -794,7 +794,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
 
   const updateNode = async (
     id: string,
-    updates: { label?: string; type?: string; color?: string; weight?: number; mate_up_probability?: number; reproduction_mode?: string; tags?: string[]; host_required_tags?: string[]; host_tag_match_mode?: string; origin_mode?: string; is_carrier?: boolean; variant_inheritance?: string; identity_overwrites_host?: boolean }
+    updates: { label?: string; color?: string; weight?: number; mate_up_probability?: number; reproduction_mode?: string | null; tags?: string[]; mate_tags?: string[]; is_carrier?: boolean }
   ) => {
     const { error } = await supabase.from("evolution_nodes").update(updates).eq("id", id);
     if (error) {
@@ -809,7 +809,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
     if (!newLabel.trim()) return;
     const { data, error } = await supabase
       .from("evolution_nodes")
-      .insert({ label: newLabel.trim(), type: newType, color: newColor, x: 60, y: 60 })
+      .insert({ label: newLabel.trim(), type: "node", color: newColor, x: 60, y: 60 })
       .select()
       .single();
     if (error || !data) {
@@ -829,18 +829,13 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
       const sn: any = selectedNode;
       setEditBuffer({
         label: selectedNode.label,
-        type: selectedNode.type,
         color: selectedNode.color ?? Object.values(FAMILY_COLORS)[0],
         weight: String(sn.weight ?? 1),
         mate_up_probability: String(Math.round((sn.mate_up_probability ?? 0.33) * 100)),
-        reproduction_mode: sn.reproduction_mode ?? "sexual",
+        reproduction_mode: sn.reproduction_mode ?? "",
         tags: (sn.tags ?? []).join(", "),
-        host_required_tags: (sn.host_required_tags ?? []).join(", "),
-        host_tag_match_mode: sn.host_tag_match_mode ?? "all",
-        origin_mode: sn.origin_mode ?? "born",
+        mate_tags: (sn.mate_tags ?? []).join(", "),
         is_carrier: !!sn.is_carrier,
-        variant_inheritance: sn.variant_inheritance ?? "random",
-        identity_overwrites_host: !!sn.identity_overwrites_host,
       });
     } else {
       setEditBuffer(null);
@@ -937,17 +932,6 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                 />
               </div>
               <div>
-                <Label className="text-xs uppercase text-muted-foreground">Type</Label>
-                <Select value={editBuffer.type} onValueChange={(v) => setEditBuffer({ ...editBuffer, type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="family">Family</SelectItem>
-                    <SelectItem value="race">Race</SelectItem>
-                    <SelectItem value="variant">Variant</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
                 <Label className="text-xs uppercase text-muted-foreground">Color</Label>
                 <Select value={editBuffer.color} onValueChange={(v) => setEditBuffer({ ...editBuffer, color: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -964,7 +948,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                 </Select>
               </div>
               <div>
-                <Label className="text-xs">Weight (variant leaves)</Label>
+                <Label className="text-xs">Weight (roll bias)</Label>
                 <Input
                   type="number"
                   min={0}
@@ -985,91 +969,56 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                   onChange={(e) => setEditBuffer({ ...editBuffer, mate_up_probability: e.target.value })}
                 />
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Chance to mate with parent category (default 33%).
+                  Chance to roll up vs stay at this node (default 33%).
                 </p>
               </div>
               <div>
                 <Label className="text-xs">Reproduction Mode</Label>
-                <Select value={editBuffer.reproduction_mode} onValueChange={(v) => setEditBuffer({ ...editBuffer, reproduction_mode: v })}>
+                <Select
+                  value={editBuffer.reproduction_mode || "__inherit"}
+                  onValueChange={(v) => setEditBuffer({ ...editBuffer, reproduction_mode: v === "__inherit" ? "" : v })}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__inherit">Inherit from ancestor</SelectItem>
                     <SelectItem value="sexual">Sexual</SelectItem>
                     <SelectItem value="asexual">Asexual</SelectItem>
-                    <SelectItem value="transformed">Transformed</SelectItem>
                     <SelectItem value="created">Created</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  {editBuffer.reproduction_mode === "sexual" && "Standard two-parent breeding using mate-up probability."}
-                  {editBuffer.reproduction_mode === "asexual" && "Single parent of the same lineage. Mate-up % is ignored."}
-                  {editBuffer.reproduction_mode === "transformed" && "Originates from another race (host). Roll a normal lineage, then overlay this. Mate-up % is ignored."}
-                  {editBuffer.reproduction_mode === "created" && "Built by a creator. Mate-up % is reused as the creator's climb chance to leave this category."}
+                  {!editBuffer.reproduction_mode && "Walks up the tree to the nearest ancestor with an explicit mode."}
+                  {editBuffer.reproduction_mode === "sexual" && "Two-parent breeding using mate-tag compatibility."}
+                  {editBuffer.reproduction_mode === "asexual" && "Single parent of the same lineage."}
+                  {editBuffer.reproduction_mode === "created" && "Built by a creator. Mate-up % is reused as the creator's climb chance."}
                 </p>
               </div>
               <div>
-                <Label className="text-xs">Tags (comma-separated, prefix with ! to remove inherited)</Label>
+                <Label className="text-xs">Tags (comma-separated, prefix with ! to suppress inherited)</Label>
                 <Input
                   value={editBuffer.tags}
                   placeholder="Soul, Blood, !Biological"
                   onChange={(e) => setEditBuffer({ ...editBuffer, tags: e.target.value })}
                 />
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Known tags: Soul, Blood, Biological, Mineral, Arcane, Elemental. Family/race labels are auto-tags.
+                  Identity tags. The node's own label is auto-included.
                 </p>
               </div>
-              {editBuffer.reproduction_mode === "transformed" && (
-                <>
-                  <div>
-                    <Label className="text-xs">Host Required Tags (comma-separated)</Label>
-                    <Input
-                      value={editBuffer.host_required_tags}
-                      placeholder="Blood, Soul"
-                      onChange={(e) => setEditBuffer({ ...editBuffer, host_required_tags: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Host Tag Match Mode</Label>
-                    <Select value={editBuffer.host_tag_match_mode} onValueChange={(v) => setEditBuffer({ ...editBuffer, host_tag_match_mode: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All required (AND)</SelectItem>
-                        <SelectItem value="any">Any required (OR)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              )}
+              <div>
+                <Label className="text-xs">Mate Tags (comma-separated, prefix with ! to suppress inherited)</Label>
+                <Input
+                  value={editBuffer.mate_tags}
+                  placeholder="Humanoid, Goblinoid, !Construct"
+                  onChange={(e) => setEditBuffer({ ...editBuffer, mate_tags: e.target.value })}
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Tags this lineage can breed with. Inherited by descendants.
+                </p>
+              </div>
               <div className="space-y-2 border-t border-border pt-2">
-                <div className="text-[10px] uppercase text-muted-foreground tracking-wider">Origin & Quirks</div>
-                <div>
-                  <Label className="text-xs">Origin Mode</Label>
-                  <Select value={editBuffer.origin_mode} onValueChange={(v) => setEditBuffer({ ...editBuffer, origin_mode: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="born">Born (default)</SelectItem>
-                      <SelectItem value="created">Created</SelectItem>
-                      <SelectItem value="parasitic">Parasitic</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Variant Inheritance</Label>
-                  <Select value={editBuffer.variant_inheritance} onValueChange={(v) => setEditBuffer({ ...editBuffer, variant_inheritance: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="random">Random</SelectItem>
-                      <SelectItem value="mother">From Mother</SelectItem>
-                      <SelectItem value="father">From Father</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
                 <label className="flex items-center gap-2 text-xs">
                   <input type="checkbox" checked={editBuffer.is_carrier} onChange={(e) => setEditBuffer({ ...editBuffer, is_carrier: e.target.checked })} />
                   Is Carrier (transformation source, never rolled as identity)
-                </label>
-                <label className="flex items-center gap-2 text-xs">
-                  <input type="checkbox" checked={editBuffer.identity_overwrites_host} onChange={(e) => setEditBuffer({ ...editBuffer, identity_overwrites_host: e.target.checked })} />
-                  Identity Overwrites Host (parasitic only)
                 </label>
               </div>
               <div className="flex gap-2">
@@ -1079,18 +1028,13 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                   onClick={() =>
                     updateNode(selectedNode.id, {
                       label: editBuffer.label.trim(),
-                      type: editBuffer.type,
                       color: editBuffer.color,
                       weight: Math.max(0, Math.floor(Number(editBuffer.weight) || 0)),
                       mate_up_probability: Math.min(1, Math.max(0, (Number(editBuffer.mate_up_probability) || 0) / 100)),
-                      reproduction_mode: editBuffer.reproduction_mode,
+                      reproduction_mode: editBuffer.reproduction_mode || null,
                       tags: editBuffer.tags.split(",").map(t => t.trim()).filter(Boolean),
-                      host_required_tags: editBuffer.host_required_tags.split(",").map(t => t.trim()).filter(Boolean),
-                      host_tag_match_mode: editBuffer.host_tag_match_mode,
-                      origin_mode: editBuffer.origin_mode,
+                      mate_tags: editBuffer.mate_tags.split(",").map(t => t.trim()).filter(Boolean),
                       is_carrier: editBuffer.is_carrier,
-                      variant_inheritance: editBuffer.variant_inheritance,
-                      identity_overwrites_host: editBuffer.identity_overwrites_host,
                     })
                   }
                 >
@@ -1103,10 +1047,6 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
               <div>
                 <div className="text-xs text-muted-foreground uppercase">Label</div>
                 <div className="font-semibold">{selectedNode.label}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground uppercase">Type</div>
-                <div className="capitalize">{selectedNode.type}</div>
               </div>
             </>
           )}
@@ -1508,19 +1448,6 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
             <div>
               <Label>Label</Label>
               <Input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} />
-            </div>
-            <div>
-              <Label>Type</Label>
-              <Select value={newType} onValueChange={setNewType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="family">Family</SelectItem>
-                  <SelectItem value="race">Race</SelectItem>
-                  <SelectItem value="variant">Variant</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
             <div>
               <Label>Color</Label>
