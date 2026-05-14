@@ -85,7 +85,7 @@ export function filterActiveCircleGraph(
     if (n.is_carrier) return false;
     // Source nodes are structural — the wheel renders its own synthetic center.
     if (n.type === "source") return false;
-    if (n.type === "family" && EXCLUDED_FAMILY_LABELS.has(n.label)) return false;
+    if (EXCLUDED_FAMILY_LABELS.has(n.label)) return false;
     const fam = familyOf.get(n.id);
     if (fam && EXCLUDED_FAMILY_LABELS.has(fam)) return false;
     return true;
