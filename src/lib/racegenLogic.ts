@@ -124,29 +124,40 @@ function pickTraits() {
 }
 
 // ---------- active-pool filtering ----------
+//
+// After the type collapse, "race" no longer exists as a node type. We treat
+// any non-source, non-carrier node as a candidate. Eligibility now flows
+// from the inherited reproduction_mode (sexual / asexual / created).
 
-/** Is this race a "created" race (e.g. Construct) — handled via the creator flow? */
-export function isCreatedRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
-  if (node.type !== "race") return false;
+function isCandidateNode(node: EvoNode): boolean {
+  if (node.type === "source") return false;
   if (node.is_carrier) return false;
-  const family = getFamilyAncestor(node.id, nodes, edges);
-  if (family && EXCLUDED_FAMILY_LABELS.has(family.label)) return false;
-  return (node.origin_mode ?? "born") === "created" || family?.label === "Construct" || (family ? CREATED_FAMILY_LABELS.has(family.label) : false);
+  if (EXCLUDED_FAMILY_LABELS.has(node.label)) return false;
+  return true;
 }
 
-/** A born/sexual race that Racegen rolls via full ancestry. */
-export function isBornRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
-  if (node.type !== "race") return false;
-  if (node.is_carrier) return false;
-  if ((node.origin_mode ?? "born") !== "born") return false;
-  if (node.reproduction_mode !== "sexual") return false;
+/** Is this node "created" (e.g. Construct) — handled via the creator flow? */
+export function isCreatedRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
+  if (!isCandidateNode(node)) return false;
+  const mode = resolveReproductionMode(node.id, nodes, edges) ?? node.reproduction_mode;
+  if (mode === "created") return true;
+  if ((node.origin_mode ?? "born") === "created") return true;
   const family = getFamilyAncestor(node.id, nodes, edges);
-  if (family && EXCLUDED_FAMILY_LABELS.has(family.label)) return false;
+  return family ? CREATED_FAMILY_LABELS.has(family.label) || family.label === "Construct" : false;
+}
+
+/** A born/sexual node that Racegen rolls via full ancestry. */
+export function isBornRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
+  if (!isCandidateNode(node)) return false;
+  if ((node.origin_mode ?? "born") !== "born") return false;
+  const mode = resolveReproductionMode(node.id, nodes, edges) ?? node.reproduction_mode;
+  if (mode !== "sexual") return false;
+  const family = getFamilyAncestor(node.id, nodes, edges);
   if (family && CREATED_FAMILY_LABELS.has(family.label)) return false;
   return true;
 }
 
-/** Any race Racegen will roll (born or created). Used by the seed dropdown. */
+/** Any node Racegen will roll (born or created). Used by the seed dropdown. */
 export function isActiveRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
   return isBornRace(node, nodes, edges) || isCreatedRace(node, nodes, edges);
 }
