@@ -171,8 +171,6 @@ interface RaceInfo {
   weight: number;
   /** mate_up_probability — controls how willing this race is to mate outside its variant. */
   mateChance: number;
-  /** variant_inheritance: random | mother | father */
-  variantInheritance: string;
 }
 
 interface Ctx {
@@ -206,7 +204,6 @@ function buildRaceInfo(race: EvoNode, ctx: Pick<Ctx, "nodes" | "edges" | "byId">
     familyLabel: family?.label ?? null,
     weight: Math.max(0.0001, race.weight ?? 1),
     mateChance: Math.max(0, Math.min(1, race.mate_up_probability ?? 0.2)),
-    variantInheritance: race.variant_inheritance ?? "random",
   };
 }
 
