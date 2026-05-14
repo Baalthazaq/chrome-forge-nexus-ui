@@ -685,7 +685,7 @@ function rollCreatedSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
     identityFamily: seedInfo.familyLabel,
     variantLabel: variant?.label ?? null,
     reproduction_mode: resolveReproductionMode(seedInfo.race.id, ctx.nodes, ctx.edges) ?? seedInfo.race.reproduction_mode ?? "sexual",
-    origin_mode: "created",
+    
     lineage,
     dna,
     headerMakeup,
