@@ -585,7 +585,7 @@ function rollBornSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
     identityFamily: dominantInfo.familyLabel,
     variantLabel: subjectVariantLabel,
     reproduction_mode: "sexual",
-    origin_mode: "born",
+    
     lineage,
     dna,
     headerMakeup,
