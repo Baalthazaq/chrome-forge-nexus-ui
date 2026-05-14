@@ -123,7 +123,7 @@ function DnaBar({ groups }: { groups: RolledSubject["dnaGrouped"] }) {
 }
 
 function SubjectCard({ subject }: { subject: RolledSubject }) {
-  const originBadge = ORIGIN_BADGE[subject.origin_mode];
+  const originBadge = ORIGIN_BADGE[subject.reproduction_mode];
   const OriginIcon = originBadge?.icon;
   const visibleDna = subject.dna;
 
