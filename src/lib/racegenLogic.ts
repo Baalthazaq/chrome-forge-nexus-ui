@@ -54,7 +54,7 @@ export interface RolledSubject {
   identityFamily: string | null;
   variantLabel: string | null;
   reproduction_mode: string;
-  origin_mode: string;
+  
   lineage: LineageNode;
   /** Aggregated DNA breakdown by leaf race+variant label (granular). */
   dna: { label: string; pct: number }[];
