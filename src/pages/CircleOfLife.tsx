@@ -416,6 +416,56 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
 
   const discardPositions = () => setPendingPositions({});
 
+  const exportTableCsv = () => {
+    if (nodes.length === 0) {
+      toast.error("No nodes to export");
+      return;
+    }
+    const evoNodes = nodes as unknown as EvoNode[];
+    const evoEdges = edges as unknown as EvoEdge[];
+    const labelOf = (id: string) => evoNodes.find((n) => n.id === id)?.label ?? id;
+    const escape = (v: unknown) => {
+      const s = v == null ? "" : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const headers = [
+      "Label", "Type", "Parents", "Children", "Reproduction Mode (effective)",
+      "Source", "Weight", "Mate-up %", "Is Carrier",
+      "Own Tags", "Effective Tags", "Own Mate Tags", "Effective Mate Tags", "Color",
+    ];
+    const rows = [...evoNodes]
+      .sort((a, b) => a.label.localeCompare(b.label))
+      .map((n) => {
+        const parents = getParentIds(n.id, evoEdges).map(labelOf).sort();
+        const children = getChildIds(n.id, evoEdges).map(labelOf).sort();
+        const effTags = [...resolveEffectiveTags(n.id, evoNodes, evoEdges)].sort();
+        const effMate = [...resolveEffectiveMateTags(n.id, evoNodes, evoEdges)].sort();
+        const repro = resolveReproductionMode(n.id, evoNodes, evoEdges) ?? "";
+        const src = getSourceAncestor(n.id, evoNodes, evoEdges);
+        return [
+          n.label, n.type, parents.join("; "), children.join("; "), repro,
+          src?.label ?? "",
+          n.weight ?? "",
+          n.mate_up_probability != null ? Math.round(n.mate_up_probability * 100) : "",
+          n.is_carrier ? "yes" : "",
+          (n.tags ?? []).join("; "),
+          effTags.join("; "),
+          (n.mate_tags ?? []).join("; "),
+          effMate.join("; "),
+          n.color ?? "",
+        ].map(escape).join(",");
+      });
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "circle-of-life.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${rows.length} nodes`);
+  };
+
   const autoLayout = () => {
     if (nodes.length === 0) return;
 
