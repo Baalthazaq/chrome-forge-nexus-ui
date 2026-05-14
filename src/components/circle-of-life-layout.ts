@@ -255,8 +255,8 @@ export function buildCircleLayout(nodes: CircleNodeRow[], edges: CircleEdgeRow[]
     const ancestors = coloredAncestors(n.id);
     const hsls = ancestors.map((aid) => parseHsl(byId.get(aid)?.color ?? null));
     const blended = blendHsl(hsls);
-    // Lighten + desaturate proportional to graph depth from a colored ancestor.
-    const depth = Math.max(0, (depthFromRootEarly.get(n.id) ?? 0) - 1);
+    // Lighten + desaturate proportional to graph depth.
+    const depth = Math.max(0, (depthFromRoot.get(n.id) ?? 0) - 1);
     const bump = Math.min(28, depth * 10);
     const sCut = Math.min(20, depth * 6);
     return hslToString({
