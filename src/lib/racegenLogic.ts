@@ -141,7 +141,6 @@ export function isCreatedRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[])
   if (!isCandidateNode(node)) return false;
   const mode = resolveReproductionMode(node.id, nodes, edges) ?? node.reproduction_mode;
   if (mode === "created") return true;
-  if ((node.origin_mode ?? "born") === "created") return true;
   const family = getFamilyAncestor(node.id, nodes, edges);
   return family ? CREATED_FAMILY_LABELS.has(family.label) || family.label === "Construct" : false;
 }
@@ -149,7 +148,6 @@ export function isCreatedRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[])
 /** A born/sexual node that Racegen rolls via full ancestry. */
 export function isBornRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
   if (!isCandidateNode(node)) return false;
-  if ((node.origin_mode ?? "born") !== "born") return false;
   const mode = resolveReproductionMode(node.id, nodes, edges) ?? node.reproduction_mode;
   if (mode !== "sexual") return false;
   const family = getFamilyAncestor(node.id, nodes, edges);
