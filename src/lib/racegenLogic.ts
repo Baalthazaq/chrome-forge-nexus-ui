@@ -193,9 +193,13 @@ interface Ctx {
 }
 
 function buildRaceInfo(race: EvoNode, ctx: Pick<Ctx, "nodes" | "edges" | "byId">): RaceInfo {
+  // After the type collapse, "variants" = direct children of this node that
+  // are not carriers and not themselves intermediate (no further children).
+  // This preserves the previous race→variant feel without depending on the
+  // old `type === 'variant'` discriminator.
   const variants = getChildIds(race.id, ctx.edges)
     .map((id) => ctx.byId.get(id))
-    .filter((n): n is EvoNode => !!n && n.type === "variant" && !n.is_carrier);
+    .filter((n): n is EvoNode => !!n && !n.is_carrier && n.type !== "source");
   const family = getFamilyAncestor(race.id, ctx.nodes, ctx.edges);
   return {
     race,
