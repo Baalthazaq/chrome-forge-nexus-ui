@@ -156,54 +156,52 @@ const Timestop = () => {
     enabled: !!impersonatedUser,
   });
 
-  const filterForUser = (events: CalendarEvent[]) => {
-    if (!impersonatedUser) return events; // normal user: RLS handles it
-    // Admin impersonating: filter to show user's own events, universal, holidays, and shared
-    return events.filter(
+  // Filter events for the impersonated user. Computed outside queryFn so it
+  // re-derives when sharedEventIds loads (which happens after the events query).
+  const filterForUser = (evts: CalendarEvent[]) => {
+    if (!impersonatedUser) return evts; // normal user: RLS handles it
+    return evts.filter(
       (e) => e.user_id === null || e.user_id === effectiveUserId || sharedEventIds.includes(e.id)
     );
   };
 
-  const { data: events = [] } = useQuery({
+  const { data: rawEvents = [] } = useQuery({
     queryKey: ["calendar-events", viewMonth, viewYear, effectiveUserId],
     queryFn: async () => {
       const { data, error } = await supabase.from("calendar_events").select("*").eq("event_month", viewMonth);
       if (error) throw error;
-      return filterForUser(
-        (data as CalendarEvent[]).filter(
-          (e) => e.event_year === null || e.event_year === viewYear
-        )
+      return (data as CalendarEvent[]).filter(
+        (e) => e.event_year === null || e.event_year === viewYear
       );
     },
   });
+  const events = filterForUser(rawEvents);
 
   // Fetch previous month's events to check for spillover
-  const { data: prevMonthEvents = [] } = useQuery({
+  const { data: rawPrevMonthEvents = [] } = useQuery({
     queryKey: ["calendar-events-prev", prevMonthNum, prevMonthYear, effectiveUserId],
     queryFn: async () => {
       const { data, error } = await supabase.from("calendar_events").select("*").eq("event_month", prevMonthNum);
       if (error) throw error;
-      return filterForUser(
-        (data as CalendarEvent[]).filter(
-          (e) => (e.event_year === null || e.event_year === prevMonthYear) && e.event_day_end && e.event_day_end > 28
-        )
+      return (data as CalendarEvent[]).filter(
+        (e) => (e.event_year === null || e.event_year === prevMonthYear) && e.event_day_end && e.event_day_end > 28
       );
     },
   });
+  const prevMonthEvents = filterForUser(rawPrevMonthEvents);
 
-  const { data: allEvents = [] } = useQuery({
+  const { data: rawAllEvents = [] } = useQuery({
     queryKey: ["calendar-events-all", viewYear, effectiveUserId],
     queryFn: async () => {
       const { data, error } = await supabase.from("calendar_events").select("*");
       if (error) throw error;
-      return filterForUser(
-        (data as CalendarEvent[]).filter(
-          (e) => e.event_year === null || e.event_year === viewYear
-        )
+      return (data as CalendarEvent[]).filter(
+        (e) => e.event_year === null || e.event_year === viewYear
       );
     },
     enabled: viewMode === "annual",
   });
+  const allEvents = filterForUser(rawAllEvents);
 
   const { data: searchResults = [] } = useQuery({
     queryKey: ["calendar-search", searchQuery],
