@@ -1253,6 +1253,9 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
             {inspectorOpen ? <PanelRightClose className="h-4 w-4 mr-1" /> : <PanelRightOpen className="h-4 w-4 mr-1" />}
             {inspectorOpen ? "Hide Inspector" : "Show Inspector"}
           </Button>
+          <Button size="sm" variant="outline" onClick={exportTableCsv}>
+            <Download className="h-4 w-4 mr-1" /> Export Table
+          </Button>
           {canEdit && (
             <>
               <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
