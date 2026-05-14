@@ -879,21 +879,15 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string
-          host_required_tags: string[]
-          host_tag_match_mode: string
           id: string
-          identity_overwrites_host: boolean
           is_carrier: boolean
           label: string
           mate_tags: string[]
           mate_up_probability: number
-          mate_variant_lock_tags: string[]
-          origin_mode: string
           reproduction_mode: string | null
           tags: string[]
           type: string
           updated_at: string
-          variant_inheritance: string
           weight: number
           x: number
           y: number
@@ -901,21 +895,15 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string
-          host_required_tags?: string[]
-          host_tag_match_mode?: string
           id?: string
-          identity_overwrites_host?: boolean
           is_carrier?: boolean
           label: string
           mate_tags?: string[]
           mate_up_probability?: number
-          mate_variant_lock_tags?: string[]
-          origin_mode?: string
           reproduction_mode?: string | null
           tags?: string[]
           type?: string
           updated_at?: string
-          variant_inheritance?: string
           weight?: number
           x?: number
           y?: number
@@ -923,21 +911,15 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string
-          host_required_tags?: string[]
-          host_tag_match_mode?: string
           id?: string
-          identity_overwrites_host?: boolean
           is_carrier?: boolean
           label?: string
           mate_tags?: string[]
           mate_up_probability?: number
-          mate_variant_lock_tags?: string[]
-          origin_mode?: string
           reproduction_mode?: string | null
           tags?: string[]
           type?: string
           updated_at?: string
-          variant_inheritance?: string
           weight?: number
           x?: number
           y?: number
