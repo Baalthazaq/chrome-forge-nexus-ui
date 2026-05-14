@@ -1450,19 +1450,6 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
               <Input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} />
             </div>
             <div>
-              <Label>Type</Label>
-              <Select value={newType} onValueChange={setNewType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="family">Family</SelectItem>
-                  <SelectItem value="race">Race</SelectItem>
-                  <SelectItem value="variant">Variant</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
               <Label>Color</Label>
               <Select value={newColor} onValueChange={setNewColor}>
                 <SelectTrigger>
