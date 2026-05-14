@@ -13,13 +13,7 @@ export interface EvoNode {
   tags: string[];
   /** Tags this node can breed with. Inherited; suppressible with `!Tag`. */
   mate_tags: string[];
-  host_required_tags: string[];
-  host_tag_match_mode: string; // 'all' | 'any'
-  origin_mode?: string; // 'born' | 'created' | 'parasitic'
   is_carrier?: boolean;
-  variant_inheritance?: string; // 'random' | 'mother' | 'father'
-  mate_variant_lock_tags?: string[];
-  identity_overwrites_host?: boolean;
 }
 
 export interface EvoEdge {
