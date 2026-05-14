@@ -809,7 +809,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
     if (!newLabel.trim()) return;
     const { data, error } = await supabase
       .from("evolution_nodes")
-      .insert({ label: newLabel.trim(), type: newType, color: newColor, x: 60, y: 60 })
+      .insert({ label: newLabel.trim(), type: "node", color: newColor, x: 60, y: 60 })
       .select()
       .single();
     if (error || !data) {
