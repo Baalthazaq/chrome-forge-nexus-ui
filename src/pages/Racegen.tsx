@@ -12,8 +12,8 @@ import { EvoNode, EvoEdge, EvoTransformation } from "@/lib/evolutionGraph";
 import { LineageNode, RolledSubject, rollSubject, isActiveRace } from "@/lib/racegenLogic";
 
 const ORIGIN_BADGE: Record<string, { label: string; cls: string; icon?: any }> = {
-  parasitic: { label: "Parasitic", cls: "bg-violet-900/50 text-violet-200 border-violet-700/60", icon: Bug },
   created: { label: "Created", cls: "bg-amber-900/50 text-amber-200 border-amber-700/60" },
+  asexual: { label: "Asexual", cls: "bg-violet-900/50 text-violet-200 border-violet-700/60", icon: Bug },
 };
 
 function LineageTreeView({ node, depth = 0 }: { node: LineageNode; depth?: number }) {
@@ -123,7 +123,7 @@ function DnaBar({ groups }: { groups: RolledSubject["dnaGrouped"] }) {
 }
 
 function SubjectCard({ subject }: { subject: RolledSubject }) {
-  const originBadge = ORIGIN_BADGE[subject.origin_mode];
+  const originBadge = ORIGIN_BADGE[subject.reproduction_mode];
   const OriginIcon = originBadge?.icon;
   const visibleDna = subject.dna;
 

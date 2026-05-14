@@ -54,7 +54,7 @@ export interface RolledSubject {
   identityFamily: string | null;
   variantLabel: string | null;
   reproduction_mode: string;
-  origin_mode: string;
+  
   lineage: LineageNode;
   /** Aggregated DNA breakdown by leaf race+variant label (granular). */
   dna: { label: string; pct: number }[];
@@ -141,7 +141,6 @@ export function isCreatedRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[])
   if (!isCandidateNode(node)) return false;
   const mode = resolveReproductionMode(node.id, nodes, edges) ?? node.reproduction_mode;
   if (mode === "created") return true;
-  if ((node.origin_mode ?? "born") === "created") return true;
   const family = getFamilyAncestor(node.id, nodes, edges);
   return family ? CREATED_FAMILY_LABELS.has(family.label) || family.label === "Construct" : false;
 }
@@ -149,7 +148,6 @@ export function isCreatedRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[])
 /** A born/sexual node that Racegen rolls via full ancestry. */
 export function isBornRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
   if (!isCandidateNode(node)) return false;
-  if ((node.origin_mode ?? "born") !== "born") return false;
   const mode = resolveReproductionMode(node.id, nodes, edges) ?? node.reproduction_mode;
   if (mode !== "sexual") return false;
   const family = getFamilyAncestor(node.id, nodes, edges);
@@ -173,8 +171,6 @@ interface RaceInfo {
   weight: number;
   /** mate_up_probability — controls how willing this race is to mate outside its variant. */
   mateChance: number;
-  /** variant_inheritance: random | mother | father */
-  variantInheritance: string;
 }
 
 interface Ctx {
@@ -208,7 +204,6 @@ function buildRaceInfo(race: EvoNode, ctx: Pick<Ctx, "nodes" | "edges" | "byId">
     familyLabel: family?.label ?? null,
     weight: Math.max(0.0001, race.weight ?? 1),
     mateChance: Math.max(0, Math.min(1, race.mate_up_probability ?? 0.2)),
-    variantInheritance: race.variant_inheritance ?? "random",
   };
 }
 
@@ -345,9 +340,9 @@ function pickMateFor(self: AncestorPick, ctx: Ctx, mateChanceOverride?: number):
 
 /**
  * Roll the child of two parents:
- * - Race comes from one of the parents (50/50 weighted by their base weights).
- * - Variant follows variant_inheritance: random uses the chosen race's variant table,
- *   "mother" forces the mother's variant if she is the chosen race, "father" likewise.
+ * - Race comes from one of the parents (weighted by their base weights).
+ * - Variant: if the chosen parent's race matches the child's race, inherit
+ *   that parent's variant; otherwise pick a fresh variant from the child race.
  * - mateChance for the next mate filter = max of the two parents' mate chances.
  */
 function rollChild(mother: AncestorPick, father: AncestorPick, ctx: Ctx, gender: "M" | "F"): { pick: AncestorPick; nextMateChance: number } {
@@ -360,13 +355,10 @@ function rollChild(mother: AncestorPick, father: AncestorPick, ctx: Ctx, gender:
   const sideRaw = weightedPick(items)!;
   const childInfo = sideRaw.info;
 
-  // Resolve variant via the child race's variant_inheritance quirk.
+  // Resolve variant: prefer the chosen-side parent's variant if same race.
   let variant: EvoNode | null = null;
   if (childInfo.variants.length) {
-    const inh = childInfo.variantInheritance;
-    if (inh === "mother" && mother.info.race.id === childInfo.race.id && mother.variant) variant = mother.variant;
-    else if (inh === "father" && father.info.race.id === childInfo.race.id && father.variant) variant = father.variant;
-    else if (sideRaw.parent === "M" && mother.variant && mother.info.race.id === childInfo.race.id) variant = mother.variant;
+    if (sideRaw.parent === "M" && mother.variant && mother.info.race.id === childInfo.race.id) variant = mother.variant;
     else if (sideRaw.parent === "F" && father.variant && father.info.race.id === childInfo.race.id) variant = father.variant;
     else variant = pickVariantFor(childInfo);
   }
@@ -593,7 +585,7 @@ function rollBornSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
     identityFamily: dominantInfo.familyLabel,
     variantLabel: subjectVariantLabel,
     reproduction_mode: "sexual",
-    origin_mode: "born",
+    
     lineage,
     dna,
     headerMakeup,
@@ -693,7 +685,7 @@ function rollCreatedSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
     identityFamily: seedInfo.familyLabel,
     variantLabel: variant?.label ?? null,
     reproduction_mode: resolveReproductionMode(seedInfo.race.id, ctx.nodes, ctx.edges) ?? seedInfo.race.reproduction_mode ?? "sexual",
-    origin_mode: "created",
+    
     lineage,
     dna,
     headerMakeup,

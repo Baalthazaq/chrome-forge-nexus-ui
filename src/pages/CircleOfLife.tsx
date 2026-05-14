@@ -1236,7 +1236,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
             <div className="flex-1 min-w-0">
               {(() => {
                 const sources = nodes.filter((n) => n.type === "source");
-                const mappedNodes = nodes.map((n) => ({ id: n.id, label: n.label, type: n.type, color: n.color, y: getEffectiveXY(n).y, reproduction_mode: n.reproduction_mode, origin_mode: (n as any).origin_mode, is_carrier: (n as any).is_carrier }));
+                const mappedNodes = nodes.map((n) => ({ id: n.id, label: n.label, type: n.type, color: n.color, y: getEffectiveXY(n).y, reproduction_mode: n.reproduction_mode, is_carrier: (n as any).is_carrier }));
                 if (sources.length === 0) {
                   return (
                     <CircleOfLifeDiagram
