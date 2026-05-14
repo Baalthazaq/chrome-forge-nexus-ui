@@ -5,7 +5,7 @@ export interface CircleNodeRow {
   color: string | null;
   y: number;
   reproduction_mode?: string;
-  origin_mode?: string;
+  
   is_carrier?: boolean;
 }
 
