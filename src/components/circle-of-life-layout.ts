@@ -221,15 +221,19 @@ export function buildCircleLayout(nodes: CircleNodeRow[], edges: CircleEdgeRow[]
     }
   }
 
-  const families = nodes
-    .filter((n) => n.type === "family")
+  // After the type collapse there are no "family" rows. Treat any node without
+  // a parent IN THE FILTERED GRAPH as a top-level cluster anchor (a "root").
+  // Per-source filtering already strips the source itself, so the depth-1
+  // children of the source become the roots here.
+  const rootFamilies = nodes
+    .filter((n) => (parentsOf.get(n.id) ?? []).length === 0)
     .sort((a, b) => (a.y ?? 0) - (b.y ?? 0) || a.label.localeCompare(b.label));
+  const families = rootFamilies; // back-compat alias used below
 
-  const rootFamilies = families.filter((family) =>
-    (parentsOf.get(family.id) ?? []).every((parentId) => byId.get(parentId)?.type !== "family"),
-  );
-
-  const familyAncestors = (id: string): string[] => {
+  // Walk ancestors collecting any node that has an explicit color set —
+  // these are the palette anchors. With no FAMILY_COLORS table anymore,
+  // descendants blend their colored ancestors and lighten by depth.
+  const coloredAncestors = (id: string): string[] => {
     const seen = new Set<string>();
     const out: string[] = [];
     const stack = [id];
@@ -239,7 +243,7 @@ export function buildCircleLayout(nodes: CircleNodeRow[], edges: CircleEdgeRow[]
         if (seen.has(p)) continue;
         seen.add(p);
         const pn = byId.get(p);
-        if (pn?.type === "family") out.push(p);
+        if (pn?.color) out.push(p);
         stack.push(p);
       }
     }
@@ -247,22 +251,21 @@ export function buildCircleLayout(nodes: CircleNodeRow[], edges: CircleEdgeRow[]
   };
 
   const colorFor = (n: CircleNodeRow): string => {
-    if (n.type === "family") {
-      return FAMILY_COLORS[n.label] ?? n.color ?? "hsl(220 30% 60%)";
-    }
-    const fams = familyAncestors(n.id);
-    const hsls = fams.map((fid) =>
-      parseHsl(FAMILY_COLORS[byId.get(fid)?.label ?? ""] ?? byId.get(fid)?.color ?? null),
-    );
+    if (n.color) return n.color;
+    const ancestors = coloredAncestors(n.id);
+    const hsls = ancestors.map((aid) => parseHsl(byId.get(aid)?.color ?? null));
     const blended = blendHsl(hsls);
-    const bump = n.type === "race" ? 12 : n.type === "variant" ? 24 : 0;
-    const sCut = n.type === "variant" ? 16 : 8;
+    // Lighten + desaturate proportional to graph depth from a colored ancestor.
+    const depth = Math.max(0, (depthFromRootEarly.get(n.id) ?? 0) - 1);
+    const bump = Math.min(28, depth * 10);
+    const sCut = Math.min(20, depth * 6);
     return hslToString({
       h: blended.h,
       s: Math.max(15, blended.s - sCut),
       l: Math.min(85, blended.l + bump),
     });
   };
+
 
   // Determine each node's "primary" parent — the deepest one in the tree.
   // For multi-parent leaves (edge cases like Umbragen ∈ Drow ∩ Elf, or Drider ∈ Spider ∩ Aberration),
