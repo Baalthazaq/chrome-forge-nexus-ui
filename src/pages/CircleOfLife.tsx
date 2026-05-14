@@ -829,18 +829,13 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
       const sn: any = selectedNode;
       setEditBuffer({
         label: selectedNode.label,
-        type: selectedNode.type,
         color: selectedNode.color ?? Object.values(FAMILY_COLORS)[0],
         weight: String(sn.weight ?? 1),
         mate_up_probability: String(Math.round((sn.mate_up_probability ?? 0.33) * 100)),
-        reproduction_mode: sn.reproduction_mode ?? "sexual",
+        reproduction_mode: sn.reproduction_mode ?? "",
         tags: (sn.tags ?? []).join(", "),
-        host_required_tags: (sn.host_required_tags ?? []).join(", "),
-        host_tag_match_mode: sn.host_tag_match_mode ?? "all",
-        origin_mode: sn.origin_mode ?? "born",
+        mate_tags: (sn.mate_tags ?? []).join(", "),
         is_carrier: !!sn.is_carrier,
-        variant_inheritance: sn.variant_inheritance ?? "random",
-        identity_overwrites_host: !!sn.identity_overwrites_host,
       });
     } else {
       setEditBuffer(null);
