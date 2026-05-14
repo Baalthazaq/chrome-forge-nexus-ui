@@ -1042,16 +1042,11 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                 </Button>
               </div>
             </div>
-            </div>
           ) : (
             <>
               <div>
                 <div className="text-xs text-muted-foreground uppercase">Label</div>
                 <div className="font-semibold">{selectedNode.label}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground uppercase">Type</div>
-                <div className="capitalize">{selectedNode.type}</div>
               </div>
             </>
           )}
