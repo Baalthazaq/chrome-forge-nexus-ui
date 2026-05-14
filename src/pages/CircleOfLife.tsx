@@ -20,7 +20,18 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Sparkles,
+  Download,
 } from "lucide-react";
+import {
+  resolveEffectiveTags,
+  resolveEffectiveMateTags,
+  resolveReproductionMode,
+  getSourceAncestor,
+  getParentIds,
+  getChildIds,
+  type EvoNode,
+  type EvoEdge,
+} from "@/lib/evolutionGraph";
 import { useNavigate } from "react-router-dom";
 import CircleOfLifeDiagram from "@/components/CircleOfLifeDiagram";
 import { filterToSource } from "@/components/circle-of-life-layout";
