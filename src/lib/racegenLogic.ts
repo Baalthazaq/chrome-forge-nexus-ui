@@ -10,6 +10,7 @@ import {
   EvoNode,
   EvoEdge,
   resolveEffectiveTags,
+  resolveReproductionMode,
   getChildIds,
   getParentIds,
   getFamilyAncestor,
