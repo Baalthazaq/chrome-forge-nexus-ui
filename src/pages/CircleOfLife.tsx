@@ -182,7 +182,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [transformationsOpen, setTransformationsOpen] = useState(false);
   const [newLabel, setNewLabel] = useState("");
-  const [newType, setNewType] = useState("race");
+  
   const [newColor, setNewColor] = useState<string>(Object.values(FAMILY_COLORS)[0]);
   const [editBuffer, setEditBuffer] = useState<{ label: string; color: string; weight: string; mate_up_probability: string; reproduction_mode: string; tags: string; mate_tags: string; is_carrier: boolean } | null>(null);
 
