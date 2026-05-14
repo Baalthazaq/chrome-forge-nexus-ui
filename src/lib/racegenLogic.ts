@@ -10,6 +10,7 @@ import {
   EvoNode,
   EvoEdge,
   resolveEffectiveTags,
+  resolveReproductionMode,
   getChildIds,
   getParentIds,
   getFamilyAncestor,
@@ -123,29 +124,40 @@ function pickTraits() {
 }
 
 // ---------- active-pool filtering ----------
+//
+// After the type collapse, "race" no longer exists as a node type. We treat
+// any non-source, non-carrier node as a candidate. Eligibility now flows
+// from the inherited reproduction_mode (sexual / asexual / created).
 
-/** Is this race a "created" race (e.g. Construct) — handled via the creator flow? */
-export function isCreatedRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
-  if (node.type !== "race") return false;
+function isCandidateNode(node: EvoNode): boolean {
+  if (node.type === "source") return false;
   if (node.is_carrier) return false;
-  const family = getFamilyAncestor(node.id, nodes, edges);
-  if (family && EXCLUDED_FAMILY_LABELS.has(family.label)) return false;
-  return (node.origin_mode ?? "born") === "created" || family?.label === "Construct" || (family ? CREATED_FAMILY_LABELS.has(family.label) : false);
+  if (EXCLUDED_FAMILY_LABELS.has(node.label)) return false;
+  return true;
 }
 
-/** A born/sexual race that Racegen rolls via full ancestry. */
-export function isBornRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
-  if (node.type !== "race") return false;
-  if (node.is_carrier) return false;
-  if ((node.origin_mode ?? "born") !== "born") return false;
-  if (node.reproduction_mode !== "sexual") return false;
+/** Is this node "created" (e.g. Construct) — handled via the creator flow? */
+export function isCreatedRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
+  if (!isCandidateNode(node)) return false;
+  const mode = resolveReproductionMode(node.id, nodes, edges) ?? node.reproduction_mode;
+  if (mode === "created") return true;
+  if ((node.origin_mode ?? "born") === "created") return true;
   const family = getFamilyAncestor(node.id, nodes, edges);
-  if (family && EXCLUDED_FAMILY_LABELS.has(family.label)) return false;
+  return family ? CREATED_FAMILY_LABELS.has(family.label) || family.label === "Construct" : false;
+}
+
+/** A born/sexual node that Racegen rolls via full ancestry. */
+export function isBornRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
+  if (!isCandidateNode(node)) return false;
+  if ((node.origin_mode ?? "born") !== "born") return false;
+  const mode = resolveReproductionMode(node.id, nodes, edges) ?? node.reproduction_mode;
+  if (mode !== "sexual") return false;
+  const family = getFamilyAncestor(node.id, nodes, edges);
   if (family && CREATED_FAMILY_LABELS.has(family.label)) return false;
   return true;
 }
 
-/** Any race Racegen will roll (born or created). Used by the seed dropdown. */
+/** Any node Racegen will roll (born or created). Used by the seed dropdown. */
 export function isActiveRace(node: EvoNode, nodes: EvoNode[], edges: EvoEdge[]): boolean {
   return isBornRace(node, nodes, edges) || isCreatedRace(node, nodes, edges);
 }
@@ -181,9 +193,13 @@ interface Ctx {
 }
 
 function buildRaceInfo(race: EvoNode, ctx: Pick<Ctx, "nodes" | "edges" | "byId">): RaceInfo {
+  // After the type collapse, "variants" = direct children of this node that
+  // are not carriers and not themselves intermediate (no further children).
+  // This preserves the previous race→variant feel without depending on the
+  // old `type === 'variant'` discriminator.
   const variants = getChildIds(race.id, ctx.edges)
     .map((id) => ctx.byId.get(id))
-    .filter((n): n is EvoNode => !!n && n.type === "variant" && !n.is_carrier);
+    .filter((n): n is EvoNode => !!n && !n.is_carrier && n.type !== "source");
   const family = getFamilyAncestor(race.id, ctx.nodes, ctx.edges);
   return {
     race,
@@ -369,7 +385,7 @@ function pickToLineage(pick: AncestorPick, ctx: Ctx, share: number, parents: Lin
     nodeId: nodeKey,
     label: `${race.label}${variantPart}`,
     type: race.type,
-    reproduction_mode: race.reproduction_mode,
+    reproduction_mode: resolveReproductionMode(race.id, ctx.nodes, ctx.edges) ?? race.reproduction_mode ?? "sexual",
     effectiveTags: effTags,
     gender: pick.gender,
     parents,
@@ -632,7 +648,7 @@ function rollCreatedSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
       nodeId: `creator::${seedInfo.race.id}::${creatorVariant?.id ?? ""}`,
       label: `${seedInfo.race.label}${creatorVariantPart}`,
       type: seedInfo.race.type,
-      reproduction_mode: seedInfo.race.reproduction_mode,
+      reproduction_mode: resolveReproductionMode(seedInfo.race.id, ctx.nodes, ctx.edges) ?? seedInfo.race.reproduction_mode ?? "sexual",
       effectiveTags: creatorTags,
       gender: rollGender(),
       parents: [],
@@ -645,7 +661,7 @@ function rollCreatedSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
     nodeId: `${seedInfo.race.id}::${variant?.id ?? ""}`,
     label: `${seedInfo.race.label}${variantPart}`,
     type: seedInfo.race.type,
-    reproduction_mode: seedInfo.race.reproduction_mode,
+    reproduction_mode: resolveReproductionMode(seedInfo.race.id, ctx.nodes, ctx.edges) ?? seedInfo.race.reproduction_mode ?? "sexual",
     effectiveTags: effective,
     gender,
     parents: [creatorLineage],
@@ -676,7 +692,7 @@ function rollCreatedSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
     identityLabel: seedInfo.race.label,
     identityFamily: seedInfo.familyLabel,
     variantLabel: variant?.label ?? null,
-    reproduction_mode: seedInfo.race.reproduction_mode,
+    reproduction_mode: resolveReproductionMode(seedInfo.race.id, ctx.nodes, ctx.edges) ?? seedInfo.race.reproduction_mode ?? "sexual",
     origin_mode: "created",
     lineage,
     dna,

@@ -885,10 +885,11 @@ export type Database = {
           identity_overwrites_host: boolean
           is_carrier: boolean
           label: string
+          mate_tags: string[]
           mate_up_probability: number
           mate_variant_lock_tags: string[]
           origin_mode: string
-          reproduction_mode: string
+          reproduction_mode: string | null
           tags: string[]
           type: string
           updated_at: string
@@ -906,10 +907,11 @@ export type Database = {
           identity_overwrites_host?: boolean
           is_carrier?: boolean
           label: string
+          mate_tags?: string[]
           mate_up_probability?: number
           mate_variant_lock_tags?: string[]
           origin_mode?: string
-          reproduction_mode?: string
+          reproduction_mode?: string | null
           tags?: string[]
           type?: string
           updated_at?: string
@@ -927,10 +929,11 @@ export type Database = {
           identity_overwrites_host?: boolean
           is_carrier?: boolean
           label?: string
+          mate_tags?: string[]
           mate_up_probability?: number
           mate_variant_lock_tags?: string[]
           origin_mode?: string
-          reproduction_mode?: string
+          reproduction_mode?: string | null
           tags?: string[]
           type?: string
           updated_at?: string
