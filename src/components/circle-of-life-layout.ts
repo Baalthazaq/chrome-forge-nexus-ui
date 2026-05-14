@@ -372,16 +372,16 @@ export function buildCircleLayout(nodes: CircleNodeRow[], edges: CircleEdgeRow[]
     if (angles.length) angleOf.set(n.id, circularMean(angles));
   }
 
+  // Display radius band derived purely from structural depth from the local
+  // root (depth 0 = no parents in this filtered graph). Maps onto the
+  // existing 1 / 1.5 / 2 / 2.5 / 3 ramp; everything beyond clamps to 3.
   const displayDepthOf = (id: string): number => {
-    const node = byId.get(id);
-    if (!node) return 3;
-    const parentIds = parentsOf.get(id) ?? [];
-    const hasFamilyParent = parentIds.some((parentId) => byId.get(parentId)?.type === "family");
+    const d = depthFromRoot.get(id) ?? 0;
     const hasChildren = (childrenOf.get(id) ?? []).length > 0;
-
-    if (node.type === "family") return hasFamilyParent ? 1.5 : 1;
-    if (node.type === "race") return 2;
-    if (hasChildren) return 2.5;
+    if (d <= 0) return 1;
+    if (d === 1) return hasChildren ? 1.5 : 2;
+    if (d === 2) return hasChildren ? 2 : 2.5;
+    if (d === 3) return hasChildren ? 2.5 : 3;
     return 3;
   };
 
