@@ -877,6 +877,7 @@ export type Database = {
       }
       evolution_nodes: {
         Row: {
+          brood_role: string | null
           color: string | null
           created_at: string
           id: string
@@ -885,6 +886,7 @@ export type Database = {
           mate_tags: string[]
           mate_up_probability: number
           reproduction_mode: string | null
+          sex_rule: string | null
           tags: string[]
           type: string
           updated_at: string
@@ -893,6 +895,7 @@ export type Database = {
           y: number
         }
         Insert: {
+          brood_role?: string | null
           color?: string | null
           created_at?: string
           id?: string
@@ -901,6 +904,7 @@ export type Database = {
           mate_tags?: string[]
           mate_up_probability?: number
           reproduction_mode?: string | null
+          sex_rule?: string | null
           tags?: string[]
           type?: string
           updated_at?: string
@@ -909,6 +913,7 @@ export type Database = {
           y?: number
         }
         Update: {
+          brood_role?: string | null
           color?: string | null
           created_at?: string
           id?: string
@@ -917,6 +922,7 @@ export type Database = {
           mate_tags?: string[]
           mate_up_probability?: number
           reproduction_mode?: string | null
+          sex_rule?: string | null
           tags?: string[]
           type?: string
           updated_at?: string
@@ -930,6 +936,7 @@ export type Database = {
         Row: {
           acquisition: string
           carrier_node_id: string | null
+          carrier_node_ids: string[]
           chance: number
           created_at: string
           description: string | null
@@ -940,6 +947,7 @@ export type Database = {
           id: string
           label: string
           powers: Json
+          requires_carrier_hybrid: boolean
           stackable: boolean
           stage: number
           updated_at: string
@@ -947,6 +955,7 @@ export type Database = {
         Insert: {
           acquisition?: string
           carrier_node_id?: string | null
+          carrier_node_ids?: string[]
           chance?: number
           created_at?: string
           description?: string | null
@@ -957,6 +966,7 @@ export type Database = {
           id?: string
           label: string
           powers?: Json
+          requires_carrier_hybrid?: boolean
           stackable?: boolean
           stage?: number
           updated_at?: string
@@ -964,6 +974,7 @@ export type Database = {
         Update: {
           acquisition?: string
           carrier_node_id?: string | null
+          carrier_node_ids?: string[]
           chance?: number
           created_at?: string
           description?: string | null
@@ -974,6 +985,7 @@ export type Database = {
           id?: string
           label?: string
           powers?: Json
+          requires_carrier_hybrid?: boolean
           stackable?: boolean
           stage?: number
           updated_at?: string
