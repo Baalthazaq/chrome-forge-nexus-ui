@@ -740,12 +740,160 @@ function rollCreatedSubject(seedInfo: RaceInfo, ctx: Ctx): RolledSubject {
   };
 }
 
+// ---------- transformation application ----------
+
+function matchHostTags(tags: string[], required: string[], mode: string): boolean {
+  if (!required.length) return true;
+  const set = new Set(tags);
+  if (mode === "any") return required.some((t) => set.has(t));
+  return required.every((t) => set.has(t));
+}
+
+function hasForbidden(tags: string[], forbidden: string[]): boolean {
+  if (!forbidden?.length) return false;
+  const set = new Set(tags);
+  return forbidden.some((t) => set.has(t));
+}
+
+/** Build a carrier organism. If multiple carrier ids → roll a hybrid mini-lineage. */
+function buildCarrierLineage(
+  carrierIds: string[],
+  ctx: Ctx,
+): { lineage: LineageNode | null; summary: string | null; isHybrid: boolean } {
+  if (!carrierIds.length) return { lineage: null, summary: null, isHybrid: false };
+
+  // Resolve each id to a node; skip missing.
+  const carriers = carrierIds
+    .map((id) => ctx.byId.get(id))
+    .filter((n): n is EvoNode => !!n);
+  if (!carriers.length) return { lineage: null, summary: null, isHybrid: false };
+
+  if (carriers.length === 1) {
+    const c = carriers[0];
+    return {
+      lineage: {
+        nodeId: c.id,
+        label: c.label,
+        type: c.type,
+        reproduction_mode: resolveReproductionMode(c.id, ctx.nodes, ctx.edges) ?? "sexual",
+        effectiveTags: Array.from(resolveEffectiveTags(c.id, ctx.nodes, ctx.edges)),
+        gender: rollGenderFor(resolveSexRule(c.id, ctx.nodes, ctx.edges)),
+        parents: [],
+        dnaShare: 1,
+      },
+      summary: c.label,
+      isHybrid: false,
+    };
+  }
+
+  // Composite: each carrier becomes an equal-share parent leaf.
+  const share = 1 / carriers.length;
+  const parents: LineageNode[] = carriers.map((c) => ({
+    nodeId: c.id,
+    label: c.label,
+    type: c.type,
+    reproduction_mode: resolveReproductionMode(c.id, ctx.nodes, ctx.edges) ?? "sexual",
+    effectiveTags: Array.from(resolveEffectiveTags(c.id, ctx.nodes, ctx.edges)),
+    gender: rollGenderFor(resolveSexRule(c.id, ctx.nodes, ctx.edges)),
+    parents: [],
+    dnaShare: share,
+  }));
+  const hybridLabel = carriers.map((c) => c.label).join(" × ") + " hybrid";
+  // Aggregate effective tags across all parents.
+  const allTags = new Set<string>();
+  for (const p of parents) p.effectiveTags.forEach((t) => allTags.add(t));
+  return {
+    lineage: {
+      nodeId: `hybrid::${carriers.map((c) => c.id).join("+")}`,
+      label: hybridLabel,
+      type: "hybrid",
+      reproduction_mode: "sexual",
+      effectiveTags: Array.from(allTags),
+      gender: rollGender(),
+      parents,
+      dnaShare: 1,
+    },
+    summary: hybridLabel,
+    isHybrid: true,
+  };
+}
+
+function applyTransformations(
+  subject: RolledSubject,
+  transformations: EvoTransformation[],
+  ctx: Ctx,
+): RolledSubject {
+  if (!transformations?.length) return subject;
+
+  // Sort by stage for deterministic application order; record actual roll order.
+  const ordered = [...transformations].sort((a, b) => (a.stage ?? 0) - (b.stage ?? 0));
+  let cur = subject;
+  let order = 0;
+  const appliedIds = new Set<string>();
+
+  for (const t of ordered) {
+    if (appliedIds.has(t.id) && !t.stackable) continue;
+    if (!matchHostTags(cur.effectiveTags, t.host_required_tags ?? [], t.host_tag_match_mode ?? "all")) continue;
+    if (hasForbidden(cur.effectiveTags, t.forbidden_tags ?? [])) continue;
+    if (Math.random() > (t.chance ?? 0)) continue;
+
+    // Carrier list resolution (prefer new array, fall back to single id)
+    const carrierIds =
+      (t.carrier_node_ids && t.carrier_node_ids.length > 0)
+        ? t.carrier_node_ids
+        : t.carrier_node_id ? [t.carrier_node_id] : [];
+
+    if (t.requires_carrier_hybrid && carrierIds.length < 2) continue;
+
+    const carrier = buildCarrierLineage(carrierIds, ctx);
+
+    const applied: AppliedTransformation = {
+      id: t.id,
+      label: t.label,
+      acquisition: t.acquisition,
+      carrierLabel: carrier.summary,
+      grantedTags: t.granted_tags ?? [],
+      appliedOrder: order++,
+      carrierLineage: carrier.lineage,
+      carrierIsHybrid: carrier.isHybrid,
+      carrierSummary: carrier.summary,
+    };
+
+    // Merge effects into a fresh subject snapshot.
+    const newTags = Array.from(new Set([...cur.effectiveTags, ...(t.granted_tags ?? [])]));
+    const newApplied = [...cur.transformations, applied];
+
+    if (t.acquisition === "afflicted") {
+      // Host got hijacked — preserve prior DNA as hijackedDna, shift identity.
+      cur = {
+        ...cur,
+        effectiveTags: newTags,
+        transformations: newApplied,
+        hijackedDna: cur.hijackedDna ?? cur.dna,
+        identityLabel: t.label,
+        variantLabel: null,
+        lineage: { ...cur.lineage, isHost: true },
+      };
+    } else {
+      // Innate stack — keep identity, just add tags + transformation entry.
+      cur = {
+        ...cur,
+        effectiveTags: newTags,
+        transformations: newApplied,
+      };
+    }
+
+    appliedIds.add(t.id);
+  }
+
+  return cur;
+}
+
 export function rollSubject(
   nodes: EvoNode[],
   edges: EvoEdge[],
-  options?: { seedRaceId?: string; transformations?: unknown },
+  options?: { seedRaceId?: string; transformations?: EvoTransformation[] },
 ): RolledSubject {
-  void options?.transformations; // transformations are no longer applied
   const ctx = makeCtx(nodes, edges);
   if (!ctx.activeRaces.length) throw new Error("No active races available for Racegen");
 
@@ -756,6 +904,7 @@ export function rollSubject(
 
   // Route to created vs born flow based on the seed race's family.
   const isCreated = ctx.createdRaces.some((r) => r.race.id === seedInfo!.race.id);
-  if (isCreated) return rollCreatedSubject(seedInfo, ctx);
-  return rollBornSubject(seedInfo, ctx);
+  const base = isCreated ? rollCreatedSubject(seedInfo, ctx) : rollBornSubject(seedInfo, ctx);
+
+  return applyTransformations(base, options?.transformations ?? [], ctx);
 }
