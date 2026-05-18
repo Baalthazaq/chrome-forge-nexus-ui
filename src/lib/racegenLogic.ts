@@ -41,6 +41,14 @@ export interface AppliedTransformation {
   acquisition: string;
   carrierLabel: string | null;
   grantedTags: string[];
+  /** Order in which this transformation was acquired (0-based). */
+  appliedOrder: number;
+  /** If carrier is composite, the rolled hybrid carrier lineage. */
+  carrierLineage?: LineageNode | null;
+  /** Was the carrier itself a hybrid (>1 parent species)? */
+  carrierIsHybrid?: boolean;
+  /** Human-readable description of the rolled carrier ("Cap × Parasitic Fungril hybrid"). */
+  carrierSummary?: string | null;
 }
 
 export interface SecondaryIdentity {
