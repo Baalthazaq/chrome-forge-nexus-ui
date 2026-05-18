@@ -99,7 +99,17 @@ export const renderMarkdown = (text: string): React.ReactNode[] => {
       continue;
     }
 
-    // Image
+    // Standard markdown image on its own line: ![alt](url)
+    const mdImgMatch = line.trim().match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (mdImgMatch) {
+      flushList();
+      elements.push(
+        <img key={`mdimg-${i}`} src={mdImgMatch[2].trim()} alt={mdImgMatch[1] || ''} className="rounded-lg max-w-full max-h-64 my-3 object-cover" />
+      );
+      continue;
+    }
+
+    // Legacy image syntax: Image: url
     const imgMatch = line.match(/^Image:\s*(.+)$/);
     if (imgMatch) {
       flushList();
