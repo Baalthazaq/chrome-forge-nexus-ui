@@ -897,6 +897,8 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
         tags: (sn.tags ?? []).join(", "),
         mate_tags: (sn.mate_tags ?? []).join(", "),
         is_carrier: !!sn.is_carrier,
+        sex_rule: sn.sex_rule ?? "",
+        brood_role: sn.brood_role ?? "",
       });
     } else {
       setEditBuffer(null);
