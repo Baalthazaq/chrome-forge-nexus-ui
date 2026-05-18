@@ -261,7 +261,12 @@ export default function TransformationsAdmin() {
         </Select>
       </div>
       <div className="md:col-span-2">
-        <Label className="text-xs">Carrier nodes (select one or more for hybrid)</Label>
+        <Label className="text-xs">Carrier species (donor DNA)</Label>
+        <p className="text-[10px] text-muted-foreground mb-1">
+          Optional. For <b>afflicted</b> transformations, the carrier is the donor species whose
+          DNA blends into the victim (e.g. Fungril hijack ← Cap × Parasitic). Leave empty for
+          tag-only conversions (Zombie, Ghost). Innate transformations ignore this.
+        </p>
         <div className="max-h-40 overflow-auto border rounded p-2 space-y-1 bg-background">
           {carriers.length === 0 && (
             <p className="text-[10px] text-muted-foreground">
