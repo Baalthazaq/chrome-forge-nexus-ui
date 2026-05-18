@@ -23,9 +23,9 @@ export const renderMarkdown = (text: string): React.ReactNode[] => {
   };
 
   const renderInline = (line: string): React.ReactNode => {
-    // Process bold and italic inline
+    // Process images, bold and italic inline
     const parts: React.ReactNode[] = [];
-    const regex = /(\*\*(.+?)\*\*|\*(.+?)\*)/g;
+    const regex = /(!\[([^\]]*)\]\(([^)]+)\)|\*\*(.+?)\*\*|\*(.+?)\*)/g;
     let lastIndex = 0;
     let match;
 
@@ -33,12 +33,22 @@ export const renderMarkdown = (text: string): React.ReactNode[] => {
       if (match.index > lastIndex) {
         parts.push(line.slice(lastIndex, match.index));
       }
-      if (match[2]) {
+      if (match[3]) {
+        // Inline image ![alt](url)
+        parts.push(
+          <img
+            key={match.index}
+            src={match[3].trim()}
+            alt={match[2] || ''}
+            className="inline-block max-h-32 align-middle mx-1 rounded"
+          />
+        );
+      } else if (match[4]) {
         // Bold
-        parts.push(<strong key={match.index} className="font-bold text-white">{match[2]}</strong>);
-      } else if (match[3]) {
+        parts.push(<strong key={match.index} className="font-bold text-white">{match[4]}</strong>);
+      } else if (match[5]) {
         // Italic
-        parts.push(<em key={match.index} className="italic">{match[3]}</em>);
+        parts.push(<em key={match.index} className="italic">{match[5]}</em>);
       }
       lastIndex = match.index + match[0].length;
     }
@@ -89,7 +99,17 @@ export const renderMarkdown = (text: string): React.ReactNode[] => {
       continue;
     }
 
-    // Image
+    // Standard markdown image on its own line: ![alt](url)
+    const mdImgMatch = line.trim().match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (mdImgMatch) {
+      flushList();
+      elements.push(
+        <img key={`mdimg-${i}`} src={mdImgMatch[2].trim()} alt={mdImgMatch[1] || ''} className="rounded-lg max-w-full max-h-64 my-3 object-cover" />
+      );
+      continue;
+    }
+
+    // Legacy image syntax: Image: url
     const imgMatch = line.match(/^Image:\s*(.+)$/);
     if (imgMatch) {
       flushList();
