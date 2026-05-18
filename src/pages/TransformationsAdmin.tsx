@@ -30,7 +30,6 @@ interface Draft {
   host_tag_match_mode: string;
   forbidden_tags: string;
   acquisition: string;
-  carrier_node_id: string | null;
   carrier_node_ids: string[];
   requires_carrier_hybrid: boolean;
   stackable: boolean;
@@ -47,7 +46,6 @@ const empty = (): Draft => ({
   host_tag_match_mode: "all",
   forbidden_tags: "",
   acquisition: "afflicted",
-  carrier_node_id: null,
   carrier_node_ids: [],
   requires_carrier_hybrid: false,
   stackable: false,
@@ -65,9 +63,8 @@ const fromRow = (r: EvoTransformation): Draft => ({
   host_tag_match_mode: r.host_tag_match_mode ?? "all",
   forbidden_tags: (r.forbidden_tags ?? []).join(", "),
   acquisition: r.acquisition ?? "afflicted",
-  carrier_node_id: r.carrier_node_id ?? null,
-  carrier_node_ids: (r as any).carrier_node_ids ?? (r.carrier_node_id ? [r.carrier_node_id] : []),
-  requires_carrier_hybrid: !!(r as any).requires_carrier_hybrid,
+  carrier_node_ids: r.carrier_node_ids ?? [],
+  requires_carrier_hybrid: !!r.requires_carrier_hybrid,
   stackable: !!r.stackable,
   stage: String(r.stage ?? 0),
   chance: String(Math.round((r.chance ?? 0) * 100)),
@@ -82,7 +79,6 @@ const toPayload = (d: Draft) => ({
   host_tag_match_mode: d.host_tag_match_mode,
   forbidden_tags: d.forbidden_tags.split(",").map((t) => t.trim()).filter(Boolean),
   acquisition: d.acquisition,
-  carrier_node_id: d.carrier_node_ids[0] ?? d.carrier_node_id ?? null,
   carrier_node_ids: d.carrier_node_ids,
   requires_carrier_hybrid: d.requires_carrier_hybrid,
   stackable: d.stackable,
@@ -395,14 +391,18 @@ export default function TransformationsAdmin() {
           {rows.map((r) => {
             const d = drafts[r.id];
             if (!d) return null;
-            const carrier = carriers.find((c) => c.id === r.carrier_node_id);
+            const carrierLabels = (r.carrier_node_ids ?? [])
+              .map((id) => carriers.find((c) => c.id === id)?.label)
+              .filter(Boolean) as string[];
             return (
               <Card key={r.id} className="p-4 space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="text-lg font-semibold">{r.label}</h3>
                   <Badge variant="outline">stage {r.stage}</Badge>
                   <Badge variant="outline">{r.acquisition}</Badge>
-                  {carrier && <Badge variant="secondary">via {carrier.label}</Badge>}
+                  {carrierLabels.length > 0 && (
+                    <Badge variant="secondary">via {carrierLabels.join(" × ")}</Badge>
+                  )}
                   <span className="ml-auto text-xs text-muted-foreground">
                     {Math.round((r.chance ?? 0) * 100)}% chance
                   </span>

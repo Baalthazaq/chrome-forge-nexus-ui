@@ -78,7 +78,9 @@ export default function TransformationsList({ compact = false }: Props) {
           </h3>
           <div className={compact ? "space-y-2" : "grid gap-3 md:grid-cols-2"}>
             {list.map((r) => {
-              const carrier = r.carrier_node_id ? carriers.get(r.carrier_node_id) : null;
+              const carrierIds = r.carrier_node_ids ?? [];
+              const carrierLabels = carrierIds.map((id) => carriers.get(id)?.label).filter(Boolean);
+              const carrierLabel = carrierLabels.length ? carrierLabels.join(" × ") : null;
               return (
                 <Card key={r.id} className="p-3 space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
@@ -86,7 +88,7 @@ export default function TransformationsList({ compact = false }: Props) {
                     <Badge variant="outline" className="capitalize">
                       {r.acquisition}
                     </Badge>
-                    {carrier && <Badge variant="secondary">via {carrier.label}</Badge>}
+                    {carrierLabel && <Badge variant="secondary">via {carrierLabel}</Badge>}
                     {r.stackable && <Badge variant="outline">stackable</Badge>}
                   </div>
                   {r.description && (

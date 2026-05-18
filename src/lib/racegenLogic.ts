@@ -824,11 +824,7 @@ function applyTransformations(
     if (hasForbidden(cur.effectiveTags, t.forbidden_tags ?? [])) continue;
     if (Math.random() > (t.chance ?? 0)) continue;
 
-    // Carrier list resolution (prefer new array, fall back to single id)
-    const carrierIds =
-      (t.carrier_node_ids && t.carrier_node_ids.length > 0)
-        ? t.carrier_node_ids
-        : t.carrier_node_id ? [t.carrier_node_id] : [];
+    const carrierIds = t.carrier_node_ids ?? [];
 
     if (t.requires_carrier_hybrid && carrierIds.length < 2) continue;
 
