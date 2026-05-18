@@ -325,6 +325,27 @@ function makePick(info: RaceInfo, gender: "M" | "F"): AncestorPick {
   return { info, variant: pickVariantFor(info), gender };
 }
 
+/** Find a sibling variant inside an info whose brood_role matches. */
+function findBroodVariant(info: RaceInfo, role: string): EvoNode | null {
+  return info.variants.find((v) => (v as any).brood_role === role) ?? null;
+}
+
+/** Enforce sex_rule / brood_role on a pick: swap to a queen/drone sibling
+ *  variant when the required gender is incompatible with the sex_rule. */
+function enforceSexForPick(pick: AncestorPick, ctx: Ctx): AncestorPick {
+  const tagSrc = pick.variant?.id ?? pick.info.race.id;
+  const rule = resolveSexRule(tagSrc, ctx.nodes, ctx.edges);
+  if (pick.gender === "F" && rule === "always_male") {
+    const queen = findBroodVariant(pick.info, "queen");
+    if (queen) return { ...pick, variant: queen };
+  }
+  if (pick.gender === "M" && (rule === "queen_only_female" || rule === "always_female")) {
+    const drone = findBroodVariant(pick.info, "drone") ?? findBroodVariant(pick.info, "worker");
+    if (drone) return { ...pick, variant: drone };
+  }
+  return pick;
+}
+
 /**
  * Pick a mate for `self` and resolve their variant in one step.
  *
