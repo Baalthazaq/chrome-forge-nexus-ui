@@ -147,7 +147,25 @@ export function resolveReproductionMode(
   return null;
 }
 
-/** All ancestor node ids (excluding self) */
+/** Resolve effective sex rule (queen_only_female | always_male | always_female | hermaphrodite | null). */
+export function resolveSexRule(nodeId: string, nodes: EvoNode[], edges: EvoEdge[]): string | null {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const self = byId.get(nodeId);
+  if (self && self.type !== "source" && self.sex_rule) return self.sex_rule;
+  for (const aid of ancestorWalkOrdered(nodeId, edges)) {
+    const a = byId.get(aid);
+    if (!a || a.type === "source") continue;
+    if (a.sex_rule) return a.sex_rule;
+  }
+  return null;
+}
+
+/** Resolve effective brood role (queen | drone | worker | null). Not inherited beyond the
+ *  declaring node — brood roles are *variant-level* by nature. */
+export function resolveBroodRole(nodeId: string, nodes: EvoNode[]): string | null {
+  const n = nodes.find((x) => x.id === nodeId);
+  return n?.brood_role ?? null;
+}
 export function getAncestorIds(
   nodeId: string,
   edges: EvoEdge[]
