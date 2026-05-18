@@ -130,6 +130,17 @@ function rollGender(): "M" | "F" {
   return Math.random() < 0.5 ? "M" : "F";
 }
 
+/** Roll gender constrained by a sex_rule. */
+function rollGenderFor(sexRule: string | null | undefined): "M" | "F" {
+  switch (sexRule) {
+    case "always_male": return "M";
+    case "always_female":
+    case "queen_only_female": return "F";
+    case "hermaphrodite": return Math.random() < 0.5 ? "M" : "F";
+    default: return rollGender();
+  }
+}
+
 function pickTraits() {
   return { pos: rand(TRAITS.pos), neu: rand(TRAITS.neu), neg: rand(TRAITS.neg) };
 }
