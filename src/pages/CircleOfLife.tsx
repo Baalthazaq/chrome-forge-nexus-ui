@@ -898,7 +898,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
         mate_tags: (sn.mate_tags ?? []).join(", "),
         is_carrier: !!sn.is_carrier,
         sex_rule: sn.sex_rule ?? "",
-        brood_role: sn.brood_role ?? "",
+        
       });
     } else {
       setEditBuffer(null);
@@ -1095,22 +1095,6 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label className="text-xs">Brood Role</Label>
-                  <Select
-                    value={editBuffer.brood_role || "__none"}
-                    onValueChange={(v) => setEditBuffer({ ...editBuffer, brood_role: v === "__none" ? "" : v })}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none">None</SelectItem>
-                      <SelectItem value="queen">Queen (broodmother)</SelectItem>
-                      <SelectItem value="drone">Drone</SelectItem>
-                      <SelectItem value="worker">Worker</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
               <div className="space-y-2 border-t border-border pt-2">
                 <label className="flex items-center gap-2 text-xs">
                   <input type="checkbox" checked={editBuffer.is_carrier} onChange={(e) => setEditBuffer({ ...editBuffer, is_carrier: e.target.checked })} />
