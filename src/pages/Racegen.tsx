@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Loader2, Dices, ChevronDown, ChevronRight, Bug } from "lucide-react";
+import { ArrowLeft, Loader2, Dices, ChevronDown, ChevronRight, Bug, Sparkles, Skull } from "lucide-react";
 import { toast } from "sonner";
 import { EvoNode, EvoEdge, EvoTransformation } from "@/lib/evolutionGraph";
 import { LineageNode, RolledSubject, rollSubject, isActiveRace } from "@/lib/racegenLogic";
