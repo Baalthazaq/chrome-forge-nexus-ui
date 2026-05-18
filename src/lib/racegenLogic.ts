@@ -327,7 +327,7 @@ function makePick(info: RaceInfo, gender: "M" | "F"): AncestorPick {
 
 /** Find a sibling variant inside an info whose brood_role matches. */
 function findBroodVariant(info: RaceInfo, role: string): EvoNode | null {
-  return info.variants.find((v) => (v as any).brood_role === role) ?? null;
+  return info.variants.find((v) => v.brood_role === role) ?? null;
 }
 
 /** Enforce sex_rule / brood_role on a pick: swap to a queen/drone sibling
