@@ -31,6 +31,8 @@ interface Draft {
   forbidden_tags: string;
   acquisition: string;
   carrier_node_id: string | null;
+  carrier_node_ids: string[];
+  requires_carrier_hybrid: boolean;
   stackable: boolean;
   stage: string;
   chance: string;
@@ -46,6 +48,8 @@ const empty = (): Draft => ({
   forbidden_tags: "",
   acquisition: "afflicted",
   carrier_node_id: null,
+  carrier_node_ids: [],
+  requires_carrier_hybrid: false,
   stackable: false,
   stage: "0",
   chance: "5",
