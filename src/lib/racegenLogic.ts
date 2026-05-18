@@ -9,8 +9,11 @@
 import {
   EvoNode,
   EvoEdge,
+  EvoTransformation,
   resolveEffectiveTags,
   resolveReproductionMode,
+  resolveSexRule,
+  resolveBroodRole,
   getChildIds,
   getParentIds,
   getFamilyAncestor,
