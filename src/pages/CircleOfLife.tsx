@@ -1115,7 +1115,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                       mate_tags: editBuffer.mate_tags.split(",").map(t => t.trim()).filter(Boolean),
                       is_carrier: editBuffer.is_carrier,
                       sex_rule: editBuffer.sex_rule || null,
-                      brood_role: editBuffer.brood_role || null,
+                      
                     })
                   }
                 >
