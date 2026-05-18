@@ -264,29 +264,40 @@ export default function TransformationsAdmin() {
           </SelectContent>
         </Select>
       </div>
-      <div>
-        <Label className="text-xs">Carrier node</Label>
-        <Select
-          value={draft.carrier_node_id ?? "none"}
-          onValueChange={(v) => onChange({ ...draft, carrier_node_id: v === "none" ? null : v })}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="None" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            {carriers.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
+      <div className="md:col-span-2">
+        <Label className="text-xs">Carrier nodes (select one or more for hybrid)</Label>
+        <div className="max-h-40 overflow-auto border rounded p-2 space-y-1 bg-background">
+          {carriers.length === 0 && (
+            <p className="text-[10px] text-muted-foreground">
+              Mark a node as "is_carrier" in Circle of Life to make it available here.
+            </p>
+          )}
+          {carriers.map((c) => {
+            const checked = draft.carrier_node_ids.includes(c.id);
+            return (
+              <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => {
+                    const next = e.target.checked
+                      ? [...draft.carrier_node_ids, c.id]
+                      : draft.carrier_node_ids.filter((id) => id !== c.id);
+                    onChange({ ...draft, carrier_node_ids: next });
+                  }}
+                />
                 {c.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {carriers.length === 0 && (
-          <p className="text-[10px] text-muted-foreground mt-1">
-            Mark a node as "is_carrier" in Circle of Life to make it available here.
-          </p>
-        )}
+              </label>
+            );
+          })}
+        </div>
+        <label className="flex items-center gap-2 text-xs mt-2">
+          <Switch
+            checked={draft.requires_carrier_hybrid}
+            onCheckedChange={(v) => onChange({ ...draft, requires_carrier_hybrid: v })}
+          />
+          Requires hybrid carrier (must be 2+ species)
+        </label>
       </div>
       <div>
         <Label className="text-xs">Chance per roll (%)</Label>
