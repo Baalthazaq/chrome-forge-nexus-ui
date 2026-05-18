@@ -445,8 +445,8 @@ function buildBranch(
   const motherGender: "M" | "F" = "F";
   const fatherGender: "M" | "F" = "M";
 
-  const motherSeed = { ...seed, gender: motherGender };
-  const fatherSeed = pickMateFor(motherSeed, ctx);
+  const motherSeed = enforceSexForPick({ ...seed, gender: motherGender }, ctx);
+  const fatherSeed = enforceSexForPick(pickMateFor(motherSeed, ctx), ctx);
   void fatherGender;
 
   if (remainingDepth <= 1) {
