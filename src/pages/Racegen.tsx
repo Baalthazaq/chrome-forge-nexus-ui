@@ -191,6 +191,53 @@ function SubjectCard({ subject }: { subject: RolledSubject }) {
         </div>
       )}
 
+      {subject.transformations.length > 0 && (
+        <div>
+          <div className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1 flex items-center gap-1">
+            <Sparkles className="h-3 w-3" /> Applied transformations
+          </div>
+          <div className="space-y-1">
+            {subject.transformations.map((tr, i) => (
+              <div
+                key={i}
+                className={`text-[11px] px-2 py-1 rounded border ${
+                  tr.acquisition === "afflicted"
+                    ? "bg-fuchsia-950/40 border-fuchsia-800/60"
+                    : "bg-indigo-950/40 border-indigo-800/60"
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">#{tr.appliedOrder + 1}</span>
+                  <span className="font-semibold">{tr.label}</span>
+                  <Badge variant="outline" className="text-[9px] py-0 px-1 h-4 capitalize">
+                    {tr.acquisition}
+                  </Badge>
+                  {tr.carrierIsHybrid && (
+                    <Badge variant="secondary" className="text-[9px] py-0 px-1 h-4">hybrid</Badge>
+                  )}
+                </div>
+                {tr.carrierSummary && (
+                  <div className="text-muted-foreground mt-0.5">via {tr.carrierSummary}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {subject.hijackedDna && subject.hijackedDna.length > 0 && (
+        <div>
+          <div className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1 flex items-center gap-1">
+            <Skull className="h-3 w-3" /> Former host DNA
+          </div>
+          <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+            {subject.hijackedDna.slice(0, 6).map((d, i) => (
+              <span key={i}>{d.label} {d.pct.toFixed(1)}%</span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <details className="text-xs">
         <summary className="cursor-pointer text-muted-foreground hover:text-foreground select-none">
           Lineage
