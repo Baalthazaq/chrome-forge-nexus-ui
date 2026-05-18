@@ -1078,23 +1078,22 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                   Tags this lineage can breed with. Inherited by descendants.
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs">Sex Rule</Label>
-                  <Select
-                    value={editBuffer.sex_rule || "__none"}
-                    onValueChange={(v) => setEditBuffer({ ...editBuffer, sex_rule: v === "__none" ? "" : v })}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none">Normal (50/50)</SelectItem>
-                      <SelectItem value="queen_only_female">Queen only female</SelectItem>
-                      <SelectItem value="always_male">Always male</SelectItem>
-                      <SelectItem value="always_female">Always female</SelectItem>
-                      <SelectItem value="hermaphrodite">Hermaphrodite</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div>
+                <Label className="text-xs">Sex Rule</Label>
+                <Select
+                  value={editBuffer.sex_rule || "__none"}
+                  onValueChange={(v) => setEditBuffer({ ...editBuffer, sex_rule: v === "__none" ? "" : v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Normal (50/50)</SelectItem>
+                    <SelectItem value="queen_only_female">Queen only female</SelectItem>
+                    <SelectItem value="always_male">Always male</SelectItem>
+                    <SelectItem value="always_female">Always female</SelectItem>
+                    <SelectItem value="hermaphrodite">Hermaphrodite</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2 border-t border-border pt-2">
                 <label className="flex items-center gap-2 text-xs">
                   <input type="checkbox" checked={editBuffer.is_carrier} onChange={(e) => setEditBuffer({ ...editBuffer, is_carrier: e.target.checked })} />
