@@ -14,6 +14,10 @@ export interface EvoNode {
   /** Tags this node can breed with. Inherited; suppressible with `!Tag`. */
   mate_tags: string[];
   is_carrier?: boolean;
+  /** null = normal M/F 50/50. Otherwise: queen_only_female | always_male | always_female | hermaphrodite. Inherited. */
+  sex_rule?: string | null;
+  /** null | queen | drone | worker. Inherited. */
+  brood_role?: string | null;
 }
 
 export interface EvoEdge {
