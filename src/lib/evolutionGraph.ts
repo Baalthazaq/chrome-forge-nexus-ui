@@ -36,6 +36,10 @@ export interface EvoTransformation {
   forbidden_tags: string[];
   acquisition: string; // 'innate' | 'afflicted'
   carrier_node_id: string | null;
+  /** Multi-carrier list. If length > 1, racegen rolls a hybrid carrier from these. */
+  carrier_node_ids?: string[];
+  /** Require the carrier to itself be a crossbreed (length must be >= 2). */
+  requires_carrier_hybrid?: boolean;
   stackable: boolean;
   stage: number;
   chance: number;
