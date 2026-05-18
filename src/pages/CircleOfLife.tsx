@@ -195,7 +195,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const [newLabel, setNewLabel] = useState("");
   
   const [newColor, setNewColor] = useState<string>(Object.values(FAMILY_COLORS)[0]);
-  const [editBuffer, setEditBuffer] = useState<{ label: string; color: string; weight: string; mate_up_probability: string; reproduction_mode: string; tags: string; mate_tags: string; is_carrier: boolean; sex_rule: string; brood_role: string } | null>(null);
+  const [editBuffer, setEditBuffer] = useState<{ label: string; color: string; weight: string; mate_up_probability: string; reproduction_mode: string; tags: string; mate_tags: string; is_carrier: boolean; sex_rule: string } | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragState = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
@@ -855,7 +855,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
 
   const updateNode = async (
     id: string,
-    updates: { label?: string; color?: string; weight?: number; mate_up_probability?: number; reproduction_mode?: string | null; tags?: string[]; mate_tags?: string[]; is_carrier?: boolean; sex_rule?: string | null; brood_role?: string | null }
+    updates: { label?: string; color?: string; weight?: number; mate_up_probability?: number; reproduction_mode?: string | null; tags?: string[]; mate_tags?: string[]; is_carrier?: boolean; sex_rule?: string | null }
   ) => {
     const { error } = await supabase.from("evolution_nodes").update(updates).eq("id", id);
     if (error) {
