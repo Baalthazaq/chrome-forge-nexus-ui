@@ -877,7 +877,6 @@ export type Database = {
       }
       evolution_nodes: {
         Row: {
-          brood_role: string | null
           color: string | null
           created_at: string
           id: string
@@ -895,7 +894,6 @@ export type Database = {
           y: number
         }
         Insert: {
-          brood_role?: string | null
           color?: string | null
           created_at?: string
           id?: string
@@ -913,7 +911,6 @@ export type Database = {
           y?: number
         }
         Update: {
-          brood_role?: string | null
           color?: string | null
           created_at?: string
           id?: string
@@ -935,7 +932,6 @@ export type Database = {
       evolution_transformations: {
         Row: {
           acquisition: string
-          carrier_node_id: string | null
           carrier_node_ids: string[]
           chance: number
           created_at: string
@@ -954,7 +950,6 @@ export type Database = {
         }
         Insert: {
           acquisition?: string
-          carrier_node_id?: string | null
           carrier_node_ids?: string[]
           chance?: number
           created_at?: string
@@ -973,7 +968,6 @@ export type Database = {
         }
         Update: {
           acquisition?: string
-          carrier_node_id?: string | null
           carrier_node_ids?: string[]
           chance?: number
           created_at?: string
@@ -990,15 +984,7 @@ export type Database = {
           stage?: number
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "evolution_transformations_carrier_node_id_fkey"
-            columns: ["carrier_node_id"]
-            isOneToOne: false
-            referencedRelation: "evolution_nodes"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       game_calendar: {
         Row: {

@@ -16,8 +16,6 @@ export interface EvoNode {
   is_carrier?: boolean;
   /** null = normal M/F 50/50. Otherwise: queen_only_female | always_male | always_female | hermaphrodite. Inherited. */
   sex_rule?: string | null;
-  /** null | queen | drone | worker. Inherited. */
-  brood_role?: string | null;
 }
 
 export interface EvoEdge {
@@ -35,8 +33,8 @@ export interface EvoTransformation {
   host_tag_match_mode: string; // 'all' | 'any'
   forbidden_tags: string[];
   acquisition: string; // 'innate' | 'afflicted'
-  carrier_node_id: string | null;
-  /** Multi-carrier list. If length > 1, racegen rolls a hybrid carrier from these. */
+  /** Donor species whose DNA is admixed when the transformation lands.
+   *  0 = tag-only conversion. 1 = single donor. N+ with requires_carrier_hybrid = hybrid donor. */
   carrier_node_ids?: string[];
   /** Require the carrier to itself be a crossbreed (length must be >= 2). */
   requires_carrier_hybrid?: boolean;
@@ -160,12 +158,6 @@ export function resolveSexRule(nodeId: string, nodes: EvoNode[], edges: EvoEdge[
   return null;
 }
 
-/** Resolve effective brood role (queen | drone | worker | null). Not inherited beyond the
- *  declaring node — brood roles are *variant-level* by nature. */
-export function resolveBroodRole(nodeId: string, nodes: EvoNode[]): string | null {
-  const n = nodes.find((x) => x.id === nodeId);
-  return n?.brood_role ?? null;
-}
 export function getAncestorIds(
   nodeId: string,
   edges: EvoEdge[]

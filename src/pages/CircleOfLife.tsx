@@ -195,7 +195,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
   const [newLabel, setNewLabel] = useState("");
   
   const [newColor, setNewColor] = useState<string>(Object.values(FAMILY_COLORS)[0]);
-  const [editBuffer, setEditBuffer] = useState<{ label: string; color: string; weight: string; mate_up_probability: string; reproduction_mode: string; tags: string; mate_tags: string; is_carrier: boolean; sex_rule: string; brood_role: string } | null>(null);
+  const [editBuffer, setEditBuffer] = useState<{ label: string; color: string; weight: string; mate_up_probability: string; reproduction_mode: string; tags: string; mate_tags: string; is_carrier: boolean; sex_rule: string } | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragState = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
@@ -855,7 +855,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
 
   const updateNode = async (
     id: string,
-    updates: { label?: string; color?: string; weight?: number; mate_up_probability?: number; reproduction_mode?: string | null; tags?: string[]; mate_tags?: string[]; is_carrier?: boolean; sex_rule?: string | null; brood_role?: string | null }
+    updates: { label?: string; color?: string; weight?: number; mate_up_probability?: number; reproduction_mode?: string | null; tags?: string[]; mate_tags?: string[]; is_carrier?: boolean; sex_rule?: string | null }
   ) => {
     const { error } = await supabase.from("evolution_nodes").update(updates).eq("id", id);
     if (error) {
@@ -898,7 +898,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
         mate_tags: (sn.mate_tags ?? []).join(", "),
         is_carrier: !!sn.is_carrier,
         sex_rule: sn.sex_rule ?? "",
-        brood_role: sn.brood_role ?? "",
+        
       });
     } else {
       setEditBuffer(null);
@@ -1078,38 +1078,21 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                   Tags this lineage can breed with. Inherited by descendants.
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs">Sex Rule</Label>
-                  <Select
-                    value={editBuffer.sex_rule || "__none"}
-                    onValueChange={(v) => setEditBuffer({ ...editBuffer, sex_rule: v === "__none" ? "" : v })}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none">Normal (50/50)</SelectItem>
-                      <SelectItem value="queen_only_female">Queen only female</SelectItem>
-                      <SelectItem value="always_male">Always male</SelectItem>
-                      <SelectItem value="always_female">Always female</SelectItem>
-                      <SelectItem value="hermaphrodite">Hermaphrodite</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Brood Role</Label>
-                  <Select
-                    value={editBuffer.brood_role || "__none"}
-                    onValueChange={(v) => setEditBuffer({ ...editBuffer, brood_role: v === "__none" ? "" : v })}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none">None</SelectItem>
-                      <SelectItem value="queen">Queen (broodmother)</SelectItem>
-                      <SelectItem value="drone">Drone</SelectItem>
-                      <SelectItem value="worker">Worker</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div>
+                <Label className="text-xs">Sex Rule</Label>
+                <Select
+                  value={editBuffer.sex_rule || "__none"}
+                  onValueChange={(v) => setEditBuffer({ ...editBuffer, sex_rule: v === "__none" ? "" : v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Normal (50/50)</SelectItem>
+                    <SelectItem value="queen_only_female">Queen only female</SelectItem>
+                    <SelectItem value="always_male">Always male</SelectItem>
+                    <SelectItem value="always_female">Always female</SelectItem>
+                    <SelectItem value="hermaphrodite">Hermaphrodite</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2 border-t border-border pt-2">
                 <label className="flex items-center gap-2 text-xs">
@@ -1132,7 +1115,7 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                       mate_tags: editBuffer.mate_tags.split(",").map(t => t.trim()).filter(Boolean),
                       is_carrier: editBuffer.is_carrier,
                       sex_rule: editBuffer.sex_rule || null,
-                      brood_role: editBuffer.brood_role || null,
+                      
                     })
                   }
                 >

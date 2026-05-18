@@ -13,7 +13,6 @@ import {
   resolveEffectiveTags,
   resolveReproductionMode,
   resolveSexRule,
-  resolveBroodRole,
   getChildIds,
   getParentIds,
   getFamilyAncestor,
@@ -325,25 +324,13 @@ function makePick(info: RaceInfo, gender: "M" | "F"): AncestorPick {
   return { info, variant: pickVariantFor(info), gender };
 }
 
-/** Find a sibling variant inside an info whose brood_role matches. */
-function findBroodVariant(info: RaceInfo, role: string): EvoNode | null {
-  return info.variants.find((v) => v.brood_role === role) ?? null;
-}
-
-/** Enforce sex_rule / brood_role on a pick: swap to a queen/drone sibling
- *  variant when the required gender is incompatible with the sex_rule. */
+/** Enforce sex_rule on a pick: simply re-roll gender to comply. */
 function enforceSexForPick(pick: AncestorPick, ctx: Ctx): AncestorPick {
   const tagSrc = pick.variant?.id ?? pick.info.race.id;
   const rule = resolveSexRule(tagSrc, ctx.nodes, ctx.edges);
-  if (pick.gender === "F" && rule === "always_male") {
-    const queen = findBroodVariant(pick.info, "queen");
-    if (queen) return { ...pick, variant: queen };
-  }
-  if (pick.gender === "M" && (rule === "queen_only_female" || rule === "always_female")) {
-    const drone = findBroodVariant(pick.info, "drone") ?? findBroodVariant(pick.info, "worker");
-    if (drone) return { ...pick, variant: drone };
-  }
-  return pick;
+  if (!rule) return pick;
+  const newGender = rollGenderFor(rule);
+  return newGender === pick.gender ? pick : { ...pick, gender: newGender };
 }
 
 /**
@@ -837,11 +824,7 @@ function applyTransformations(
     if (hasForbidden(cur.effectiveTags, t.forbidden_tags ?? [])) continue;
     if (Math.random() > (t.chance ?? 0)) continue;
 
-    // Carrier list resolution (prefer new array, fall back to single id)
-    const carrierIds =
-      (t.carrier_node_ids && t.carrier_node_ids.length > 0)
-        ? t.carrier_node_ids
-        : t.carrier_node_id ? [t.carrier_node_id] : [];
+    const carrierIds = t.carrier_node_ids ?? [];
 
     if (t.requires_carrier_hybrid && carrierIds.length < 2) continue;
 
