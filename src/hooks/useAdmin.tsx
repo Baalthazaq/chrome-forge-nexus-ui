@@ -14,12 +14,18 @@ interface AdminContextType {
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
-  const { user, session } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [impersonatedUser, setImpersonatedUser] = useState<any | null>(null);
 
   useEffect(() => {
+    // Wait for auth to finish initializing before deciding admin status
+    if (authLoading) {
+      setIsLoading(true);
+      return;
+    }
+
     const checkAdminStatus = async () => {
       if (!user) {
         setIsAdmin(false);
@@ -33,7 +39,7 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
           .select('role')
           .eq('user_id', user.id)
           .eq('role', 'admin')
-          .single();
+          .maybeSingle();
 
         setIsAdmin(!!data && !error);
       } catch (error) {
@@ -44,7 +50,7 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     checkAdminStatus();
-  }, [user]);
+  }, [user?.id, authLoading]);
 
   const getAllUsers = async () => {
     if (!isAdmin) return [];
