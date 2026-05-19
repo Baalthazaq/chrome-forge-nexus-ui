@@ -50,7 +50,7 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     checkAdminStatus();
-  }, [user, authLoading]);
+  }, [user?.id, authLoading]);
 
   const getAllUsers = async () => {
     if (!isAdmin) return [];
