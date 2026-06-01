@@ -87,7 +87,12 @@ const Vault = () => {
   // Send Money Dialog State
   const [sendMoneyOpen, setSendMoneyOpen] = useState(false);
   const [sendAmount, setSendAmount] = useState("");
-  const [sendRecipient, setSendRecipient] = useState("");
+  // Recipient: { kind: 'user'|'org'|'placeholder'|'destroy', id?, name }
+  const [sendRecipient, setSendRecipient] = useState<{ kind: 'user'|'org'|'placeholder'|'destroy'; id?: string; name: string } | null>(null);
+  const [recipientQuery, setRecipientQuery] = useState("");
+  const [recipientPopoverOpen, setRecipientPopoverOpen] = useState(false);
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<any[]>([]);
   const [sendDescription, setSendDescription] = useState("");
   const [overdraftDialogOpen, setOverdraftDialogOpen] = useState(false);
   const [pendingBillPayment, setPendingBillPayment] = useState<{ billIds: string[], totalAmount: number } | null>(null);
