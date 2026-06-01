@@ -600,12 +600,13 @@ const VaultAdmin = () => {
 
         {/* Admin Panel */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="bills">Bills</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="credits">Credits</TabsTrigger>
             <TabsTrigger value="recurring">Recurring</TabsTrigger>
+            <TabsTrigger value="placeholders">Holding</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
