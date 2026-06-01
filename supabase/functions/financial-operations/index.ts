@@ -65,8 +65,10 @@ serve(async (req) => {
 
     switch (operation) {
       case "send_money": {
-        const { to_user_id, amount, description } = params;
-        
+        const { to_user_id, amount, description, placeholder_name, destroy } = params;
+
+        if (!amount || amount <= 0) throw new Error("Invalid amount");
+
         const { data: senderProfile, error: senderError } = await supabase
           .from("profiles")
           .select("credits")
@@ -88,6 +90,72 @@ serve(async (req) => {
           .eq("user_id", effectiveUserId);
 
         if (updateSenderError) throw updateSenderError;
+
+        // Branch: destroy (remove from circulation)
+        if (destroy) {
+          const { error: txErr } = await supabase.from("transactions").insert({
+            user_id: effectiveUserId,
+            transaction_type: "debit",
+            amount: -amount,
+            description: description || "Hex removed from circulation",
+            status: "completed",
+          });
+          if (txErr) throw txErr;
+          logStep("Hex destroyed", { amount, from: effectiveUserId });
+          return new Response(JSON.stringify({ success: true, destroyed: true }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+
+        // Branch: placeholder recipient
+        if (placeholder_name) {
+          const cleanName = String(placeholder_name).trim();
+          if (!cleanName) throw new Error("Placeholder name required");
+
+          const { data: existing } = await supabase
+            .from("placeholder_recipients")
+            .select("id, balance, resolved_to_user_id")
+            .ilike("name", cleanName)
+            .maybeSingle();
+
+          let placeholderId: string;
+          if (existing && !existing.resolved_to_user_id) {
+            placeholderId = existing.id;
+            const { error: balErr } = await supabase
+              .from("placeholder_recipients")
+              .update({ balance: existing.balance + amount })
+              .eq("id", existing.id);
+            if (balErr) throw balErr;
+          } else {
+            const { data: created, error: createErr } = await supabase
+              .from("placeholder_recipients")
+              .insert({ name: cleanName, balance: amount })
+              .select("id")
+              .single();
+            if (createErr) throw createErr;
+            placeholderId = created.id;
+          }
+
+          const { error: txErr } = await supabase.from("transactions").insert({
+            user_id: effectiveUserId,
+            transaction_type: "debit",
+            amount: -amount,
+            description: description || `To placeholder: ${cleanName}`,
+            status: "completed",
+            placeholder_recipient_id: placeholderId,
+          });
+          if (txErr) throw txErr;
+
+          logStep("Sent to placeholder", { amount, placeholder: cleanName });
+          return new Response(JSON.stringify({ success: true, placeholder_id: placeholderId }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+
+        // Branch: standard user-to-user
+        if (!to_user_id) throw new Error("Recipient required");
 
         const { data: recipientProfile, error: recipientError } = await supabase
           .from("profiles")
