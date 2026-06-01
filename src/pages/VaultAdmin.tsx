@@ -17,6 +17,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatHex } from "@/lib/currency";
+import PlaceholderRecipientsPanel from "@/components/PlaceholderRecipientsPanel";
 
 const VaultAdmin = () => {
   const { user } = useAuth();
