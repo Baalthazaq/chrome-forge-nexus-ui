@@ -1222,6 +1222,13 @@ const VaultAdmin = () => {
               ))}
             </div>
           </TabsContent>
+
+          <TabsContent value="placeholders" className="space-y-6">
+            <PlaceholderRecipientsPanel
+              profiles={profiles}
+              onChange={loadData}
+            />
+          </TabsContent>
         </Tabs>
       </div>
     </div>
