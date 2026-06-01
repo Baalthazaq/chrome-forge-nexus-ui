@@ -11,6 +11,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronsUpDown, Flame, User as UserIcon, Building2, HelpCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,7 +87,12 @@ const Vault = () => {
   // Send Money Dialog State
   const [sendMoneyOpen, setSendMoneyOpen] = useState(false);
   const [sendAmount, setSendAmount] = useState("");
-  const [sendRecipient, setSendRecipient] = useState("");
+  // Recipient: { kind: 'user'|'org'|'placeholder'|'destroy', id?, name }
+  const [sendRecipient, setSendRecipient] = useState<{ kind: 'user'|'org'|'placeholder'|'destroy'; id?: string; name: string } | null>(null);
+  const [recipientQuery, setRecipientQuery] = useState("");
+  const [recipientPopoverOpen, setRecipientPopoverOpen] = useState(false);
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<any[]>([]);
   const [sendDescription, setSendDescription] = useState("");
   const [overdraftDialogOpen, setOverdraftDialogOpen] = useState(false);
   const [pendingBillPayment, setPendingBillPayment] = useState<{ billIds: string[], totalAmount: number } | null>(null);
@@ -122,7 +131,7 @@ const Vault = () => {
     if (!activeUserId) return;
     
     try {
-      const [profileRes, transactionRes, billRes, profilesRes, rpRes, inventoryRes, downtimeRes] = await Promise.all([
+      const [profileRes, transactionRes, billRes, profilesRes, rpRes, inventoryRes, downtimeRes, contactsRes, orgsRes] = await Promise.all([
         supabase.from("profiles").select("*").eq("user_id", activeUserId).single(),
         supabase.from("transactions").select("*")
           .or(`user_id.eq.${activeUserId},from_user_id.eq.${activeUserId},to_user_id.eq.${activeUserId}`)
@@ -137,6 +146,8 @@ const Vault = () => {
         supabase.functions.invoke("quest-operations", {
           body: { operation: "get_downtime", targetUserId: impersonatedUser?.user_id },
         }),
+        supabase.from("contacts").select("contact_user_id").eq("user_id", activeUserId).eq("is_active", true),
+        supabase.from("organizations").select("id, name").order("name"),
       ]);
 
       setUserProfile(profileRes.data);
@@ -145,6 +156,8 @@ const Vault = () => {
       setProfiles(profilesRes.data || []);
       setRecurringPayments(rpRes.data || []);
       setInventoryItems(inventoryRes.data || []);
+      setContacts(contactsRes.data || []);
+      setOrganizations(orgsRes.data || []);
       if (downtimeRes.data?.downtime) setDowntimeBalance(downtimeRes.data.downtime.balance);
 
       // Separate income payments (full-time job recurring payments)
@@ -164,8 +177,8 @@ const Vault = () => {
   const totalAssets = inventoryItems.reduce((sum, item) => sum + getItemFinalValue(item), 0);
 
   const handleSendMoney = async () => {
-    if (!sendRecipient || !sendAmount || !sendDescription) {
-      toast({ title: "Error", description: "Please fill in all fields", variant: "destructive" });
+    if (!sendRecipient || !sendAmount) {
+      toast({ title: "Error", description: "Pick a recipient and amount", variant: "destructive" });
       return;
     }
 
@@ -176,15 +189,23 @@ const Vault = () => {
     }
 
     try {
-      const activeUserId = impersonatedUser?.user_id || user?.id;
-      const { error } = await supabase.functions.invoke('financial-operations', {
-        body: { operation: 'send_money', to_user_id: sendRecipient, amount, description: sendDescription, ...(impersonatedUser ? { targetUserId: impersonatedUser.user_id } : {}) }
-      });
+      const body: any = {
+        operation: 'send_money',
+        amount,
+        description: sendDescription || (sendRecipient.kind === 'destroy' ? 'Hex removed from circulation' : `Sent to ${sendRecipient.name}`),
+        ...(impersonatedUser ? { targetUserId: impersonatedUser.user_id } : {}),
+      };
+      if (sendRecipient.kind === 'user') body.to_user_id = sendRecipient.id;
+      else if (sendRecipient.kind === 'org' || sendRecipient.kind === 'placeholder') body.placeholder_name = sendRecipient.name;
+      else if (sendRecipient.kind === 'destroy') body.destroy = true;
+
+      const { error } = await supabase.functions.invoke('financial-operations', { body });
       if (error) throw error;
-      toast({ title: "Success", description: "Money sent successfully" });
+      toast({ title: "Success", description: sendRecipient.kind === 'destroy' ? "Hex removed from circulation" : "Hex sent" });
       setSendMoneyOpen(false);
       setSendAmount("");
-      setSendRecipient("");
+      setSendRecipient(null);
+      setRecipientQuery("");
       setSendDescription("");
       loadData();
     } catch (error: any) {
@@ -484,19 +505,113 @@ const Vault = () => {
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="recipient" className="text-right text-gray-300">Recipient</Label>
-                      <Select value={sendRecipient} onValueChange={setSendRecipient}>
-                        <SelectTrigger className="col-span-3 bg-gray-800 border-gray-600 text-white">
-                          <SelectValue placeholder="Select recipient" />
-                        </SelectTrigger>
-                         <SelectContent className="bg-gray-800 border-gray-600">
-                           {profiles.map((profile) => (
-                               <SelectItem key={profile.user_id} value={profile.user_id} className="text-white hover:bg-gray-700">
-                                 {profile.character_name}
-                               </SelectItem>
-                           ))}
-                         </SelectContent>
-                      </Select>
+                      <Label className="text-right text-gray-300">Recipient</Label>
+                      <div className="col-span-3">
+                        <Popover open={recipientPopoverOpen} onOpenChange={setRecipientPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" role="combobox" className="w-full justify-between bg-gray-800 border-gray-600 text-white hover:bg-gray-700 hover:text-white">
+                              {sendRecipient ? (
+                                <span className="flex items-center gap-2 truncate">
+                                  {sendRecipient.kind === 'user' && <UserIcon className="w-3 h-3 text-cyan-400" />}
+                                  {sendRecipient.kind === 'org' && <Building2 className="w-3 h-3 text-amber-400" />}
+                                  {sendRecipient.kind === 'placeholder' && <HelpCircle className="w-3 h-3 text-purple-400" />}
+                                  {sendRecipient.kind === 'destroy' && <Flame className="w-3 h-3 text-red-400" />}
+                                  <span className="truncate">{sendRecipient.name}</span>
+                                </span>
+                              ) : (
+                                <span className="text-gray-500">Type a name or select…</span>
+                              )}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-gray-800 border-gray-600" align="start">
+                            <Command className="bg-gray-800" shouldFilter={false}>
+                              <CommandInput
+                                placeholder="Search or type new name…"
+                                value={recipientQuery}
+                                onValueChange={setRecipientQuery}
+                                className="text-white"
+                              />
+                              <CommandList className="max-h-72">
+                                {(() => {
+                                  const q = recipientQuery.trim().toLowerCase();
+                                  const contactIds = new Set(contacts.map((c: any) => c.contact_user_id));
+                                  const contactProfiles = profiles.filter((p: any) => contactIds.has(p.user_id));
+                                  const otherProfiles = profiles.filter((p: any) => !contactIds.has(p.user_id));
+                                  const filterFn = (name: string) => !q || name.toLowerCase().includes(q);
+                                  const fContacts = contactProfiles.filter((p: any) => filterFn(p.character_name || ""));
+                                  const fOthers = otherProfiles.filter((p: any) => filterFn(p.character_name || ""));
+                                  const fOrgs = organizations.filter((o: any) => filterFn(o.name || ""));
+                                  const exactMatch =
+                                    fContacts.some((p: any) => (p.character_name || "").toLowerCase() === q) ||
+                                    fOthers.some((p: any) => (p.character_name || "").toLowerCase() === q) ||
+                                    fOrgs.some((o: any) => (o.name || "").toLowerCase() === q);
+                                  const showPlaceholder = q.length > 0 && !exactMatch;
+                                  const nothing = fContacts.length === 0 && fOthers.length === 0 && fOrgs.length === 0 && !showPlaceholder;
+
+                                  return (
+                                    <>
+                                      {nothing && <CommandEmpty className="text-gray-400 py-4 text-center text-sm">No matches. Keep typing.</CommandEmpty>}
+                                      {fContacts.length > 0 && (
+                                        <CommandGroup heading="Your Contacts">
+                                          {fContacts.map((p: any) => (
+                                            <CommandItem key={p.user_id} value={`c-${p.user_id}`} className="text-white aria-selected:bg-gray-700"
+                                              onSelect={() => { setSendRecipient({ kind: 'user', id: p.user_id, name: p.character_name }); setRecipientPopoverOpen(false); }}>
+                                              <UserIcon className="w-3 h-3 mr-2 text-cyan-400" />{p.character_name}
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      )}
+                                      {fOthers.length > 0 && (
+                                        <CommandGroup heading="Other Characters">
+                                          {fOthers.map((p: any) => (
+                                            <CommandItem key={p.user_id} value={`o-${p.user_id}`} className="text-white aria-selected:bg-gray-700"
+                                              onSelect={() => { setSendRecipient({ kind: 'user', id: p.user_id, name: p.character_name }); setRecipientPopoverOpen(false); }}>
+                                              <UserIcon className="w-3 h-3 mr-2 text-gray-400" />{p.character_name}
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      )}
+                                      {fOrgs.length > 0 && (
+                                        <CommandGroup heading="Corporations">
+                                          {fOrgs.map((o: any) => (
+                                            <CommandItem key={o.id} value={`org-${o.id}`} className="text-white aria-selected:bg-gray-700"
+                                              onSelect={() => { setSendRecipient({ kind: 'org', id: o.id, name: o.name }); setRecipientPopoverOpen(false); }}>
+                                              <Building2 className="w-3 h-3 mr-2 text-amber-400" />{o.name}
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      )}
+                                      {showPlaceholder && (
+                                        <CommandGroup heading="Create New">
+                                          <CommandItem value={`new-${q}`} className="text-white aria-selected:bg-gray-700"
+                                            onSelect={() => { setSendRecipient({ kind: 'placeholder', name: recipientQuery.trim() }); setRecipientPopoverOpen(false); }}>
+                                            <HelpCircle className="w-3 h-3 mr-2 text-purple-400" />
+                                            Send to "{recipientQuery.trim()}" (holding bucket)
+                                          </CommandItem>
+                                        </CommandGroup>
+                                      )}
+                                      <CommandGroup heading="Other">
+                                        <CommandItem value="__destroy" className="text-white aria-selected:bg-gray-700"
+                                          onSelect={() => { setSendRecipient({ kind: 'destroy', name: 'Remove from circulation' }); setRecipientPopoverOpen(false); }}>
+                                          <Flame className="w-3 h-3 mr-2 text-red-400" />
+                                          Remove from circulation (burn Hex)
+                                        </CommandItem>
+                                      </CommandGroup>
+                                    </>
+                                  );
+                                })()}
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        {sendRecipient?.kind === 'placeholder' && (
+                          <p className="text-xs text-purple-300/80 mt-1">Will be held in a placeholder for "{sendRecipient.name}" until an admin resolves it.</p>
+                        )}
+                        {sendRecipient?.kind === 'destroy' && (
+                          <p className="text-xs text-red-300/80 mt-1">Hex will be permanently removed from circulation.</p>
+                        )}
+                      </div>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="amount" className="text-right text-gray-300">Amount</Label>

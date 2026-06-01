@@ -17,6 +17,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatHex } from "@/lib/currency";
+import PlaceholderRecipientsPanel from "@/components/PlaceholderRecipientsPanel";
 
 const VaultAdmin = () => {
   const { user } = useAuth();
@@ -600,12 +601,13 @@ const VaultAdmin = () => {
 
         {/* Admin Panel */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="bills">Bills</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="credits">Credits</TabsTrigger>
             <TabsTrigger value="recurring">Recurring</TabsTrigger>
+            <TabsTrigger value="placeholders">Holding</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -1220,6 +1222,13 @@ const VaultAdmin = () => {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="placeholders" className="space-y-6">
+            <PlaceholderRecipientsPanel
+              profiles={profiles}
+              onChange={loadData}
+            />
           </TabsContent>
         </Tabs>
       </div>
