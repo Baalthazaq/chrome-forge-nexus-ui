@@ -177,8 +177,8 @@ const Vault = () => {
   const totalAssets = inventoryItems.reduce((sum, item) => sum + getItemFinalValue(item), 0);
 
   const handleSendMoney = async () => {
-    if (!sendRecipient || !sendAmount || !sendDescription) {
-      toast({ title: "Error", description: "Please fill in all fields", variant: "destructive" });
+    if (!sendRecipient || !sendAmount) {
+      toast({ title: "Error", description: "Pick a recipient and amount", variant: "destructive" });
       return;
     }
 
@@ -189,15 +189,23 @@ const Vault = () => {
     }
 
     try {
-      const activeUserId = impersonatedUser?.user_id || user?.id;
-      const { error } = await supabase.functions.invoke('financial-operations', {
-        body: { operation: 'send_money', to_user_id: sendRecipient, amount, description: sendDescription, ...(impersonatedUser ? { targetUserId: impersonatedUser.user_id } : {}) }
-      });
+      const body: any = {
+        operation: 'send_money',
+        amount,
+        description: sendDescription || (sendRecipient.kind === 'destroy' ? 'Hex removed from circulation' : `Sent to ${sendRecipient.name}`),
+        ...(impersonatedUser ? { targetUserId: impersonatedUser.user_id } : {}),
+      };
+      if (sendRecipient.kind === 'user') body.to_user_id = sendRecipient.id;
+      else if (sendRecipient.kind === 'org' || sendRecipient.kind === 'placeholder') body.placeholder_name = sendRecipient.name;
+      else if (sendRecipient.kind === 'destroy') body.destroy = true;
+
+      const { error } = await supabase.functions.invoke('financial-operations', { body });
       if (error) throw error;
-      toast({ title: "Success", description: "Money sent successfully" });
+      toast({ title: "Success", description: sendRecipient.kind === 'destroy' ? "Hex removed from circulation" : "Hex sent" });
       setSendMoneyOpen(false);
       setSendAmount("");
-      setSendRecipient("");
+      setSendRecipient(null);
+      setRecipientQuery("");
       setSendDescription("");
       loadData();
     } catch (error: any) {
