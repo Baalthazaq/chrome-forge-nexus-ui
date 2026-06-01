@@ -552,6 +552,13 @@ const Vault = () => {
                                   return (
                                     <>
                                       {nothing && <CommandEmpty className="text-gray-400 py-4 text-center text-sm">No matches. Keep typing.</CommandEmpty>}
+                                      <CommandGroup heading="Other">
+                                        <CommandItem value="__destroy" className="text-white aria-selected:bg-gray-700"
+                                          onSelect={() => { setSendRecipient({ kind: 'destroy', name: 'Remove from circulation' }); setRecipientPopoverOpen(false); }}>
+                                          <Flame className="w-3 h-3 mr-2 text-red-400" />
+                                          No Recipient — Remove from circulation
+                                        </CommandItem>
+                                      </CommandGroup>
                                       {fContacts.length > 0 && (
                                         <CommandGroup heading="Your Contacts">
                                           {fContacts.map((p: any) => (
@@ -587,17 +594,10 @@ const Vault = () => {
                                           <CommandItem value={`new-${q}`} className="text-white aria-selected:bg-gray-700"
                                             onSelect={() => { setSendRecipient({ kind: 'placeholder', name: recipientQuery.trim() }); setRecipientPopoverOpen(false); }}>
                                             <HelpCircle className="w-3 h-3 mr-2 text-purple-400" />
-                                            Send to "{recipientQuery.trim()}" (holding bucket)
+                                            Send to "{recipientQuery.trim()}"
                                           </CommandItem>
                                         </CommandGroup>
                                       )}
-                                      <CommandGroup heading="Other">
-                                        <CommandItem value="__destroy" className="text-white aria-selected:bg-gray-700"
-                                          onSelect={() => { setSendRecipient({ kind: 'destroy', name: 'Remove from circulation' }); setRecipientPopoverOpen(false); }}>
-                                          <Flame className="w-3 h-3 mr-2 text-red-400" />
-                                          Remove from circulation (burn Hex)
-                                        </CommandItem>
-                                      </CommandGroup>
                                     </>
                                   );
                                 })()}
