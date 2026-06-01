@@ -131,7 +131,7 @@ const Vault = () => {
     if (!activeUserId) return;
     
     try {
-      const [profileRes, transactionRes, billRes, profilesRes, rpRes, inventoryRes, downtimeRes] = await Promise.all([
+      const [profileRes, transactionRes, billRes, profilesRes, rpRes, inventoryRes, downtimeRes, contactsRes, orgsRes] = await Promise.all([
         supabase.from("profiles").select("*").eq("user_id", activeUserId).single(),
         supabase.from("transactions").select("*")
           .or(`user_id.eq.${activeUserId},from_user_id.eq.${activeUserId},to_user_id.eq.${activeUserId}`)
@@ -146,6 +146,8 @@ const Vault = () => {
         supabase.functions.invoke("quest-operations", {
           body: { operation: "get_downtime", targetUserId: impersonatedUser?.user_id },
         }),
+        supabase.from("contacts").select("contact_user_id").eq("user_id", activeUserId).eq("is_active", true),
+        supabase.from("organizations").select("id, name").order("name"),
       ]);
 
       setUserProfile(profileRes.data);
@@ -154,6 +156,8 @@ const Vault = () => {
       setProfiles(profilesRes.data || []);
       setRecurringPayments(rpRes.data || []);
       setInventoryItems(inventoryRes.data || []);
+      setContacts(contactsRes.data || []);
+      setOrganizations(orgsRes.data || []);
       if (downtimeRes.data?.downtime) setDowntimeBalance(downtimeRes.data.downtime.balance);
 
       // Separate income payments (full-time job recurring payments)
