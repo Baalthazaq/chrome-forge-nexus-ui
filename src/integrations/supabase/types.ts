@@ -1398,6 +1398,42 @@ export type Database = {
         }
         Relationships: []
       }
+      placeholder_recipients: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          name: string
+          name_lower: string | null
+          notes: string | null
+          resolved_at: string | null
+          resolved_to_user_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          name: string
+          name_lower?: string | null
+          notes?: string | null
+          resolved_at?: string | null
+          resolved_to_user_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          name?: string
+          name_lower?: string | null
+          notes?: string | null
+          resolved_at?: string | null
+          resolved_to_user_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
@@ -2196,6 +2232,7 @@ export type Database = {
           from_user_id: string | null
           id: string
           metadata: Json | null
+          placeholder_recipient_id: string | null
           reference_id: string | null
           status: string
           to_user_id: string | null
@@ -2211,6 +2248,7 @@ export type Database = {
           from_user_id?: string | null
           id?: string
           metadata?: Json | null
+          placeholder_recipient_id?: string | null
           reference_id?: string | null
           status?: string
           to_user_id?: string | null
@@ -2226,6 +2264,7 @@ export type Database = {
           from_user_id?: string | null
           id?: string
           metadata?: Json | null
+          placeholder_recipient_id?: string | null
           reference_id?: string | null
           status?: string
           to_user_id?: string | null
