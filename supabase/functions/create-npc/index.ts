@@ -74,20 +74,46 @@ serve(async (req) => {
       return new Response('Character name is required', { status: 400, headers: corsHeaders })
     }
 
+    // Normalize aliases — accept array OR delimited string ("a; b" or "a, b")
+    let aliasesArray: string[] = []
+    if (Array.isArray(aliases)) {
+      aliasesArray = aliases
+        .filter((a: any) => a !== null && a !== undefined && String(a).trim() !== '')
+        .map((a: any) => String(a).trim())
+    } else if (typeof aliases === 'string' && aliases.trim() !== '') {
+      aliasesArray = aliases.split(/[;,]/).map((s: string) => s.trim()).filter(Boolean)
+    }
+
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false }
     })
 
+    // Dedupe guard: refuse to create if a character with this name already exists
+    const trimmedName = character_name.trim()
+    const { data: existingProfile } = await adminClient
+      .from('profiles')
+      .select('user_id, character_name')
+      .eq('character_name', trimmedName)
+      .maybeSingle()
+
+    if (existingProfile) {
+      return new Response(JSON.stringify({
+        error: 'duplicate_name',
+        message: `A character named "${trimmedName}" already exists.`,
+        existing_user_id: existingProfile.user_id,
+      }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     // Create the NPC user
-    const randomEmail = `npc_${Date.now()}@nexus.game`
+    const randomEmail = `npc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}@nexus.game`
     const randomPassword = `npc_${Math.random().toString(36).substring(7)}`
 
     const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
       email: randomEmail,
       password: randomPassword,
       email_confirm: true,
-      user_metadata: { character_name, is_npc: true }
+      user_metadata: { character_name: trimmedName, is_npc: true }
     })
 
     if (authError) {
