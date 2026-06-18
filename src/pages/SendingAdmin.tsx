@@ -68,7 +68,68 @@ const SendingAdmin = () => {
   const [sending, setSending] = useState(false);
   const [editingCast, setEditingCast] = useState<Cast | null>(null);
   const [editMessage, setEditMessage] = useState('');
+  const [showNewConvo, setShowNewConvo] = useState(false);
+  const [newInitiatorId, setNewInitiatorId] = useState('');
+  const [newRecipientId, setNewRecipientId] = useState('');
+  const [newMessage, setNewMessage] = useState('');
+  const [creatingConvo, setCreatingConvo] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const startNewConversation = async () => {
+    if (!newInitiatorId || !newRecipientId || !newMessage.trim()) return;
+    if (newInitiatorId === newRecipientId) {
+      toast({ title: 'Error', description: 'Initiator and recipient must differ.', variant: 'destructive' });
+      return;
+    }
+    setCreatingConvo(true);
+    try {
+      // Find existing 1:1 stone between the two
+      const { data: aStones } = await supabase
+        .from('stone_participants').select('stone_id').eq('user_id', newInitiatorId);
+      const { data: bStones } = await supabase
+        .from('stone_participants').select('stone_id').eq('user_id', newRecipientId);
+      const aIds = new Set((aStones || []).map(s => s.stone_id));
+      const commonIds = (bStones || []).map(s => s.stone_id).filter(id => aIds.has(id));
+      let stoneId: string | null = null;
+      if (commonIds.length > 0) {
+        const { data: commons } = await supabase
+          .from('stones').select('id').in('id', commonIds).eq('is_group', false);
+        if (commons && commons.length > 0) stoneId = commons[0].id;
+      }
+      if (!stoneId) {
+        const { data: stone, error } = await supabase
+          .from('stones')
+          .insert({
+            participant_one_id: newInitiatorId,
+            participant_two_id: newRecipientId,
+            is_group: false,
+            created_by: newInitiatorId,
+          })
+          .select().single();
+        if (error) throw error;
+        stoneId = stone.id;
+        await supabase.from('stone_participants').insert([
+          { stone_id: stoneId, user_id: newInitiatorId },
+          { stone_id: stoneId, user_id: newRecipientId },
+        ]);
+      }
+      const { error: castErr } = await supabase.from('casts').insert({
+        stone_id: stoneId,
+        sender_id: newInitiatorId,
+        message: newMessage.trim(),
+      });
+      if (castErr) throw castErr;
+      toast({ title: 'Conversation started', description: `${profMap.get(newInitiatorId)} → ${profMap.get(newRecipientId)}` });
+      setShowNewConvo(false);
+      setNewInitiatorId(''); setNewRecipientId(''); setNewMessage('');
+      loadAllConversations();
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Error', description: e.message || 'Failed to start conversation.', variant: 'destructive' });
+    } finally {
+      setCreatingConvo(false);
+    }
+  };
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
