@@ -149,7 +149,7 @@ serve(async (req) => {
         employer: employer || null,
         education: education || null,
         address: address || null,
-        aliases: aliases || [],
+        aliases: aliasesArray,
         security_rating: security_rating || 'C',
         is_npc: true
       }, { onConflict: 'user_id' })
