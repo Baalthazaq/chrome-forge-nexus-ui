@@ -1,53 +1,44 @@
-## Goal
-Let players send/destroy Hex from App of Holding to anyone (contacts, other characters, corporations) or to a free-typed placeholder recipient that admins can later resolve.
+# Bulk Import: Interactive Duplicate Resolution
 
-## UX changes — Vault "Send Hex" dialog
+## Problem
+When the bulk import file has rows without a `user_id` but the `character_name` matches an existing character, the `create-npc` edge function returns a 409 and the row is silently skipped. On your last import, 22 of 24 rows were skipped this way — only the 2 rows that still had `user_id` populated (Aqua Venous, Uji) actually got updated.
 
-Replace the recipient `Select` with an autocomplete combobox (Command/Popover):
-- Typing filters across three grouped sources, in this order:
-  1. **Your Contacts** — characters in your `contacts` table
-  2. **Other Characters** — remaining profiles
-  3. **Corporations** — entries from `organizations`
-- A fourth group appears whenever the typed text matches no existing entry:
-  - **"Send to '<typed name>'"** — creates a placeholder recipient (money leaves the player; recipient is a named holding bucket).
-- Add a checkbox / extra option **"Remove from circulation"** (no recipient) for the "just destroy money" case. This routes to a special system sink.
-- Amount + description fields unchanged.
+## Solution
+Replace the silent skip with a per-row approval dialog. When a name-only row matches an existing character, pause the import and show a modal so you can decide what to do for each conflict.
 
-## Data model
+## Behavior
 
-New table `placeholder_recipients`:
-- `name` (text, unique, case-insensitive)
-- `balance` (integer, default 0)
-- `notes` (text, admin-only)
-- `resolved_to_user_id` (uuid, nullable) — when admin links the placeholder to a real profile, balance is transferred and recipient is marked resolved.
-- RLS: authenticated can SELECT + INSERT (so send flow works); only admins UPDATE/DELETE.
+For each row in the import:
 
-Transactions table already supports `to_user_id` nullable. Add an optional `placeholder_recipient_id` column (uuid, nullable) to `transactions` so we can link the audit trail. (Alternative: just stuff it in `description`; column is cleaner.)
+1. Row has `user_id` → update existing character (unchanged).
+2. Row has no `user_id` and no name match → create new NPC (unchanged).
+3. Row has no `user_id` but name matches an existing character → **show a conflict modal** with:
+   - The conflicting name and a short preview of the existing vs. incoming values (class, level, ancestry, key stats).
+   - Three actions:
+     - **Update existing** — apply incoming fields to the matched character (profile + character_sheet sync, same logic as the `user_id` path).
+     - **Ignore** — skip this row.
+     - **Create as new** — create a new NPC anyway, even though the name collides.
+   - **Apply to all remaining conflicts** checkbox so you don't have to click 22 times if you want the same choice for everyone.
 
-## Edge function changes (`financial-operations`)
+The import loop awaits the user's decision before moving to the next row. A running summary toast at the end reports: updated / created / ignored / failed counts (and lists names for each bucket).
 
-Extend `send_money`:
-- Accept either `to_user_id` (existing), `placeholder_name` (new), or `destroy: true` (new).
-- If `placeholder_name`: find-or-create row in `placeholder_recipients` (case-insensitive match), debit sender, credit the placeholder's `balance`, write transaction with `placeholder_recipient_id`, description prefixed `To placeholder: <name>`.
-- If `destroy`: debit sender only, no credit, transaction labelled `Hex removed from circulation`.
-- Keep existing user-to-user path.
+## Technical Details
 
-## Admin: App of Holding admin page (`VaultAdmin.tsx`)
+### `src/pages/DopplegangerAdmin.tsx`
+- Pre-scan: before the loop, fetch all existing `profiles` (`user_id`, `character_name`) once into a `Map<lowercase_name, user_id>` for fast lookup.
+- Rewrite the import loop as an async sequence that, on a name-only match, sets state to open a new `ImportConflictDialog` and awaits a Promise that resolves with the user's choice (`update` | `ignore` | `new`, plus an `applyToAll` flag).
+- On `update`: run the same profile + character_sheet update block that the `user_id` branch uses, targeting the matched `user_id`.
+- On `new`: call `create-npc` with a new flag `allow_duplicate_name: true` to bypass the 409 guard.
+- On `ignore`: increment skipped count and continue.
 
-Add a **Placeholder Recipients** section:
-- Table of placeholders: name, balance, created date, # of transactions, notes.
-- Actions per row:
-  - **Resolve to user** — pick a profile; on confirm, transfer balance to that profile, mark `resolved_to_user_id`, hide from active list.
-  - **Edit name / notes**
-  - **Delete** (with confirm; warns if balance > 0)
-- Filter: show active / resolved / all.
+### `src/components/ImportConflictDialog.tsx` (new)
+- Small modal: shows incoming vs. existing field comparison, three action buttons, and the "apply to all remaining" checkbox.
+- Pure presentational; receives `existing`, `incoming`, and an `onResolve(action, applyToAll)` callback.
 
-## Files to touch
-- `supabase/migrations/<new>.sql` — new table + column + RLS + GRANTs.
-- `supabase/functions/financial-operations/index.ts` — extend `send_money`.
-- `src/pages/Vault.tsx` — replace recipient Select with Command-based autocomplete; add destroy option; load contacts + organizations.
-- `src/pages/VaultAdmin.tsx` — add Placeholder Recipients management section.
-- `src/integrations/supabase/types.ts` — regenerated automatically post-migration.
+### `supabase/functions/create-npc/index.ts`
+- Accept new optional body field `allow_duplicate_name: boolean`. When true, skip the duplicate-name 409 guard so the "Create as new" choice works.
 
-## Open question
-For the "remove money / send to holding point" wording — should the **destroy** option be a separate button ("Burn Hex") next to "Send Hex", or live inside the Send dialog as a toggle? I'll default to a toggle inside the dialog ("Remove from circulation — no recipient") unless you prefer a dedicated button.
+## Out of scope
+- No schema changes.
+- No changes to the single-NPC create dialog or to the per-row update path used when `user_id` is present.
+- No changes to how stats default to `0` (already correct from prior fix).
