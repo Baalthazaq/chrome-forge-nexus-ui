@@ -491,7 +491,7 @@ export const NPCDialog = ({ trigger, npc, onSuccess, showDelete = false, current
               {(['agility', 'strength', 'finesse', 'instinct', 'presence', 'knowledge'] as const).map(stat => (
                 <div key={stat} className="space-y-2">
                   <Label htmlFor={stat} className="capitalize">{stat}</Label>
-                  <Input id={stat} type="number" value={form[stat]} onChange={(e) => setForm(prev => ({ ...prev, [stat]: parseInt(e.target.value) || 0 }))} />
+                  <Input id={stat} type="number" value={form[stat] === 0 ? "" : form[stat]} placeholder="0" onChange={(e) => setForm(prev => ({ ...prev, [stat]: e.target.value === "" ? 0 : (parseInt(e.target.value) || 0) }))} />
                 </div>
               ))}
             </div>
