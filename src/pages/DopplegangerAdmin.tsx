@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { NPCDialog } from "@/components/NPCDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ImportConflictDialog, ConflictAction } from "@/components/ImportConflictDialog";
 import * as XLSX from "xlsx";
 const DopplegangerAdmin = () => {
   const navigate = useNavigate();
