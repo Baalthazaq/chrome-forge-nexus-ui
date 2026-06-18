@@ -90,20 +90,23 @@ serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false }
     })
 
-    // Dedupe guard: refuse to create if a character with this name already exists
     const trimmedName = character_name.trim()
-    const { data: existingProfile } = await adminClient
-      .from('profiles')
-      .select('user_id, character_name')
-      .eq('character_name', trimmedName)
-      .maybeSingle()
 
-    if (existingProfile) {
-      return new Response(JSON.stringify({
-        error: 'duplicate_name',
-        message: `A character named "${trimmedName}" already exists.`,
-        existing_user_id: existingProfile.user_id,
-      }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    if (!allow_duplicate_name) {
+      // Dedupe guard: refuse to create if a character with this name already exists
+      const { data: existingProfiles } = await adminClient
+        .from('profiles')
+        .select('user_id, character_name')
+        .eq('character_name', trimmedName)
+        .limit(1)
+
+      if (existingProfiles && existingProfiles.length > 0) {
+        return new Response(JSON.stringify({
+          error: 'duplicate_name',
+          message: `A character named "${trimmedName}" already exists.`,
+          existing_user_id: existingProfiles[0].user_id,
+        }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
     }
 
     // Create the NPC user
