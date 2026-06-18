@@ -26,6 +26,8 @@ const DopplegangerAdmin = () => {
   const { toast } = useToast();
 
   const [sheets, setSheets] = useState<Record<string, any>>({});
+  const [conflict, setConflict] = useState<{ existing: any; incoming: any; remaining: number } | null>(null);
+  const conflictResolverRef = useRef<((r: { action: ConflictAction; applyToAll: boolean }) => void) | null>(null);
 
   useEffect(() => {
     if (isAdmin) loadUsers();
