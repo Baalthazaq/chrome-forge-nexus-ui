@@ -199,10 +199,23 @@ const DopplegangerAdmin = () => {
             failed++;
           }
         } else {
-          // New character — create via edge function
+          // New character — create via edge function (now refuses duplicate names)
           const { data, error } = await supabase.functions.invoke('create-npc', { body: rec });
-          if (error) { console.error('Import error:', error); failed++; }
-          else {
+          if (error) {
+            console.error('Import error:', error);
+            // Edge function returns 409 with { error: 'duplicate_name' } when name is taken
+            const ctx: any = (error as any).context;
+            const status = ctx?.status ?? ctx?.response?.status;
+            if (status === 409) {
+              duplicates++;
+              duplicateNames.push(rec.character_name);
+            } else {
+              failed++;
+            }
+          } else if (data?.error === 'duplicate_name') {
+            duplicates++;
+            duplicateNames.push(rec.character_name);
+          } else {
             if (data?.npc_id) {
               await supabase.from('character_sheets').upsert({
                 user_id: data.npc_id,
@@ -221,8 +234,10 @@ const DopplegangerAdmin = () => {
       const parts = [];
       if (updated) parts.push(`${updated} updated`);
       if (created) parts.push(`${created} created`);
+      if (duplicates) parts.push(`${duplicates} skipped (duplicate name)`);
       if (failed) parts.push(`${failed} failed`);
-      toast({ title: "Import Complete", description: parts.join(', ') + '.' });
+      const desc = parts.join(', ') + '.' + (duplicateNames.length ? ` Duplicates: ${duplicateNames.slice(0, 10).join(', ')}${duplicateNames.length > 10 ? '…' : ''}` : '');
+      toast({ title: "Import Complete", description: desc, variant: (failed || duplicates) ? 'destructive' : 'default' });
       loadUsers();
     } catch (err: any) {
       toast({ title: "Import Error", description: err.message, variant: "destructive" });
