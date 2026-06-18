@@ -67,7 +67,8 @@ serve(async (req) => {
       education,
       address,
       aliases = [],
-      security_rating = 'C'
+      security_rating = 'C',
+      allow_duplicate_name = false
     } = await req.json()
 
     if (!character_name?.trim()) {
