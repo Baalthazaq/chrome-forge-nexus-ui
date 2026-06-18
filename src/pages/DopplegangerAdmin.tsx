@@ -137,8 +137,8 @@ const DopplegangerAdmin = () => {
       let created = 0;
       let updated = 0;
       let failed = 0;
-      let duplicates = 0;
-      const duplicateNames: string[] = [];
+      let ignored = 0;
+      const ignoredNames: string[] = [];
 
       // Profile fields that can be updated
       const profileFields = [
@@ -156,91 +156,118 @@ const DopplegangerAdmin = () => {
         return [];
       };
 
+      // Pre-scan existing profiles for name-based matching
+      const { data: allProfiles } = await supabase.from('profiles').select('user_id, character_name, character_class, level, ancestry, job, company, agility, strength, finesse, instinct, presence, knowledge');
+      const nameMap = new Map<string, any>();
+      for (const p of allProfiles || []) {
+        if (p.character_name) nameMap.set(p.character_name.trim().toLowerCase(), p);
+      }
+
+      const applyUpdate = async (userId: string, rec: any) => {
+        const profileUpdate: Record<string, any> = {};
+        for (const field of profileFields) {
+          if (rec[field] !== undefined && rec[field] !== '') {
+            profileUpdate[field] = rec[field];
+          }
+        }
+        if (rec.aliases !== undefined) {
+          profileUpdate.aliases = normalizeAliases(rec.aliases);
+        }
+        if (Object.keys(profileUpdate).length > 0) {
+          const { error: profErr } = await supabase.from('profiles').update(profileUpdate).eq('user_id', userId);
+          if (profErr) throw profErr;
+        }
+        const sheetUpdate: Record<string, any> = {};
+        if (rec.character_class !== undefined) sheetUpdate.class = rec.character_class || null;
+        if (rec.ancestry !== undefined) sheetUpdate.ancestry = rec.ancestry || null;
+        if (rec.level !== undefined) sheetUpdate.level = rec.level || 1;
+        if (rec.subclass !== undefined) sheetUpdate.subclass = rec.subclass || null;
+        if (rec.community !== undefined) sheetUpdate.community = rec.community || null;
+        if (Object.keys(sheetUpdate).length > 0) {
+          await supabase.from('character_sheets').update(sheetUpdate).eq('user_id', userId);
+        }
+      };
+
+      const createNpc = async (rec: any, allowDuplicate: boolean) => {
+        const { data, error } = await supabase.functions.invoke('create-npc', {
+          body: { ...rec, allow_duplicate_name: allowDuplicate },
+        });
+        if (error) throw error;
+        if (data?.error === 'duplicate_name') throw new Error('duplicate_name');
+        if (data?.npc_id) {
+          await supabase.from('character_sheets').upsert({
+            user_id: data.npc_id,
+            class: rec.character_class || null,
+            subclass: rec.subclass || null,
+            community: rec.community || null,
+            ancestry: rec.ancestry || null,
+            level: rec.level || 1,
+          }, { onConflict: 'user_id' });
+        }
+      };
+
+      // Pre-compute conflict count for "remaining" hint
+      const conflictRows = records.filter((r: any) => !r.user_id && r.character_name && nameMap.has(String(r.character_name).trim().toLowerCase()));
+      let conflictsRemaining = conflictRows.length;
+      let bulkChoice: ConflictAction | null = null;
+
+      const askConflict = (existing: any, incoming: any, remaining: number): Promise<{ action: ConflictAction; applyToAll: boolean }> =>
+        new Promise((resolve) => {
+          conflictResolverRef.current = resolve;
+          setConflict({ existing, incoming, remaining });
+        });
+
       for (const rec of records) {
         if (!rec.character_name) { failed++; continue; }
 
         if (rec.user_id) {
-          // Existing character — update profile and character sheet
-          try {
-            const profileUpdate: Record<string, any> = {};
-            for (const field of profileFields) {
-              if (rec[field] !== undefined && rec[field] !== '') {
-                profileUpdate[field] = rec[field];
-              }
-            }
-            if (rec.aliases !== undefined) {
-              profileUpdate.aliases = normalizeAliases(rec.aliases);
-            }
+          try { await applyUpdate(rec.user_id, rec); updated++; }
+          catch (err) { console.error('Update error for', rec.character_name, err); failed++; }
+          continue;
+        }
 
+        const key = String(rec.character_name).trim().toLowerCase();
+        const match = nameMap.get(key);
 
-            if (Object.keys(profileUpdate).length > 0) {
-              const { error: profErr } = await supabase
-                .from('profiles')
-                .update(profileUpdate)
-                .eq('user_id', rec.user_id);
-              if (profErr) throw profErr;
-            }
-
-            // Sync character sheet fields
-            const sheetUpdate: Record<string, any> = {};
-            if (rec.character_class !== undefined) sheetUpdate.class = rec.character_class || null;
-            if (rec.ancestry !== undefined) sheetUpdate.ancestry = rec.ancestry || null;
-            if (rec.level !== undefined) sheetUpdate.level = rec.level || 1;
-            if (rec.subclass !== undefined) sheetUpdate.subclass = rec.subclass || null;
-            if (rec.community !== undefined) sheetUpdate.community = rec.community || null;
-
-            if (Object.keys(sheetUpdate).length > 0) {
-              await supabase
-                .from('character_sheets')
-                .update(sheetUpdate)
-                .eq('user_id', rec.user_id);
-            }
-
-            updated++;
-          } catch (err) {
-            console.error('Update error for', rec.character_name, err);
-            failed++;
-          }
-        } else {
-          // New character — create via edge function (now refuses duplicate names)
-          const { data, error } = await supabase.functions.invoke('create-npc', { body: rec });
-          if (error) {
-            console.error('Import error:', error);
-            // Edge function returns 409 with { error: 'duplicate_name' } when name is taken
-            const ctx: any = (error as any).context;
-            const status = ctx?.status ?? ctx?.response?.status;
-            if (status === 409) {
-              duplicates++;
-              duplicateNames.push(rec.character_name);
-            } else {
-              failed++;
-            }
-          } else if (data?.error === 'duplicate_name') {
-            duplicates++;
-            duplicateNames.push(rec.character_name);
+        if (match) {
+          let action: ConflictAction;
+          if (bulkChoice) {
+            action = bulkChoice;
           } else {
-            if (data?.npc_id) {
-              await supabase.from('character_sheets').upsert({
-                user_id: data.npc_id,
-                class: rec.character_class || null,
-                subclass: rec.subclass || null,
-                community: rec.community || null,
-                ancestry: rec.ancestry || null,
-                level: rec.level || 1,
-              }, { onConflict: 'user_id' });
-            }
-            created++;
+            conflictsRemaining--;
+            const res = await askConflict(match, rec, conflictsRemaining);
+            setConflict(null);
+            action = res.action;
+            if (res.applyToAll) bulkChoice = res.action;
           }
+
+          if (action === 'ignore') { ignored++; ignoredNames.push(rec.character_name); continue; }
+          if (action === 'update') {
+            try { await applyUpdate(match.user_id, rec); updated++; }
+            catch (err) { console.error('Update error for', rec.character_name, err); failed++; }
+            continue;
+          }
+          // action === 'new'
+          try { await createNpc(rec, true); created++; }
+          catch (err) { console.error('Create error for', rec.character_name, err); failed++; }
+          continue;
+        }
+
+        // No match — straightforward create
+        try { await createNpc(rec, false); created++; }
+        catch (err: any) {
+          console.error('Create error for', rec.character_name, err);
+          failed++;
         }
       }
 
       const parts = [];
       if (updated) parts.push(`${updated} updated`);
       if (created) parts.push(`${created} created`);
-      if (duplicates) parts.push(`${duplicates} skipped (duplicate name)`);
+      if (ignored) parts.push(`${ignored} ignored`);
       if (failed) parts.push(`${failed} failed`);
-      const desc = parts.join(', ') + '.' + (duplicateNames.length ? ` Duplicates: ${duplicateNames.slice(0, 10).join(', ')}${duplicateNames.length > 10 ? '…' : ''}` : '');
-      toast({ title: "Import Complete", description: desc, variant: (failed || duplicates) ? 'destructive' : 'default' });
+      const desc = parts.join(', ') + '.' + (ignoredNames.length ? ` Ignored: ${ignoredNames.slice(0, 10).join(', ')}${ignoredNames.length > 10 ? '…' : ''}` : '');
+      toast({ title: "Import Complete", description: desc, variant: failed ? 'destructive' : 'default' });
       loadUsers();
     } catch (err: any) {
       toast({ title: "Import Error", description: err.message, variant: "destructive" });
