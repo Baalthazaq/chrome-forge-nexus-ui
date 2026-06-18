@@ -393,6 +393,18 @@ const DopplegangerAdmin = () => {
           </CardContent>
         </Card>
       </div>
+
+      <ImportConflictDialog
+        open={!!conflict}
+        existing={conflict?.existing ?? null}
+        incoming={conflict?.incoming ?? null}
+        remainingCount={conflict?.remaining ?? 0}
+        onResolve={(action, applyToAll) => {
+          const resolver = conflictResolverRef.current;
+          conflictResolverRef.current = null;
+          resolver?.({ action, applyToAll });
+        }}
+      />
     </div>
   );
 };
