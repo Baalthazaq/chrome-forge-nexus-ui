@@ -134,14 +134,24 @@ const DopplegangerAdmin = () => {
       let created = 0;
       let updated = 0;
       let failed = 0;
+      let duplicates = 0;
+      const duplicateNames: string[] = [];
 
       // Profile fields that can be updated
       const profileFields = [
         'character_name', 'ancestry', 'job', 'company', 'character_class', 'level',
         'credit_rating', 'notes', 'is_searchable', 'has_succubus_profile',
         'agility', 'strength', 'finesse', 'instinct', 'presence', 'knowledge',
-        'age', 'bio', 'employer', 'education', 'address', 'aliases', 'alias',
+        'age', 'bio', 'employer', 'education', 'address',
       ];
+
+      const normalizeAliases = (val: any): string[] => {
+        if (Array.isArray(val)) return val.map(String).map(s => s.trim()).filter(Boolean);
+        if (typeof val === 'string' && val.trim() !== '') {
+          return val.split(/[;,]/).map(s => s.trim()).filter(Boolean);
+        }
+        return [];
+      };
 
       for (const rec of records) {
         if (!rec.character_name) { failed++; continue; }
@@ -155,6 +165,10 @@ const DopplegangerAdmin = () => {
                 profileUpdate[field] = rec[field];
               }
             }
+            if (rec.aliases !== undefined) {
+              profileUpdate.aliases = normalizeAliases(rec.aliases);
+            }
+
 
             if (Object.keys(profileUpdate).length > 0) {
               const { error: profErr } = await supabase
