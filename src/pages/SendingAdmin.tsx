@@ -351,11 +351,71 @@ const SendingAdmin = () => {
             <MessageCircle className="h-8 w-8 text-primary" />
             <h1 className="text-3xl font-bold">Sending - Admin View</h1>
           </div>
-          <Badge variant="outline" className="bg-primary/10 text-primary">
-            <MessageCircle className="h-3 w-3 mr-1" />
-            Admin Chat
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setShowNewConvo(true)} size="sm" className="gap-2">
+              <Send className="h-4 w-4" /> Start Conversation
+            </Button>
+            <Badge variant="outline" className="bg-primary/10 text-primary">
+              <MessageCircle className="h-3 w-3 mr-1" />
+              Admin Chat
+            </Badge>
+          </div>
         </div>
+
+        <Dialog open={showNewConvo} onOpenChange={setShowNewConvo}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Start New Conversation</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm text-muted-foreground">Initiating character</label>
+                <Select value={newInitiatorId} onValueChange={setNewInitiatorId}>
+                  <SelectTrigger><SelectValue placeholder="Select initiator..." /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from(profMap.entries())
+                      .sort((a, b) => a[1].localeCompare(b[1]))
+                      .map(([id, name]) => (
+                        <SelectItem key={id} value={id}>{name}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Recipient</label>
+                <Select value={newRecipientId} onValueChange={setNewRecipientId}>
+                  <SelectTrigger><SelectValue placeholder="Select recipient..." /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from(profMap.entries())
+                      .filter(([id]) => id !== newInitiatorId)
+                      .sort((a, b) => a[1].localeCompare(b[1]))
+                      .map(([id, name]) => (
+                        <SelectItem key={id} value={id}>{name}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Message</label>
+                <Textarea
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Type the opening message..."
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowNewConvo(false)}>Cancel</Button>
+                <Button
+                  onClick={startNewConversation}
+                  disabled={!newInitiatorId || !newRecipientId || !newMessage.trim() || creatingConvo}
+                >
+                  <Send className="h-4 w-4 mr-2" /> Send
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Card>
           <CardHeader>
