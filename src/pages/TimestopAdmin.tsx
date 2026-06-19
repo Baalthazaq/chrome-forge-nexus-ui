@@ -137,12 +137,28 @@ const TimestopAdmin = () => {
       return data as { user_id: string; game_day: number | null; game_month: number | null; game_year: number | null; created_at: string }[];
     },
   });
-  const playerOnlyLongRests = longRests.filter((r) => {
-    const p = profiles.find((pr: any) => pr.user_id === r.user_id);
-    return p && !p.is_npc;
+  const { data: downtimeBalances = [] } = useQuery({
+    queryKey: ["downtime-balances-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("downtime_balances").select("user_id");
+      if (error) throw error;
+      return data as { user_id: string }[];
+    },
   });
+  // "Players" = users that appear in downtime_balances AND aren't NPCs (matches Player Downtime tab exactly)
+  const playerUserIds = new Set(
+    downtimeBalances
+      .map((b) => b.user_id)
+      .filter((uid) => {
+        const p = profiles.find((pr: any) => pr.user_id === uid);
+        return p && !p.is_npc;
+      })
+  );
+  const playerProfiles = profiles.filter((p: any) => playerUserIds.has(p.user_id));
+  const playerOnlyLongRests = longRests.filter((r) => playerUserIds.has(r.user_id));
   const filteredLongRests = playerOnlyLongRests.filter((r) => longRestCharFilter === "all" || r.user_id === longRestCharFilter);
   const longRestsForDay = (day: number) =>
+
     filteredLongRests.filter((r) => r.game_day === day && r.game_month === viewMonth && r.game_year === viewYear);
 
 
@@ -482,8 +498,7 @@ const TimestopAdmin = () => {
               </SelectTrigger>
               <SelectContent className="bg-gray-800 border-gray-700 z-50 max-h-72">
                 <SelectItem value="all" className="text-white hover:bg-gray-700">All characters</SelectItem>
-                {profiles
-                  .filter((p: any) => !p.is_npc)
+                {playerProfiles
                   .sort((a: any, b: any) => (a.character_name || "").localeCompare(b.character_name || ""))
                   .map((p: any) => (
                     <SelectItem key={p.user_id} value={p.user_id} className="text-white hover:bg-gray-700">
