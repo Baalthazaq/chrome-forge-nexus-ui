@@ -826,17 +826,36 @@ const PlayerDowntimeSection = ({ profiles }: { profiles: any[] }) => {
     load();
   }, []);
 
+  const [restFilter, setRestFilter] = useState<"all" | "short_rest" | "long_rest">("all");
+  const [allRests, setAllRests] = useState<any[]>([]);
+
   const load = async () => {
-    const [balRes, actRes, configRes] = await Promise.all([
+    const [balRes, actRes, restRes, configRes] = await Promise.all([
       supabase.from("downtime_balances").select("*"),
       supabase.from("downtime_activities").select("*").order("created_at", { ascending: false }).limit(50),
+      supabase.from("downtime_activities").select("user_id, activity_type, created_at").in("activity_type", ["short_rest", "long_rest"]).order("created_at", { ascending: false }),
       supabase.functions.invoke("quest-admin", { body: { operation: "get_downtime_config" } }),
     ]);
     setBalances(balRes.data || []);
     setActivities(actRes.data || []);
+    setAllRests(restRes.data || []);
     if (configRes.data?.config) setDowntimeConfig(configRes.data.config);
     setLoading(false);
   };
+
+  const formatSince = (iso: string | null) => {
+    if (!iso) return "Never";
+    const ms = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(ms / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+  };
+
+  const lastRestFor = (userId: string, type: "short_rest" | "long_rest") =>
+    allRests.find((r) => r.user_id === userId && r.activity_type === type)?.created_at || null;
 
   const updateDowntimeHours = async (hours: number) => {
     const { data, error } = await supabase.functions.invoke("quest-admin", {
