@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.advance-day]
 verify_jwt = false
+
+[functions.upload-avatar-batch]
+verify_jwt = false
