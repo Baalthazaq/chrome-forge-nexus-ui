@@ -123,6 +123,25 @@ const TimestopAdmin = () => {
     },
   });
 
+  // Long rests overlay
+  const [showLongRests, setShowLongRests] = useState(false);
+  const [longRestCharFilter, setLongRestCharFilter] = useState<string>("all");
+  const { data: longRests = [] } = useQuery({
+    queryKey: ["long-rests-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("downtime_activities")
+        .select("user_id, game_day, game_month, game_year, created_at")
+        .eq("activity_type", "long_rest");
+      if (error) throw error;
+      return data as { user_id: string; game_day: number | null; game_month: number | null; game_year: number | null; created_at: string }[];
+    },
+  });
+  const filteredLongRests = longRests.filter((r) => longRestCharFilter === "all" || r.user_id === longRestCharFilter);
+  const longRestsForDay = (day: number) =>
+    filteredLongRests.filter((r) => r.game_day === day && r.game_month === viewMonth && r.game_year === viewYear);
+
+
   const { data: searchResults = [] } = useQuery({
     queryKey: ["calendar-search-admin", searchQuery],
     queryFn: async () => {
