@@ -828,34 +828,41 @@ const PlayerDowntimeSection = ({ profiles }: { profiles: any[] }) => {
 
   const [restFilter, setRestFilter] = useState<"all" | "short_rest" | "long_rest">("all");
   const [allRests, setAllRests] = useState<any[]>([]);
+  const [currentGameDate, setCurrentGameDate] = useState<{ day: number; month: number; year: number } | null>(null);
 
   const load = async () => {
-    const [balRes, actRes, restRes, configRes] = await Promise.all([
+    const [balRes, actRes, restRes, configRes, calRes] = await Promise.all([
       supabase.from("downtime_balances").select("*"),
       supabase.from("downtime_activities").select("*").order("created_at", { ascending: false }).limit(50),
-      supabase.from("downtime_activities").select("user_id, activity_type, created_at").in("activity_type", ["short_rest", "long_rest"]).order("created_at", { ascending: false }),
+      supabase.from("downtime_activities").select("user_id, activity_type, created_at, game_day, game_month, game_year").in("activity_type", ["short_rest", "long_rest"]).order("created_at", { ascending: false }),
       supabase.functions.invoke("quest-admin", { body: { operation: "get_downtime_config" } }),
+      supabase.from("game_calendar").select("*").limit(1).single(),
     ]);
     setBalances(balRes.data || []);
     setActivities(actRes.data || []);
     setAllRests(restRes.data || []);
     if (configRes.data?.config) setDowntimeConfig(configRes.data.config);
+    if (calRes.data) setCurrentGameDate({ day: calRes.data.current_day, month: calRes.data.current_month, year: calRes.data.current_year });
     setLoading(false);
   };
 
-  const formatSince = (iso: string | null) => {
-    if (!iso) return "Never";
-    const ms = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(ms / 60000);
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    return `${days}d ago`;
+  // Absolute in-game day index from a GameDate (year length = 365)
+  const absoluteGameDay = (d: { day: number; month: number; year: number }) => {
+    const daysBefore = MONTHS.slice(0, d.month - 1).reduce((sum, m) => sum + m.days, 0);
+    return d.year * 365 + daysBefore + d.day;
+  };
+
+  const daysSinceGame = (rest: any | null) => {
+    if (!rest || !currentGameDate || !rest.game_day || !rest.game_month || !rest.game_year) return "Never";
+    const delta = absoluteGameDay(currentGameDate) - absoluteGameDay({ day: rest.game_day, month: rest.game_month, year: rest.game_year });
+    if (delta <= 0) return "Today";
+    if (delta === 1) return "1 day ago";
+    return `${delta} days ago`;
   };
 
   const lastRestFor = (userId: string, type: "short_rest" | "long_rest") =>
-    allRests.find((r) => r.user_id === userId && r.activity_type === type)?.created_at || null;
+    allRests.find((r) => r.user_id === userId && r.activity_type === type) || null;
+
 
   const updateDowntimeHours = async (hours: number) => {
     const { data, error } = await supabase.functions.invoke("quest-admin", {
