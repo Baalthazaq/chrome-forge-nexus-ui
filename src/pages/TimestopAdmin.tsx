@@ -137,7 +137,11 @@ const TimestopAdmin = () => {
       return data as { user_id: string; game_day: number | null; game_month: number | null; game_year: number | null; created_at: string }[];
     },
   });
-  const filteredLongRests = longRests.filter((r) => longRestCharFilter === "all" || r.user_id === longRestCharFilter);
+  const playerOnlyLongRests = longRests.filter((r) => {
+    const p = profiles.find((pr: any) => pr.user_id === r.user_id);
+    return p && !p.is_npc;
+  });
+  const filteredLongRests = playerOnlyLongRests.filter((r) => longRestCharFilter === "all" || r.user_id === longRestCharFilter);
   const longRestsForDay = (day: number) =>
     filteredLongRests.filter((r) => r.game_day === day && r.game_month === viewMonth && r.game_year === viewYear);
 
