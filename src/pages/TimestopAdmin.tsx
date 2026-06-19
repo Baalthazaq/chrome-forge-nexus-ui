@@ -992,7 +992,30 @@ const PlayerDowntimeSection = ({ profiles }: { profiles: any[] }) => {
 
         <TabsContent value="players">
           {renderBalances(playerBalances)}
-          <h4 className="text-gray-400 text-xs font-mono mb-2">Recent Activities</h4>
+          <h4 className="text-gray-400 text-xs font-mono mb-2">Time Since Last Rest</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-1 mb-4">
+            {playerBalances.map((b) => (
+              <div key={b.id} className="flex items-center justify-between p-2 rounded bg-gray-800/30 text-xs">
+                <span className="text-gray-300 font-medium">{getName(b.user_id)}</span>
+                <div className="flex gap-3">
+                  <span className="text-amber-400">Short: {formatSince(lastRestFor(b.user_id, "short_rest"))}</span>
+                  <span className="text-indigo-400">Long: {formatSince(lastRestFor(b.user_id, "long_rest"))}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-gray-400 text-xs font-mono">Recent Activities</h4>
+            <select
+              value={restFilter}
+              onChange={(e) => setRestFilter(e.target.value as any)}
+              className="bg-gray-800 border border-gray-700 text-white text-xs rounded px-2 py-1"
+            >
+              <option value="all">All</option>
+              <option value="short_rest">Short Rests</option>
+              <option value="long_rest">Long Rests</option>
+            </select>
+          </div>
           {renderActivities(playerActivities)}
         </TabsContent>
 
