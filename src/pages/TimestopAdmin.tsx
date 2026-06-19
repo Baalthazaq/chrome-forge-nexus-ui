@@ -880,8 +880,9 @@ const PlayerDowntimeSection = ({ profiles }: { profiles: any[] }) => {
 
   const playerBalances = balances.filter((b) => !isNpc(b.user_id));
   const npcBalances = balances.filter((b) => isNpc(b.user_id));
-  const playerActivities = activities.filter((a) => !isNpc(a.user_id));
-  const npcActivities = activities.filter((a) => isNpc(a.user_id));
+  const filterByType = (a: any) => restFilter === "all" || a.activity_type === restFilter;
+  const playerActivities = activities.filter((a) => !isNpc(a.user_id) && filterByType(a));
+  const npcActivities = activities.filter((a) => isNpc(a.user_id) && filterByType(a));
 
   if (loading) return null;
 
