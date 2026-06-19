@@ -1005,8 +1005,8 @@ const PlayerDowntimeSection = ({ profiles }: { profiles: any[] }) => {
               <div key={b.id} className="flex items-center justify-between p-2 rounded bg-gray-800/30 text-xs">
                 <span className="text-gray-300 font-medium">{getName(b.user_id)}</span>
                 <div className="flex gap-3">
-                  <span className="text-amber-400">Short: {formatSince(lastRestFor(b.user_id, "short_rest"))}</span>
-                  <span className="text-indigo-400">Long: {formatSince(lastRestFor(b.user_id, "long_rest"))}</span>
+                  <span className="text-amber-400">Short: {daysSinceGame(lastRestFor(b.user_id, "short_rest"))}</span>
+                  <span className="text-indigo-400">Long: {daysSinceGame(lastRestFor(b.user_id, "long_rest"))}</span>
                 </div>
               </div>
             ))}
