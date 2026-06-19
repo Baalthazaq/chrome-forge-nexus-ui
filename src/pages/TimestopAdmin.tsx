@@ -123,6 +123,25 @@ const TimestopAdmin = () => {
     },
   });
 
+  // Long rests overlay
+  const [showLongRests, setShowLongRests] = useState(false);
+  const [longRestCharFilter, setLongRestCharFilter] = useState<string>("all");
+  const { data: longRests = [] } = useQuery({
+    queryKey: ["long-rests-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("downtime_activities")
+        .select("user_id, game_day, game_month, game_year, created_at")
+        .eq("activity_type", "long_rest");
+      if (error) throw error;
+      return data as { user_id: string; game_day: number | null; game_month: number | null; game_year: number | null; created_at: string }[];
+    },
+  });
+  const filteredLongRests = longRests.filter((r) => longRestCharFilter === "all" || r.user_id === longRestCharFilter);
+  const longRestsForDay = (day: number) =>
+    filteredLongRests.filter((r) => r.game_day === day && r.game_month === viewMonth && r.game_year === viewYear);
+
+
   const { data: searchResults = [] } = useQuery({
     queryKey: ["calendar-search-admin", searchQuery],
     queryFn: async () => {
@@ -437,14 +456,41 @@ const TimestopAdmin = () => {
         </Card>
 
         {/* View Mode Toggle */}
-        <div className="flex justify-center gap-2 mb-4">
+        <div className="flex flex-wrap justify-center items-center gap-2 mb-4">
           <Button size="sm" variant={viewMode === "monthly" ? "default" : "ghost"} onClick={() => setViewMode("monthly")} className={viewMode === "monthly" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
             <Calendar className="w-3 h-3 mr-1" /> Monthly
           </Button>
           <Button size="sm" variant={viewMode === "annual" ? "default" : "ghost"} onClick={() => setViewMode("annual")} className={viewMode === "annual" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
             <List className="w-3 h-3 mr-1" /> Annual
           </Button>
+          <Button
+            size="sm"
+            variant={showLongRests ? "default" : "ghost"}
+            onClick={() => setShowLongRests((v) => !v)}
+            className={showLongRests ? "bg-indigo-600 hover:bg-indigo-700 text-white" : "text-gray-400 hover:text-white"}
+          >
+            <Clock className="w-3 h-3 mr-1" /> Long Rests
+          </Button>
+          {showLongRests && (
+            <Select value={longRestCharFilter} onValueChange={setLongRestCharFilter}>
+              <SelectTrigger className="bg-gray-800 border-gray-700 text-white text-xs h-8 w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-800 border-gray-700 z-50 max-h-72">
+                <SelectItem value="all" className="text-white hover:bg-gray-700">All characters</SelectItem>
+                {profiles
+                  .slice()
+                  .sort((a: any, b: any) => (a.character_name || "").localeCompare(b.character_name || ""))
+                  .map((p: any) => (
+                    <SelectItem key={p.user_id} value={p.user_id} className="text-white hover:bg-gray-700">
+                      {p.character_name}{p.is_npc ? " (NPC)" : ""}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
+
 
         {viewMode === "annual" ? (
           /* Annual Timeline View */
@@ -557,6 +603,13 @@ const TimestopAdmin = () => {
                         ))}
                       </div>
                     )}
+                    {showLongRests && longRestsForDay(day).length > 0 && (
+                      <div
+                        className="mt-0.5 mx-auto w-2 h-2 rounded-full bg-indigo-400 ring-1 ring-indigo-300/60"
+                        title={longRestsForDay(day).map((r) => profiles.find((p: any) => p.user_id === r.user_id)?.character_name || "Unknown").join(", ")}
+                      />
+                    )}
+
                   </div>
                 );
               })}
