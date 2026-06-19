@@ -479,11 +479,11 @@ const TimestopAdmin = () => {
               <SelectContent className="bg-gray-800 border-gray-700 z-50 max-h-72">
                 <SelectItem value="all" className="text-white hover:bg-gray-700">All characters</SelectItem>
                 {profiles
-                  .slice()
+                  .filter((p: any) => !p.is_npc)
                   .sort((a: any, b: any) => (a.character_name || "").localeCompare(b.character_name || ""))
                   .map((p: any) => (
                     <SelectItem key={p.user_id} value={p.user_id} className="text-white hover:bg-gray-700">
-                      {p.character_name}{p.is_npc ? " (NPC)" : ""}
+                      {p.character_name}
                     </SelectItem>
                   ))}
               </SelectContent>
