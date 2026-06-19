@@ -826,17 +826,36 @@ const PlayerDowntimeSection = ({ profiles }: { profiles: any[] }) => {
     load();
   }, []);
 
+  const [restFilter, setRestFilter] = useState<"all" | "short_rest" | "long_rest">("all");
+  const [allRests, setAllRests] = useState<any[]>([]);
+
   const load = async () => {
-    const [balRes, actRes, configRes] = await Promise.all([
+    const [balRes, actRes, restRes, configRes] = await Promise.all([
       supabase.from("downtime_balances").select("*"),
       supabase.from("downtime_activities").select("*").order("created_at", { ascending: false }).limit(50),
+      supabase.from("downtime_activities").select("user_id, activity_type, created_at").in("activity_type", ["short_rest", "long_rest"]).order("created_at", { ascending: false }),
       supabase.functions.invoke("quest-admin", { body: { operation: "get_downtime_config" } }),
     ]);
     setBalances(balRes.data || []);
     setActivities(actRes.data || []);
+    setAllRests(restRes.data || []);
     if (configRes.data?.config) setDowntimeConfig(configRes.data.config);
     setLoading(false);
   };
+
+  const formatSince = (iso: string | null) => {
+    if (!iso) return "Never";
+    const ms = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(ms / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+  };
+
+  const lastRestFor = (userId: string, type: "short_rest" | "long_rest") =>
+    allRests.find((r) => r.user_id === userId && r.activity_type === type)?.created_at || null;
 
   const updateDowntimeHours = async (hours: number) => {
     const { data, error } = await supabase.functions.invoke("quest-admin", {
@@ -861,8 +880,9 @@ const PlayerDowntimeSection = ({ profiles }: { profiles: any[] }) => {
 
   const playerBalances = balances.filter((b) => !isNpc(b.user_id));
   const npcBalances = balances.filter((b) => isNpc(b.user_id));
-  const playerActivities = activities.filter((a) => !isNpc(a.user_id));
-  const npcActivities = activities.filter((a) => isNpc(a.user_id));
+  const filterByType = (a: any) => restFilter === "all" || a.activity_type === restFilter;
+  const playerActivities = activities.filter((a) => !isNpc(a.user_id) && filterByType(a));
+  const npcActivities = activities.filter((a) => isNpc(a.user_id) && filterByType(a));
 
   if (loading) return null;
 
@@ -972,7 +992,30 @@ const PlayerDowntimeSection = ({ profiles }: { profiles: any[] }) => {
 
         <TabsContent value="players">
           {renderBalances(playerBalances)}
-          <h4 className="text-gray-400 text-xs font-mono mb-2">Recent Activities</h4>
+          <h4 className="text-gray-400 text-xs font-mono mb-2">Time Since Last Rest</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-1 mb-4">
+            {playerBalances.map((b) => (
+              <div key={b.id} className="flex items-center justify-between p-2 rounded bg-gray-800/30 text-xs">
+                <span className="text-gray-300 font-medium">{getName(b.user_id)}</span>
+                <div className="flex gap-3">
+                  <span className="text-amber-400">Short: {formatSince(lastRestFor(b.user_id, "short_rest"))}</span>
+                  <span className="text-indigo-400">Long: {formatSince(lastRestFor(b.user_id, "long_rest"))}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-gray-400 text-xs font-mono">Recent Activities</h4>
+            <select
+              value={restFilter}
+              onChange={(e) => setRestFilter(e.target.value as any)}
+              className="bg-gray-800 border border-gray-700 text-white text-xs rounded px-2 py-1"
+            >
+              <option value="all">All</option>
+              <option value="short_rest">Short Rests</option>
+              <option value="long_rest">Long Rests</option>
+            </select>
+          </div>
           {renderActivities(playerActivities)}
         </TabsContent>
 
