@@ -603,6 +603,13 @@ const TimestopAdmin = () => {
                         ))}
                       </div>
                     )}
+                    {showLongRests && longRestsForDay(day).length > 0 && (
+                      <div
+                        className="mt-0.5 mx-auto w-2 h-2 rounded-full bg-indigo-400 ring-1 ring-indigo-300/60"
+                        title={longRestsForDay(day).map((r) => profiles.find((p: any) => p.user_id === r.user_id)?.character_name || "Unknown").join(", ")}
+                      />
+                    )}
+
                   </div>
                 );
               })}
