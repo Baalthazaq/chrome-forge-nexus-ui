@@ -498,8 +498,7 @@ const TimestopAdmin = () => {
               </SelectTrigger>
               <SelectContent className="bg-gray-800 border-gray-700 z-50 max-h-72">
                 <SelectItem value="all" className="text-white hover:bg-gray-700">All characters</SelectItem>
-                {profiles
-                  .filter((p: any) => !p.is_npc)
+                {playerProfiles
                   .sort((a: any, b: any) => (a.character_name || "").localeCompare(b.character_name || ""))
                   .map((p: any) => (
                     <SelectItem key={p.user_id} value={p.user_id} className="text-white hover:bg-gray-700">
