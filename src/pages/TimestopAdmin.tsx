@@ -456,14 +456,41 @@ const TimestopAdmin = () => {
         </Card>
 
         {/* View Mode Toggle */}
-        <div className="flex justify-center gap-2 mb-4">
+        <div className="flex flex-wrap justify-center items-center gap-2 mb-4">
           <Button size="sm" variant={viewMode === "monthly" ? "default" : "ghost"} onClick={() => setViewMode("monthly")} className={viewMode === "monthly" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
             <Calendar className="w-3 h-3 mr-1" /> Monthly
           </Button>
           <Button size="sm" variant={viewMode === "annual" ? "default" : "ghost"} onClick={() => setViewMode("annual")} className={viewMode === "annual" ? "bg-amber-600 hover:bg-amber-700 text-white" : "text-gray-400 hover:text-white"}>
             <List className="w-3 h-3 mr-1" /> Annual
           </Button>
+          <Button
+            size="sm"
+            variant={showLongRests ? "default" : "ghost"}
+            onClick={() => setShowLongRests((v) => !v)}
+            className={showLongRests ? "bg-indigo-600 hover:bg-indigo-700 text-white" : "text-gray-400 hover:text-white"}
+          >
+            <Clock className="w-3 h-3 mr-1" /> Long Rests
+          </Button>
+          {showLongRests && (
+            <Select value={longRestCharFilter} onValueChange={setLongRestCharFilter}>
+              <SelectTrigger className="bg-gray-800 border-gray-700 text-white text-xs h-8 w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-800 border-gray-700 z-50 max-h-72">
+                <SelectItem value="all" className="text-white hover:bg-gray-700">All characters</SelectItem>
+                {profiles
+                  .slice()
+                  .sort((a: any, b: any) => (a.character_name || "").localeCompare(b.character_name || ""))
+                  .map((p: any) => (
+                    <SelectItem key={p.user_id} value={p.user_id} className="text-white hover:bg-gray-700">
+                      {p.character_name}{p.is_npc ? " (NPC)" : ""}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
+
 
         {viewMode === "annual" ? (
           /* Annual Timeline View */
