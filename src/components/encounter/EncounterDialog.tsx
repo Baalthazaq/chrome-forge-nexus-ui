@@ -113,8 +113,21 @@ export const EncounterDialog = ({ encounter, open, onClose, onSaved }: Encounter
   };
 
   const loadNpcs = async () => {
-    const { data } = await supabase.from('profiles').select('user_id, character_name, level, character_class, ancestry, avatar_url').eq('is_npc', true).order('character_name');
-    setAvailableNpcs(data || []);
+    // Players are users with a downtime_balances row AND is_npc=false.
+    // Everyone else (including profiles incorrectly flagged is_npc=false) is an NPC for encounter purposes.
+    const [{ data: profs }, { data: balances }] = await Promise.all([
+      supabase.from('profiles').select('user_id, character_name, level, character_class, ancestry, avatar_url, is_npc').order('character_name'),
+      supabase.from('downtime_balances').select('user_id'),
+    ]);
+    const playerIds = new Set(
+      (balances || [])
+        .map((b: any) => b.user_id)
+        .filter((uid: string) => {
+          const p = (profs || []).find((x: any) => x.user_id === uid);
+          return p && !p.is_npc;
+        })
+    );
+    setAvailableNpcs((profs || []).filter((p: any) => !playerIds.has(p.user_id)));
   };
 
   const loadCreatures = async () => {
