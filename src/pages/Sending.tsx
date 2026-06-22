@@ -23,6 +23,7 @@ interface Participant {
   user_id: string;
   joined_at: string;
   left_at: string | null;
+  alias_id?: string | null;
   character_name?: string;
 }
 
