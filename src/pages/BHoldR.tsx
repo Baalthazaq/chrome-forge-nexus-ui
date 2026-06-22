@@ -121,7 +121,7 @@ const BHoldR = () => {
   };
 
   const saveChannel = async () => {
-    if (!user || !channelName.trim()) return;
+    if (!effectiveUserId || !channelName.trim()) return;
     if (myChannel) {
       await supabase.from("beholdr_channels").update({ channel_name: channelName.trim() }).eq("id", myChannel.id);
       setMyChannel({ ...myChannel, channel_name: channelName.trim() });
@@ -133,7 +133,7 @@ const BHoldR = () => {
   };
 
   const saveVideo = async () => {
-    if (!user || !myChannel) return;
+    if (!effectiveUserId || !myChannel) return;
     const videoId = extractYouTubeId(videoForm.youtube_url);
     if (!videoId) { toast.error("Invalid YouTube URL"); return; }
     const tags = videoForm.tags.split(",").map(t => t.trim()).filter(Boolean);
@@ -182,7 +182,7 @@ const BHoldR = () => {
   };
 
   const rateVideo = async (videoId: string, rating: number) => {
-    if (!user) return;
+    if (!effectiveUserId) return;
     const video = videos.find(v => v.id === videoId) || selectedVideo;
     if (!video) return;
 
@@ -202,7 +202,7 @@ const BHoldR = () => {
   };
 
   const postComment = async () => {
-    if (!user || !selectedVideo || !newComment.trim()) return;
+    if (!effectiveUserId || !selectedVideo || !newComment.trim()) return;
     await supabase.from("beholdr_comments").insert({
       video_id: selectedVideo.id, user_id: effectiveUserId, content: newComment.trim()
     });
