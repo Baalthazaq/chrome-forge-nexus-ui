@@ -129,21 +129,25 @@ export function CharacterHeader({
     if (!file || !displayUser) return;
     setAvatarUploading(true);
     try {
-      const fileName = `avatar_${Date.now()}.${file.name.split('.').pop()}`;
+      const userId = displayUser.user_id || displayUser.id;
+      const ext = file.name.split('.').pop();
+      const fileName = `${userId}/avatar_${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { cacheControl: '3600', upsert: true });
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
       if (!urlData?.publicUrl) throw new Error('Failed to get public URL');
-      const userId = displayUser.user_id || displayUser.id;
-      await supabase.from('profiles').update({ avatar_url: urlData.publicUrl }).eq('user_id', userId);
+      // Route through onProfileUpdate so alias overlay receives change instead of primary profile
+      onProfileUpdate('avatar_url', urlData.publicUrl);
       toast({ title: 'Avatar updated' });
-      window.location.reload();
     } catch (e: any) {
       toast({ title: 'Upload failed', description: e.message, variant: 'destructive' });
     } finally {
       setAvatarUploading(false);
     }
   };
+
+  // Keep in-flight name buffer in sync when the displayed identity changes (alias swap)
+  useEffect(() => { setNameValue(profile.character_name || ''); }, [profile.character_name]);
 
   const saveName = async () => {
     onProfileUpdate('character_name', nameValue);
