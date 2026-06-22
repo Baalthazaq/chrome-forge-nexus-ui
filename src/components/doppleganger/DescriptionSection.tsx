@@ -25,6 +25,15 @@ export function DescriptionSection({ sheet, updateSheet, bio, job, company, isEd
   const [localJob, setLocalJob] = useState(job);
   const [localCompany, setLocalCompany] = useState(company);
 
+  // Re-sync local edit buffers when the underlying identity changes (e.g. alias swap)
+  useEffect(() => { setLocalBio(bio); }, [bio]);
+  useEffect(() => { setLocalJob(job); }, [job]);
+  useEffect(() => { setLocalCompany(company); }, [company]);
+  useEffect(() => { setLocalPersonality(sheet.personality || ''); }, [sheet.personality]);
+  useEffect(() => {
+    setLocalPd(sheet.physical_description || { clothes: '', eyes: '', body: '', skin: '' });
+  }, [sheet.physical_description]);
+
   const savePd = useCallback((field: keyof PhysicalDescription, value: string) => {
     const updated = { ...localPd, [field]: value };
     setLocalPd(updated);
