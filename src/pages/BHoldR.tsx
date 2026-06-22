@@ -98,7 +98,7 @@ const BHoldR = () => {
   };
 
   const loadMyChannel = async () => {
-    if (!user) return;
+    if (!effectiveUserId) return;
     const { data } = await supabase
       .from("beholdr_channels")
       .select("*")
