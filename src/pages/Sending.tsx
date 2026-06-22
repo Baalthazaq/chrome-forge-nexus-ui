@@ -292,10 +292,13 @@ const Sending = () => {
       setCasts((data || []).map((c: any) => {
         const alias = c.alias_id ? aliasMap.get(c.alias_id) : null;
         const prof = profMap.get(c.sender_id);
+        // Prefer the denormalized values stored on the cast itself (set at send time)
+        // so private aliases — which other participants can't read via RLS — still
+        // appear under the alias identity to recipients.
         return {
           ...c,
-          sender_name: alias?.name || prof?.character_name || 'Unknown',
-          sender_avatar_url: alias?.avatar_url || prof?.avatar_url || null,
+          sender_name: c.sender_name || alias?.name || prof?.character_name || 'Unknown',
+          sender_avatar_url: c.sender_avatar_url || alias?.avatar_url || prof?.avatar_url || null,
         };
       }));
     } catch (error) {
