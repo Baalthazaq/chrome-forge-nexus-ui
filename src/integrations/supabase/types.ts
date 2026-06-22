@@ -64,6 +64,7 @@ export type Database = {
       }
       beholdr_comments: {
         Row: {
+          alias_id: string | null
           content: string
           created_at: string
           id: string
@@ -72,6 +73,7 @@ export type Database = {
           video_id: string
         }
         Insert: {
+          alias_id?: string | null
           content: string
           created_at?: string
           id?: string
@@ -80,6 +82,7 @@ export type Database = {
           video_id: string
         }
         Update: {
+          alias_id?: string | null
           content?: string
           created_at?: string
           id?: string
@@ -88,6 +91,13 @@ export type Database = {
           video_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "beholdr_comments_alias_id_fkey"
+            columns: ["alias_id"]
+            isOneToOne: false
+            referencedRelation: "character_aliases"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "beholdr_comments_video_id_fkey"
             columns: ["video_id"]
@@ -131,6 +141,7 @@ export type Database = {
       }
       beholdr_videos: {
         Row: {
+          alias_id: string | null
           channel_id: string
           created_at: string
           description: string | null
@@ -142,6 +153,7 @@ export type Database = {
           youtube_url: string
         }
         Insert: {
+          alias_id?: string | null
           channel_id: string
           created_at?: string
           description?: string | null
@@ -153,6 +165,7 @@ export type Database = {
           youtube_url: string
         }
         Update: {
+          alias_id?: string | null
           channel_id?: string
           created_at?: string
           description?: string | null
@@ -164,6 +177,13 @@ export type Database = {
           youtube_url?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "beholdr_videos_alias_id_fkey"
+            columns: ["alias_id"]
+            isOneToOne: false
+            referencedRelation: "character_aliases"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "beholdr_videos_channel_id_fkey"
             columns: ["channel_id"]
@@ -408,6 +428,7 @@ export type Database = {
       }
       casts: {
         Row: {
+          alias_id: string | null
           created_at: string
           deleted_at: string | null
           edited_at: string | null
@@ -421,6 +442,7 @@ export type Database = {
           stone_id: string
         }
         Insert: {
+          alias_id?: string | null
           created_at?: string
           deleted_at?: string | null
           edited_at?: string | null
@@ -434,6 +456,7 @@ export type Database = {
           stone_id: string
         }
         Update: {
+          alias_id?: string | null
           created_at?: string
           deleted_at?: string | null
           edited_at?: string | null
@@ -448,6 +471,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "casts_alias_id_fkey"
+            columns: ["alias_id"]
+            isOneToOne: false
+            referencedRelation: "character_aliases"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "casts_stone_id_fkey"
             columns: ["stone_id"]
             isOneToOne: false
@@ -455,6 +485,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      character_aliases: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          is_public: boolean
+          name: string
+          owner_user_id: string
+          sheet_data: Json
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_public?: boolean
+          name: string
+          owner_user_id: string
+          sheet_data?: Json
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_public?: boolean
+          name?: string
+          owner_user_id?: string
+          sheet_data?: Json
+          updated_at?: string
+        }
+        Relationships: []
       }
       character_sheets: {
         Row: {
@@ -1316,6 +1385,7 @@ export type Database = {
       }
       news_articles: {
         Row: {
+          alias_id: string | null
           content: string | null
           created_at: string
           headline: string
@@ -1333,6 +1403,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          alias_id?: string | null
           content?: string | null
           created_at?: string
           headline: string
@@ -1350,6 +1421,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          alias_id?: string | null
           content?: string | null
           created_at?: string
           headline?: string
@@ -1366,7 +1438,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "news_articles_alias_id_fkey"
+            columns: ["alias_id"]
+            isOneToOne: false
+            referencedRelation: "character_aliases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organizations: {
         Row: {
@@ -1908,6 +1988,7 @@ export type Database = {
       }
       stone_participants: {
         Row: {
+          alias_id: string | null
           id: string
           joined_at: string
           left_at: string | null
@@ -1915,6 +1996,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          alias_id?: string | null
           id?: string
           joined_at?: string
           left_at?: string | null
@@ -1922,6 +2004,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          alias_id?: string | null
           id?: string
           joined_at?: string
           left_at?: string | null
@@ -1929,6 +2012,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "stone_participants_alias_id_fkey"
+            columns: ["alias_id"]
+            isOneToOne: false
+            referencedRelation: "character_aliases"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "stone_participants_stone_id_fkey"
             columns: ["stone_id"]
