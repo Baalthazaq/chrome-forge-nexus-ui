@@ -112,7 +112,7 @@ const Roldex = () => {
 
       if (contactsError) throw contactsError;
 
-      setProfiles(enrichedProfiles);
+      setProfiles(allProfiles);
       setContacts(contactsData || []);
     } catch (error) {
       console.error('Error loading data:', error);
