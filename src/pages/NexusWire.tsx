@@ -151,6 +151,7 @@ const NexusWire = () => {
       publish_day: gameDate?.day || null,
       publish_month: gameDate?.month || null,
       publish_year: gameDate?.year || null,
+      alias_id: identity.aliasId,
     });
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
