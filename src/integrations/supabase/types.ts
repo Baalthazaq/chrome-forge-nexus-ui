@@ -2048,7 +2048,9 @@ export type Database = {
           is_group: boolean
           last_cast_at: string | null
           name: string | null
+          participant_one_alias_id: string | null
           participant_one_id: string | null
+          participant_two_alias_id: string | null
           participant_two_id: string | null
           updated_at: string
         }
@@ -2059,7 +2061,9 @@ export type Database = {
           is_group?: boolean
           last_cast_at?: string | null
           name?: string | null
+          participant_one_alias_id?: string | null
           participant_one_id?: string | null
+          participant_two_alias_id?: string | null
           participant_two_id?: string | null
           updated_at?: string
         }
@@ -2070,11 +2074,28 @@ export type Database = {
           is_group?: boolean
           last_cast_at?: string | null
           name?: string | null
+          participant_one_alias_id?: string | null
           participant_one_id?: string | null
+          participant_two_alias_id?: string | null
           participant_two_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "stones_participant_one_alias_id_fkey"
+            columns: ["participant_one_alias_id"]
+            isOneToOne: false
+            referencedRelation: "character_aliases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stones_participant_two_alias_id_fkey"
+            columns: ["participant_two_alias_id"]
+            isOneToOne: false
+            referencedRelation: "character_aliases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       succubus_profiles: {
         Row: {
