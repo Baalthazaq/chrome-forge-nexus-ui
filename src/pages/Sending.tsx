@@ -105,7 +105,13 @@ const Sending = () => {
   const pendingStoneId = useRef<string | null>(searchParams.get('stone'));
 
   useEffect(() => {
-    if (currentUser) {
+    // Wait for identity to finish resolving so we don't briefly load the
+    // primary character's stones before the alias kicks in.
+    if (currentUser && !identity.loading) {
+      // Clear stale inbox immediately on identity switch to avoid showing
+      // the previous identity's chats while the new query is in flight.
+      setStones([]);
+      setSelectedStone(null);
       loadStones();
       loadProfiles();
       loadAllProfiles();
@@ -116,7 +122,7 @@ const Sending = () => {
     }
     // Reload when active identity (alias) changes so the inbox swaps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, identity.aliasId]);
+  }, [currentUser, identity.aliasId, identity.loading]);
 
   // Auto-select stone from query param once stones are loaded
   useEffect(() => {
