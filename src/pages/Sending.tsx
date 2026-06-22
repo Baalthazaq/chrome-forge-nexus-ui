@@ -151,25 +151,31 @@ const Sending = () => {
 
   const loadStones = async () => {
     try {
-      // Get stones where user is a participant (via junction table)
-      const { data: participantRows, error: pError } = await supabase
+      // Get stones where user is a participant under the CURRENTLY ACTIVE identity
+      // (alias_id matches the active alias, or NULL when on the primary character).
+      let pq = supabase
         .from('stone_participants')
-        .select('stone_id')
+        .select('stone_id, alias_id')
         .eq('user_id', currentUser?.id);
+      pq = identity.aliasId ? pq.eq('alias_id', identity.aliasId) : pq.is('alias_id', null);
+      const { data: participantRows, error: pError } = await pq;
 
       if (pError) throw pError;
 
       const stoneIds = participantRows?.map(r => r.stone_id) || [];
 
-      // Also get legacy 1:1 stones
-      const { data: legacyStones, error: lError } = await supabase
-        .from('stones')
-        .select('id')
-        .or(`participant_one_id.eq.${currentUser?.id},participant_two_id.eq.${currentUser?.id}`);
+      // Legacy 1:1 stones only count for the primary identity
+      let legacyStones: { id: string }[] | null = null;
+      if (!identity.aliasId) {
+        const { data, error: lError } = await supabase
+          .from('stones')
+          .select('id')
+          .or(`participant_one_id.eq.${currentUser?.id},participant_two_id.eq.${currentUser?.id}`);
+        if (lError) throw lError;
+        legacyStones = data;
+      }
 
-      if (lError) throw lError;
-
-      const allStoneIds = [...new Set([...stoneIds, ...(legacyStones?.map(s => s.id) || [])])];
+      const allStoneIds = [...new Set([...stoneIds, ...((legacyStones || []).map(s => s.id))])];
 
       if (allStoneIds.length === 0) {
         setStones([]);
