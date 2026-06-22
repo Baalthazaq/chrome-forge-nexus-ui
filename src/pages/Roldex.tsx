@@ -69,6 +69,37 @@ const Roldex = () => {
         };
       });
 
+      // Load public aliases (excluding the effective user's own aliases) and present as pseudo-profiles
+      const effectiveUid = effectiveUser.user_id || effectiveUser.id;
+      const { data: aliasesData } = await supabase
+        .from('character_aliases')
+        .select('*')
+        .eq('is_public', true)
+        .neq('owner_user_id', effectiveUid);
+
+      const aliasPseudoProfiles = (aliasesData || []).map((a: any) => {
+        const sheetOverlay = a.sheet_data?.sheet || {};
+        const profileOverlay = a.sheet_data?.profile || {};
+        return {
+          // Use alias id as a synthetic user_id key so contact lookups don't collide
+          user_id: `alias:${a.id}`,
+          alias_id: a.id,
+          is_alias: true,
+          owner_user_id: a.owner_user_id,
+          character_name: a.name,
+          avatar_url: a.avatar_url,
+          bio: a.bio,
+          character_class: sheetOverlay.class || profileOverlay.character_class || null,
+          ancestry: sheetOverlay.ancestry || profileOverlay.ancestry || null,
+          community: sheetOverlay.community || profileOverlay.community || null,
+          level: sheetOverlay.level || profileOverlay.level || null,
+          is_npc: false,
+          is_searchable: true,
+        };
+      });
+
+      const allProfiles = [...enrichedProfiles, ...aliasPseudoProfiles];
+
       // Load effective user's active contacts with their personal data
       const { data: contactsData, error: contactsError } = await supabase
         .from('contacts')
