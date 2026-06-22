@@ -215,7 +215,10 @@ const BHoldR = () => {
   const postComment = async () => {
     if (!effectiveUserId || !selectedVideo || !newComment.trim()) return;
     await supabase.from("beholdr_comments").insert({
-      video_id: selectedVideo.id, user_id: effectiveUserId, content: newComment.trim()
+      video_id: selectedVideo.id,
+      user_id: effectiveUserId,
+      content: newComment.trim(),
+      alias_id: identity.aliasId,
     });
     setNewComment("");
     openVideo(selectedVideo);
