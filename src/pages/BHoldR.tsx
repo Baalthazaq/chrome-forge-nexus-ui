@@ -11,6 +11,7 @@ import { ArrowLeft, ThumbsUp, ThumbsDown, Share2, MessageSquare, Plus, Edit2, Tr
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { extractYouTubeId, getYouTubeThumbnail, getYouTubeEmbedUrl } from "@/lib/youtube";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
