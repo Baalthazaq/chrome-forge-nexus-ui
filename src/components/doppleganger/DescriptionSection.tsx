@@ -3,7 +3,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Palette, User } from "lucide-react";
 import type { CharacterSheet, PhysicalDescription } from "@/data/gameCardTypes";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 interface Props {
   sheet: CharacterSheet;
