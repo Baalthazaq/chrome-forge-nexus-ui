@@ -41,6 +41,8 @@ interface Video {
 
 const BHoldR = () => {
   const { user } = useAuth();
+  const { impersonatedUser } = useAdmin();
+  const effectiveUserId = impersonatedUser?.user_id || user?.id;
   const [videos, setVideos] = useState<Video[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [myChannel, setMyChannel] = useState<Channel | null>(null);
