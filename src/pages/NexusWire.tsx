@@ -11,6 +11,7 @@ import { ArrowLeft, Clock, AlertTriangle, Search, ChevronRight, Plus } from "luc
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveIdentity } from "@/hooks/useActiveIdentity";
 import { useToast } from "@/hooks/use-toast";
 import { MONTHS, getMonth } from "@/lib/gameCalendar";
 
