@@ -92,6 +92,7 @@ function formatGameDateShort(day: number | null, month: number | null, year: num
 
 const NexusWire = () => {
   const { user } = useAuth();
+  const identity = useActiveIdentity();
   const { toast } = useToast();
   const [allArticles, setAllArticles] = useState<NewsArticle[]>([]);
   const [gameDate, setGameDate] = useState<GameDate | null>(null);
