@@ -76,6 +76,7 @@ const Sending = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const currentUserId = impersonatedUser ? impersonatedUser.user_id : user?.id;
   const currentUser = useMemo(() => currentUserId ? { id: currentUserId } : null, [currentUserId]);
+  const identity = useActiveIdentity();
 
   const [message, setMessage] = useState("");
   const [selectedStone, setSelectedStone] = useState<Stone | null>(null);
