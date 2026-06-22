@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useCharacterSheet } from "@/hooks/useCharacterSheet";
+import { useAliases } from "@/hooks/useAliases";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Eye, Moon, Sun, Timer } from "lucide-react";
+import { Pencil, Eye, Moon, Sun, Timer, Users } from "lucide-react";
 import RestDialog from "@/components/RestDialog";
 import { CharacterHeader } from "@/components/doppleganger/CharacterHeader";
 import { StatsGrid } from "@/components/doppleganger/StatsGrid";
@@ -14,6 +15,7 @@ import { ExperiencesSection } from "@/components/doppleganger/ExperiencesSection
 import { EquipmentSection } from "@/components/doppleganger/EquipmentSection";
 import { CardsSection } from "@/components/doppleganger/CardsSection";
 import { DescriptionSection } from "@/components/doppleganger/DescriptionSection";
+import { AliasManagerDialog } from "@/components/doppleganger/AliasManagerDialog";
 import { getProficiency, getMulticlassInfo, type LevelUpChoices } from "@/lib/levelUpUtils";
 
 const Doppleganger = () => {
