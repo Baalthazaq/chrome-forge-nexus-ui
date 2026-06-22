@@ -113,7 +113,9 @@ const Sending = () => {
         setSearchParams({}, { replace: true });
       }
     }
-  }, [currentUser]);
+    // Reload when active identity (alias) changes so the inbox swaps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, identity.aliasId]);
 
   // Auto-select stone from query param once stones are loaded
   useEffect(() => {
