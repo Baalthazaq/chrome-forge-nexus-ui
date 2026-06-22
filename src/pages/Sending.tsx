@@ -284,11 +284,20 @@ const Sending = () => {
 
       if (error) throw error;
 
-      // Load profile names for senders
+      // Load profile names for senders + alias overrides
       const { data: profs } = await supabase.from('profiles').select('user_id, character_name, avatar_url');
-      const profMap = new Map((profs || []).map(p => [p.user_id, p.character_name || 'Unknown']));
+      const profMap = new Map((profs || []).map(p => [p.user_id, p]));
+      const aliasMap = await fetchAliasMap((data || []).map((c: any) => c.alias_id));
 
-      setCasts((data || []).map(c => ({ ...c, sender_name: profMap.get(c.sender_id) })));
+      setCasts((data || []).map((c: any) => {
+        const alias = c.alias_id ? aliasMap.get(c.alias_id) : null;
+        const prof = profMap.get(c.sender_id);
+        return {
+          ...c,
+          sender_name: alias?.name || prof?.character_name || 'Unknown',
+          sender_avatar_url: alias?.avatar_url || prof?.avatar_url || null,
+        };
+      }));
     } catch (error) {
       console.error('Error loading casts:', error);
       toast.error('Failed to load messages');
