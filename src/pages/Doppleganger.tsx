@@ -244,18 +244,59 @@ const Doppleganger = () => {
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 via-black to-purple-900/20" />
 
       <div className="relative z-10 container mx-auto px-4 py-6 max-w-6xl">
-        {/* Edit toggle */}
-        <div className="flex items-center justify-end mb-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsEditing(!isEditing)}
-            className="border-gray-600 text-gray-300 hover:text-white"
-          >
-            {isEditing ? <Eye className="w-4 h-4 mr-1" /> : <Pencil className="w-4 h-4 mr-1" />}
-            {isEditing ? 'View Mode' : 'Edit Mode'}
-          </Button>
+        {/* Top action row: Aliases + Edit toggle */}
+        <div className="flex items-center justify-between gap-2 mb-2">
+          {activeAlias ? (
+            <div className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-md bg-purple-950/60 border border-purple-500/40 text-purple-200">
+              <Users className="w-3.5 h-3.5" />
+              Playing as <span className="font-semibold">{activeAlias.name}</span>
+              <button
+                onClick={() => setActiveAlias(null)}
+                className="ml-2 underline text-purple-300 hover:text-purple-100"
+              >
+                Return to {profile.character_name || 'primary'}
+              </button>
+            </div>
+          ) : <div />}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAliasManagerOpen(true)}
+              className="border-purple-600 text-purple-300 hover:bg-purple-900/30"
+            >
+              <Users className="w-4 h-4 mr-1" />
+              Aliases{aliases.length > 0 ? ` (${aliases.length})` : ''}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditing(!isEditing)}
+              className="border-gray-600 text-gray-300 hover:text-white"
+            >
+              {isEditing ? <Eye className="w-4 h-4 mr-1" /> : <Pencil className="w-4 h-4 mr-1" />}
+              {isEditing ? 'View Mode' : 'Edit Mode'}
+            </Button>
+          </div>
         </div>
+
+        <AliasManagerDialog
+          open={aliasManagerOpen}
+          onOpenChange={setAliasManagerOpen}
+          ownerUserId={userId!}
+          primaryName={profile.character_name || 'Primary'}
+          primaryAvatarUrl={profile.avatar_url || null}
+          aliases={aliases}
+          activeAlias={activeAlias}
+          onCreate={createAlias}
+          onUpdate={updateAliasRow}
+          onDelete={deleteAlias}
+          onActivate={setActiveAlias}
+          currentSheetSnapshot={{
+            sheet: { ...baseSheet, ...aliasSheetOverlay },
+            profile: { ...profile, ...aliasProfileOverlay },
+          }}
+        />
 
         <RestDialog
           type={restType}
@@ -269,7 +310,7 @@ const Doppleganger = () => {
         />
 
         <CharacterHeader
-          profile={profile}
+          profile={effectiveProfile}
           sheet={sheet}
           updateSheet={updateSheet}
           classCards={classCards}
@@ -291,7 +332,7 @@ const Doppleganger = () => {
         />
 
         <StatsGrid
-          profile={profile}
+          profile={effectiveProfile}
           displayUser={displayUser}
           onStatChange={handleStatChange}
           isEditing={isEditing}
@@ -313,8 +354,6 @@ const Doppleganger = () => {
           updateSheet={updateSheet}
           isEditing={isEditing}
         />
-
-
 
         <EquipmentSection
           sheet={sheet}
@@ -342,9 +381,9 @@ const Doppleganger = () => {
         <DescriptionSection
           sheet={sheet}
           updateSheet={updateSheet}
-          bio={profile.bio || ''}
-          job={profile.job || ''}
-          company={profile.company || ''}
+          bio={effectiveProfile.bio || ''}
+          job={effectiveProfile.job || ''}
+          company={effectiveProfile.company || ''}
           isEditing={isEditing}
           onBioUpdate={(newBio) => handleProfileUpdate('bio', newBio)}
           onProfileUpdate={handleProfileUpdate}
