@@ -349,7 +349,7 @@ const Sending = () => {
           setShowNewStone(false);
           setNewRecipientId("");
           await loadStones();
-          setSelectedStoneId(commonStones[0].id);
+          setSelectedStone(commonStones[0].id);
           return;
         }
       }
@@ -375,7 +375,7 @@ const Sending = () => {
         setShowNewStone(false);
         setNewRecipientId("");
         await loadStones();
-        setSelectedStoneId(legacyStones[0].id);
+        setSelectedStone(legacyStones[0].id);
         return;
       }
 
