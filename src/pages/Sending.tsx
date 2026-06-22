@@ -331,19 +331,27 @@ const Sending = () => {
 
   const createNewStone = async (recipientId: string) => {
     try {
-      // Check if 1:1 stone already exists via participants
-      const { data: myStones } = await supabase
-        .from('stone_participants')
-        .select('stone_id')
-        .eq('user_id', currentUser?.id);
+      const myAliasId = identity.aliasId;
 
+      // Find stones where I'm a participant under the active identity
+      let mineQ = supabase
+        .from('stone_participants')
+        .select('stone_id, alias_id')
+        .eq('user_id', currentUser?.id);
+      mineQ = myAliasId ? mineQ.eq('alias_id', myAliasId) : mineQ.is('alias_id', null);
+      const { data: myStones } = await mineQ;
+
+      // Recipient is always treated as their primary identity (alias_id NULL)
       const { data: theirStones } = await supabase
         .from('stone_participants')
-        .select('stone_id')
-        .eq('user_id', recipientId);
+        .select('stone_id, alias_id')
+        .eq('user_id', recipientId)
+        .is('alias_id', null);
 
-      const myStoneIds = new Set(myStones?.map(s => s.stone_id) || []);
-      const commonStoneIds = (theirStones || []).filter(s => myStoneIds.has(s.stone_id)).map(s => s.stone_id);
+      const myStoneIds = new Set((myStones || []).map(s => s.stone_id));
+      const commonStoneIds = (theirStones || [])
+        .filter(s => myStoneIds.has(s.stone_id))
+        .map(s => s.stone_id);
 
       // Check if any common stone is a non-group 1:1
       if (commonStoneIds.length > 0) {
@@ -354,44 +362,49 @@ const Sending = () => {
           .eq('is_group', false);
 
         if (commonStones && commonStones.length > 0) {
+          pendingStoneId.current = commonStones[0].id;
           setShowNewStone(false);
           setNewRecipientId("");
           await loadStones();
-          setSelectedStone(commonStones[0].id);
           return;
         }
       }
 
-      // Also check legacy participant_one_id / participant_two_id columns (older 1:1 stones)
-      const { data: legacyStones } = await supabase
-        .from('stones')
-        .select('id')
-        .eq('is_group', false)
-        .or(
-          `and(participant_one_id.eq.${currentUser?.id},participant_two_id.eq.${recipientId}),` +
-          `and(participant_one_id.eq.${recipientId},participant_two_id.eq.${currentUser?.id})`
-        );
+      // Legacy participant_one_id/participant_two_id only apply when on primary identity
+      if (!myAliasId) {
+        const { data: legacyStones } = await supabase
+          .from('stones')
+          .select('id')
+          .eq('is_group', false)
+          .or(
+            `and(participant_one_id.eq.${currentUser?.id},participant_two_id.eq.${recipientId}),` +
+            `and(participant_one_id.eq.${recipientId},participant_two_id.eq.${currentUser?.id})`
+          );
 
-      if (legacyStones && legacyStones.length > 0) {
-        await supabase.from('stone_participants').upsert(
-          [
-            { stone_id: legacyStones[0].id, user_id: currentUser?.id! },
-            { stone_id: legacyStones[0].id, user_id: recipientId },
-          ],
-          { onConflict: 'stone_id,user_id' }
-        );
-        setShowNewStone(false);
-        setNewRecipientId("");
-        await loadStones();
-        setSelectedStone(legacyStones[0].id);
-        return;
+        if (legacyStones && legacyStones.length > 0) {
+          await supabase.from('stone_participants').upsert(
+            [
+              { stone_id: legacyStones[0].id, user_id: currentUser?.id!, alias_id: null },
+              { stone_id: legacyStones[0].id, user_id: recipientId, alias_id: null },
+            ],
+            { onConflict: 'stone_id,user_id,alias_id' }
+          );
+          pendingStoneId.current = legacyStones[0].id;
+          setShowNewStone(false);
+          setNewRecipientId("");
+          await loadStones();
+          return;
+        }
       }
 
       const { data, error } = await supabase
         .from('stones')
         .insert({
-          participant_one_id: currentUser?.id,
-          participant_two_id: recipientId,
+          // Keep legacy columns populated only when the sender is on primary;
+          // alias stones live entirely in the junction table.
+          participant_one_id: myAliasId ? null : currentUser?.id,
+          participant_two_id: myAliasId ? null : recipientId,
+          participant_one_alias_id: myAliasId,
           is_group: false,
           created_by: currentUser?.id,
         })
@@ -400,15 +413,16 @@ const Sending = () => {
 
       if (error) throw error;
 
-      // Add both participants to junction table
+      // Add both participants to junction table — sender carries alias_id, recipient is primary
       await supabase.from('stone_participants').insert([
-        { stone_id: data.id, user_id: currentUser?.id },
-        { stone_id: data.id, user_id: recipientId },
+        { stone_id: data.id, user_id: currentUser?.id, alias_id: myAliasId },
+        { stone_id: data.id, user_id: recipientId, alias_id: null },
       ]);
 
       setShowNewStone(false);
       setNewRecipientId("");
       toast.success('Conversation started');
+      pendingStoneId.current = data.id;
       await loadStones();
     } catch (error) {
       console.error('Error creating stone:', error);
