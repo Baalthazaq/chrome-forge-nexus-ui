@@ -1,0 +1,2 @@
+ALTER TABLE public.casts ADD COLUMN IF NOT EXISTS sender_name TEXT, ADD COLUMN IF NOT EXISTS sender_avatar_url TEXT;
+ALTER TABLE public.beholdr_comments ADD COLUMN IF NOT EXISTS author_name TEXT, ADD COLUMN IF NOT EXISTS author_avatar_url TEXT;
