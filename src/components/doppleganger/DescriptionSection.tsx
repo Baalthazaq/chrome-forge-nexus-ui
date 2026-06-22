@@ -3,7 +3,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Palette, User } from "lucide-react";
 import type { CharacterSheet, PhysicalDescription } from "@/data/gameCardTypes";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 interface Props {
   sheet: CharacterSheet;
@@ -24,6 +24,15 @@ export function DescriptionSection({ sheet, updateSheet, bio, job, company, isEd
   const [localBio, setLocalBio] = useState(bio);
   const [localJob, setLocalJob] = useState(job);
   const [localCompany, setLocalCompany] = useState(company);
+
+  // Re-sync local edit buffers when the underlying identity changes (e.g. alias swap)
+  useEffect(() => { setLocalBio(bio); }, [bio]);
+  useEffect(() => { setLocalJob(job); }, [job]);
+  useEffect(() => { setLocalCompany(company); }, [company]);
+  useEffect(() => { setLocalPersonality(sheet.personality || ''); }, [sheet.personality]);
+  useEffect(() => {
+    setLocalPd(sheet.physical_description || { clothes: '', eyes: '', body: '', skin: '' });
+  }, [sheet.physical_description]);
 
   const savePd = useCallback((field: keyof PhysicalDescription, value: string) => {
     const updated = { ...localPd, [field]: value };
