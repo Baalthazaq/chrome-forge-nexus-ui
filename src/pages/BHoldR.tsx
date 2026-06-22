@@ -57,11 +57,11 @@ const BHoldR = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
+    if (effectiveUserId) {
       loadFeed();
       loadMyChannel();
     }
-  }, [user]);
+  }, [effectiveUserId]);
 
   const loadFeed = async () => {
     setLoading(true);
