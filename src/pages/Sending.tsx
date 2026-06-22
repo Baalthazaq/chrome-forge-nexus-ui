@@ -581,14 +581,19 @@ const Sending = () => {
         .insert({
           stone_id: selectedStone.id,
           sender_id: currentUser?.id,
-          message: message.trim()
+          message: message.trim(),
+          alias_id: identity.aliasId,
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      setCasts(prev => [...prev, { ...data, sender_name: getProfileName(currentUser?.id!, allProfiles) }]);
+      setCasts(prev => [...prev, {
+        ...data,
+        sender_name: identity.aliasId ? identity.displayName : getProfileName(currentUser?.id!, allProfiles),
+        sender_avatar_url: identity.avatarUrl,
+      }]);
       setMessage("");
       toast.success('Message sent');
       loadStones();
