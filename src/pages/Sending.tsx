@@ -438,13 +438,16 @@ const Sending = () => {
     }
 
     try {
+      const myAliasId = identity.aliasId;
       const allMembers = [currentUser?.id!, ...selectedGroupMembers].sort();
 
-      // Check for duplicate group with exact same active members
-      const { data: myGroupStones } = await supabase
+      // Check for duplicate group with exact same active members (scoped to my identity)
+      let mineGq = supabase
         .from('stone_participants')
         .select('stone_id')
         .eq('user_id', currentUser?.id);
+      mineGq = myAliasId ? mineGq.eq('alias_id', myAliasId) : mineGq.is('alias_id', null);
+      const { data: myGroupStones } = await mineGq;
 
       if (myGroupStones && myGroupStones.length > 0) {
         const groupStoneIds = myGroupStones.map(s => s.stone_id);
@@ -483,10 +486,11 @@ const Sending = () => {
 
       if (error) throw error;
 
-      // Add all participants
+      // Add all participants — creator joins as the active identity, others as primary
       const participantInserts = allMembers.map(userId => ({
         stone_id: data.id,
         user_id: userId,
+        alias_id: userId === currentUser?.id ? myAliasId : null,
       }));
 
       await supabase.from('stone_participants').insert(participantInserts);
