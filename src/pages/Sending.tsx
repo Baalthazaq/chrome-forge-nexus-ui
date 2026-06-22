@@ -346,9 +346,37 @@ const Sending = () => {
           .eq('is_group', false);
 
         if (commonStones && commonStones.length > 0) {
-          toast.error('Conversation already exists with this user');
+          setShowNewStone(false);
+          setNewRecipientId("");
+          await loadStones();
+          setSelectedStoneId(commonStones[0].id);
           return;
         }
+      }
+
+      // Also check legacy participant_one_id / participant_two_id columns (older 1:1 stones)
+      const { data: legacyStones } = await supabase
+        .from('stones')
+        .select('id')
+        .eq('is_group', false)
+        .or(
+          `and(participant_one_id.eq.${currentUser?.id},participant_two_id.eq.${recipientId}),` +
+          `and(participant_one_id.eq.${recipientId},participant_two_id.eq.${currentUser?.id})`
+        );
+
+      if (legacyStones && legacyStones.length > 0) {
+        await supabase.from('stone_participants').upsert(
+          [
+            { stone_id: legacyStones[0].id, user_id: currentUser?.id! },
+            { stone_id: legacyStones[0].id, user_id: recipientId },
+          ],
+          { onConflict: 'stone_id,user_id' }
+        );
+        setShowNewStone(false);
+        setNewRecipientId("");
+        await loadStones();
+        setSelectedStoneId(legacyStones[0].id);
+        return;
       }
 
       const { data, error } = await supabase
