@@ -558,16 +558,18 @@ const Sending = () => {
       }
 
       if (existing && existing.left_at) {
-        // Re-join: clear left_at
+        // Re-join: clear left_at (primary identity row)
         await supabase
           .from('stone_participants')
           .update({ left_at: null, joined_at: new Date().toISOString() })
           .eq('stone_id', selectedStone.id)
-          .eq('user_id', userId);
+          .eq('user_id', userId)
+          .is('alias_id', null);
       } else {
         await supabase.from('stone_participants').insert({
           stone_id: selectedStone.id,
           user_id: userId,
+          alias_id: null,
         });
       }
 
