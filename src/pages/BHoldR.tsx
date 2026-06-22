@@ -186,8 +186,10 @@ const BHoldR = () => {
       const prof = profileMap.get(c.user_id);
       return {
         ...c,
-        character_name: alias?.name || prof?.character_name || "Unknown",
-        avatar_url: alias?.avatar_url || prof?.avatar_url || null,
+        // Prefer denormalized author info stored on the comment so private aliases
+        // (which other viewers can't read via RLS) still appear under the alias identity.
+        character_name: c.author_name || alias?.name || prof?.character_name || "Unknown",
+        avatar_url: c.author_avatar_url || alias?.avatar_url || prof?.avatar_url || null,
       };
     }));
   };
@@ -219,6 +221,8 @@ const BHoldR = () => {
       user_id: effectiveUserId,
       content: newComment.trim(),
       alias_id: identity.aliasId,
+      author_name: identity.displayName,
+      author_avatar_url: identity.avatarUrl,
     });
     setNewComment("");
     openVideo(selectedVideo);
