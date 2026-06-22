@@ -176,11 +176,20 @@ const BHoldR = () => {
       .select("*")
       .eq("video_id", video.id)
       .order("created_at", { ascending: true });
-    
-    const { data: profiles } = await supabase.from("profiles").select("user_id, character_name");
-    const profileMap = new Map((profiles || []).map(p => [p.user_id, p.character_name]));
-    
-    setComments((data || []).map(c => ({ ...c, character_name: profileMap.get(c.user_id) || "Unknown" })));
+
+    const { data: profiles } = await supabase.from("profiles").select("user_id, character_name, avatar_url");
+    const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
+    const aliasMap = await fetchAliasMap((data || []).map((c: any) => c.alias_id));
+
+    setComments((data || []).map((c: any) => {
+      const alias = c.alias_id ? aliasMap.get(c.alias_id) : null;
+      const prof = profileMap.get(c.user_id);
+      return {
+        ...c,
+        character_name: alias?.name || prof?.character_name || "Unknown",
+        avatar_url: alias?.avatar_url || prof?.avatar_url || null,
+      };
+    }));
   };
 
   const rateVideo = async (videoId: string, rating: number) => {
