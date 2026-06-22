@@ -65,6 +65,8 @@ export type Database = {
       beholdr_comments: {
         Row: {
           alias_id: string | null
+          author_avatar_url: string | null
+          author_name: string | null
           content: string
           created_at: string
           id: string
@@ -74,6 +76,8 @@ export type Database = {
         }
         Insert: {
           alias_id?: string | null
+          author_avatar_url?: string | null
+          author_name?: string | null
           content: string
           created_at?: string
           id?: string
@@ -83,6 +87,8 @@ export type Database = {
         }
         Update: {
           alias_id?: string | null
+          author_avatar_url?: string | null
+          author_name?: string | null
           content?: string
           created_at?: string
           id?: string
@@ -438,7 +444,9 @@ export type Database = {
           message: string
           original_message: string | null
           read_at: string | null
+          sender_avatar_url: string | null
           sender_id: string
+          sender_name: string | null
           stone_id: string
         }
         Insert: {
@@ -452,7 +460,9 @@ export type Database = {
           message: string
           original_message?: string | null
           read_at?: string | null
+          sender_avatar_url?: string | null
           sender_id: string
+          sender_name?: string | null
           stone_id: string
         }
         Update: {
@@ -466,7 +476,9 @@ export type Database = {
           message?: string
           original_message?: string | null
           read_at?: string | null
+          sender_avatar_url?: string | null
           sender_id?: string
+          sender_name?: string | null
           stone_id?: string
         }
         Relationships: [
