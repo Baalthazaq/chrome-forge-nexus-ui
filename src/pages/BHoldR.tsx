@@ -80,7 +80,7 @@ const BHoldR = () => {
 
     const enriched: Video[] = vids.map((v: any) => {
       const vRatings = (ratings || []).filter(r => r.video_id === v.id);
-      const userRating = vRatings.find(r => r.user_id === user?.id);
+      const userRating = vRatings.find(r => r.user_id === effectiveUserId);
       return {
         ...v,
         tags: v.tags || [],
@@ -102,7 +102,7 @@ const BHoldR = () => {
     const { data } = await supabase
       .from("beholdr_channels")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", effectiveUserId)
       .maybeSingle();
     if (data) {
       setMyChannel(data);
@@ -126,7 +126,7 @@ const BHoldR = () => {
       await supabase.from("beholdr_channels").update({ channel_name: channelName.trim() }).eq("id", myChannel.id);
       setMyChannel({ ...myChannel, channel_name: channelName.trim() });
     } else {
-      const { data } = await supabase.from("beholdr_channels").insert({ user_id: user.id, channel_name: channelName.trim() }).select().single();
+      const { data } = await supabase.from("beholdr_channels").insert({ user_id: effectiveUserId, channel_name: channelName.trim() }).select().single();
       if (data) setMyChannel(data);
     }
     toast.success("Channel saved!");
@@ -146,7 +146,7 @@ const BHoldR = () => {
       toast.success("Video updated!");
     } else {
       await supabase.from("beholdr_videos").insert({
-        channel_id: myChannel.id, user_id: user.id,
+        channel_id: myChannel.id, user_id: effectiveUserId,
         title: videoForm.title, youtube_url: videoForm.youtube_url,
         description: videoForm.description || null, tags
       });
@@ -187,10 +187,10 @@ const BHoldR = () => {
     if (!video) return;
 
     if (video.user_rating === rating) {
-      await supabase.from("beholdr_ratings").delete().eq("video_id", videoId).eq("user_id", user.id);
+      await supabase.from("beholdr_ratings").delete().eq("video_id", videoId).eq("user_id", effectiveUserId);
     } else {
       await supabase.from("beholdr_ratings").upsert(
-        { video_id: videoId, user_id: user.id, rating },
+        { video_id: videoId, user_id: effectiveUserId, rating },
         { onConflict: "video_id,user_id" }
       );
     }
@@ -204,7 +204,7 @@ const BHoldR = () => {
   const postComment = async () => {
     if (!user || !selectedVideo || !newComment.trim()) return;
     await supabase.from("beholdr_comments").insert({
-      video_id: selectedVideo.id, user_id: user.id, content: newComment.trim()
+      video_id: selectedVideo.id, user_id: effectiveUserId, content: newComment.trim()
     });
     setNewComment("");
     openVideo(selectedVideo);
@@ -436,7 +436,7 @@ const BHoldR = () => {
                           {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
                         </span>
                       </div>
-                      {comment.user_id === user?.id && (
+                      {comment.user_id === effectiveUserId && (
                         <Button size="sm" variant="ghost" className="text-gray-500 h-6 w-6 p-0" onClick={() => deleteComment(comment.id)}>
                           <X className="w-3 h-3" />
                         </Button>
