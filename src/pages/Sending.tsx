@@ -908,7 +908,7 @@ const Sending = () => {
                     const isSystemMessage = cast.sender_id === SYSTEM_SENDER_ID;
                     const canEdit = isOwnMessage || isAdmin;
                     const senderProfile = allProfiles.find(p => p.user_id === cast.sender_id);
-                    const avatarUrl = senderProfile?.avatar_url;
+                    const avatarUrl = (cast as any).sender_avatar_url || senderProfile?.avatar_url;
                     const fallbackAvatar = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif';
                     const systemAvatar = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Sending%20Stone.gif';
                     const displayAvatar = isSystemMessage ? systemAvatar : (avatarUrl || fallbackAvatar);
