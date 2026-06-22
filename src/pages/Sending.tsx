@@ -234,7 +234,7 @@ const Sending = () => {
             display_name: displayName,
             latest_cast: latestCast ? {
               ...latestCast,
-              sender_name: profMap.get(latestCast.sender_id),
+              sender_name: latestCast.sender_name || profMap.get(latestCast.sender_id)?.character_name,
             } : undefined,
             unread_count: unreadCount || 0,
           } as Stone;
