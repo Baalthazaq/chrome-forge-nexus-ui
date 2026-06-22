@@ -198,15 +198,17 @@ const Sending = () => {
 
       const stonesWithInfo = await Promise.all(
         (stonesData || []).map(async (stone) => {
-          // Get participants from junction table
+          // Get participants from junction table (with alias_id)
           const { data: participants } = await supabase
             .from('stone_participants')
-            .select('user_id, joined_at, left_at')
+            .select('user_id, joined_at, left_at, alias_id')
             .eq('stone_id', stone.id);
 
-          const participantList: Participant[] = (participants || []).map(p => ({
+          const aliasMap = await fetchAliasMap((participants || []).map((p: any) => p.alias_id));
+
+          const participantList: Participant[] = (participants || []).map((p: any) => ({
             ...p,
-            character_name: profMap.get(p.user_id) || 'Unknown',
+            character_name: (p.alias_id && aliasMap.get(p.alias_id)?.name) || profMap.get(p.user_id) || 'Unknown',
           }));
 
           // Display name
@@ -214,7 +216,7 @@ const Sending = () => {
           if (stone.is_group && stone.name) {
             displayName = stone.name;
           } else {
-            const others = participantList.filter(p => p.user_id !== currentUser?.id && !p.left_at);
+            const others = participantList.filter(p => !(p.user_id === currentUser?.id && (p.alias_id || null) === (identity.aliasId || null)) && !p.left_at);
             displayName = others.map(p => p.character_name).join(', ') || 'Empty conversation';
           }
 
