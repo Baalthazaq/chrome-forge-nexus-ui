@@ -592,11 +592,12 @@ const Sending = () => {
     if (!selectedStone) return;
 
     try {
-      await supabase
+      const leaveQ = supabase
         .from('stone_participants')
         .update({ left_at: new Date().toISOString() })
         .eq('stone_id', selectedStone.id)
         .eq('user_id', currentUser?.id);
+      await (identity.aliasId ? leaveQ.eq('alias_id', identity.aliasId) : leaveQ.is('alias_id', null));
 
       setSelectedStone(null);
       toast.success('Left the group');
