@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useActiveIdentity, fetchAliasMap } from "@/hooks/useActiveIdentity";
 import { extractYouTubeId, getYouTubeThumbnail, getYouTubeEmbedUrl } from "@/lib/youtube";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -43,6 +44,7 @@ const BHoldR = () => {
   const { user } = useAuth();
   const { impersonatedUser } = useAdmin();
   const effectiveUserId = impersonatedUser?.user_id || user?.id;
+  const identity = useActiveIdentity();
   const [videos, setVideos] = useState<Video[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [myChannel, setMyChannel] = useState<Channel | null>(null);
@@ -174,11 +176,20 @@ const BHoldR = () => {
       .select("*")
       .eq("video_id", video.id)
       .order("created_at", { ascending: true });
-    
-    const { data: profiles } = await supabase.from("profiles").select("user_id, character_name");
-    const profileMap = new Map((profiles || []).map(p => [p.user_id, p.character_name]));
-    
-    setComments((data || []).map(c => ({ ...c, character_name: profileMap.get(c.user_id) || "Unknown" })));
+
+    const { data: profiles } = await supabase.from("profiles").select("user_id, character_name, avatar_url");
+    const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
+    const aliasMap = await fetchAliasMap((data || []).map((c: any) => c.alias_id));
+
+    setComments((data || []).map((c: any) => {
+      const alias = c.alias_id ? aliasMap.get(c.alias_id) : null;
+      const prof = profileMap.get(c.user_id);
+      return {
+        ...c,
+        character_name: alias?.name || prof?.character_name || "Unknown",
+        avatar_url: alias?.avatar_url || prof?.avatar_url || null,
+      };
+    }));
   };
 
   const rateVideo = async (videoId: string, rating: number) => {
@@ -204,7 +215,10 @@ const BHoldR = () => {
   const postComment = async () => {
     if (!effectiveUserId || !selectedVideo || !newComment.trim()) return;
     await supabase.from("beholdr_comments").insert({
-      video_id: selectedVideo.id, user_id: effectiveUserId, content: newComment.trim()
+      video_id: selectedVideo.id,
+      user_id: effectiveUserId,
+      content: newComment.trim(),
+      alias_id: identity.aliasId,
     });
     setNewComment("");
     openVideo(selectedVideo);

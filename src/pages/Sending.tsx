@@ -9,6 +9,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useActiveIdentity, fetchAliasMap } from "@/hooks/useActiveIdentity";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -75,6 +76,7 @@ const Sending = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const currentUserId = impersonatedUser ? impersonatedUser.user_id : user?.id;
   const currentUser = useMemo(() => currentUserId ? { id: currentUserId } : null, [currentUserId]);
+  const identity = useActiveIdentity();
 
   const [message, setMessage] = useState("");
   const [selectedStone, setSelectedStone] = useState<Stone | null>(null);
@@ -282,11 +284,20 @@ const Sending = () => {
 
       if (error) throw error;
 
-      // Load profile names for senders
+      // Load profile names for senders + alias overrides
       const { data: profs } = await supabase.from('profiles').select('user_id, character_name, avatar_url');
-      const profMap = new Map((profs || []).map(p => [p.user_id, p.character_name || 'Unknown']));
+      const profMap = new Map((profs || []).map(p => [p.user_id, p]));
+      const aliasMap = await fetchAliasMap((data || []).map((c: any) => c.alias_id));
 
-      setCasts((data || []).map(c => ({ ...c, sender_name: profMap.get(c.sender_id) })));
+      setCasts((data || []).map((c: any) => {
+        const alias = c.alias_id ? aliasMap.get(c.alias_id) : null;
+        const prof = profMap.get(c.sender_id);
+        return {
+          ...c,
+          sender_name: alias?.name || prof?.character_name || 'Unknown',
+          sender_avatar_url: alias?.avatar_url || prof?.avatar_url || null,
+        };
+      }));
     } catch (error) {
       console.error('Error loading casts:', error);
       toast.error('Failed to load messages');
@@ -570,14 +581,19 @@ const Sending = () => {
         .insert({
           stone_id: selectedStone.id,
           sender_id: currentUser?.id,
-          message: message.trim()
+          message: message.trim(),
+          alias_id: identity.aliasId,
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      setCasts(prev => [...prev, { ...data, sender_name: getProfileName(currentUser?.id!, allProfiles) }]);
+      setCasts(prev => [...prev, {
+        ...data,
+        sender_name: identity.aliasId ? identity.displayName : getProfileName(currentUser?.id!, allProfiles),
+        sender_avatar_url: identity.avatarUrl,
+      }]);
       setMessage("");
       toast.success('Message sent');
       loadStones();
@@ -892,7 +908,7 @@ const Sending = () => {
                     const isSystemMessage = cast.sender_id === SYSTEM_SENDER_ID;
                     const canEdit = isOwnMessage || isAdmin;
                     const senderProfile = allProfiles.find(p => p.user_id === cast.sender_id);
-                    const avatarUrl = senderProfile?.avatar_url;
+                    const avatarUrl = (cast as any).sender_avatar_url || senderProfile?.avatar_url;
                     const fallbackAvatar = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Doppleganger.gif';
                     const systemAvatar = 'https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Sending%20Stone.gif';
                     const displayAvatar = isSystemMessage ? systemAvatar : (avatarUrl || fallbackAvatar);

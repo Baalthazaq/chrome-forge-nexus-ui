@@ -11,6 +11,7 @@ import { ArrowLeft, Clock, AlertTriangle, Search, ChevronRight, Plus } from "luc
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveIdentity } from "@/hooks/useActiveIdentity";
 import { useToast } from "@/hooks/use-toast";
 import { MONTHS, getMonth } from "@/lib/gameCalendar";
 
@@ -91,6 +92,7 @@ function formatGameDateShort(day: number | null, month: number | null, year: num
 
 const NexusWire = () => {
   const { user } = useAuth();
+  const identity = useActiveIdentity();
   const { toast } = useToast();
   const [allArticles, setAllArticles] = useState<NewsArticle[]>([]);
   const [gameDate, setGameDate] = useState<GameDate | null>(null);
@@ -149,6 +151,7 @@ const NexusWire = () => {
       publish_day: gameDate?.day || null,
       publish_month: gameDate?.month || null,
       publish_year: gameDate?.year || null,
+      alias_id: identity.aliasId,
     });
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
