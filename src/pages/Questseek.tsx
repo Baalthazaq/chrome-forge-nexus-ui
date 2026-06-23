@@ -246,7 +246,10 @@ const Questseek = () => {
     const unit = logHoursTarget.quests?.downtime_cost || 0;
     const avail = logHoursTarget.quests?.available_quantity;
     const banked = logHoursTarget.hours_logged || 0;
-    if (avail !== null && avail !== undefined) {
+    const jobType = logHoursTarget.quests?.job_type;
+    // Only commissions with a defined slot count are capped. Full-time jobs and
+    // commissions with unlimited slots (null) have no upper bound.
+    if (jobType === 'commission' && avail !== null && avail !== undefined) {
       const cap = Math.max(0, unit * avail - banked);
       if (hours > cap) {
         toast({ title: `Max ${cap}h for this job`, description: `You can only bank up to ${unit * avail}h total (${avail} completion${avail === 1 ? "" : "s"} × ${unit}h).`, variant: "destructive" });
