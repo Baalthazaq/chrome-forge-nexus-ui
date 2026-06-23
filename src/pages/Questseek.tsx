@@ -576,6 +576,16 @@ const Questseek = () => {
           {isOwnQuest && (
             <Badge className="bg-amber-900/30 text-amber-400 border-amber-500/50">Your Job</Badge>
           )}
+          {(isOwnQuest || isAdmin) && quest.posted_by_user_id && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => deleteMyPostedQuest(quest.id, quest.title)}
+              className="border-red-500/50 text-red-400 hover:bg-red-900/30 ml-2"
+            >
+              <Trash2 className="w-3 h-3 mr-1" /> Delete
+            </Button>
+          )}
           {isAlreadyAccepted && !isOwnQuest && (
             <Badge className="bg-emerald-900/30 text-emerald-400 border-emerald-500/50">
               {hasPendingApproval ? "Applied" : "In Progress"}
