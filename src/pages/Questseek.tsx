@@ -1081,9 +1081,10 @@ const Questseek = () => {
             const unit = logHoursTarget?.quests?.downtime_cost || 0;
             const avail = logHoursTarget?.quests?.available_quantity;
             const banked = logHoursTarget?.hours_logged || 0;
-            const cap = avail === null || avail === undefined
-              ? Number.POSITIVE_INFINITY
-              : Math.max(0, unit * avail - banked);
+            const jobType = logHoursTarget?.quests?.job_type;
+            const cap = (jobType === 'commission' && avail !== null && avail !== undefined)
+              ? Math.max(0, unit * avail - banked)
+              : Number.POSITIVE_INFINITY;
             const maxLabel = isFinite(cap) ? `${cap}` : "∞";
             return (
               <div className="space-y-4">
