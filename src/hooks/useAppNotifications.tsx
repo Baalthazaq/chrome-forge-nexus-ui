@@ -58,7 +58,8 @@ export const useAppNotifications = () => {
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
         .in("status", ["completed", "rejected"])
-        .not("admin_notes", "is", null);
+        .not("admin_notes", "is", null)
+        .is("acknowledged_at", null);
       results["questseek"] = (questUpdates ?? 0) > 0;
 
       setNotifications(results);
