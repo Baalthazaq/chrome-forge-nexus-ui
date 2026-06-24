@@ -1,53 +1,29 @@
-## Goal
+## What Uji is seeing
 
-Treat each alias as its own Sending Stone identity, so Cegorach↔Sige and Balderai↔Sige are entirely separate conversations that never collide.
+The Questseek red dot comes from `useAppNotifications` counting `quest_acceptances` rows where `status IN ('completed','rejected')` AND `admin_notes IS NOT NULL`. For Uji there are **6 such rows**, all `completed` commissions (Gutter-Street Doc x4, Scrap collection, Lucid Dream Courier) with admin notes like "Approved. Paid 70 credits…".
 
-## Model
+Today there is no way to clear these. The "Dismiss" button at line 638 of `Questseek.tsx` only appears in the rejected-quests list; completed commissions have no acknowledge action, so the badge stays on forever once a player has completed any paid commission.
 
-An "identity" is the pair `(user_id, alias_id)` where `alias_id` is `NULL` for the primary character. Every stone, participant, and cast is tied to an identity, not just a user.
+## Fix
 
-- Balderai (primary): `(balderai_user, NULL)`
-- Cegorach (alias): `(balderai_user, cegorach_alias_id)`
-- Sige (primary): `(sige_user, NULL)`
+Add an explicit acknowledgement so Uji (and anyone else) can clear the badge.
 
-A 1:1 stone is uniquely defined by the **pair of identities**, not the pair of users. The active identity at conversation-start time owns that side of the stone forever.
+### Schema
+- Migration: add `acknowledged_at timestamptz` to `public.quest_acceptances`.
 
-## Inbox scoping
+### Notification query (`src/hooks/useAppNotifications.tsx`)
+- Add `.is('acknowledged_at', null)` to the questseek count so only un-acknowledged completed/rejected rows trigger the badge.
 
-When viewing Sending Stone, you only see stones where the **active identity** matches. Switch from Balderai → Cegorach in Doppleganger and the inbox swaps to Cegorach's conversations. Balderai's chats with Sige are invisible while Cegorach is active, and vice-versa. This is what makes the "fake account" fiction work.
+### Questseek UI (`src/pages/Questseek.tsx`)
+- In the "My Quests" / history section where completed acceptances are rendered (around lines 945 and 829), show a small "Dismiss" / "Acknowledge" button on each completed or rejected acceptance that still has `acknowledged_at = null`. Clicking it updates that row's `acknowledged_at = now()` and removes it from the local list (or just hides the button + clears the badge on next refresh).
+- Update the existing rejected-quest "dismiss" handler at line 638 to set `acknowledged_at` instead of (or in addition to) `status = 'dismissed'`, so the same mechanism clears both cases.
+- Add an "Acknowledge all" button at the top of the history section that bulk-sets `acknowledged_at = now()` for the current user's outstanding completed/rejected rows — one click clears Uji's six at once.
 
-## Database changes
+### How Uji clears it today (until the fix ships)
+There is no in-app way. The only options right now are:
+1. Wait for the fix below, then click "Acknowledge all", or
+2. Have an admin run `UPDATE quest_acceptances SET admin_notes = NULL WHERE user_id = '<uji>' AND status = 'completed';` — but this loses the payout history, so I do **not** recommend it.
 
-1. Add `alias_id uuid null` to `stone_participants` (FK → `character_aliases.id`, on delete set null).
-2. Add `participant_one_alias_id`, `participant_two_alias_id` to `stones` (legacy 1:1 columns) for symmetry / migrations.
-3. Add `sender_alias_id` is already on `casts` (`alias_id` column exists per code) — no change.
-4. Replace the unique constraint on `stone_participants(stone_id, user_id)` with `stone_participants(stone_id, user_id, alias_id)` so the same user can join the same stone under different identities (rare, but correct).
-5. Update RLS helpers (`is_stone_participant`, `is_active_stone_participant`) — no change needed, still keyed on user_id, which is fine for read access (a user can still read both their primary and alias stones via their auth.uid).
-
-## Code changes (`src/pages/Sending.tsx`)
-
-1. Use `useActiveIdentity()` to get the current `{ userId, aliasId }`.
-2. `loadStones()` filters `stone_participants` by **both** `user_id = userId` AND `alias_id IS [NOT] DISTINCT FROM aliasId`, so only the active identity's inbox shows.
-3. `createNewStone(recipientId)`:
-   - Existence check matches stones where my side = `(userId, aliasId)` AND their side = `(recipientId, null)` (recipient is currently always a primary).
-   - Insert `stone_participants` rows with `alias_id` populated for the sender side.
-   - Drop the legacy `participant_one_id`/`participant_two_id` writes (or also stamp the alias columns) — keep them populated for backward compat but no longer rely on them for uniqueness.
-4. `createGroupStone()`: same — group members are identities, member list is `(user_id, alias_id)` tuples.
-5. `sendCast()` already stamps `alias_id` from active identity. Keep.
-6. `addParticipant` / leave / rejoin: scope to the identity tuple.
-
-## Backfill
-
-Existing `stone_participants` rows have `alias_id = NULL` (primary). The Cegorach↔Sige stone currently blocked by Balderai↔Sige will now be created cleanly because the uniqueness key includes alias_id.
-
-No need to re-shuffle history — old conversations stay attached to the primary identity, which matches what already happened.
-
-## Out of scope (unless you want it)
-
-- Letting players **message an alias directly** (i.e. picking "Cegorach" in the recipient list when his alias is public). Today the recipient picker shows users only. Say the word and I'll add public aliases to the picker too.
-- Showing the sender's alias avatar/name in the stones list sidebar (already done in cast bubbles via `alias_id`).
-
-## Questions before I build
-
-1. When Sige is the recipient and Cegorach DMs him, should Sige see "Cegorach" as the conversation partner (yes — aliases exist to be believable), even though Sige's own inbox is keyed to his primary identity? **Assumption: yes.**
-2. If the alias is later deleted, what happens to its conversations? **Assumption: stones remain, partner name falls back to "Unknown alias".** Let me know if you'd rather cascade-delete.
+## Technical notes
+- `quest_acceptances` already has the `dismissed` status used for rejected quests; we keep that working but layer `acknowledged_at` on top so completed rows (which must stay as `completed` to preserve `times_completed` and payment history) can also be cleared without losing data.
+- No edge-function changes required — the updates are a simple authenticated `UPDATE` against the user's own row, covered by existing RLS.
