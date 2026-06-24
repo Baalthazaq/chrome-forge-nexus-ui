@@ -1,0 +1,1 @@
+ALTER TABLE public.quest_acceptances ADD COLUMN IF NOT EXISTS acknowledged_at timestamptz;

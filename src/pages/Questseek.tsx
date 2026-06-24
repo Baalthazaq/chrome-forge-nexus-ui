@@ -50,6 +50,7 @@ interface QuestAcceptance {
   times_completed: number;
   admin_notes: string | null;
   hours_logged: number;
+  acknowledged_at: string | null;
   quests: Quest;
 }
 
@@ -449,7 +450,21 @@ const Questseek = () => {
   const pendingApproval = myQuests.filter(q => q.status === "pending_approval");
   const pendingSubmissions = myQuests.filter(q => q.status === "submitted");
   const completedQuests = myQuests.filter(q => q.status === "completed");
-  const rejectedQuests = myQuests.filter(q => q.status === "rejected");
+  const rejectedQuests = myQuests.filter(q => q.status === "rejected" && !q.acknowledged_at);
+  const unacknowledgedNotifications = myQuests.filter(
+    q => (q.status === "completed" || q.status === "rejected") && q.admin_notes && !q.acknowledged_at
+  );
+
+  const acknowledgeAcceptance = async (id: string) => {
+    await supabase.from("quest_acceptances").update({ acknowledged_at: new Date().toISOString() }).eq("id", id);
+    loadData();
+  };
+  const acknowledgeAll = async () => {
+    const ids = unacknowledgedNotifications.map(q => q.id);
+    if (ids.length === 0) return;
+    await supabase.from("quest_acceptances").update({ acknowledged_at: new Date().toISOString() }).in("id", ids);
+    loadData();
+  };
 
   const repeatableCompleted = completedQuests.filter(q => 
     q.quests?.job_type === "commission" && 
@@ -634,10 +649,7 @@ const Questseek = () => {
                   {rq.admin_notes && <p className="text-red-400/70 text-xs mt-1">{rq.admin_notes}</p>}
                 </div>
                 <button
-                  onClick={async () => {
-                    await supabase.from("quest_acceptances").update({ status: "dismissed" }).eq("id", rq.id);
-                    loadData();
-                  }}
+                  onClick={() => acknowledgeAcceptance(rq.id)}
                   className="text-red-400/50 hover:text-red-300 shrink-0"
                   title="Dismiss"
                 >
@@ -935,18 +947,35 @@ const Questseek = () => {
             {/* Completed */}
             {completedQuests.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold text-emerald-400 mb-3">Completed</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-emerald-400">Completed</h3>
+                  {unacknowledgedNotifications.length > 0 && (
+                    <Button size="sm" variant="outline" onClick={acknowledgeAll}
+                      className="border-emerald-500/50 text-emerald-300 hover:bg-emerald-900/30">
+                      Acknowledge all ({unacknowledgedNotifications.length})
+                    </Button>
+                  )}
+                </div>
                 <div className="space-y-3">
                   {completedQuests.slice(0, 10).map(qa => (
                     <Card key={qa.id} className="p-4 bg-emerald-900/10 border-emerald-500/20">
-                      <div className="flex justify-between items-center">
-                        <div>
+                      <div className="flex justify-between items-center gap-3">
+                        <div className="flex-1">
                           <h4 className="text-gray-300">{qa.quests?.title}</h4>
                           {qa.admin_notes && <p className="text-xs text-gray-500 mt-1">{qa.admin_notes}</p>}
                         </div>
                         <span className="text-emerald-400 font-medium">
                           {qa.final_payment ? formatHexDenomination(qa.final_payment) : "—"}
                         </span>
+                        {qa.admin_notes && !qa.acknowledged_at && (
+                          <button
+                            onClick={() => acknowledgeAcceptance(qa.id)}
+                            className="text-emerald-400/50 hover:text-emerald-300 shrink-0"
+                            title="Dismiss notification"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </Card>
                   ))}
