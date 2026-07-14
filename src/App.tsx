@@ -57,6 +57,11 @@ import Transformations from "./pages/Transformations";
 
 const queryClient = new QueryClient();
 
+const MatrixRedirect = () => {
+  window.location.replace("/matrix/Character%20select.html");
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -116,6 +121,7 @@ const App = () => (
             <Route path="/admin/racegen" element={<Racegen />} />
             <Route path="/admin/transformations" element={<TransformationsAdmin />} />
             <Route path="/transformations" element={<Transformations />} />
+            <Route path="/matrix/*" element={<MatrixRedirect />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
