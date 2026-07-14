@@ -142,6 +142,7 @@ const Admin = () => {
     { label: 'Circle of Life', desc: 'Ancestry Tree & Circle', onClick: () => navigate('/admin/circle-of-life') },
     { label: 'Feature List', desc: 'App Features', onClick: () => navigate('/features') },
     { label: 'Data Export', desc: 'Export Tables', onClick: () => navigate('/admin/data-export') },
+    { label: 'Matrix', desc: 'Minigames', onClick: () => { window.location.href = '/matrix/'; } },
   ];
 
   return (
