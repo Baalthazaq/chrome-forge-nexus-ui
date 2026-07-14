@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Matrix Protocol: THE SPEAKEASY LINEUP</title>
+    <style>
+        body {
+            background-color: #04050a; color: #fff; font-family: 'Courier New', Courier, monospace;
+            margin: 0; padding: 20px; display: flex; flex-direction: column;
+            align-items: center; overflow-x: hidden; width: 100%; min-height: 100vh; box-sizing: border-box;
+            background-image: radial-gradient(ellipse at 50% 0%, rgba(255, 152, 0, 0.07), transparent 60%);
+        }
+        h1 {
+            margin: 5px 0 10px 0; font-size: 28px; text-transform: uppercase; letter-spacing: 4px; color: #ff9800;
+            text-shadow: 0 0 12px rgba(255, 152, 0, 0.7), 0 0 40px rgba(255, 152, 0, 0.3);
+        }
+        #hud {
+            width: 100%; max-width: 1680px; display: flex; justify-content: space-between; align-items: flex-start;
+            background: rgba(4, 5, 10, 0.9); border: 2px solid rgba(255, 152, 0, 0.4); border-bottom: none;
+            padding: 10px 20px; font-weight: bold; border-radius: 8px 8px 0 0; box-sizing: border-box;
+            font-size: 18px;
+        }
+        #crt {
+            position: fixed; inset: 0; pointer-events: none; z-index: 100;
+            background:
+                radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.4) 100%),
+                repeating-linear-gradient(to bottom, rgba(0,0,0,0.16) 0px, rgba(0,0,0,0.16) 1px, transparent 1px, transparent 3px);
+        }
+        #backLink {
+            position: fixed; top: 14px; left: 14px; z-index: 101; color: #ff9800; text-decoration: none;
+            border: 2px solid rgba(255, 152, 0, 0.5); padding: 6px 12px; font-weight: bold; font-size: 14px;
+            border-radius: 4px; background: rgba(0,0,0,0.6); letter-spacing: 1px;
+        }
+        #backLink:hover { background: #ff9800; color: #000; box-shadow: 0 0 15px rgba(255, 152, 0, 0.8); }
+        #strikeDisplay { color: #ffeb3b; font-size: 24px; margin-right: 15px; }
+        .diff-select {
+            background: #222; color: #fff; border: 2px solid #555; padding: 4px 8px;
+            font-family: 'Courier New', Courier, monospace; font-weight: bold; font-size: 16px;
+            border-radius: 4px; cursor: pointer; outline: none; transform: translateY(-4px);
+        }
+        .game-container {
+            position: relative; width: 100%; max-width: 1680px; display: flex; justify-content: center;
+        }
+        
+        canvas#gameCanvas { 
+            border: 4px solid #444; width: 100%; height: auto; max-height: calc(100vh - 120px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8); image-rendering: pixelated; 
+            object-fit: contain; background: #1a1a1a;
+        }
+        
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.85); pointer-events: none; gap: 20px; z-index: 10;
+        }
+        #startBtn {
+            background: #ff9800; color: #000; border: 4px solid #fff; padding: 15px 40px;
+            font-family: 'Courier New', Courier, monospace; font-weight: bold; font-size: 24px;
+            cursor: pointer; pointer-events: auto; text-transform: uppercase; border-radius: 8px;
+        }
+        #startBtn:hover { background: #fff; }
+        .instructions { font-size: 18px; color: #aaa; text-align: center; margin-bottom: 20px; line-height: 1.6; }
+        .key-bind { color: #ffeb3b; font-weight: bold; }
+        #rewardText { font-size: 32px; font-weight: bold; text-align: center; display: none; white-space: pre-wrap; text-shadow: 2px 2px 0 #000; }
+        
+        #dialogBox {
+            position: absolute; bottom: 5%; left: 38%; transform: translateX(-50%);
+            width: 46%; max-width: 800px; background: rgba(10, 6, 2, 0.92); border: 2px solid #ff9800;
+            box-shadow: 0 0 20px rgba(255, 152, 0, 0.25);
+            padding: 20px; font-size: clamp(14px, 1.5vw, 24px); color: #fff; text-align: center;
+            display: none; border-radius: 8px; z-index: 5; font-weight: bold; pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="crt"></div>
+    <a id="backLink" href="Character select.html">&#9668; CONSTRUCT</a>
+    <h1>ARCADE CLASSIC: THE LINEUP</h1>
+    <div id="hud">
+        <div style="display: flex; align-items: center;">
+            <span id="strikeDisplay">STRIKES: 0 / 3</span>
+            <select id="diffSelect" class="diff-select" onchange="changeDiff()">
+                <option value="4">EASY (4 Strikes)</option>
+                <option value="3" selected>NORMAL (3 Strikes)</option>
+                <option value="2">HARD (2 Strikes)</option>
+            </select>
+        </div>
+        <div><span style="color: #aaa; font-size: 16px;">[A] ARREST | [B] INTERROGATE</span></div>
+    </div>
+    
+    <div class="game-container">
+        <canvas id="gameCanvas" width="1680" height="900"></canvas>
+        <div id="dialogBox">"I saw him."</div>
+        <div id="overlay">
+            <div id="rewardText"></div>
+            <div class="instructions" id="instText">
+                <span class="key-bind">D-PAD</span> TO MOVE URIEL<br>
+                <span class="key-bind">[B] / [SPACE]</span> TO INTERROGATE PATRONS<br>
+                <span class="key-bind">[A] / [ENTER]</span> TO ARREST TARGET<br><br>
+                <span style="color: #ff3333;">BEWARE: 4 PATRONS ARE LIARS. THE TARGET LIES.</span><br>
+                <span style="color: #00ffff;">ARRESTING AN INTERROGATED PATRON LOCKS THEIR CLUE AS FACT.</span><br>
+                <span style="color: #ffeb3b;">ARRESTING AN INNOCENT COSTS A STRIKE. MAX STRIKES = GAME OVER.</span>
+            </div>
+            <button id="startBtn" onclick="startGame()">ENTER SPEAKEASY</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const PLAY_W = 1280; 
+
+        // --- AUDIO ENGINE (layered 8-bit synth) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.6;
+        masterGain.connect(audioCtx.destination);
+
+        let noiseBuf = null;
+        function getNoise() {
+            if (!noiseBuf) {
+                noiseBuf = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+                const d = noiseBuf.getChannelData(0);
+                for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+            }
+            return noiseBuf;
+        }
+
+        function tone(o) {
+            const now = audioCtx.currentTime + (o.delay || 0);
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.type = o.type || 'square';
+            osc.frequency.setValueAtTime(o.f0, now);
+            if (o.f1) {
+                if (o.curve === 'lin') osc.frequency.linearRampToValueAtTime(o.f1, now + o.t);
+                else osc.frequency.exponentialRampToValueAtTime(Math.max(1, o.f1), now + o.t);
+            }
+            g.gain.setValueAtTime(o.vol || 0.1, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + o.t);
+            osc.connect(g); g.connect(masterGain);
+            osc.start(now); osc.stop(now + o.t + 0.05);
+        }
+
+        function noiseHit(o) {
+            const now = audioCtx.currentTime + (o.delay || 0);
+            const src = audioCtx.createBufferSource(); src.buffer = getNoise(); src.loop = true;
+            const filt = audioCtx.createBiquadFilter();
+            filt.type = o.type || 'lowpass';
+            filt.frequency.setValueAtTime(o.f || 1000, now);
+            if (o.f1) filt.frequency.exponentialRampToValueAtTime(Math.max(20, o.f1), now + o.t);
+            filt.Q.value = o.q || 1;
+            const g = audioCtx.createGain();
+            g.gain.setValueAtTime(o.vol || 0.2, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + o.t);
+            src.connect(filt); filt.connect(g); g.connect(masterGain);
+            src.start(now); src.stop(now + o.t + 0.05);
+        }
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            if (type === 'talk') {
+                // Mumbled bar chatter: a few random speech grains
+                let base = 240 + Math.random() * 160;
+                for (let i = 0; i < 4; i++) {
+                    tone({
+                        type: 'triangle',
+                        f0: base * (0.85 + Math.random() * 0.4),
+                        t: 0.06, vol: 0.08, delay: i * 0.07
+                    });
+                }
+            } else if (type === 'arrest') {
+                // Handcuff click-click + heavy hand on the shoulder
+                noiseHit({ type: 'highpass', f: 3500, t: 0.05, vol: 0.15 });
+                noiseHit({ type: 'highpass', f: 3500, t: 0.05, vol: 0.12, delay: 0.09 });
+                tone({ type: 'square', f0: 140, f1: 45, t: 0.5, vol: 0.18, delay: 0.15 });
+                tone({ type: 'sine', f0: 70, f1: 40, t: 0.5, vol: 0.14, delay: 0.15 });
+            } else if (type === 'crash') {
+                // Wrong-arrest buzzer
+                tone({ type: 'sawtooth', f0: 160, t: 0.35, vol: 0.16 });
+                tone({ type: 'sawtooth', f0: 164, t: 0.35, vol: 0.14 });
+                tone({ type: 'square', f0: 82, t: 0.35, vol: 0.1 });
+            } else if (type === 'liar') {
+                // "Busted" sting: sharp gasp + falling tail
+                tone({ type: 'square', f0: 880, f1: 932, t: 0.09, vol: 0.11 });
+                tone({ type: 'square', f0: 932, f1: 440, t: 0.28, vol: 0.1, delay: 0.1 });
+                noiseHit({ type: 'bandpass', f: 2400, q: 4, t: 0.12, vol: 0.07 });
+            } else if (type === 'win') {
+                // Jazzy closing chord: Cmaj9 rolled, with a swing tail
+                [261.63, 329.63, 392.0, 493.88, 587.33].forEach((f, i) =>
+                    tone({ type: 'triangle', f0: f, t: 0.7, vol: 0.08, delay: i * 0.06 }));
+                tone({ type: 'square', f0: 1046.5, t: 0.35, vol: 0.06, delay: 0.42 });
+                tone({ type: 'square', f0: 1174.66, t: 0.5, vol: 0.05, delay: 0.56 });
+                noiseHit({ type: 'highpass', f: 5000, t: 0.3, vol: 0.04, delay: 0.42 });
+            }
+        }
+
+        const playerSprite = new Image(); playerSprite.src = 'Uriel.png';
+
+        const SPECIES = ['Human', 'Orc', 'Elf', 'Dwarf', 'Halfling', 'Gnome', 'Goblin'];
+        const OUTFITS = ['Trenchcoat', 'Suit', 'Suspenders'];
+        const HATS = ['Fedora', 'Flatcap', 'None'];
+        const HAIR = ['Beard', 'Moustache', 'None'];
+        const COLORS = [
+            {name: 'Red', val: '#e53935'}, {name: 'Blue', val: '#1e88e5'}, {name: 'Green', val: '#43a047'}, 
+            {name: 'Purple', val: '#8e24aa'}, {name: 'Brown', val: '#6d4c41'}, {name: 'Grey', val: '#757575'},
+            {name: 'Yellow', val: '#fdd835'}, {name: 'Cyan', val: '#00acc1'}
+        ];
+
+        let state = 'menu';
+        let strikes = 0;
+        let maxStrikes = 3;
+        
+        let patrons = [];
+        let suspectRef = null;
+        let notepadClusters = [];
+
+        let player = { 
+            x: PLAY_W / 2, y: 800, w: 40, h: 40, 
+            speed: 6, interacting: null,
+            frameX: 0, frameY: 3, animTimer: 0 
+        };
+
+        const keys = { w:false, a:false, s:false, d:false, space:false, enter:false };
+        let prevSpace = false;
+        let prevEnter = false;
+
+        function changeDiff() {
+            maxStrikes = parseInt(document.getElementById('diffSelect').value);
+            document.getElementById('strikeDisplay').innerText = `STRIKES: ${strikes} / ${maxStrikes}`;
+            document.getElementById('strikeDisplay').style.color = (strikes >= maxStrikes - 1 && strikes > 0) ? '#ff3333' : '#ffeb3b';
+        }
+
+        let gpStartWasPressed = false;
+        function pollGamepad() {
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            const gp = gamepads[0];
+            if (gp) {
+                keys.w = gp.buttons[12]?.pressed || gp.axes[1] < -0.3;
+                keys.s = gp.buttons[13]?.pressed || gp.axes[1] >  0.3;
+                keys.a = gp.buttons[14]?.pressed || gp.axes[0] < -0.3;
+                keys.d = gp.buttons[15]?.pressed || gp.axes[0] >  0.3;
+                keys.space = gp.buttons[2]?.pressed || gp.buttons[1]?.pressed;
+                keys.enter = gp.buttons[0]?.pressed;
+
+                // 'A' or Start begins / restarts the case (edge-triggered)
+                let startPressed = gp.buttons[0]?.pressed || gp.buttons[9]?.pressed;
+                if (startPressed && !gpStartWasPressed && state !== 'playing') {
+                    startGame();
+                }
+                gpStartWasPressed = startPressed;
+            }
+        }
+
+        window.addEventListener("keydown", (e) => {
+            let k = e.key.toLowerCase();
+            if(k==='w') keys.w = true; if(k==='s') keys.s = true;
+            if(k==='a') keys.a = true; if(k==='d') keys.d = true;
+            if(k===' ') keys.space = true; if(k==='enter') keys.enter = true;
+            if(k==='enter' && state !== 'playing') startGame();
+        });
+        window.addEventListener("keyup", (e) => { 
+            let k = e.key.toLowerCase();
+            if(k==='w') keys.w = false; if(k==='s') keys.s = false; 
+            if(k==='a') keys.a = false; if(k==='d') keys.d = false;
+            if(k===' ') keys.space = false; if(k==='enter') keys.enter = false;
+        });
+
+        function randomElem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+        function generateTraits() {
+            return {
+                species: randomElem(SPECIES), outfit: randomElem(OUTFITS), outfitColor: randomElem(COLORS),
+                hat: randomElem(HATS), hatColor: randomElem(COLORS), hair: randomElem(HAIR), skin: randomElem(COLORS) 
+            };
+        }
+
+        function traitsEqual(t1, t2) {
+            return t1.species === t2.species && t1.outfit === t2.outfit && 
+                   t1.outfitColor.name === t2.outfitColor.name && t1.hat === t2.hat && 
+                   t1.hatColor.name === t2.hatColor.name && t1.hair === t2.hair;
+        }
+
+        function getSkinColor(species) {
+            if(species === 'Orc' || species === 'Goblin') return randomElem(['#4caf50', '#81c784', '#388e3c']);
+            if(species === 'Dwarf') return randomElem(['#d7ccc8', '#a1887f', '#795548']);
+            return randomElem(['#ffccbc', '#ffab91', '#d84315', '#8d6e63', '#4e342e', '#e0e0e0']);
+        }
+
+        function buildClueText(cat, val, isNegative) {
+            if(cat === 'species') return isNegative ? `Target is NOT an ${val}.` : `Target is an ${val}.`;
+            if(cat === 'outfit') return isNegative ? `They weren't wearing a ${val}.` : `They had a ${val} on.`;
+            if(cat === 'outfitColor') return isNegative ? `Clothes are NOT ${val}.` : `Look for a ${val} top.`;
+            if(cat === 'hatColor') return isNegative ? `The hat was NOT ${val}.` : `The hat was ${val}.`;
+            
+            if(cat === 'hat') {
+                if(val === 'None') return isNegative ? "They definitely wore a hat." : "Target wasn't wearing a hat.";
+                return isNegative ? `They DIDN'T wear a ${val}.` : `They had a ${val} on.`;
+            }
+            if(cat === 'hair') {
+                if(val === 'None') return isNegative ? "They had facial hair." : "Clean shaven face.";
+                return isNegative ? `No ${val} on them.` : `Target has a ${val}.`;
+            }
+            return "ERROR";
+        }
+
+        function getClueType(cat, val) {
+            if (cat === 'hat' && val === 'None') return 'noHat';
+            if (cat === 'hair' && val === 'None') return 'noHair';
+            return cat;
+        }
+
+        function generateRawClue(p, suspect) {
+            let s = suspect.traits;
+            let truth = (p.role === 'innocent' || p.role === 'decoy');
+            if (p.role === 'suspect') truth = false;
+
+            let categories = ['species', 'outfit', 'outfitColor', 'hat', 'hatColor', 'hair'];
+            if (s.hat === 'None') categories = categories.filter(c => c !== 'hatColor');
+            
+            let c = randomElem(categories);
+            let isNegative = Math.random() > 0.5;
+
+            let useSuspectVal = (truth && !isNegative) || (!truth && isNegative);
+            let val;
+            let colorVal = null;
+
+            // BUG FIX: Strictly filter out the suspect's actual trait when generating a "Not"
+            if (c === 'outfitColor' || c === 'hatColor') {
+                if (useSuspectVal) {
+                    val = s[c].name;
+                } else {
+                    let filteredColors = COLORS.filter(x => x.name !== s[c].name);
+                    val = randomElem(filteredColors).name;
+                }
+                colorVal = COLORS.find(x => x.name === val).val;
+            } else {
+                if (useSuspectVal) {
+                    val = s[c];
+                } else {
+                    let pool = c==='species'?SPECIES : c==='outfit'?OUTFITS : c==='hat'?HATS : HAIR;
+                    let filteredPool = pool.filter(x => x !== s[c]);
+                    val = randomElem(filteredPool);
+                }
+            }
+
+            return { category: c, val: val, isNegative: isNegative, colorVal: colorVal };
+        }
+
+        function createPatron(traits, role) {
+            return {
+                id: Math.random().toString(36).substr(2, 9),
+                role: role, traits: traits, realSkin: getSkinColor(traits.species),
+                x: 100 + Math.random() * (PLAY_W - 200), y: 100 + Math.random() * 700,
+                tx: 0, ty: 0, speed: 0.5 + Math.random(), timer: 0, state: 'idle',
+                rawClue: null, clueGiven: false
+            };
+        }
+
+        function initGame() {
+            patrons = []; notepadClusters = []; strikes = 0;
+            changeDiff();
+            document.getElementById('dialogBox').style.display = 'none';
+
+            let suspectTraits = generateTraits();
+            suspectRef = createPatron(suspectTraits, 'suspect');
+            patrons.push(suspectRef);
+
+            let traitKeys = ['species', 'outfit', 'hat', 'hair'];
+            for(let i=0; i<2; i++) {
+                let decoyTraits = JSON.parse(JSON.stringify(suspectTraits)); 
+                let swapKey = randomElem(traitKeys);
+                let newVal = decoyTraits[swapKey];
+                while(newVal === decoyTraits[swapKey]) {
+                    if(swapKey==='species') newVal = randomElem(SPECIES);
+                    if(swapKey==='outfit') newVal = randomElem(OUTFITS);
+                    if(swapKey==='hat') newVal = randomElem(HATS);
+                    if(swapKey==='hair') newVal = randomElem(HAIR);
+                }
+                decoyTraits[swapKey] = newVal;
+                patrons.push(createPatron(decoyTraits, 'decoy'));
+            }
+
+            // 4 Liars
+            for(let i=0; i<27; i++) {
+                let t = generateTraits();
+                while(traitsEqual(t, suspectTraits)) t = generateTraits();
+                patrons.push(createPatron(t, (i < 4) ? 'liar' : 'innocent'));
+            }
+
+            for(let p of patrons) p.rawClue = generateRawClue(p, suspectRef);
+
+            patrons.sort(() => Math.random() - 0.5);
+            player.x = PLAY_W / 2; player.y = 800; player.interacting = null;
+            state = 'playing';
+        }
+
+        function startGame() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            document.getElementById('overlay').style.display = 'none';
+            // Swallow the press that started the game so it can't instantly arrest someone
+            prevSpace = true;
+            prevEnter = true;
+            initGame();
+        }
+
+        function gameOver(win) {
+            state = 'end';
+            document.getElementById('overlay').style.display = 'flex';
+            document.getElementById('overlay').style.background = win ? 'rgba(0, 20, 0, 0.9)' : 'rgba(100, 0, 0, 0.9)';
+            let rt = document.getElementById('rewardText');
+            rt.style.display = 'block';
+            rt.style.color = win ? '#00ff00' : '#ff3333';
+            if(win) {
+                playSound('win');
+                rt.innerText = ">>> ARREST SUCCESSFUL <<<\n\nThe suspect is in custody.\nYou got your man.";
+            } else {
+                playSound('crash');
+                rt.innerText = ">>> CASE CLOSED <<<\n\nToo many wrong arrests.\nThe Commissioner pulled your badge.";
+            }
+            document.getElementById('instText').style.display = 'block';
+            document.getElementById('startBtn').innerText = "NEW CASE";
+        }
+
+        // --- LOGICAL INFERENCE ENGINE ---
+        function registerClueToNotepad(category, val, isNegative, colorVal, patronObj, forceTruth) {
+            let existing = notepadClusters.find(c => c.category === category && c.val === val && c.isNegative === isNegative);
+            if (existing) {
+                if (patronObj && !existing.providers.includes(patronObj)) existing.providers.push(patronObj);
+                if (forceTruth) existing.isTruthReveal = true;
+            } else {
+                let text = buildClueText(category, val, isNegative);
+                if (forceTruth) {
+                    text = isNegative ? `TARGET IS NOT: ${val}` : `TARGET IS DEFINITELY: ${val}`;
+                    if (getClueType(category, val) === 'noHat') text = isNegative ? "TARGET DEFINITELY HAS A HAT" : "TARGET HAS NO HAT";
+                    if (getClueType(category, val) === 'noHair') text = isNegative ? "TARGET DEFINITELY HAS FACIAL HAIR" : "TARGET IS CLEAN SHAVEN";
+                }
+                
+                let cluster = {
+                    category: category, val: val, isNegative: isNegative, colorVal: colorVal, type: getClueType(category, val),
+                    text: text, providers: patronObj ? [patronObj] : [],
+                    isTruthReveal: forceTruth || false, isContradiction: false, isDeadLie: false
+                };
+                notepadClusters.push(cluster);
+            }
+            analyzeLogic();
+        }
+
+        function analyzeLogic() {
+            // 1. Cascade Truths (The Corroboration Engine)
+            let changed = true;
+            let loopGuard = 0;
+            while(changed && loopGuard < 100) {
+                changed = false;
+                loopGuard++;
+                for (let c1 of notepadClusters) {
+                    if (c1.isTruthReveal && !c1.isNegative) { 
+                        for (let c2 of notepadClusters) {
+                            if (c2.category === c1.category && c2.isNegative && c2.val !== c1.val && !c2.isTruthReveal) {
+                                c2.isTruthReveal = true;
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 1.5 Fold redundant statements into established positive truths.
+            // Once "species = Elf" is verified, "species != Goblin" carries no new
+            // information — but it WAS a true statement, so its speakers are
+            // truthtellers: absorb them as corroborators of the positive truth.
+            let posTruths = notepadClusters.filter(c => c.isTruthReveal && !c.isNegative);
+            for (let t of posTruths) {
+                for (let i = notepadClusters.length - 1; i >= 0; i--) {
+                    let c = notepadClusters[i];
+                    if (c === t || c.category !== t.category) continue;
+                    if (c.isNegative && c.val !== t.val) {
+                        for (let p of c.providers) {
+                            if (!t.providers.includes(p)) t.providers.push(p);
+                        }
+                        notepadClusters.splice(i, 1);
+                    }
+                }
+            }
+
+            // 2. Identify Dead Lies (Statements mathematically disproven by Verified Truths)
+            for (let c of notepadClusters) c.isDeadLie = false;
+            for (let c1 of notepadClusters) {
+                if (c1.isTruthReveal) {
+                    for (let c2 of notepadClusters) {
+                        if (!c2.isTruthReveal && c1.category === c2.category) {
+                            let conflict = false;
+                            if (!c1.isNegative && !c2.isNegative && c1.val !== c2.val) conflict = true; 
+                            if (!c1.isNegative && c2.isNegative && c1.val === c2.val) conflict = true; 
+                            if (c1.isNegative && !c2.isNegative && c1.val === c2.val) conflict = true; 
+                            
+                            if (conflict) c2.isDeadLie = true;
+                        }
+                    }
+                }
+            }
+
+            // 3. Find Mutual Contradictions (STRICTLY ignoring Dead Lies)
+            for (let c of notepadClusters) c.isContradiction = false;
+            for (let i = 0; i < notepadClusters.length; i++) {
+                for (let j = i + 1; j < notepadClusters.length; j++) {
+                    let c1 = notepadClusters[i], c2 = notepadClusters[j];
+                    
+                    if (c1.isDeadLie || c2.isDeadLie) continue; 
+                    
+                    if (c1.category === c2.category) {
+                        let conflict = false;
+                        if (!c1.isNegative && !c2.isNegative && c1.val !== c2.val) conflict = true; 
+                        if (!c1.isNegative && c2.isNegative && c1.val === c2.val) conflict = true; 
+                        if (c1.isNegative && !c2.isNegative && c1.val === c2.val) conflict = true; 
+
+                        if (conflict) {
+                            c1.isContradiction = true;
+                            c2.isContradiction = true;
+                        }
+                    }
+                }
+            }
+
+            // 4. Dead Lies are crossed out, but they are still contradictions against the truth
+            for (let c of notepadClusters) {
+                if (c.isDeadLie) c.isContradiction = true;
+            }
+
+            // 5. Sort Clusters
+            notepadClusters.sort((a, b) => {
+                if (a.isTruthReveal !== b.isTruthReveal) return a.isTruthReveal ? -1 : 1;
+                if (a.isContradiction !== b.isContradiction) return a.isContradiction ? -1 : 1;
+                if (a.category < b.category) return -1;
+                if (a.category > b.category) return 1;
+                return 0;
+            });
+        }
+
+        // --- MAIN LOOP ---
+        function update() {
+            pollGamepad();
+            if (state !== 'playing') return;
+
+            let moving = false;
+            let nx = player.x, ny = player.y;
+            
+            if(keys.w) { ny -= player.speed; moving = true; player.frameY = 3; }
+            if(keys.s) { ny += player.speed; moving = true; player.frameY = 0; }
+            if(keys.a) { nx -= player.speed; moving = true; player.frameY = 1; }
+            if(keys.d) { nx += player.speed; moving = true; player.frameY = 2; } 
+
+            if(nx > 0 && nx < PLAY_W - player.w) player.x = nx;
+            if(ny > 0 && ny < canvas.height - player.h) player.y = ny;
+
+            if (moving) {
+                player.animTimer++;
+                if (player.animTimer % 8 === 0) player.frameX = (player.frameX + 1) % 4;
+            } else { player.frameX = 0; }
+
+            let closest = null;
+            let closestDist = 100;
+            let px = player.x + player.w/2, py = player.y + player.h/2;
+
+            for(let p of patrons) {
+                if(p.state === 'idle') {
+                    p.timer--;
+                    if(p.timer <= 0) {
+                        p.state = 'walk'; p.timer = 60 + Math.random()*120;
+                        p.tx = p.x + (Math.random()-0.5)*200; p.ty = p.y + (Math.random()-0.5)*200;
+                        if(p.tx<50) p.tx=50; if(p.tx>PLAY_W-50) p.tx=PLAY_W-50;
+                        if(p.ty<50) p.ty=50; if(p.ty>canvas.height-100) p.ty=canvas.height-100;
+                    }
+                } else if(p.state === 'walk') {
+                    p.timer--;
+                    let dx = p.tx - p.x, dy = p.ty - p.y;
+                    let dist = Math.hypot(dx, dy);
+                    if(dist > p.speed && p.timer > 0) {
+                        p.x += (dx/dist) * p.speed; p.y += (dy/dist) * p.speed;
+                    } else { p.state = 'idle'; p.timer = 60 + Math.random()*120; }
+                }
+
+                let cx = p.x + 20, cy = p.y + 30;
+                let d = Math.hypot(cx - px, cy - py);
+                if(d < closestDist) { closestDist = d; closest = p; }
+            }
+
+            player.interacting = (closestDist < 60) ? closest : null;
+
+            let justPressedSpace = keys.space && !prevSpace;
+            let justPressedEnter = keys.enter && !prevEnter;
+            prevSpace = keys.space;
+            prevEnter = keys.enter;
+
+            let dialog = document.getElementById('dialogBox');
+            if(player.interacting && !moving) {
+                let p = player.interacting;
+                if(justPressedSpace) {
+                    playSound('talk');
+                    dialog.style.display = 'block';
+                    dialog.innerText = `"${buildClueText(p.rawClue.category, p.rawClue.val, p.rawClue.isNegative)}"`;
+                    if(!p.clueGiven) {
+                        registerClueToNotepad(p.rawClue.category, p.rawClue.val, p.rawClue.isNegative, p.rawClue.colorVal, p, false);
+                        p.clueGiven = true;
+                    }
+                }
+                if(justPressedEnter) {
+                    if(p.role === 'suspect') {
+                        playSound('arrest');
+                        gameOver(true);
+                    } else if (p.role === 'liar') {
+                        playSound('liar');
+                        
+                        // BUG FIX: Only log logic if you actually interrogated them!
+                        if (p.clueGiven) {
+                            let oldClue = p.rawClue;
+                            let cluster = notepadClusters.find(c => c.category === oldClue.category && c.val === oldClue.val && c.isNegative === oldClue.isNegative);
+                            if (cluster) cluster.providers = cluster.providers.filter(x => x.id !== p.id);
+                            
+                            registerClueToNotepad(oldClue.category, oldClue.val, !oldClue.isNegative, oldClue.colorVal, null, true);
+                        }
+
+                        patrons = patrons.filter(x => x.id !== p.id);
+                        player.interacting = null;
+                        dialog.style.display = 'none';
+                    } else {
+                        playSound('crash');
+                        strikes++;
+                        document.getElementById('strikeDisplay').innerText = `STRIKES: ${strikes} / ${maxStrikes}`;
+                        if(strikes >= maxStrikes - 1) document.getElementById('strikeDisplay').style.color = '#ff3333';
+                        
+                        // BUG FIX: Only log logic if you actually interrogated them!
+                        if (p.clueGiven) {
+                            let oldClue = p.rawClue;
+                            let cluster = notepadClusters.find(c => c.category === oldClue.category && c.val === oldClue.val && c.isNegative === oldClue.isNegative);
+                            if (cluster) cluster.providers = cluster.providers.filter(x => x.id !== p.id);
+                            
+                            registerClueToNotepad(p.rawClue.category, p.rawClue.val, p.rawClue.isNegative, p.rawClue.colorVal, null, true);
+                        }
+                        
+                        patrons = patrons.filter(x => x.id !== p.id);
+                        player.interacting = null;
+                        dialog.style.display = 'none';
+                        if(strikes >= maxStrikes) gameOver(false);
+                    }
+                }
+            } else {
+                dialog.style.display = 'none';
+            }
+        }
+
+        // --- DRAWING ENGINE ---
+        function drawGeometricPatron(ctx, x, y, t, skin) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            let bw=24, bh=36, by=24, hx=12, hy=12, hr=12; 
+
+            if(t.species === 'Orc') { bw=34; bh=40; by=20; hx=17; hr=14; }
+            else if(t.species === 'Elf') { bw=18; bh=44; by=20; hx=9; hr=10; }
+            else if(t.species === 'Dwarf') { bw=30; bh=26; by=34; hx=15; hr=15; }
+            else if(t.species === 'Halfling') { bw=20; bh=24; by=36; hx=10; hr=10; }
+            else if(t.species === 'Gnome') { bw=18; bh=22; by=38; hx=9; hr=14; }
+            else if(t.species === 'Goblin') { bw=22; bh=26; by=34; hx=11; hr=11; }
+
+            ctx.fillStyle = t.outfitColor.val;
+            if(t.outfit === 'Trenchcoat') {
+                ctx.beginPath(); ctx.moveTo(0, by); ctx.lineTo(bw, by); ctx.lineTo(bw+6, by+bh); ctx.lineTo(-6, by+bh); ctx.fill();
+            } else if (t.outfit === 'Suit') {
+                ctx.fillRect(0, by, bw, bh);
+                ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(bw/2, by); ctx.lineTo(bw/2+4, by+10); ctx.lineTo(bw/2-4, by+10); ctx.fill();
+            } else if (t.outfit === 'Suspenders') {
+                ctx.fillStyle = "#fff"; ctx.fillRect(0, by, bw, bh);
+                ctx.fillStyle = t.outfitColor.val; 
+                ctx.fillRect(4, by, 4, bh); ctx.fillRect(bw-8, by, 4, bh); 
+                ctx.fillRect(0, by+bh-10, bw, 10); 
+            }
+
+            ctx.fillStyle = skin;
+            if(t.species === 'Orc' || t.species === 'Dwarf') { ctx.fillRect(hx-hr, hy-hr, hr*2, hr*2); } 
+            else { ctx.beginPath(); ctx.arc(hx, hy, hr, 0, Math.PI*2); ctx.fill(); } 
+
+            if(t.hair !== 'None') {
+                ctx.fillStyle = "#333";
+                if(t.hair === 'Moustache') {
+                    ctx.fillRect(hx-6, hy+4, 12, 4);
+                } else if(t.hair === 'Beard') {
+                    ctx.beginPath(); ctx.arc(hx, hy+8, hr-2, 0, Math.PI); ctx.fill();
+                }
+            }
+
+            if(t.hat !== 'None') {
+                ctx.fillStyle = t.hatColor.val;
+                if(t.hat === 'Fedora') {
+                    ctx.fillRect(hx-(hr+4), hy-hr, (hr+4)*2, 4); 
+                    ctx.fillRect(hx-hr, hy-(hr+8), hr*2, 8); 
+                    ctx.fillStyle = "#111"; ctx.fillRect(hx-hr, hy-hr-2, hr*2, 2); 
+                } else if (t.hat === 'Flatcap') {
+                    ctx.beginPath(); ctx.arc(hx, hy-hr+4, hr+2, Math.PI, 0); ctx.fill();
+                    ctx.fillRect(hx, hy-hr+2, hr+4, 4); 
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawTraitIcon(ctx, x, y, cluster) {
+            ctx.save();
+            ctx.translate(x, y);
+            
+            ctx.fillStyle = "#2a2a2a"; ctx.fillRect(0, 0, 40, 40);
+            
+            if(cluster.isTruthReveal) { ctx.strokeStyle = "#00ff00"; ctx.lineWidth = 4; }
+            else if(cluster.isContradiction) { ctx.strokeStyle = "#ff3333"; ctx.lineWidth = 4; }
+            else { ctx.strokeStyle = "#ff9800"; ctx.lineWidth = 2; }
+            
+            ctx.strokeRect(0, 0, 40, 40);
+
+            ctx.translate(20, 20); 
+            let color = cluster.colorVal || "#aaa";
+            ctx.fillStyle = color;
+
+            if (cluster.type === 'species') {
+                let bw=14, bh=20, by=0, hx=0, hy=-10, hr=6;
+                if(cluster.val === 'Orc') { bw=18; bh=22; by=2; hx=0; hr=8; }
+                else if(cluster.val === 'Elf') { bw=10; bh=24; by=-2; hx=0; hr=5; }
+                else if(cluster.val === 'Dwarf') { bw=16; bh=14; by=8; hx=0; hr=8; }
+                else if(cluster.val === 'Halfling') { bw=12; bh=12; by=10; hx=0; hr=5; }
+                else if(cluster.val === 'Gnome') { bw=10; bh=10; by=12; hx=0; hr=8; }
+                else if(cluster.val === 'Goblin') { bw=12; bh=14; by=8; hx=0; hr=6; }
+
+                ctx.fillStyle = "#888";
+                ctx.fillRect(-bw/2, by, bw, bh); 
+                if(cluster.val === 'Orc' || cluster.val === 'Dwarf') { ctx.fillRect(-hr, hy-hr, hr*2, hr*2); } 
+                else { ctx.beginPath(); ctx.arc(hx, hy, hr, 0, Math.PI*2); ctx.fill(); }
+            }
+            else if (cluster.type === 'outfit' || cluster.type === 'outfitColor') {
+                let outfit = cluster.type === 'outfit' ? cluster.val : 'Suit'; 
+                ctx.fillStyle = color;
+                if(outfit === 'Trenchcoat') {
+                    ctx.beginPath(); ctx.moveTo(-8, -8); ctx.lineTo(8, -8); ctx.lineTo(12, 12); ctx.lineTo(-12, 12); ctx.fill();
+                } else if (outfit === 'Suit') {
+                    ctx.fillRect(-8, -8, 16, 20);
+                    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(4, -2); ctx.lineTo(-4, -2); ctx.fill();
+                } else if (outfit === 'Suspenders') {
+                    ctx.fillStyle = "#fff"; ctx.fillRect(-8, -8, 16, 20);
+                    ctx.fillStyle = color; 
+                    ctx.fillRect(-6, -8, 3, 20); ctx.fillRect(3, -8, 3, 20); 
+                    ctx.fillRect(-8, 8, 16, 4); 
+                }
+            }
+            else if (cluster.type === 'hat' || cluster.type === 'hatColor') {
+                let hat = cluster.type === 'hat' ? cluster.val : 'Fedora';
+                ctx.fillStyle = color;
+                if(hat === 'Fedora') {
+                    ctx.fillRect(-12, 4, 24, 3);
+                    ctx.fillRect(-6, -4, 12, 8);
+                    ctx.fillStyle = "#111"; ctx.fillRect(-6, 2, 12, 2);
+                } else if (hat === 'Flatcap') {
+                    ctx.beginPath(); ctx.arc(0, 0, 8, Math.PI, 0); ctx.fill();
+                    ctx.fillRect(-6, -2, 14, 3);
+                }
+            }
+            else if (cluster.type === 'hair') {
+                ctx.fillStyle = "#ffccbc"; ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = "#333";
+                if(cluster.val === 'Moustache') { ctx.fillRect(-5, 2, 10, 3); } 
+                else if(cluster.val === 'Beard') { ctx.beginPath(); ctx.arc(0, 3, 8, 0, Math.PI); ctx.fill(); }
+            }
+            else if (cluster.type === 'noHat' || cluster.type === 'noHair') {
+                ctx.fillStyle = "#ffccbc"; ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI*2); ctx.fill();
+                if (cluster.type === 'noHat') {
+                    ctx.fillStyle = "#111"; ctx.font = "bold 8px sans-serif"; ctx.textAlign="center"; ctx.fillText("HAT", 0, -8);
+                } else {
+                    ctx.fillStyle = "#333"; ctx.fillRect(-5, 2, 10, 3); 
+                }
+            }
+
+            if (cluster.isNegative) {
+                ctx.strokeStyle = "rgba(255, 0, 0, 0.9)";
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(-12, -12); ctx.lineTo(12, 12);
+                ctx.moveTo(12, -12); ctx.lineTo(-12, 12);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        function wrapText(context, text, x, y, maxWidth, lineHeight, isDeadLie) {
+            let words = text.split(' ');
+            let line = '';
+            let currentY = y;
+            
+            context.save();
+            if (isDeadLie) {
+                context.strokeStyle = "#ff3333";
+                context.lineWidth = 2;
+            }
+
+            for(let n = 0; n < words.length; n++) {
+                let testLine = line + words[n] + ' ';
+                let metrics = context.measureText(testLine);
+                if (metrics.width > maxWidth && n > 0) {
+                    context.fillText(line, x, currentY);
+                    if (isDeadLie) {
+                        let w = context.measureText(line).width;
+                        context.beginPath(); context.moveTo(x, currentY + 8); context.lineTo(x + w, currentY + 8); context.stroke();
+                    }
+                    line = words[n] + ' ';
+                    currentY += lineHeight;
+                } else { line = testLine; }
+            }
+            context.fillText(line, x, currentY);
+            if (isDeadLie) {
+                let w = context.measureText(line).width;
+                context.beginPath(); context.moveTo(x, currentY + 8); context.lineTo(x + w, currentY + 8); context.stroke();
+            }
+            context.restore();
+        }
+
+        // --- MASTER RENDER ---
+        let sceneTime = 0;
+        const TABLES = [
+            {x: 280, y: 300}, {x: 640, y: 420}, {x: 1010, y: 300},
+            {x: 420, y: 680}, {x: 890, y: 680}
+        ];
+        const BOTTLE_COLORS = ["#7b3f00", "#3e5f2a", "#7a1f2b", "#2a4a5f", "#5f4a2a", "#4a2a5f"];
+
+        function drawSpeakeasy() {
+            sceneTime++;
+
+            // --- Wood plank floor ---
+            ctx.fillStyle = "#241609";
+            ctx.fillRect(0, 0, PLAY_W, canvas.height);
+            for (let row = 0; row < canvas.height / 30; row++) {
+                let py = row * 30;
+                let shade = (row * 31) % 3;
+                ctx.fillStyle = shade === 0 ? "#2b1c0d" : (shade === 1 ? "#271808" : "#2f200f");
+                ctx.fillRect(0, py, PLAY_W, 28);
+                // Plank seams, offset per row
+                ctx.fillStyle = "rgba(0,0,0,0.35)";
+                let seamOffset = (row % 2) * 120;
+                for (let sx = seamOffset; sx < PLAY_W; sx += 240) {
+                    ctx.fillRect(sx, py, 3, 28);
+                }
+            }
+
+            // --- Center rug ---
+            ctx.fillStyle = "#3d1a1a";
+            ctx.fillRect(440, 330, 400, 240);
+            ctx.strokeStyle = "#5c2a2a"; ctx.lineWidth = 6;
+            ctx.strokeRect(452, 342, 376, 216);
+            ctx.strokeStyle = "rgba(255, 200, 120, 0.15)"; ctx.lineWidth = 2;
+            ctx.strokeRect(464, 354, 352, 192);
+
+            // --- Back wall with shelves & neon sign ---
+            ctx.fillStyle = "#1c110a";
+            ctx.fillRect(0, 0, PLAY_W, 78);
+            ctx.fillStyle = "#120a05";
+            ctx.fillRect(0, 70, PLAY_W, 8);
+            // Art deco trim
+            ctx.fillStyle = "rgba(255, 200, 120, 0.12)";
+            for (let tx = 20; tx < PLAY_W; tx += 80) {
+                ctx.fillRect(tx, 6, 2, 64);
+                ctx.fillRect(tx + 6, 12, 2, 52);
+            }
+            // Bottle shelves either side of the sign
+            for (let shelf = 0; shelf < 2; shelf++) {
+                let shelfY = 24 + shelf * 26;
+                for (let seg = 0; seg < 2; seg++) {
+                    let startX = seg === 0 ? 60 : PLAY_W - 380;
+                    ctx.fillStyle = "#0d0703";
+                    ctx.fillRect(startX - 10, shelfY + 18, 340, 4);
+                    for (let b = 0; b < 12; b++) {
+                        let bx = startX + b * 28;
+                        let bh = 10 + ((b * 7 + shelf * 3 + seg) % 8);
+                        ctx.fillStyle = BOTTLE_COLORS[(b + shelf * 2 + seg * 3) % BOTTLE_COLORS.length];
+                        ctx.fillRect(bx, shelfY + 18 - bh, 8, bh);
+                        ctx.fillRect(bx + 2, shelfY + 12 - bh, 4, 6);
+                    }
+                }
+            }
+            // Neon sign with soft flicker
+            let flick = (Math.floor(sceneTime / 7) % 31 === 0) ? 0.4 : 1;
+            ctx.save();
+            ctx.shadowColor = "#ff9800";
+            ctx.shadowBlur = 18 * flick;
+            ctx.fillStyle = `rgba(255, 170, 40, ${flick})`;
+            ctx.font = "bold 34px 'Courier New'";
+            ctx.textAlign = "center";
+            ctx.fillText("* THE GILDED CAGE *", PLAY_W / 2, 48);
+            ctx.restore();
+
+            // --- Tables with stools ---
+            for (let t of TABLES) {
+                // Stools
+                for (let s = 0; s < 3; s++) {
+                    let ang = (s / 3) * Math.PI * 2 + 0.5;
+                    let stx = t.x + Math.cos(ang) * 68, sty = t.y + Math.sin(ang) * 48;
+                    ctx.fillStyle = "rgba(0,0,0,0.4)";
+                    ctx.beginPath(); ctx.ellipse(stx, sty + 4, 14, 6, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = "#38220f";
+                    ctx.beginPath(); ctx.ellipse(stx, sty, 12, 8, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = "#4d3015";
+                    ctx.beginPath(); ctx.ellipse(stx, sty - 3, 12, 8, 0, 0, Math.PI * 2); ctx.fill();
+                }
+                // Table shadow + top
+                ctx.fillStyle = "rgba(0,0,0,0.45)";
+                ctx.beginPath(); ctx.ellipse(t.x, t.y + 8, 52, 24, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = "#3a230e";
+                ctx.beginPath(); ctx.ellipse(t.x, t.y, 50, 32, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = "#4d2f13";
+                ctx.beginPath(); ctx.ellipse(t.x, t.y - 5, 50, 32, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = "rgba(255, 200, 120, 0.15)"; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.ellipse(t.x, t.y - 5, 42, 26, 0, 0, Math.PI * 2); ctx.stroke();
+                // A drink
+                ctx.fillStyle = "#c9a227";
+                ctx.fillRect(t.x - 14, t.y - 14, 6, 9);
+                ctx.fillStyle = "#8899aa";
+                ctx.fillRect(t.x + 10, t.y - 10, 5, 7);
+            }
+
+            // --- Hanging lamps & warm light pools ---
+            for (let t of TABLES) {
+                let pool = ctx.createRadialGradient(t.x, t.y, 20, t.x, t.y, 190);
+                pool.addColorStop(0, "rgba(255, 190, 90, 0.13)");
+                pool.addColorStop(1, "rgba(255, 190, 90, 0)");
+                ctx.fillStyle = pool;
+                ctx.fillRect(t.x - 190, t.y - 190, 380, 380);
+            }
+        }
+
+        function draw() {
+            drawSpeakeasy();
+
+            let renderQueue = [...patrons.map(p => ({...p, type:'patron'})), {...player, type:'player'}];
+            renderQueue.sort((a,b) => (a.y + (a.h||60)) - (b.y + (b.h||60)));
+
+            for(let obj of renderQueue) {
+                if(obj.type === 'patron') {
+                    if(player.interacting && player.interacting.id === obj.id) {
+                        ctx.fillStyle = "rgba(255, 235, 59, 0.3)";
+                        ctx.beginPath(); ctx.ellipse(obj.x+20, obj.y+55, 30, 10, 0, 0, Math.PI*2); ctx.fill();
+                    }
+                    ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.ellipse(obj.x+20, obj.y+60, 20, 8, 0, 0, Math.PI*2); ctx.fill();
+                    drawGeometricPatron(ctx, obj.x, obj.y, obj.traits, obj.realSkin);
+                } else {
+                    ctx.fillStyle = "rgba(0,0,0,0.5)"; 
+                    ctx.beginPath(); ctx.ellipse(obj.x+20, obj.y+45, 20, 8, 0, 0, Math.PI*2); ctx.fill();
+                    
+                    if (playerSprite.complete && playerSprite.naturalWidth > 0) {
+                        ctx.drawImage(playerSprite, player.frameX * 40, player.frameY * 40, 40, 40, obj.x - 20, obj.y - 35, 80, 80);
+                    } else {
+                        // Fallback geometry if sprite missing
+                        ctx.fillStyle = "#555"; 
+                        ctx.beginPath(); ctx.moveTo(obj.x+4, obj.y+20); ctx.lineTo(obj.x+36, obj.y+20); ctx.lineTo(obj.x+40, obj.y+60); ctx.lineTo(obj.x, obj.y+60); ctx.fill();
+                        ctx.fillStyle = "#ffccbc"; 
+                        ctx.beginPath(); ctx.arc(obj.x+20, obj.y+12, 12, 0, Math.PI*2); ctx.fill();
+                        ctx.fillStyle = "#222"; 
+                        ctx.fillRect(obj.x+4, obj.y, 32, 4); ctx.fillRect(obj.x+8, obj.y-8, 24, 8);
+                    }
+                }
+            }
+
+            // --- DRAW NOTEPAD (UI PANEL) ---
+            // Leather backing
+            ctx.fillStyle = "#171009"; ctx.fillRect(PLAY_W, 0, 400, canvas.height);
+            ctx.fillStyle = "#ff9800"; ctx.fillRect(PLAY_W, 0, 4, canvas.height);
+            // Stitching
+            ctx.strokeStyle = "rgba(255, 152, 0, 0.25)";
+            ctx.lineWidth = 1;
+            ctx.setLineDash([6, 5]);
+            ctx.strokeRect(PLAY_W + 10, 8, 380, canvas.height - 16);
+            ctx.setLineDash([]);
+            // Ruled lines
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.045)";
+            ctx.beginPath();
+            for (let ly = 70; ly < canvas.height - 20; ly += 30) {
+                ctx.moveTo(PLAY_W + 16, ly); ctx.lineTo(PLAY_W + 384, ly);
+            }
+            ctx.stroke();
+            // Red margin line
+            ctx.fillStyle = "rgba(255, 60, 60, 0.15)";
+            ctx.fillRect(PLAY_W + 62, 8, 2, canvas.height - 16);
+
+            ctx.save();
+            ctx.shadowColor = "#ffd54f";
+            ctx.shadowBlur = 8;
+            ctx.fillStyle = "#ffd54f"; ctx.font = "bold 24px 'Courier New'"; ctx.textAlign = "left";
+            ctx.fillText("DETECTIVE'S NOTEPAD", PLAY_W + 20, 40);
+            ctx.restore();
+            ctx.fillStyle = "#ffd54f";
+            ctx.fillRect(PLAY_W + 20, 50, 360, 2);
+
+            let currentY = 70;
+            let validClusters = notepadClusters.filter(c => c.providers.length > 0 || c.isTruthReveal);
+            let posTruths = validClusters.filter(c => c.isTruthReveal && !c.isNegative);
+            let others = validClusters.filter(c => !(c.isTruthReveal && !c.isNegative));
+
+            // --- CONFIRMED PROFILE: all verified positives merged into one card ---
+            if (posTruths.length > 0) {
+                let get = (cat) => { let c = posTruths.find(t => t.category === cat); return c ? c.val : null; };
+                let parts = [];
+                let species = get('species');
+                let outfit = get('outfit'), outfitColor = get('outfitColor');
+                let hat = get('hat'), hatColor = get('hatColor');
+                let hair = get('hair');
+                if (species) parts.push(species);
+                if (outfit || outfitColor) parts.push([outfitColor, outfit || "clothes"].filter(Boolean).join(" "));
+                if (hat === 'None') parts.push("No hat");
+                else if (hat || hatColor) parts.push([hatColor, hat || "hat"].filter(Boolean).join(" "));
+                if (hair === 'None') parts.push("Clean shaven");
+                else if (hair) parts.push(hair);
+
+                // Union of every witness who corroborated any confirmed fact
+                let witnesses = [];
+                for (let t of posTruths) {
+                    for (let p of t.providers) if (!witnesses.includes(p)) witnesses.push(p);
+                }
+
+                let lineCount = parts.length;
+                let witRows = Math.ceil(witnesses.length / 10);
+                let cardH = 34 + lineCount * 20 + (witnesses.length > 0 ? 10 + witRows * 40 : 24);
+
+                ctx.fillStyle = "rgba(0, 255, 0, 0.05)";
+                ctx.fillRect(PLAY_W + 14, currentY, 372, cardH);
+                ctx.strokeStyle = "#00ff00"; ctx.lineWidth = 2;
+                ctx.strokeRect(PLAY_W + 14, currentY, 372, cardH);
+
+                ctx.save();
+                ctx.shadowColor = "#00ff00"; ctx.shadowBlur = 8;
+                ctx.fillStyle = "#00ff00"; ctx.font = "bold 18px 'Courier New'";
+                ctx.textAlign = "left"; ctx.textBaseline = "top";
+                ctx.fillText("CONFIRMED PROFILE", PLAY_W + 24, currentY + 8);
+                ctx.restore();
+
+                ctx.textAlign = "left"; ctx.textBaseline = "top";
+                ctx.font = "bold 15px 'Courier New'";
+                for (let li = 0; li < parts.length; li++) {
+                    ctx.fillStyle = "#8dff8d";
+                    ctx.fillText("✓ " + parts[li].toUpperCase(), PLAY_W + 30, currentY + 34 + li * 20);
+                }
+
+                if (witnesses.length > 0) {
+                    for (let j = 0; j < witnesses.length; j++) {
+                        let p = witnesses[j];
+                        let wx = PLAY_W + 28 + (j % 10) * 34;
+                        let wy = currentY + 34 + lineCount * 20 + 8 + Math.floor(j / 10) * 40;
+                        ctx.save();
+                        ctx.translate(wx, wy);
+                        ctx.scale(0.5, 0.5);
+                        drawGeometricPatron(ctx, 0, 0, p.traits, p.realSkin);
+                        ctx.restore();
+                    }
+                } else {
+                    ctx.fillStyle = "#00ff00"; ctx.font = "bold 14px 'Courier New'";
+                    ctx.fillText("✓ VERIFIED BY INTERROGATION", PLAY_W + 30, currentY + 34 + lineCount * 20);
+                }
+
+                currentY += cardH + 12;
+            }
+
+            // --- Remaining leads, rumours and exposed lies ---
+            for(let i=0; i<others.length; i++) {
+                let cluster = others[i];
+                if (currentY > canvas.height - 50) break;
+
+                drawTraitIcon(ctx, PLAY_W + 20, currentY, cluster);
+
+                ctx.fillStyle = cluster.isTruthReveal ? "#00ff00" : (cluster.isContradiction ? "#ff3333" : "#fff");
+                if (cluster.isDeadLie) ctx.fillStyle = "#ff3333";
+
+                ctx.textAlign = "left";
+                ctx.font = cluster.isTruthReveal ? "bold 15px 'Courier New'" : "bold 14px 'Courier New'";
+                ctx.textBaseline = "top";
+                wrapText(ctx, `"${cluster.text}"`, PLAY_W + 70, currentY + 10, 310, 17, cluster.isDeadLie);
+
+                // Draw Corroborating Portraits
+                if(cluster.providers.length > 0) {
+                    for(let j=0; j<cluster.providers.length; j++) {
+                        let p = cluster.providers[j];
+                        let px = PLAY_W + 70 + (j % 9) * 32;
+                        let py = currentY + 34 + Math.floor(j / 9) * 40;
+
+                        ctx.save();
+                        ctx.translate(px, py);
+                        ctx.scale(0.5, 0.5);
+                        drawGeometricPatron(ctx, 0, 0, p.traits, p.realSkin);
+                        ctx.restore();
+                    }
+                } else if (cluster.isTruthReveal) {
+                    ctx.fillStyle = "#00ff00"; ctx.font = "bold 18px 'Courier New'";
+                    ctx.fillText("✓ VERIFIED", PLAY_W + 70, currentY + 34);
+                }
+
+                let rows = Math.max(1, Math.ceil(cluster.providers.length / 9));
+                currentY += 42 + (rows * 40);
+            }
+        }
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        initGame();       // populate the bar so it isn't empty behind the menu overlay
+        state = 'menu';   // but wait in the menu until the player actually starts
+        loop();
+    </script>
+</body>
+</html>

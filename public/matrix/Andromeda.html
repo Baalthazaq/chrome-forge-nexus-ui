@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Matrix Protocol: STEALTH INFILTRATION</title>
+    <style>
+        body {
+            background-color: #04050a; color: #fff; font-family: 'Courier New', Courier, monospace;
+            margin: 0; padding: 20px; display: flex; flex-direction: column;
+            align-items: center; overflow-x: hidden; width: 100%; min-height: 100vh; box-sizing: border-box;
+            background-image: radial-gradient(ellipse at 50% 0%, rgba(192, 76, 224, 0.08), transparent 60%);
+        }
+        h1 {
+            margin: 5px 0 10px 0; font-size: 28px; text-transform: uppercase; letter-spacing: 4px; color: #c04ce0;
+            text-shadow: 0 0 12px rgba(192, 76, 224, 0.7), 0 0 40px rgba(192, 76, 224, 0.3);
+        }
+        #hud {
+            width: 100%; max-width: 1680px; display: flex; justify-content: space-between; align-items: center;
+            background: rgba(4, 5, 10, 0.9); border: 2px solid rgba(192, 76, 224, 0.4); border-bottom: none;
+            padding: 10px 20px; font-weight: bold; border-radius: 8px 8px 0 0; box-sizing: border-box;
+            font-size: 18px;
+        }
+        #crt {
+            position: fixed; inset: 0; pointer-events: none; z-index: 100;
+            background:
+                radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.4) 100%),
+                repeating-linear-gradient(to bottom, rgba(0,0,0,0.16) 0px, rgba(0,0,0,0.16) 1px, transparent 1px, transparent 3px);
+        }
+        #backLink {
+            position: fixed; top: 14px; left: 14px; z-index: 101; color: #c04ce0; text-decoration: none;
+            border: 2px solid rgba(192, 76, 224, 0.5); padding: 6px 12px; font-weight: bold; font-size: 14px;
+            border-radius: 4px; background: rgba(0,0,0,0.6); letter-spacing: 1px;
+        }
+        #backLink:hover { background: #c04ce0; color: #000; box-shadow: 0 0 15px rgba(192, 76, 224, 0.8); }
+        #statusDisplay { color: #2dcc70; }
+        .alarm-active { color: #ff3333 !important; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        
+        .diff-select {
+            background: #222; color: #fff; border: 2px solid #555; padding: 4px 8px;
+            font-family: 'Courier New', Courier, monospace; font-weight: bold; font-size: 16px;
+            border-radius: 4px; cursor: pointer; outline: none;
+        }
+        
+        /* Responsive Home Cinema Container */
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 1680px;
+            display: flex;
+            justify-content: center;
+        }
+        
+        canvas#gameCanvas { 
+            border: 4px solid #444; 
+            width: 100%; 
+            height: auto;
+            max-height: calc(100vh - 120px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8); 
+            image-rendering: pixelated; 
+            background: #0a0a0a;
+            object-fit: contain;
+        }
+        
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.85); pointer-events: none; gap: 20px; z-index: 10;
+        }
+        #startBtn {
+            background: #9c27b0; color: #fff; border: 4px solid #fff; padding: 15px 40px;
+            font-family: 'Courier New', Courier, monospace; font-weight: bold; font-size: 24px;
+            cursor: pointer; pointer-events: auto; text-transform: uppercase; border-radius: 8px;
+        }
+        #startBtn:hover { background: #fff; color: #000; }
+        .instructions { font-size: 18px; color: #aaa; text-align: center; margin-bottom: 20px; line-height: 1.6; }
+        .key-bind { color: #ffeb3b; font-weight: bold; }
+        #rewardText { font-size: 32px; font-weight: bold; text-align: center; display: none; white-space: pre-wrap; text-shadow: 2px 2px 0 #000; }
+    </style>
+</head>
+<body>
+
+    <div id="crt"></div>
+    <a id="backLink" href="Character select.html">&#9668; CONSTRUCT</a>
+    <h1>ARCADE CLASSIC: STEALTH INFILTRATION</h1>
+    <div id="hud">
+        <span id="statusDisplay">STATUS: UNDETECTED</span>
+        <span>
+            <select id="difficultySelect" class="diff-select" onchange="changeDifficulty()">
+                <option value="0.7">EASY</option>
+                <option value="1.0" selected>NORMAL</option>
+                <option value="1.5">HARDCORE</option>
+            </select>
+        </span>
+        <span id="objDisplay" style="color: #ffeb3b;">OBJECTIVE: HACK TERMINAL</span>
+    </div>
+    
+    <div class="game-container">
+        <canvas id="gameCanvas" width="1680" height="1200"></canvas>
+        <div id="overlay">
+            <div id="rewardText"></div>
+            <div class="instructions" id="instText">
+                <span class="key-bind">[W A S D]</span> TO MOVE<br>
+                <span class="key-bind">[E]</span> TO OPEN/CLOSE DOORS<br>
+                HOLD <span class="key-bind">[SPACE]</span> WHILE STANDING STILL TO CLOAK<br>
+                <span style="color: #ff3333; font-size: 16px;">(CANNOT CLOAK WHILE ACTIVELY OBSERVED OR MOVING)</span>
+            </div>
+            <button id="startBtn" onclick="startGame()">Initiate Run</button>
+        </div>
+    </div>
+
+    <script>
+        const REWARD_MESSAGE = ">>> WINNER <<<\n\nThe firewall is down.\nProceed to the next sector.";
+        
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // --- AUDIO ENGINE (layered 8-bit synth) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.6;
+        masterGain.connect(audioCtx.destination);
+
+        let noiseBuf = null;
+        function getNoise() {
+            if (!noiseBuf) {
+                noiseBuf = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+                const d = noiseBuf.getChannelData(0);
+                for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+            }
+            return noiseBuf;
+        }
+
+        function tone(o) {
+            const now = audioCtx.currentTime + (o.delay || 0);
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.type = o.type || 'square';
+            osc.frequency.setValueAtTime(o.f0, now);
+            if (o.f1) {
+                if (o.curve === 'lin') osc.frequency.linearRampToValueAtTime(o.f1, now + o.t);
+                else osc.frequency.exponentialRampToValueAtTime(Math.max(1, o.f1), now + o.t);
+            }
+            g.gain.setValueAtTime(o.vol || 0.1, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + o.t);
+            osc.connect(g); g.connect(masterGain);
+            osc.start(now); osc.stop(now + o.t + 0.05);
+        }
+
+        function noiseHit(o) {
+            const now = audioCtx.currentTime + (o.delay || 0);
+            const src = audioCtx.createBufferSource(); src.buffer = getNoise(); src.loop = true;
+            const filt = audioCtx.createBiquadFilter();
+            filt.type = o.type || 'lowpass';
+            filt.frequency.setValueAtTime(o.f || 1000, now);
+            if (o.f1) filt.frequency.exponentialRampToValueAtTime(Math.max(20, o.f1), now + o.t);
+            filt.Q.value = o.q || 1;
+            const g = audioCtx.createGain();
+            g.gain.setValueAtTime(o.vol || 0.2, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + o.t);
+            src.connect(filt); filt.connect(g); g.connect(masterGain);
+            src.start(now); src.stop(now + o.t + 0.05);
+        }
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            if (type === 'alarm') {
+                // Two-tone klaxon
+                tone({ type: 'sawtooth', f0: 620, f1: 620, t: 0.22, vol: 0.14 });
+                tone({ type: 'sawtooth', f0: 440, f1: 440, t: 0.22, vol: 0.14, delay: 0.24 });
+                tone({ type: 'sawtooth', f0: 620, f1: 620, t: 0.22, vol: 0.12, delay: 0.48 });
+            } else if (type === 'siren') {
+                // Quieter repeating version while the hunt is on
+                tone({ type: 'sawtooth', f0: 620, t: 0.18, vol: 0.06 });
+                tone({ type: 'sawtooth', f0: 440, t: 0.18, vol: 0.06, delay: 0.2 });
+            } else if (type === 'door') {
+                // Pneumatic servo slide + clunk
+                noiseHit({ type: 'bandpass', f: 400, f1: 1400, q: 2, t: 0.18, vol: 0.14 });
+                tone({ type: 'square', f0: 140, f1: 95, t: 0.16, vol: 0.08, curve: 'lin' });
+                tone({ type: 'sine', f0: 70, t: 0.06, vol: 0.1, delay: 0.16 });
+            } else if (type === 'hack') {
+                // Data chirps + confirmation
+                [880, 1174.66, 1567.98].forEach((f, i) =>
+                    tone({ type: 'square', f0: f, t: 0.07, vol: 0.07, delay: i * 0.08 }));
+                tone({ type: 'sine', f0: 1760, f1: 2093, t: 0.25, vol: 0.06, delay: 0.28, curve: 'lin' });
+            } else if (type === 'caught') {
+                noiseHit({ f: 1800, f1: 90, t: 0.5, vol: 0.28 });
+                tone({ type: 'sawtooth', f0: 150, f1: 35, t: 0.55, vol: 0.2 });
+                tone({ type: 'square', f0: 75, f1: 28, t: 0.6, vol: 0.12 });
+            } else if (type === 'cloak_on') {
+                tone({ type: 'sine', f0: 1400, f1: 350, t: 0.3, vol: 0.08 });
+                noiseHit({ type: 'highpass', f: 3000, t: 0.25, vol: 0.04 });
+            } else if (type === 'cloak_off') {
+                tone({ type: 'sine', f0: 350, f1: 1400, t: 0.25, vol: 0.07 });
+            } else if (type === 'win') {
+                [440, 554.37, 659.25, 880, 1108.73, 1318.51].forEach((f, i) =>
+                    tone({ type: 'square', f0: f, t: 0.28, vol: 0.09, delay: i * 0.09 }));
+                [220, 277.18, 329.63, 440, 554.37, 659.25].forEach((f, i) =>
+                    tone({ type: 'triangle', f0: f, t: 0.38, vol: 0.05, delay: i * 0.09 }));
+            }
+        }
+
+        const playerSprite = new Image(); playerSprite.src = 'Andromeda.png';
+        const guardSprite = new Image(); guardSprite.src = 'guard.png';
+
+        const TILE_SIZE = 40;
+        const COLS = 42, ROWS = 30; // Double Map Size (1680x1200)
+        
+        let state = 'menu'; 
+        let diffMult = 1.0;
+        let globalAlarm = false;
+        let terminalHacked = false;
+        let globalTime = 0;
+        let eWasPressed = false;
+        let wasSeen = false;
+
+        let mapData = [];
+        let initialMap = [];
+        let visibleMap = [];
+        let terminalNode = {x: 0, y: 0};
+        let exitNodes = [];
+        let startNode = {x: 0, y: 0};
+
+        // 42 x 30 Blueprint
+        // P=Player, T=Terminal, E=Exit, +=Door, .=Floor, #=Wall
+        const blueprint = [
+            "##########################################", // 0
+            "#...T...#..........#.....#...............#", // 1
+            "#.......#..........#.....#...............#", // 2
+            "####+####..........#.....#.......#####+###", // 3 
+            "#.......############.....#########.......#", // 4
+            "#.......+................+...............#", // 5 
+            "#.......#................#...............#", // 6
+            "#########.......##########...............#", // 7
+            "#...............#........#...............#", // 8
+            "#...............#........#########+#######", // 9
+            "####+############................#.......#", // 10 
+            "#......#........#................#.......#", // 11
+            "#......#........#.......##########.......#", // 12
+            "#......#........#.......#........#.......#", // 13
+            "#......+........+.......+........+.......#", // 14 
+            "########........#########........#.......#", // 15
+            "#......#........#.......#........#########", // 16
+            "#......##########.......#................#", // 17
+            "#.......................+................#", // 18 
+            "#.......................#................#", // 19
+            "#########+#######.......##########+#######", // 20 
+            "#...............#.......#........#.......#", // 21
+            "#...............#.......#........#.......#", // 22
+            "#...............+.......+........#.......#", // 23 
+            "#################.......##########.......#", // 24
+            "#...............#.......#................#", // 25
+            "#P..............#.......#................#", // 26
+            "#P..............+.......+...............E#", // 27 
+            "#P..............#.......#...............E#", // 28
+            "##########################################"  // 29
+        ];
+
+        let player = { x: 0, y: 0, size: 24, speed: 6, frameX: 0, frameY: 3, animTimer: 0, isCloaked: false };
+        let guards = [];
+        let cameras = [];
+
+        // --- GAMEPAD CONTROLLER SUPPORT ---
+        let gpStartWasPressed = false;
+        function pollGamepad() {
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            const gp = gamepads[0];
+
+            if (gp) {
+                keys.w = gp.buttons[12]?.pressed || gp.axes[1] < -0.3;
+                keys.s = gp.buttons[13]?.pressed || gp.axes[1] >  0.3;
+                keys.a = gp.buttons[14]?.pressed || gp.axes[0] < -0.3;
+                keys.d = gp.buttons[15]?.pressed || gp.axes[0] >  0.3;
+
+                keys.space = gp.buttons[0]?.pressed; // 'A' Button to Cloak
+                keys.e = gp.buttons[2]?.pressed || gp.buttons[1]?.pressed; // 'X' or 'B' to Interact
+
+                // 'A' or Start begins / restarts the run (edge-triggered)
+                let startPressed = gp.buttons[0]?.pressed || gp.buttons[9]?.pressed;
+                if (startPressed && !gpStartWasPressed && state !== 'playing') {
+                    startGame();
+                }
+                gpStartWasPressed = startPressed;
+            }
+        }
+
+        function isStartingRoom(x, y) {
+            return (x >= 1 && x <= 15 && y >= 25 && y <= 28);
+        }
+
+        function getRandomFloorPoint() {
+            let floors = [];
+            for(let y=1; y<ROWS-1; y++) {
+                for(let x=1; x<COLS-1; x++) {
+                    if (mapData[y][x] === 0 && !isStartingRoom(x, y)) {
+                        floors.push({x: x*TILE_SIZE+TILE_SIZE/2, y: y*TILE_SIZE+TILE_SIZE/2});
+                    }
+                }
+            }
+            return floors[Math.floor(Math.random() * floors.length)];
+        }
+
+        function initLevel() {
+            mapData = []; initialMap = []; exitNodes = [];
+            visibleMap = Array.from({length: ROWS}, () => Array(COLS).fill(false));
+
+            for(let r=0; r<ROWS; r++) {
+                let row = [];
+                for(let c=0; c<COLS; c++) {
+                    let char = blueprint[r][c];
+                    if (char === '#') row.push(1);
+                    else if (char === '.') row.push(0);
+                    else if (char === '+') row.push(2); 
+                    else if (char === 'T') { row.push(0); terminalNode = {tx: c, ty: r}; }
+                    else if (char === 'E') { row.push(0); exitNodes.push({tx: c, ty: r}); }
+                    else if (char === 'P') { row.push(0); startNode = {tx: c, ty: r}; }
+                }
+                mapData.push([...row]);
+                initialMap.push([...row]);
+            }
+            
+            player.x = startNode.tx * TILE_SIZE + 8; 
+            player.y = startNode.ty * TILE_SIZE + 8; 
+            player.isCloaked = false;
+            
+            globalAlarm = false; terminalHacked = false; eWasPressed = false; wasSeen = false;
+            
+            document.getElementById('statusDisplay').innerText = "STATUS: UNDETECTED";
+            document.getElementById('statusDisplay').className = "";
+            document.getElementById('objDisplay').innerText = "OBJECTIVE: HACK TERMINAL";
+            document.getElementById('objDisplay').style.color = "#ffeb3b";
+
+            guards = [];
+            for(let i=0; i<8; i++) {
+                let p1 = getRandomFloorPoint(), p2 = getRandomFloorPoint(), p3 = getRandomFloorPoint();
+                guards.push({
+                    x: p1.x, y: p1.y, angle: 0,
+                    speed: 1.5 * diffMult,
+                    fov: Math.PI/2.5, range: 225,
+                    points: [p1, p2, p3], targetIdx: 1,
+                    state: 'patrol', waitTimer: 0,
+                    frameX: 0, animTimer: 0
+                });
+            }
+
+            cameras = [
+                { tx: 11, ty: 12, baseAngle: 0, sweep: Math.PI/3, fov: Math.PI/4, range: 450, offset: 0 },
+                { tx: 24, ty: 2, baseAngle: Math.PI/2, sweep: Math.PI/3, fov: Math.PI/4, range: 450, offset: Math.PI/2 },
+                { tx: 34, ty: 4, baseAngle: Math.PI/2, sweep: Math.PI/3, fov: Math.PI/4, range: 450, offset: 0 },
+                { tx: 40, ty: 25, baseAngle: Math.PI, sweep: Math.PI/2, fov: Math.PI/4, range: 500, offset: Math.PI },
+                { tx: 17, ty: 16, baseAngle: -Math.PI/4, sweep: Math.PI/3, fov: Math.PI/4, range: 450, offset: 0 },
+                { tx: 25, ty: 25, baseAngle: Math.PI/4, sweep: Math.PI/4, fov: Math.PI/4, range: 450, offset: Math.PI },
+                { tx: 17, ty: 10, baseAngle: Math.PI/2, sweep: Math.PI/3, fov: Math.PI/4, range: 450, offset: Math.PI/2 }
+            ];
+
+            updateFogOfWar();
+        }
+
+        const keys = { w: false, a: false, s: false, d: false, e: false, space: false };
+        window.addEventListener("keydown", (e) => {
+            let k = e.key.toLowerCase();
+            if(e.code === 'Space') { k = 'space'; e.preventDefault(); }
+            if (keys.hasOwnProperty(k)) keys[k] = true;
+            if (k === 'enter' && state !== 'playing') startGame();
+        });
+        window.addEventListener("keyup", (e) => { 
+            let k = e.key.toLowerCase(); 
+            if(e.code === 'Space') { k = 'space'; e.preventDefault(); }
+            if (keys.hasOwnProperty(k)) keys[k] = false; 
+        });
+
+        function changeDifficulty() { diffMult = parseFloat(document.getElementById('difficultySelect').value); }
+
+        function startGame() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            document.getElementById('overlay').style.background = 'transparent';
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('instText').style.display = 'none';
+            document.getElementById('rewardText').style.display = 'none';
+            initLevel();
+            state = 'playing';
+        }
+
+        function toggleDoors() {
+            let cx = Math.floor((player.x + player.size/2) / TILE_SIZE);
+            let cy = Math.floor((player.y + player.size/2) / TILE_SIZE);
+            let toggled = false;
+            
+            for(let y = cy-1; y <= cy+1; y++) {
+                for(let x = cx-1; x <= cx+1; x++) {
+                    if (mapData[y] && mapData[y][x] === 2) { 
+                        mapData[y][x] = 3; toggled = true; 
+                    } else if (mapData[y] && mapData[y][x] === 3) {
+                        if (!(cx === x && cy === y)) { mapData[y][x] = 2; toggled = true; }
+                    }
+                }
+            }
+            if (toggled) { playSound('door'); updateFogOfWar(); }
+        }
+
+        // --- FOG OF WAR ---
+        function updateFogOfWar() {
+            for(let y=0; y<ROWS; y++) visibleMap[y].fill(false);
+            
+            let px = Math.floor((player.x + player.size/2) / TILE_SIZE);
+            let py = Math.floor((player.y + player.size/2) / TILE_SIZE);
+            
+            if (px < 0 || py < 0 || px >= COLS || py >= ROWS) return;
+            
+            let q = [{x: px, y: py}];
+            visibleMap[py][px] = true;
+            
+            let dirs = [
+                {x:1,y:0}, {x:-1,y:0}, {x:0,y:1}, {x:0,y:-1},
+                {x:1,y:1}, {x:-1,y:-1}, {x:-1,y:1}, {x:1,y:-1}
+            ];
+            
+            let head = 0;
+            while(head < q.length) {
+                let curr = q[head++];
+                let tile = mapData[curr.y][curr.x];
+                
+                if (tile === 0 || tile === 3 || (curr.x === px && curr.y === py)) {
+                    for(let d of dirs) {
+                        let nx = curr.x + d.x, ny = curr.y + d.y;
+                        if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS && !visibleMap[ny][nx]) {
+                            visibleMap[ny][nx] = true; 
+                            let nTile = mapData[ny][nx];
+                            if (nTile === 0 || nTile === 3) q.push({x: nx, y: ny});
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- COLLISION & PATHFINDING ---
+        function hitWallPlayer(newX, newY, size) {
+            let left = Math.floor(newX / TILE_SIZE), right = Math.floor((newX + size - 0.1) / TILE_SIZE);
+            let top = Math.floor(newY / TILE_SIZE), bottom = Math.floor((newY + size - 0.1) / TILE_SIZE);
+            if (left < 0 || right >= COLS || top < 0 || bottom >= ROWS) return true;
+            let tiles = [mapData[top][left], mapData[top][right], mapData[bottom][left], mapData[bottom][right]];
+            return tiles.includes(1) || tiles.includes(2);
+        }
+
+        function hitWallGuard(newX, newY, size) {
+            let left = Math.floor(newX / TILE_SIZE), right = Math.floor((newX + size - 0.1) / TILE_SIZE);
+            let top = Math.floor(newY / TILE_SIZE), bottom = Math.floor((newY + size - 0.1) / TILE_SIZE);
+            if (left < 0 || right >= COLS || top < 0 || bottom >= ROWS) return true;
+            
+            let checkTiles = [
+                {x: left, y: top}, {x: right, y: top}, 
+                {x: left, y: bottom}, {x: right, y: bottom}
+            ];
+            
+            let hit = false;
+            for(let pt of checkTiles) {
+                if(mapData[pt.y][pt.x] === 1) hit = true;
+                if(mapData[pt.y][pt.x] === 2) {
+                    mapData[pt.y][pt.x] = 3; 
+                    playSound('door'); 
+                    updateFogOfWar();
+                }
+            }
+            return hit;
+        }
+
+        function hasLineOfSight(x1, y1, x2, y2) {
+            let dist = Math.hypot(x2 - x1, y2 - y1);
+            let steps = Math.max(Math.floor(dist / 4), 1); 
+            let dx = (x2 - x1) / steps, dy = (y2 - y1) / steps;
+            
+            for(let i = 0; i <= steps; i++) {
+                let gX = Math.floor((x1 + dx * i) / TILE_SIZE);
+                let gY = Math.floor((y1 + dy * i) / TILE_SIZE);
+                if (mapData[gY] && (mapData[gY][gX] === 1 || mapData[gY][gX] === 2)) return false; 
+            }
+            return true;
+        }
+
+        function checkVisibility(entity, targetX, targetY) {
+            let ex = entity.x || (entity.tx * TILE_SIZE + TILE_SIZE/2);
+            let ey = entity.y || (entity.ty * TILE_SIZE + TILE_SIZE/2);
+            let dx = targetX - ex, dy = targetY - ey;
+            
+            if (Math.hypot(dx, dy) > entity.range) return false;
+            let diff = Math.abs(Math.atan2(dy, dx) - entity.angle) % (2 * Math.PI);
+            if (diff > Math.PI) diff = 2 * Math.PI - diff;
+            if (diff < entity.fov / 2) return hasLineOfSight(ex, ey, targetX, targetY);
+            return false;
+        }
+
+        function drawClippedCone(ctx, sx, sy, angle, fov, range, col) {
+            // Flashlight-style falloff from the source
+            let grad = ctx.createRadialGradient(sx, sy, 8, sx, sy, range);
+            grad.addColorStop(0, `rgba(${col.r},${col.g},${col.b},${col.a})`);
+            grad.addColorStop(0.6, `rgba(${col.r},${col.g},${col.b},${(col.a * 0.45).toFixed(3)})`);
+            grad.addColorStop(1, `rgba(${col.r},${col.g},${col.b},0)`);
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            
+            const NUM_RAYS = 60; 
+            const startAngle = angle - fov / 2;
+            const angleStep = fov / NUM_RAYS;
+            
+            for (let i = 0; i <= NUM_RAYS; i++) {
+                let currentAngle = startAngle + i * angleStep;
+                let rx = sx, ry = sy;
+                let rayLen = 0, stepSize = 5;
+                
+                while (rayLen < range) {
+                    rx += Math.cos(currentAngle) * stepSize;
+                    ry += Math.sin(currentAngle) * stepSize;
+                    rayLen += stepSize;
+                    
+                    let gX = Math.floor(rx / TILE_SIZE);
+                    let gY = Math.floor(ry / TILE_SIZE);
+                    
+                    if (gX < 0 || gY < 0 || gX >= COLS || gY >= ROWS) break;
+                    if (mapData[gY] && (mapData[gY][gX] === 1 || mapData[gY][gX] === 2)) {
+                        rx -= Math.cos(currentAngle) * stepSize; 
+                        ry -= Math.sin(currentAngle) * stepSize;
+                        break;
+                    }
+                }
+                ctx.lineTo(rx, ry);
+            }
+            ctx.lineTo(sx, sy);
+            ctx.fill();
+        }
+
+        function getNextStep(startX, startY, targetX, targetY) {
+            let sx = Math.floor(startX / TILE_SIZE), sy = Math.floor(startY / TILE_SIZE);
+            let tx = Math.floor(targetX / TILE_SIZE), ty = Math.floor(targetY / TILE_SIZE);
+            if (sx === tx && sy === ty) return null;
+            
+            let q = [{x: sx, y: sy}];
+            let cameFrom = new Map();
+            cameFrom.set(`${sx},${sy}`, null);
+            let found = false;
+            let dirs = [{x:0,y:-1}, {x:1,y:0}, {x:0,y:1}, {x:-1,y:0}];
+            
+            while(q.length > 0) {
+                let curr = q.shift();
+                if(curr.x === tx && curr.y === ty) { found = true; break; }
+                for(let d of dirs) {
+                    let nx = curr.x + d.x, ny = curr.y + d.y;
+                    if(nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+                        let tile = mapData[ny][nx];
+                        if(tile === 0 || tile === 2 || tile === 3) {
+                            let key = `${nx},${ny}`;
+                            if(!cameFrom.has(key)) {
+                                cameFrom.set(key, curr);
+                                q.push({x: nx, y: ny});
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if(!found) return null;
+            let curr = {x: tx, y: ty}, path = [];
+            while(curr) { path.push(curr); curr = cameFrom.get(`${curr.x},${curr.y}`); }
+            if (path.length >= 2) {
+                let nextCell = path[path.length - 2];
+                return {x: nextCell.x * TILE_SIZE + TILE_SIZE/2, y: nextCell.y * TILE_SIZE + TILE_SIZE/2};
+            }
+            return null;
+        }
+
+        function moveGuardTowards(g, tx, ty) {
+            let nextPt = {x: tx, y: ty};
+            let gx = Math.floor(g.x / TILE_SIZE), gy = Math.floor(g.y / TILE_SIZE);
+            let tgx = Math.floor(tx / TILE_SIZE), tgy = Math.floor(ty / TILE_SIZE);
+            
+            if (gx !== tgx || gy !== tgy) {
+                let nextCell = getNextStep(g.x, g.y, tx, ty);
+                if (nextCell) nextPt = nextCell;
+            }
+            
+            let dx = nextPt.x - g.x, dy = nextPt.y - g.y;
+            let dist = Math.hypot(dx, dy);
+            
+            if (dist > 0) {
+                g.angle = Math.atan2(dy, dx);
+                let nx = g.x + Math.cos(g.angle) * Math.min(g.speed, dist);
+                let ny = g.y + Math.sin(g.angle) * Math.min(g.speed, dist);
+                
+                let radius = 12;
+                if (!hitWallGuard(nx - radius, g.y - radius, radius*2)) g.x = nx;
+                if (!hitWallGuard(g.x - radius, ny - radius, radius*2)) g.y = ny;
+            }
+        }
+
+        // --- MAIN LOOP ---
+        function update() {
+            pollGamepad(); // <--- Correctly placed controller polling
+
+            if (state !== 'playing') return;
+            globalTime++;
+
+            let px = player.x + player.size/2, py = player.y + player.size/2;
+            let moving = (keys.w || keys.a || keys.s || keys.d);
+
+            let geometricallySeen = false;
+            if (!terminalHacked) {
+                for (let cam of cameras) {
+                    cam.angle = cam.baseAngle + Math.sin((globalTime * 0.02) + cam.offset) * cam.sweep;
+                    if (checkVisibility(cam, px, py)) geometricallySeen = true;
+                }
+            }
+            for (let g of guards) {
+                if (checkVisibility(g, px, py)) geometricallySeen = true;
+            }
+
+            let wasCloaked = player.isCloaked;
+            if (moving) {
+                player.isCloaked = false;
+            } else if (keys.space) {
+                if (!player.isCloaked && geometricallySeen) {
+                    player.isCloaked = false;
+                } else {
+                    player.isCloaked = true;
+                }
+            } else {
+                player.isCloaked = false;
+            }
+            if (player.isCloaked && !wasCloaked) playSound('cloak_on');
+            else if (!player.isCloaked && wasCloaked) playSound('cloak_off');
+
+            let currentlySeenByEnemy = geometricallySeen && !player.isCloaked;
+            let ps = player.isCloaked ? 0 : player.speed;
+
+            if (currentlySeenByEnemy && !wasSeen) {
+                playSound('alarm');
+                for (let g of guards) g.state = 'chase';
+            } 
+            else if (!currentlySeenByEnemy && wasSeen) {
+                let lastKnown = {x: px, y: py};
+                for(let g of guards) {
+                    g.points.push(lastKnown); 
+                    g.state = 'patrol';
+                    // The Fix: Go directly to the newly appended lastKnown node FIRST
+                    g.targetIdx = g.points.length - 1;
+                }
+            }
+            wasSeen = currentlySeenByEnemy;
+
+            if (keys.e && !eWasPressed) { eWasPressed = true; toggleDoors(); } 
+            else if (!keys.e) { eWasPressed = false; }
+
+            let nextX = player.x, nextY = player.y;
+            if (keys.w) { nextY -= ps; player.frameY = 3; } 
+            if (keys.s) { nextY += ps; player.frameY = 0; } 
+            if (!hitWallPlayer(player.x, nextY, player.size)) player.y = nextY;
+            
+            if (keys.a) { nextX -= ps; player.frameY = 1; } 
+            if (keys.d) { nextX += ps; player.frameY = 2; } 
+            if (!hitWallPlayer(nextX, player.y, player.size)) player.x = nextX;
+            
+            if (moving && !player.isCloaked) {
+                player.animTimer++;
+                if (player.animTimer % 8 === 0) player.frameX = (player.frameX + 1) % 4; 
+                updateFogOfWar(); 
+            } else { player.frameX = 0; }
+            
+            px = player.x + player.size/2; py = player.y + player.size/2;
+
+            for (let g of guards) {
+                let guardOldX = g.x, guardOldY = g.y;
+                if (g.state === 'chase') {
+                    g.speed = 2.5 * diffMult;
+                    moveGuardTowards(g, px, py);
+                } else if (g.state === 'patrol') {
+                    g.speed = 1.5 * diffMult; 
+                    let target = g.points[g.targetIdx];
+                    let dist = Math.hypot(target.x - g.x, target.y - g.y);
+                    if (dist < 5) {
+                        g.state = 'wait'; g.waitTimer = 300; 
+                    } else {
+                        moveGuardTowards(g, target.x, target.y);
+                    }
+                } else if (g.state === 'wait') {
+                    g.waitTimer--;
+                    if (g.waitTimer <= 0) {
+                        g.state = 'turn'; g.waitTimer = 60; 
+                        g.targetIdx = (g.targetIdx + 1) % g.points.length;
+                        let target = g.points[g.targetIdx];
+                        let nextStep = getNextStep(g.x, g.y, target.x, target.y);
+                        if(nextStep) g.angle = Math.atan2(nextStep.y - g.y, nextStep.x - g.x);
+                    }
+                } else if (g.state === 'turn') {
+                    g.waitTimer--;
+                    if (g.waitTimer <= 0) g.state = 'patrol';
+                }
+
+                // Walk-cycle animation driven by actual movement
+                if (Math.hypot(g.x - guardOldX, g.y - guardOldY) > 0.2) {
+                    g.animTimer++;
+                    if (g.animTimer % 9 === 0) g.frameX = (g.frameX + 1) % 4;
+                } else {
+                    g.frameX = 0;
+                }
+
+                if (Math.hypot(px - g.x, py - g.y) < 24) {
+                    playSound('caught');
+                    state = 'end';
+                    document.getElementById('overlay').style.background = 'rgba(100, 0, 0, 0.8)';
+                    document.getElementById('rewardText').style.display = 'block';
+                    document.getElementById('rewardText').style.color = '#ff3333';
+                    document.getElementById('rewardText').innerText = ">>> MISSION FAILED <<<\n\nYou were apprehended.";
+                    document.getElementById('instText').style.display = 'block';
+                    let btn = document.getElementById('startBtn');
+                    btn.style.display = 'block'; btn.innerText = "Try Again";
+                }
+            }
+
+            globalAlarm = false;
+            for(let g of guards) if(g.state === 'chase') globalAlarm = true;
+
+            // Klaxon keeps sounding while the hunt is on
+            if (globalAlarm && globalTime % 90 === 0) playSound('siren');
+
+            if(terminalHacked) {
+                document.getElementById('statusDisplay').innerText = "STATUS: CAMERAS DISABLED";
+                document.getElementById('statusDisplay').className = "";
+            } else if (globalAlarm) {
+                document.getElementById('statusDisplay').innerText = "STATUS: COMPROMISED!";
+                document.getElementById('statusDisplay').className = "alarm-active";
+            } else {
+                document.getElementById('statusDisplay').innerText = "STATUS: UNDETECTED";
+                document.getElementById('statusDisplay').className = "";
+            }
+
+            let termX = terminalNode.tx * TILE_SIZE;
+            let termY = terminalNode.ty * TILE_SIZE;
+            if (!terminalHacked && px > termX && px < termX + TILE_SIZE && py > termY && py < termY + TILE_SIZE) {
+                terminalHacked = true; globalAlarm = false;
+                playSound('hack');
+                document.getElementById('objDisplay').innerText = "OBJECTIVE: ESCAPE";
+                document.getElementById('objDisplay').style.color = "#2dcc70";
+            }
+
+            if (terminalHacked) {
+                for (let exit of exitNodes) {
+                    let ex = exit.tx * TILE_SIZE, ey = exit.ty * TILE_SIZE;
+                    if (px > ex && px < ex + TILE_SIZE && py > ey && py < ey + TILE_SIZE) {
+                        playSound('win');
+                        state = 'end';
+                        document.getElementById('overlay').style.background = 'rgba(0, 20, 0, 0.9)';
+                        document.getElementById('rewardText').style.display = 'block';
+                        document.getElementById('rewardText').style.color = '#00ff00';
+                        document.getElementById('rewardText').innerText = REWARD_MESSAGE;
+                        let btn = document.getElementById('startBtn');
+                        btn.style.display = 'block'; btn.innerText = "Play Again";
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = "#0a0a0a"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    let tile = mapData[y][x];
+                    let px = x * TILE_SIZE, py = y * TILE_SIZE;
+
+                    if (tile === 1) { 
+                        ctx.fillStyle = "#161616"; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                        ctx.strokeStyle = "#333"; ctx.lineWidth = 1; ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+                        ctx.strokeStyle = "#00bcd4"; ctx.lineWidth = 2; 
+                        if(y>0 && mapData[y-1][x]!==1) { ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(px+40,py); ctx.stroke(); } 
+                        if(y<ROWS-1 && mapData[y+1][x]!==1) { ctx.beginPath(); ctx.moveTo(px,py+40); ctx.lineTo(px+40,py+40); ctx.stroke(); } 
+                        if(x>0 && mapData[y][x-1]!==1) { ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(px,py+40); ctx.stroke(); } 
+                        if(x<COLS-1 && mapData[y][x+1]!==1) { ctx.beginPath(); ctx.moveTo(px+40,py); ctx.lineTo(px+40,py+40); ctx.stroke(); } 
+                    } else if (tile === 0) {
+                        let h = (x * 7 + y * 13) % 23;
+                        ctx.fillStyle = (h < 3) ? "#14141b" : "#101016";
+                        ctx.fillRect(px+1, py+1, TILE_SIZE-2, TILE_SIZE-2);
+                        if (h === 5) {
+                            // Vent grate
+                            ctx.fillStyle = "rgba(255,255,255,0.045)";
+                            ctx.fillRect(px+10, py+12, 20, 3);
+                            ctx.fillRect(px+10, py+19, 20, 3);
+                            ctx.fillRect(px+10, py+26, 20, 3);
+                        } else if (h === 11) {
+                            // Hazard corner mark
+                            ctx.fillStyle = "rgba(192, 76, 224, 0.07)";
+                            ctx.fillRect(px+2, py+2, 8, 2);
+                            ctx.fillRect(px+2, py+2, 2, 8);
+                        }
+                    } else if (tile === 2) {
+                        let isVert = (y > 0 && y < ROWS-1 && initialMap[y-1][x] === 1 && initialMap[y+1][x] === 1);
+                        if (isVert) {
+                            ctx.fillStyle = "#ff9800"; ctx.fillRect(px + 15, py, 10, TILE_SIZE);
+                            ctx.strokeStyle = "#000"; ctx.strokeRect(px + 15, py, 10, TILE_SIZE);
+                        } else {
+                            ctx.fillStyle = "#ff9800"; ctx.fillRect(px, py + 15, TILE_SIZE, 10);
+                            ctx.strokeStyle = "#000"; ctx.strokeRect(px, py + 15, TILE_SIZE, 10);
+                        }
+                    } else if (tile === 3) { 
+                        let wasVert = (y > 0 && y < ROWS-1 && initialMap[y-1][x] === 1 && initialMap[y+1][x] === 1);
+                        if (wasVert) {
+                            ctx.fillStyle = "#4caf50"; ctx.fillRect(px, py + 5, TILE_SIZE, 10);
+                            ctx.fillStyle = "#111"; ctx.fillRect(px, py, TILE_SIZE, 5); 
+                        } else {
+                            ctx.fillStyle = "#4caf50"; ctx.fillRect(px + 5, py, 10, TILE_SIZE);
+                            ctx.fillStyle = "#111"; ctx.fillRect(px, py, 5, TILE_SIZE); 
+                        }
+                    }
+                }
+            }
+
+            let termX = terminalNode.tx * TILE_SIZE, termY = terminalNode.ty * TILE_SIZE;
+            if (!terminalHacked) {
+                // Beacon glow so the objective reads at a glance
+                let tPulse = 0.5 + Math.sin(globalTime * 0.06) * 0.5;
+                let tGlow = ctx.createRadialGradient(termX + 20, termY + 20, 5, termX + 20, termY + 20, 60);
+                tGlow.addColorStop(0, `rgba(0, 255, 80, ${(0.10 + tPulse * 0.12).toFixed(3)})`);
+                tGlow.addColorStop(1, "rgba(0, 255, 80, 0)");
+                ctx.fillStyle = tGlow;
+                ctx.fillRect(termX - 40, termY - 40, 120, 120);
+            }
+            ctx.fillStyle = "#555"; ctx.fillRect(termX + 15, termY + 25, 10, 10);
+            ctx.fillStyle = "#222"; ctx.fillRect(termX + 5, termY + 5, 30, 24);
+            ctx.strokeStyle = "#888"; ctx.lineWidth = 2; ctx.strokeRect(termX + 5, termY + 5, 30, 24);
+            if (!terminalHacked) {
+                ctx.fillStyle = "#0f0";
+                ctx.fillRect(termX + 8, termY + 8, 15, 2);
+                ctx.fillRect(termX + 8, termY + 12, 20, 2);
+                ctx.fillRect(termX + 8, termY + 16, 10, 2);
+            } else {
+                ctx.fillStyle = "#f00"; ctx.font = "bold 10px 'Courier New'"; ctx.textAlign = "center";
+                ctx.fillText("OFF", termX + 20, termY + 20);
+            }
+
+            for (let exit of exitNodes) {
+                let ex = exit.tx * TILE_SIZE, ey = exit.ty * TILE_SIZE;
+                if (terminalHacked) {
+                    let ePulse = 0.5 + Math.sin(globalTime * 0.08) * 0.5;
+                    ctx.save();
+                    ctx.shadowColor = "#2dcc70";
+                    ctx.shadowBlur = 10 + ePulse * 12;
+                    ctx.fillStyle = "#2dcc70";
+                    ctx.fillRect(ex, ey, 40, 40);
+                    ctx.restore();
+                    ctx.fillStyle = "#000"; ctx.font = "bold 12px 'Courier New'"; ctx.textAlign = "center";
+                    ctx.fillText("EXIT", ex + 20, ey + 25);
+                } else {
+                    ctx.fillStyle = "#333";
+                    ctx.fillRect(ex, ey, 40, 40);
+                }
+            }
+
+            for (let cam of cameras) {
+                if (visibleMap[cam.ty] && visibleMap[cam.ty][cam.tx]) {
+                    if(!terminalHacked) {
+                        let camX = cam.tx * TILE_SIZE + TILE_SIZE/2, camY = cam.ty * TILE_SIZE + TILE_SIZE/2;
+                        let coneColor = (globalAlarm && !player.isCloaked) ? {r:255,g:30,b:30,a:0.5} : {r:255,g:235,b:59,a:0.3};
+                        drawClippedCone(ctx, camX, camY, cam.angle, cam.fov, cam.range, coneColor);
+                    }
+                }
+            }
+
+            for (let g of guards) {
+                let gx = Math.floor(g.x / TILE_SIZE), gy = Math.floor(g.y / TILE_SIZE);
+                if (visibleMap[gy] && visibleMap[gy][gx]) {
+                    let coneColor = (g.state === 'chase') ? {r:255,g:50,b:50,a:0.5} : {r:170,g:210,b:255,a:0.26};
+                    drawClippedCone(ctx, g.x, g.y, g.angle, g.fov, g.range, coneColor);
+                }
+            }
+
+            for (let cam of cameras) {
+                if (visibleMap[cam.ty] && visibleMap[cam.ty][cam.tx]) {
+                    let camX = cam.tx * TILE_SIZE + TILE_SIZE/2, camY = cam.ty * TILE_SIZE + TILE_SIZE/2;
+                    ctx.save();
+                    ctx.translate(camX, camY);
+                    ctx.rotate(cam.angle);
+                    ctx.fillStyle = terminalHacked ? "#555" : ((globalAlarm && !player.isCloaked) ? "#600" : "#333");
+                    ctx.fillRect(0, -6, 20, 12);
+                    ctx.fillStyle = "#111"; ctx.fillRect(16, -4, 6, 8); 
+                    ctx.fillStyle = terminalHacked ? "#111" : ((globalAlarm && !player.isCloaked) ? "#ff0000" : "#00ff00");
+                    ctx.beginPath(); ctx.arc(10, -4, 2, 0, Math.PI*2); ctx.fill(); 
+                    ctx.restore();
+                }
+            }
+
+            for (let g of guards) {
+                let gx = Math.floor(g.x / TILE_SIZE), gy = Math.floor(g.y / TILE_SIZE);
+                if (visibleMap[gy] && visibleMap[gy][gx]) {
+                    // Directional sprite row from facing angle (0=down, 1=left, 2=right, 3=up)
+                    let a = ((g.angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+                    let row;
+                    if (a < Math.PI / 4 || a >= 7 * Math.PI / 4) row = 2;
+                    else if (a < 3 * Math.PI / 4) row = 0;
+                    else if (a < 5 * Math.PI / 4) row = 1;
+                    else row = 3;
+
+                    // Shadow
+                    ctx.fillStyle = "rgba(0,0,0,0.5)";
+                    ctx.beginPath(); ctx.ellipse(g.x, g.y + 16, 12, 5, 0, 0, Math.PI * 2); ctx.fill();
+
+                    if (guardSprite.complete && guardSprite.naturalWidth > 0) {
+                        ctx.drawImage(guardSprite, g.frameX * 40, row * 40, 40, 40, g.x - 20, g.y - 24, 40, 40);
+                    } else {
+                        ctx.save();
+                        ctx.translate(g.x, g.y);
+                        ctx.fillStyle = "#2563eb"; ctx.fillRect(-10, -12, 20, 24);
+                        ctx.fillStyle = "#fcd34d"; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI*2); ctx.fill();
+                        ctx.restore();
+                    }
+
+                    // Alert marker while chasing
+                    if (g.state === 'chase') {
+                        let bob = Math.sin(globalTime * 0.25) * 3;
+                        ctx.save();
+                        ctx.shadowColor = "#ff3333";
+                        ctx.shadowBlur = 10;
+                        ctx.fillStyle = "#ff3333";
+                        ctx.font = "bold 20px 'Courier New'";
+                        ctx.textAlign = "center";
+                        ctx.fillText("!", g.x, g.y - 30 + bob);
+                        ctx.restore();
+                    }
+                }
+            }
+
+            if (state === 'playing') {
+                for (let y = 0; y < ROWS; y++) {
+                    for (let x = 0; x < COLS; x++) {
+                        if (!visibleMap[y][x]) {
+                            // Softer fog on tiles bordering the visible area
+                            let nearVisible =
+                                (y > 0 && visibleMap[y-1][x]) || (y < ROWS-1 && visibleMap[y+1][x]) ||
+                                (x > 0 && visibleMap[y][x-1]) || (x < COLS-1 && visibleMap[y][x+1]);
+                            ctx.fillStyle = nearVisible ? "rgba(0, 0, 0, 0.72)" : "rgba(0, 0, 0, 0.96)";
+                            ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                        }
+                    }
+                }
+            }
+
+            if (player.isCloaked) {
+                ctx.globalAlpha = 0.3;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = "#9c27b0";
+            }
+            if (playerSprite.complete && playerSprite.naturalWidth > 0) {
+                ctx.drawImage(playerSprite, player.frameX * 40, player.frameY * 40, 40, 40, player.x - 8, player.y - 8, 40, 40);
+            } else {
+                ctx.fillStyle = "#9c27b0"; ctx.fillRect(player.x, player.y, player.size, player.size);
+            }
+            ctx.globalAlpha = 1.0;
+            ctx.shadowBlur = 0;
+
+            // Cloak shimmer rings
+            if (player.isCloaked) {
+                let pcx = player.x + player.size / 2, pcy = player.y + player.size / 2;
+                for (let ring = 0; ring < 2; ring++) {
+                    let rr = ((globalTime * 0.6 + ring * 20) % 40);
+                    ctx.strokeStyle = `rgba(192, 76, 224, ${(0.5 * (1 - rr / 40)).toFixed(2)})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(pcx, pcy, 12 + rr, 0, Math.PI * 2); ctx.stroke();
+                }
+            }
+
+            // Alarm vignette
+            if (state === 'playing' && globalAlarm && !player.isCloaked) {
+                let aPulse = 0.5 + Math.sin(globalTime * 0.12) * 0.5;
+                let vign = ctx.createRadialGradient(canvas.width/2, canvas.height/2, canvas.height * 0.35, canvas.width/2, canvas.height/2, canvas.height * 0.95);
+                vign.addColorStop(0, "rgba(255, 0, 0, 0)");
+                vign.addColorStop(1, `rgba(255, 0, 0, ${(0.10 + aPulse * 0.18).toFixed(3)})`);
+                ctx.fillStyle = vign;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        initLevel();
+        loop();
+    </script>
+</body>
+</html>

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Matrix Rigging Engine</title>
+    <style>
+        body { 
+            background-color: #121212; color: #00ff00; font-family: 'Courier New', Courier, monospace; 
+            margin: 0; padding: 10px; height: 100vh; display: flex; flex-direction: column; align-items: center; 
+            box-sizing: border-box; overflow: hidden;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 18px; text-transform: uppercase; letter-spacing: 2px; }
+        
+        .app-container { 
+            display: grid; grid-template-columns: 220px 360px 280px; gap: 10px; 
+            background-color: #1a1a1a; padding: 10px; border-radius: 8px; border: 2px solid #333; 
+            height: calc(100vh - 50px); max-height: 800px; box-sizing: border-box;
+        }
+        
+        .col-layout { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+        
+        .panel { 
+            background: #222; border: 1px solid #444; padding: 10px; border-radius: 6px; 
+            display: flex; flex-direction: column; gap: 8px; 
+        }
+        .panel h3 { margin: 0; color: #00ff00; border-bottom: 1px solid #444; padding-bottom: 4px; font-size: 12px; text-transform: uppercase; }
+
+        .row { display: flex; justify-content: space-between; align-items: center; gap: 5px; }
+        
+        label { font-size: 10px; font-weight: bold; color: #aaa; }
+        select, input[type="range"], input[type="text"] { background: #333; color: white; border: 1px solid #555; border-radius: 3px; padding: 2px 4px; font-size: 11px; width: 100%; box-sizing: border-box; }
+        input[type="color"] { width: 100%; height: 24px; border: none; cursor: pointer; background: none; padding: 0; }
+        input[type="checkbox"] { cursor: pointer; }
+
+        /* --- TOOLS & BUTTONS --- */
+        .tools { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        .btn { background: #333; border: 1px solid #555; color: #ccc; padding: 4px; cursor: pointer; border-radius: 3px; font-weight: bold; font-size: 11px; text-align: center; }
+        .btn.active { background: #004400; border-color: #00ff00; color: #00ff00; }
+        .btn:hover:not(.active) { background: #444; }
+        
+        .action-btn { background: #0066cc; color: white; border: none; padding: 6px; font-weight: bold; border-radius: 3px; cursor: pointer; width: 100%; font-size: 11px; }
+        .action-btn:hover { background: #0088ff; }
+        .btn-danger { background: #cc0000; } .btn-danger:hover { background: #ff0000; }
+        .btn-success { background: #009900; font-size: 12px; padding: 10px; } .btn-success:hover { background: #00cc00; }
+
+        /* --- LEFT COL: TARGETS & PREVIEW --- */
+        .frame-matrix { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; background: #111; padding: 6px; border-radius: 4px; border: 1px solid #444; }
+        .frame-cb-wrapper { display: flex; justify-content: center; align-items: center; }
+        .frame-cb-wrapper input { width: 14px; height: 14px; margin: 0; }
+
+        .anim-container { align-self: center; border: 2px solid #777; width: 120px; height: 120px; position: relative; background-image: linear-gradient(45deg, #222 25%, transparent 25%), linear-gradient(-45deg, #222 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #222 75%), linear-gradient(-45deg, transparent 75%, #222 75%); background-size: 10px 10px; background-position: 0 0, 0 5px, 5px -5px, -5px 0px; }
+        #animCanvas { position: absolute; width: 100%; height: 100%; image-rendering: pixelated; }
+        
+        .dpad { display: grid; grid-template-columns: repeat(3, 24px); grid-template-rows: repeat(3, 24px); gap: 2px; justify-content: center; margin-top: 4px; }
+        .dpad-btn { background: #333; color: white; border: 1px solid #555; border-radius: 2px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-weight: bold; font-size: 10px;}
+        .dpad-btn.active { background: #00ff00; color: black; border-color: #00ff00; }
+        .btn-up { grid-column: 2; grid-row: 1; } .btn-left { grid-column: 1; grid-row: 2; } .btn-right { grid-column: 3; grid-row: 2; } .btn-down { grid-column: 2; grid-row: 3; }
+
+        /* --- LEFT COL: INSPECTOR --- */
+        .selected-info { background: #111; padding: 6px; border: 1px solid #444; font-size: 11px; color: #ffeb3b; text-align: center; }
+        .inspector-grid { display: grid; grid-template-columns: 50px 1fr; gap: 4px; align-items: center; }
+        .inspector.disabled { opacity: 0.3; pointer-events: none; }
+
+        /* --- MID COL: MASTER RIG --- */
+        .canvas-container { border: 2px solid #777; width: 320px; height: 320px; position: relative; overflow: hidden; align-self: center; background-image: linear-gradient(45deg, #222 25%, transparent 25%), linear-gradient(-45deg, #222 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #222 75%), linear-gradient(-45deg, transparent 75%, #222 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px; margin-top: auto; margin-bottom: auto;}
+        #mainCanvas { position: absolute; width: 100%; height: 100%; image-rendering: pixelated; cursor: grab; }
+        #mainCanvas:active { cursor: grabbing; }
+
+        /* --- RIGHT COL: ASSET FORGE --- */
+        .scratch-container { width: 256px; height: 256px; border: 1px solid #555; position: relative; align-self: center; background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0px; cursor: crosshair; }
+        #scratchCanvas { position: absolute; width: 100%; height: 100%; image-rendering: pixelated; }
+        
+        #library { display: flex; flex-wrap: wrap; gap: 4px; height: 120px; border: 1px solid #444; padding: 4px; background: #111; overflow-y: auto; align-content: flex-start; }
+        .lib-wrapper { position: relative; display: inline-block; width: 32px; height: 32px; }
+        .lib-item { width: 100%; height: 100%; border: 1px solid #777; cursor: pointer; image-rendering: pixelated; }
+        .lib-item:hover { border-color: #00ff00; }
+        .lib-del { position: absolute; top: -4px; right: -4px; background: #cc0000; color: white; border-radius: 50%; width: 14px; height: 14px; font-size: 9px; text-align: center; line-height: 14px; cursor: pointer; border: 1px solid #222; font-family: sans-serif; }
+        .lib-del:hover { background: #ff0000; transform: scale(1.1); }
+    </style>
+</head>
+<body>
+
+    <h1>Matrix Rigging Engine</h1>
+
+    <div class="app-container">
+        
+        <div class="col-layout">
+            
+            <div class="panel">
+                <h3>1. Targets</h3>
+                <div class="frame-matrix" id="frameMatrix"></div>
+                <div class="row" style="margin-top: 2px;">
+                    <button class="btn" onclick="selectAll(true)" style="flex:1;">All</button>
+                    <button class="btn" onclick="selectAll(false)" style="flex:1;">Clear</button>
+                </div>
+            </div>
+
+            <div class="panel" style="align-items: center; padding-bottom: 5px;">
+                <h3>2. Preview</h3>
+                <div class="anim-container">
+                    <canvas id="animCanvas" width="120" height="120"></canvas>
+                </div>
+                <div class="dpad">
+                    <div class="dpad-btn btn-up" id="anim-3" onclick="setAnimRow(3)">W</div>
+                    <div class="dpad-btn btn-left" id="anim-1" onclick="setAnimRow(1)">A</div>
+                    <div class="dpad-btn btn-down active" id="anim-0" onclick="setAnimRow(0)">S</div>
+                    <div class="dpad-btn btn-right" id="anim-2" onclick="setAnimRow(2)">D</div>
+                </div>
+            </div>
+
+            <div class="panel" style="flex-grow: 1;">
+                <h3>3. Inspector</h3>
+                <div class="selected-info" id="selectedInfo">No Node Selected</div>
+                
+                <div id="inspectorTools" class="inspector disabled">
+                    <div class="inspector-grid">
+                        <label>Name:</label> <input type="text" id="nName">
+                        <label>Shape:</label> 
+                        <select id="nShape">
+                            <option value="rectangle">Rectangle</option>
+                            <option value="circle">Circle</option>
+                            <option value="triangle">Triangle</option>
+                            <option value="custom" disabled>Custom</option>
+                        </select>
+                        <label>Color:</label> <input type="color" id="nColor">
+                        <label>Scale X:</label> <input type="range" id="nSx" min="0.5" max="3.0" step="0.1">
+                        <label>Scale Y:</label> <input type="range" id="nSy" min="0.5" max="3.0" step="0.1">
+                        <label>Rotate:</label> <input type="range" id="nRot" min="0" max="360" step="15">
+                    </div>
+                    
+                    <div class="tools" style="margin-top: 6px;">
+                        <button class="action-btn" onclick="changeZ(1)">▲ Bring Fwd</button>
+                        <button class="action-btn" onclick="changeZ(-1)">▼ Send Back</button>
+                    </div>
+                    <button class="action-btn btn-danger" onclick="deleteSelected()" style="margin-top: 4px;">✖ Delete Node</button>
+                </div>
+                <button class="action-btn" onclick="undo()" style="background:#555; margin-top: auto;">↶ Undo Action</button>
+            </div>
+        </div>
+
+        <div class="col-layout">
+            <div class="panel" style="height: 100%; display: flex; flex-direction: column;">
+                <h3>4. Master Rig</h3>
+                <div class="canvas-container">
+                    <canvas id="mainCanvas" width="160" height="160"></canvas>
+                </div>
+                
+                <div class="row" style="margin-top: auto;">
+                    <label style="flex: 1; text-align: right; margin-right: 5px;">File Name:</label>
+                    <input type="text" id="exportName" value="matrix_sprite" style="flex: 2;">
+                </div>
+                
+                <div class="row" style="margin-top: 5px; justify-content: flex-end;">
+                    <label style="color: #00ff00; display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="renderShadow" checked style="margin-right: 5px; cursor: pointer;"> 
+                        Render Shadows
+                    </label>
+                </div>
+                
+                <button class="action-btn btn-success" onclick="downloadSpriteSheet()" style="margin-top: 5px;">Export 160x160 PNG</button>
+            </div>
+        </div>
+
+        <div class="col-layout">
+            <div class="panel" style="height: 100%;">
+                <h3>5. Asset Forge</h3>
+                <div class="scratch-container">
+                    <canvas id="scratchCanvas" width="32" height="32"></canvas>
+                </div>
+                
+                <div class="row" style="margin-top: 2px;">
+                    <label style="width: 35px;">Stamp:</label>
+                    <button class="btn" onclick="stampShape('rect')" style="flex:1;">■</button>
+                    <button class="btn" onclick="stampShape('circle')" style="flex:1;">●</button>
+                    <button class="btn" onclick="stampShape('triangle')" style="flex:1;">▲</button>
+                </div>
+                
+                <div class="tools" style="margin-top: 2px;">
+                    <div class="btn active" id="toolDraw" onclick="setSpTool('draw')">✏️ Draw</div>
+                    <div class="btn" id="toolErase" onclick="setSpTool('erase')">🧽 Erase</div>
+                </div>
+                
+                <div class="row">
+                    <label>Color:</label> <input type="color" id="spColor" value="#00ffff" style="width: 40px;">
+                    <button class="btn btn-danger" onclick="clearScratch()">Clear</button>
+                </div>
+                
+                <hr style="border-color:#444; width:100%; margin: 2px 0;">
+                
+                <div class="row">
+                    <label style="flex: 1;">Save As:</label>
+                    <input type="text" id="assetNameInput" value="Custom Asset" style="flex: 2;">
+                </div>
+                <button class="action-btn" onclick="saveAsset()" style="margin-top: 4px; background:#9c27b0;">💾 Save to Library</button>
+                
+                <h3 style="margin-top: 10px;">6. Library</h3>
+                <div id="library"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- CORE DATA ---
+        let frames = []; 
+        let activeFrames = new Set([...Array(16).keys()]);
+        let savedAssets = []; 
+        let undoStack = [];
+        let selectedObj = null;
+        let showShadow = true;
+
+        const mainCanvas = document.getElementById('mainCanvas'); const mainCtx = mainCanvas.getContext('2d');
+        const scratchCanvas = document.getElementById('scratchCanvas'); const scratchCtx = scratchCanvas.getContext('2d');
+        const animCanvas = document.getElementById('animCanvas'); const animCtx = animCanvas.getContext('2d');
+        const infoBox = document.getElementById('selectedInfo');
+        const inspector = document.getElementById('inspectorTools');
+        const hitCanvas = document.createElement('canvas'); hitCanvas.width = 160; hitCanvas.height = 160;
+        const hitCtx = hitCanvas.getContext('2d', { willReadFrequently: true });
+
+        // Toggles
+        document.getElementById('renderShadow').addEventListener('change', (e) => {
+            showShadow = e.target.checked;
+            drawMain();
+        });
+
+        // Checkboxes setup
+        const matrixDiv = document.getElementById('frameMatrix');
+        for(let i=0; i<16; i++) {
+            let wrap = document.createElement('div'); wrap.className = 'frame-cb-wrapper';
+            let cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = true;
+            cb.addEventListener('change', (e) => { e.target.checked ? activeFrames.add(i) : activeFrames.delete(i); });
+            wrap.appendChild(cb); matrixDiv.appendChild(wrap);
+        }
+        function selectAll(state) { document.querySelectorAll('.frame-cb-wrapper input').forEach((cb, i) => { cb.checked = state; state ? activeFrames.add(i) : activeFrames.delete(i); }); }
+
+        // --- INIT SCENE ---
+        function initSceneGraph() {
+            frames = [];
+            for(let i=0; i<16; i++) {
+                let col = i%4; let objs = [];
+                let llH = (col===1)?6: (col===3)?14: 10; let lrH = (col===1)?14: (col===3)?6: 10;
+                
+                objs.push(createNode('legL', 'Left Leg', 'rectangle', '#00008b', -6, 8, 4, llH-8));
+                objs.push(createNode('legR', 'Right Leg', 'rectangle', '#00008b', 2, 8, 4, lrH-8));
+                objs.push(createNode('body', 'Body', 'rectangle', '#ff69b4', -7, -4, 14, 12));
+                objs.push(createNode('head', 'Head', 'circle', '#ffccaa', -7, -15, 14, 14));
+                
+                frames.push(objs);
+            }
+            saveState(); drawMain();
+        }
+
+        function createNode(id, name, shape, c, x, y, w, h) { return { id: id, name: name, shape: shape, c: c, x: x, y: y, w: w, h: h, sx: 1.0, sy: 1.0, rot: 0 }; }
+
+        // --- INSPECTOR LISTENERS ---
+        function attachInspector(id, propName, isFloat) {
+            document.getElementById(id).addEventListener('input', (e) => {
+                if(!selectedObj) return;
+                let val = isFloat ? parseFloat(e.target.value) : e.target.value;
+                let targetId = selectedObj.obj.id;
+                activeFrames.forEach(fIdx => { let node = frames[fIdx].find(o => o.id === targetId); if(node) node[propName] = val; });
+                drawMain();
+            });
+        }
+
+        attachInspector('nName', 'name', false); attachInspector('nShape', 'shape', false); attachInspector('nColor', 'c', false);
+        attachInspector('nSx', 'sx', true); attachInspector('nSy', 'sy', true); attachInspector('nRot', 'rot', true);
+
+        function updateInspectorUI() {
+            if(!selectedObj) { infoBox.innerText = "No Node Selected"; inspector.classList.add('disabled'); return; }
+            let obj = selectedObj.obj;
+            infoBox.innerText = `Selected: ${obj.name}`; inspector.classList.remove('disabled');
+            document.getElementById('nName').value = obj.name; document.getElementById('nShape').value = obj.shape;
+            document.getElementById('nColor').value = obj.c || '#ffffff'; document.getElementById('nSx').value = obj.sx;
+            document.getElementById('nSy').value = obj.sy; document.getElementById('nRot').value = obj.rot;
+            let isCustom = (obj.shape === 'custom');
+            document.getElementById('nShape').disabled = isCustom; document.getElementById('nColor').disabled = isCustom;
+        }
+
+        // --- RENDERING MODULE ---
+        function renderShape(ctx, shape, w, h, color) {
+            ctx.fillStyle = color; ctx.beginPath();
+            if (shape === 'rectangle') { ctx.fillRect(0, 0, w, h); } 
+            else if (shape === 'circle') { ctx.ellipse(w/2, h/2, w/2, h/2, 0, 0, Math.PI * 2); ctx.fill(); } 
+            else if (shape === 'triangle') { ctx.moveTo(w/2, 0); ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.fill(); }
+        }
+
+        function drawNodeList(ctx, frameIdx, drawHighlight) {
+            let col = frameIdx % 4; let walkY = (col === 1 || col === 3) ? -2 : 0;
+            ctx.translate(0, walkY); // Apply Bobbing
+            
+            for(let obj of frames[frameIdx]) {
+                ctx.save(); ctx.translate(obj.x, obj.y); 
+                ctx.translate(obj.w/2, obj.h/2); ctx.rotate(obj.rot * Math.PI / 180); ctx.scale(obj.sx, obj.sy); ctx.translate(-obj.w/2, -obj.h/2);
+                
+                if (obj.shape === 'custom') {
+                    let img = savedAssets[obj.assetIdx]; if(img) ctx.drawImage(img, 0, 0, obj.w, obj.h);
+                } else { renderShape(ctx, obj.shape, obj.w, obj.h, obj.c); }
+                ctx.restore();
+                
+                if (drawHighlight && selectedObj && selectedObj.frame === frameIdx && selectedObj.obj.id === obj.id) {
+                    ctx.save(); ctx.translate(obj.x, obj.y); ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 1; 
+                    let scaledW = obj.w * obj.sx; let scaledH = obj.h * obj.sy;
+                    let ox = -(scaledW - obj.w)/2; let oy = -(scaledH - obj.h)/2;
+                    ctx.strokeRect(ox-1, oy-1, scaledW+2, scaledH+2); ctx.restore();
+                }
+            }
+        }
+
+        function drawMain() {
+            mainCtx.clearRect(0,0,160,160);
+            for(let i=0; i<16; i++) {
+                let row = Math.floor(i/4), col = i%4;
+                mainCtx.save(); mainCtx.translate(col*40 + 20, row*40 + 20); 
+                if (showShadow) {
+                    mainCtx.fillStyle = "rgba(0,0,0,0.3)"; mainCtx.beginPath(); mainCtx.ellipse(0, 15, 10, 4, 0, 0, Math.PI*2); mainCtx.fill(); 
+                }
+                drawNodeList(mainCtx, i, true); mainCtx.restore();
+            }
+        }
+
+        // --- ANIMATION PREVIEW LOGIC ---
+        let animRow = 0, animCol = 0, lastAnimTime = 0;
+        function setAnimRow(r) { animRow = r; document.querySelectorAll('.dpad-btn').forEach(b => b.classList.remove('active')); document.getElementById('anim-' + r).classList.add('active'); }
+
+        function animLoop(timestamp) {
+            if (timestamp - lastAnimTime > 150) { 
+                animCol = (animCol + 1) % 4; lastAnimTime = timestamp;
+                animCtx.clearRect(0, 0, 120, 120);
+                animCtx.save(); 
+                animCtx.scale(3, 3); animCtx.translate(20, 20);
+                if (showShadow) {
+                    animCtx.fillStyle = "rgba(0,0,0,0.3)"; animCtx.beginPath(); animCtx.ellipse(0, 15, 10, 4, 0, 0, Math.PI*2); animCtx.fill();
+                }
+                drawNodeList(animCtx, animRow * 4 + animCol, false); 
+                animCtx.restore();
+            }
+            requestAnimationFrame(animLoop);
+        }
+        requestAnimationFrame(animLoop);
+
+        // --- SCRATCHPAD LOGIC ---
+        let spTool = 'draw'; let spDragging = false;
+        function setSpTool(tool) { spTool = tool; document.getElementById('toolDraw').className = 'btn'; document.getElementById('toolErase').className = 'btn'; document.getElementById('tool' + (tool==='draw'?'Draw':'Erase')).classList.add('active'); }
+        
+        function stampShape(shape) {
+            scratchCtx.fillStyle = document.getElementById('spColor').value; scratchCtx.beginPath();
+            if(shape === 'rect') scratchCtx.fillRect(6, 6, 20, 20);
+            else if(shape === 'circle') { scratchCtx.ellipse(16, 16, 10, 10, 0, 0, Math.PI*2); scratchCtx.fill(); }
+            else if(shape === 'triangle') { scratchCtx.moveTo(16, 6); scratchCtx.lineTo(26, 26); scratchCtx.lineTo(6, 26); scratchCtx.fill(); }
+        }
+
+        function drawScratch(e) {
+            let rect = scratchCanvas.getBoundingClientRect();
+            let x = Math.floor((e.clientX - rect.left) / (rect.width / 32)); let y = Math.floor((e.clientY - rect.top) / (rect.height / 32));
+            if(x<0 || x>31 || y<0 || y>31) return;
+            if(spTool === 'draw') { scratchCtx.fillStyle = document.getElementById('spColor').value; scratchCtx.fillRect(x, y, 1, 1); } 
+            else { scratchCtx.clearRect(x, y, 1, 1); }
+        }
+        
+        scratchCanvas.addEventListener('mousedown', (e) => { spDragging = true; drawScratch(e); }); scratchCanvas.addEventListener('mousemove', (e) => { if(spDragging) drawScratch(e); }); window.addEventListener('mouseup', () => { spDragging = false; });
+        function clearScratch() { scratchCtx.clearRect(0,0,32,32); }
+
+        function saveAsset() {
+            let dataURL = scratchCanvas.toDataURL(); let img = new Image(); img.src = dataURL;
+            let aName = document.getElementById('assetNameInput').value || 'Custom Asset';
+            
+            img.onload = () => {
+                let idx = savedAssets.length; savedAssets.push(img);
+                let libDiv = document.getElementById('library');
+                let wrap = document.createElement('div'); wrap.className = 'lib-wrapper';
+                let thumb = document.createElement('img'); thumb.className = 'lib-item'; thumb.src = dataURL; thumb.title = aName;
+                
+                thumb.onclick = () => {
+                    let newId = 'custom_' + Date.now();
+                    activeFrames.forEach(fIdx => {
+                        let node = createNode(newId, aName, 'custom', '#fff', -16, -16, 32, 32); node.assetIdx = idx; frames[fIdx].push(node);
+                    });
+                    saveState(); drawMain();
+                };
+                
+                let del = document.createElement('div'); del.className = 'lib-del'; del.innerHTML = '✖';
+                del.onclick = (e) => { e.stopPropagation(); wrap.remove(); };
+                
+                wrap.appendChild(thumb); wrap.appendChild(del); libDiv.appendChild(wrap);
+            };
+        }
+
+        // --- INTERACTION & RIGGING ---
+        let isDraggingMain = false; let dragLastX = 0, dragLastY = 0;
+
+        function getHitObject(frameIdx, lx, ly) {
+            let objs = frames[frameIdx];
+            for(let i = objs.length - 1; i >= 0; i--) {
+                let obj = objs[i];
+                hitCtx.clearRect(0, 0, 160, 160); hitCtx.save(); hitCtx.translate(80, 80); 
+                hitCtx.translate(obj.x, obj.y); hitCtx.translate(obj.w/2, obj.h/2); hitCtx.rotate(obj.rot * Math.PI / 180); hitCtx.scale(obj.sx, obj.sy); hitCtx.translate(-obj.w/2, -obj.h/2);
+                
+                if (obj.shape === 'custom') { let img = savedAssets[obj.assetIdx]; if(img) hitCtx.drawImage(img, 0, 0, obj.w, obj.h); } 
+                else { renderShape(hitCtx, obj.shape, obj.w, obj.h, obj.c); }
+                hitCtx.restore();
+
+                let px = Math.floor(lx + 80); let py = Math.floor(ly + 80);
+                if (px >= 0 && px < 160 && py >= 0 && py < 160) {
+                    if (hitCtx.getImageData(px, py, 1, 1).data[3] > 0) return obj;
+                }
+            }
+            return null;
+        }
+
+        mainCanvas.addEventListener('mousedown', (e) => {
+            let rect = mainCanvas.getBoundingClientRect();
+            let mx = (e.clientX - rect.left) / (rect.width / 160), my = (e.clientY - rect.top) / (rect.height / 160);
+            let col = Math.floor(mx / 40), row = Math.floor(my / 40); let frameIdx = row * 4 + col;
+            let walkY = (col===1||col===3)? -2 : 0; let localX = (mx % 40) - 20, localY = (my % 40) - 20 - walkY;
+            
+            let hit = getHitObject(frameIdx, localX, localY);
+            if(hit) { selectedObj = { frame: frameIdx, obj: hit }; isDraggingMain = true; dragLastX = localX; dragLastY = localY; } 
+            else { selectedObj = null; }
+            updateInspectorUI(); drawMain();
+        });
+
+        mainCanvas.addEventListener('mousemove', (e) => {
+            if(!isDraggingMain || !selectedObj) return;
+            let rect = mainCanvas.getBoundingClientRect();
+            let mx = (e.clientX - rect.left) / (rect.width / 160), my = (e.clientY - rect.top) / (rect.height / 160);
+            let col = selectedObj.frame % 4, row = Math.floor(selectedObj.frame / 4);
+            let walkY = (col===1||col===3)? -2 : 0; let localX = mx - (col * 40 + 20), localY = my - (row * 40 + 20 + walkY);
+            let dx = localX - dragLastX, dy = localY - dragLastY;
+            
+            activeFrames.forEach(idx => { let target = frames[idx].find(o => o.id === selectedObj.obj.id); if(target) { target.x += dx; target.y += dy; } });
+            dragLastX = localX; dragLastY = localY; drawMain();
+        });
+
+        mainCanvas.addEventListener('mouseup', () => { if(isDraggingMain) { isDraggingMain = false; saveState(); }});
+        mainCanvas.addEventListener('mouseleave', () => { if(isDraggingMain) { isDraggingMain = false; saveState(); }});
+
+        function deleteSelected() {
+            if(!selectedObj) return; let targetId = selectedObj.obj.id;
+            activeFrames.forEach(idx => { frames[idx] = frames[idx].filter(o => o.id !== targetId); });
+            selectedObj = null; updateInspectorUI(); saveState(); drawMain();
+        }
+
+        function changeZ(delta) {
+            if(!selectedObj) return; let targetId = selectedObj.obj.id;
+            activeFrames.forEach(idx => { 
+                let arr = frames[idx]; let objIndex = arr.findIndex(o => o.id === targetId);
+                if (objIndex === -1) return;
+                if (delta > 0 && objIndex < arr.length - 1) { let temp = arr[objIndex]; arr[objIndex] = arr[objIndex + 1]; arr[objIndex + 1] = temp; } 
+                else if (delta < 0 && objIndex > 0) { let temp = arr[objIndex]; arr[objIndex] = arr[objIndex - 1]; arr[objIndex - 1] = temp; }
+            }); saveState(); drawMain();
+        }
+
+        function saveState() { undoStack.push(JSON.stringify(frames)); if(undoStack.length > 30) undoStack.shift(); }
+        function undo() {
+            if(undoStack.length > 1) { undoStack.pop(); frames = JSON.parse(undoStack[undoStack.length-1]); selectedObj = null; updateInspectorUI(); drawMain(); }
+        }
+
+        function downloadSpriteSheet() {
+            selectedObj = null; drawMain(); 
+            let fName = document.getElementById('exportName').value || 'matrix_sprite';
+            const link = document.createElement('a'); link.download = fName + '.png'; link.href = mainCanvas.toDataURL('image/png'); link.click();
+        }
+
+        initSceneGraph();
+    </script>
+</body>
+</html>
