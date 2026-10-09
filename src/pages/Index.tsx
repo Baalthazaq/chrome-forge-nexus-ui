@@ -110,6 +110,14 @@ const apps = [
     color: "from-teal-500 to-green-600"
   },
   {
+    id: "circle-of-life",
+    name: "Circle of Life",
+    iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/DNA.gif",
+    description: "Ancestry Lineages",
+    route: "/circle-of-life",
+    color: "from-lime-400 to-green-600"
+  },
+  {
     id: "questseek",
     name: "Questseek",
     iconUrl: "https://csyajgxbptbtluxdiepi.supabase.co/storage/v1/object/public/icons/Questseek.gif",

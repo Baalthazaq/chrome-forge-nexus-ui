@@ -116,7 +116,7 @@ const App = () => (
             <Route path="/admin/environments" element={<EnvironmentsAdmin />} />
             <Route path="/admin/encounters" element={<EncounterBuilder />} />
             <Route path="/admin/dice-roller" element={<DiceRoller />} />
-            <Route path="/circle-of-life" element={<CircleOfLife />} />
+            <Route path="/circle-of-life" element={<CircleOfLife playerMode initialView="circle" />} />
             <Route path="/admin/circle-of-life" element={<CircleOfLife />} />
             <Route path="/admin/racegen" element={<Racegen />} />
             <Route path="/admin/transformations" element={<TransformationsAdmin />} />

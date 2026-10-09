@@ -172,13 +172,15 @@ function buildSeedLayout() {
 
 interface EvolutionTreeProps {
   initialView?: "tree" | "circle";
+  playerMode?: boolean;
 }
 
-const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
+const EvolutionTree = ({ initialView = "tree", playerMode = false }: EvolutionTreeProps) => {
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
-  const canEdit = !!user && isAdmin;
+  const canEdit = !!user && isAdmin && !playerMode;
+  const [playerSourceId, setPlayerSourceId] = useState<string | null>(null);
 
   const [nodes, setNodes] = useState<NodeRow[]>([]);
   const [edges, setEdges] = useState<EdgeRow[]>([]);
@@ -433,7 +435,17 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
       "Source", "Weight", "Mate-up %", "Is Carrier",
       "Own Tags", "Effective Tags", "Own Mate Tags", "Effective Mate Tags", "Color",
     ];
-    const rows = [...evoNodes]
+    let exportNodes = evoNodes;
+    if (playerMode) {
+      const srcId = playerSourceId ?? nodes.find((n) => n.type === "source")?.id;
+      if (srcId) {
+        const ids = new Set(filterToSource(nodes as any, edges as any, srcId).nodes.map((n: any) => n.id));
+        exportNodes = exportNodes.filter((n) => ids.has(n.id));
+      }
+      const f = filter.trim().toLowerCase();
+      if (f) exportNodes = exportNodes.filter((n) => n.label.toLowerCase().includes(f) || (n.tags ?? []).some((t) => t.toLowerCase().includes(f)));
+    }
+    const rows = [...exportNodes]
       .sort((a, b) => a.label.localeCompare(b.label))
       .map((n) => {
         const parents = getParentIds(n.id, evoEdges).map(labelOf).sort();
@@ -1226,37 +1238,57 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
     <div className="dark min-h-screen bg-background text-foreground p-6">
       <div className="max-w-[1800px] mx-auto space-y-4">
         <header className="space-y-2">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/admin')} className="-ml-2">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back to Admin
+          <Button variant="ghost" size="sm" onClick={() => navigate(playerMode ? '/' : '/admin')} className="-ml-2">
+            <ArrowLeft className="h-4 w-4 mr-1" /> {playerMode ? "Back to Nexus" : "Back to Admin"}
           </Button>
-          <h1 className="text-4xl font-bold tracking-tight">Ancestry Evolution Tree</h1>
+          <h1 className="text-4xl font-bold tracking-tight">{playerMode ? "Circle of Life" : "Ancestry Evolution Tree"}</h1>
           <p className="text-muted-foreground">
-            A directed graph — drag nodes to rearrange. A node may have multiple parents
-            (e.g. Drider can stem from both Drow and Spider).
+            {playerMode
+              ? "Explore the lineages of every ancestry. Pick a circle, click a node to see its details."
+              : "A directed graph — drag nodes to rearrange. A node may have multiple parents (e.g. Drider can stem from both Drow and Spider)."}
           </p>
         </header>
 
         <div className="flex flex-wrap gap-2 items-center">
+          {playerMode && (
+            <Select
+              value={playerSourceId ?? nodes.find((n) => n.type === "source")?.id ?? ""}
+              onValueChange={setPlayerSourceId}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Choose circle" />
+              </SelectTrigger>
+              <SelectContent>
+                {nodes.filter((n) => n.type === "source").map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Input
             placeholder="Filter…"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             className="max-w-xs"
           />
-          <Button
-            size="sm"
-            variant={viewMode === "tree" ? "default" : "outline"}
-            onClick={() => setViewMode("tree")}
-          >
-            Tree View
-          </Button>
-          <Button
-            size="sm"
-            variant={viewMode === "circle" ? "default" : "outline"}
-            onClick={() => setViewMode("circle")}
-          >
-            Circle of Life
-          </Button>
+          {!playerMode && (
+            <>
+              <Button
+                size="sm"
+                variant={viewMode === "tree" ? "default" : "outline"}
+                onClick={() => setViewMode("tree")}
+              >
+                Tree View
+              </Button>
+              <Button
+                size="sm"
+                variant={viewMode === "circle" ? "default" : "outline"}
+                onClick={() => setViewMode("circle")}
+              >
+                Circle of Life
+              </Button>
+            </>
+          )}
           <Button
             size="sm"
             variant="outline"
@@ -1331,10 +1363,10 @@ const EvolutionTree = ({ initialView = "tree" }: EvolutionTreeProps) => {
                     />
                   );
                 }
-                const multi = sources.length > 1;
+                const multi = !playerMode && sources.length > 1;
                 return (
                   <div className={multi ? "grid gap-4 grid-cols-1 xl:grid-cols-2" : ""}>
-                    {sources.map((src) => {
+                    {sources.filter((s) => !playerMode || s.id === (playerSourceId ?? sources[0]?.id)).map((src) => {
                       const sub = filterToSource(mappedNodes, edges, src.id);
                       const centerColor = src.color || FAMILY_COLORS[src.label] || "hsl(45 90% 70%)";
                       return (
