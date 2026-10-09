@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { filterCircleOptions, findExactMatch, type ComboGroup } from "./circleOptionSearch";
+import { filterCircleOptions, findExactMatch, encodeCircleValue, decodeCircleValue, type ComboGroup } from "./circleOptionSearch";
 export type { ComboItem, ComboGroup } from "./circleOptionSearch";
 
 let cache: Promise<{ races: ComboGroup[]; transformations: ComboGroup[] }> | null = null;
@@ -74,9 +74,10 @@ export function CircleCombobox({ label, kind, value, onChange, isEditing }: {
 }) {
   const [groups, setGroups] = useState<ComboGroup[]>([]);
   const [open, setOpen] = useState(false);
-  const [text, setText] = useState(value);
+  const decoded = decodeCircleValue(value);
+  const [text, setText] = useState(decoded.label);
 
-  useEffect(() => { setText(value); }, [value]);
+  useEffect(() => { setText(decodeCircleValue(value).label); }, [value]);
   useEffect(() => {
     // Load once per session (cached) so view mode can also show the direct parent.
     loadCircleOptions().then((d) => setGroups(d[kind]));
@@ -84,8 +85,8 @@ export function CircleCombobox({ label, kind, value, onChange, isEditing }: {
 
   const filtered = useMemo(() => filterCircleOptions(groups, text), [groups, text]);
   // When the typed text exactly matches a known option, show its direct parent beside it.
-  const directParent = findExactMatch(groups, text)?.ancestors?.[0] ?? null;
-  const viewParent = findExactMatch(groups, value)?.ancestors?.[0] ?? null;
+  const viewParent = decoded.parent ?? findExactMatch(groups, decoded.label)?.ancestors?.[0] ?? null;
+  const directParent = text === decoded.label ? viewParent : (findExactMatch(groups, text)?.ancestors?.[0] ?? null);
 
   if (!isEditing) {
     if (!value.trim()) return null;
@@ -93,7 +94,7 @@ export function CircleCombobox({ label, kind, value, onChange, isEditing }: {
       <div>
         <label className="text-gray-300 text-xs mb-1 block">{label}</label>
         <div className="text-lg font-bold text-white">
-          {value || "—"}
+          {decoded.label || "—"}
           {viewParent && (
             <span className="ml-2 text-sm font-normal text-white">└ {viewParent}</span>
           )}
@@ -102,7 +103,7 @@ export function CircleCombobox({ label, kind, value, onChange, isEditing }: {
     );
   }
 
-  const pick = (v: string) => { setText(v); onChange(v); setOpen(false); };
+  const pick = (v: string, parent?: string | null) => { setText(v); onChange(encodeCircleValue(v, parent)); setOpen(false); };
   const exact = groups.some((g) => g.items.some((i) => i.label.toLowerCase() === text.trim().toLowerCase()));
 
   return (
@@ -113,7 +114,7 @@ export function CircleCombobox({ label, kind, value, onChange, isEditing }: {
           value={text}
           onChange={(e) => { setText(e.target.value); if (!open) setOpen(true); }}
           onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => { setOpen(false); if (text !== value) onChange(text.trim()); }, 150)}
+          onBlur={() => setTimeout(() => { setOpen(false); if (text !== decoded.label) onChange(text.trim()); }, 150)}
           placeholder={`Type or select ${label.toLowerCase()}...`}
           className={`bg-gray-800/50 border-gray-600 text-gray-100 text-sm ${directParent ? "pr-28" : ""}`}
         />
@@ -144,7 +145,7 @@ export function CircleCombobox({ label, kind, value, onChange, isEditing }: {
                 <button
                   key={`${i.label}-${idx}`}
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => pick(i.label)}
+                  onClick={() => pick(i.label, i.ancestors?.[0])}
                   style={{ paddingLeft: 12 + i.depth * 16 }}
                   className={`w-full text-left pr-3 py-1.5 text-sm hover:bg-gray-700 ${i.depth === 0 ? "text-gray-100 font-medium" : "text-gray-300"}`}
                 >
