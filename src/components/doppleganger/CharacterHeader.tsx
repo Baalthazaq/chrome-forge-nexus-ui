@@ -311,9 +311,9 @@ export function CharacterHeader({
               isEditing={isEditing}
             />
 
-            {/* Race (from Circle of Life) */}
+            {/* Genealogy (from Circle of Life) */}
             <CircleSelectionFields
-              label="Race"
+              label="Genealogy"
               kind="races"
               value={sheet.race}
               onChange={(val) => updateSheet({ race: val })}

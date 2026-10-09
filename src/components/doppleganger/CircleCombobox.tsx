@@ -95,7 +95,7 @@ export function CircleCombobox({ label, kind, value, onChange, isEditing }: {
         <div className="text-lg font-bold text-white">
           {value || "—"}
           {viewParent && (
-            <span className="ml-2 text-sm font-normal text-gray-400">└ {viewParent}</span>
+            <span className="ml-2 text-sm font-normal text-white">└ {viewParent}</span>
           )}
         </div>
       </div>
@@ -118,7 +118,7 @@ export function CircleCombobox({ label, kind, value, onChange, isEditing }: {
           className={`bg-gray-800/50 border-gray-600 text-gray-100 text-sm ${directParent ? "pr-28" : ""}`}
         />
         {directParent && (
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 whitespace-nowrap">
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white whitespace-nowrap">
             └ {directParent}
           </span>
         )}
