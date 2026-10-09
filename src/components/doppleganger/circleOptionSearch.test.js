@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import { filterCircleOptions, type ComboGroup } from "./circleOptionSearch";
+import { filterCircleOptions } from "./circleOptionSearch";
 
-const groups: ComboGroup[] = [
+const groups = [
   { heading: "Aberration", items: [
     { label: "Beholder", depth: 0, ancestors: [] },
     { label: "Gith", depth: 0, ancestors: [] },
