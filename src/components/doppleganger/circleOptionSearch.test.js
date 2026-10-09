@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { filterCircleOptions } from "./circleOptionSearch";
+import { filterCircleOptions, findExactMatch } from "./circleOptionSearch";
 
 const groups = [
   { heading: "Aberration", items: [
