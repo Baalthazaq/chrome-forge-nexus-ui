@@ -1,0 +1,3 @@
+- [ ] Hide blank character identity fields in view mode.
+- [ ] Add editable additional race and transformation selections, preserving existing saves.
+- [ ] Run selection and search regression tests and check compilation.
