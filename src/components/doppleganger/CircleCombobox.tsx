@@ -82,6 +82,8 @@ export function CircleCombobox({ label, kind, value, onChange, isEditing }: {
   }, [isEditing, kind]);
 
   const filtered = useMemo(() => filterCircleOptions(groups, text), [groups, text]);
+  // When the typed text exactly matches a known option, show its direct parent beside it.
+  const directParent = findExactMatch(groups, text)?.ancestors?.[0] ?? null;
 
   if (!isEditing) {
     if (!value.trim()) return null;
