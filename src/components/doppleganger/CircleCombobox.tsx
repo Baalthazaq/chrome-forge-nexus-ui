@@ -78,19 +78,26 @@ export function CircleCombobox({ label, kind, value, onChange, isEditing }: {
 
   useEffect(() => { setText(value); }, [value]);
   useEffect(() => {
-    if (isEditing) loadCircleOptions().then((d) => setGroups(d[kind]));
-  }, [isEditing, kind]);
+    // Load once per session (cached) so view mode can also show the direct parent.
+    loadCircleOptions().then((d) => setGroups(d[kind]));
+  }, [kind]);
 
   const filtered = useMemo(() => filterCircleOptions(groups, text), [groups, text]);
   // When the typed text exactly matches a known option, show its direct parent beside it.
   const directParent = findExactMatch(groups, text)?.ancestors?.[0] ?? null;
+  const viewParent = findExactMatch(groups, value)?.ancestors?.[0] ?? null;
 
   if (!isEditing) {
     if (!value.trim()) return null;
     return (
       <div>
         <label className="text-gray-300 text-xs mb-1 block">{label}</label>
-        <div className="text-lg font-bold text-white">{value || "—"}</div>
+        <div className="text-lg font-bold text-white">
+          {value || "—"}
+          {viewParent && (
+            <span className="ml-2 text-sm font-normal text-gray-400">└ {viewParent}</span>
+          )}
+        </div>
       </div>
     );
   }
