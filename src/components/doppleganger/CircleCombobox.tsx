@@ -38,7 +38,7 @@ function loadCircleOptions() {
     for (const src of sources) {
       const items: ComboGroup["items"] = [];
       const seen = new Set<string>([src.id]);
-      const walk = (id: string, depth: number) => {
+      const walk = (id: string, depth: number, ancestors: string[]) => {
         const kids = (children.get(id) ?? [])
           .map((k) => byId.get(k))
           .filter((k): k is NonNullable<typeof k> => !!k && k.type !== "source")
@@ -47,15 +47,16 @@ function loadCircleOptions() {
           if (seen.has(k.id)) continue;
           seen.add(k.id);
           placed.add(k.id);
-          items.push({ label: k.label, depth });
-          walk(k.id, depth + 1);
+          items.push({ label: k.label, depth, ancestors });
+          walk(k.id, depth + 1, [k.label, ...ancestors]);
         }
       };
-      walk(src.id, 0);
+      walk(src.id, 0, []);
       races.push({ heading: src.label, items });
     }
+
     const orphans = nodes.filter((n) => n.type !== "source" && !placed.has(n.id));
-    if (orphans.length) races.push({ heading: "Other", items: orphans.map((n) => ({ label: n.label, depth: 0 })) });
+    if (orphans.length) races.push({ heading: "Other", items: orphans.map((n) => ({ label: n.label, depth: 0, ancestors: [] })) });
 
     const tMap = new Map<number, ComboGroup["items"]>();
     for (const t of (tRes.data ?? []) as { label: string; stage: number | null }[]) {
@@ -63,7 +64,10 @@ function loadCircleOptions() {
       if (!tMap.has(s)) tMap.set(s, []);
       tMap.get(s)!.push({ label: t.label, depth: 0 });
     }
-    const transformations = [...tMap.entries()].sort(([a], [b]) => a - b).map(([s, items]) => ({ heading: `Stage ${s}`, items }));
+    const transformations = [...tMap.entries()].sort(([a], [b]) => a - b).map(([s, items]) => ({
+      heading: `Stage ${s}`,
+      items: items.map((i) => ({ ...i, ancestors: [] })),
+    }));
     return { races, transformations };
   })();
   return cache;
@@ -89,8 +93,19 @@ export function CircleCombobox({ label, kind, value, onChange, isEditing }: {
     const q = text.trim().toLowerCase();
     if (!q || q === value.toLowerCase()) return groups;
     return groups
-      .map((g) => ({ ...g, items: g.items.filter((i) => i.label.toLowerCase().includes(q)).map((i) => ({ ...i, depth: 0 })) }))
-      .filter((g) => g.items.length > 0 || g.heading.toLowerCase().includes(q));
+      .map((g) => {
+        const headingMatch = g.heading.toLowerCase().includes(q);
+        if (headingMatch) return g; // whole group stays when the heading itself matches
+        const keep = new Set<string>();
+        for (const i of g.items) {
+          if (i.label.toLowerCase().includes(q)) {
+            keep.add(i.label);
+            for (const a of i.ancestors) keep.add(a); // never drop a match's parents
+          }
+        }
+        return { ...g, items: g.items.filter((i) => keep.has(i.label)) };
+      })
+      .filter((g) => g.items.length > 0);
   }, [groups, text, value]);
 
   if (!isEditing) {
