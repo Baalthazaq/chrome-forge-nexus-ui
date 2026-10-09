@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { filterCircleOptions } from "./circleOptionSearch";
+import { filterCircleOptions, findExactMatch } from "./circleOptionSearch";
 
 const groups = [
   { heading: "Aberration", items: [
@@ -30,5 +30,14 @@ describe("circle option search", () => {
   });
   it("does not expand a group just because its heading matches", () => {
     expect(filterCircleOptions(groups, "Aberration")).toEqual([]);
+  });
+  it("resolves the direct parent of an exact match", () => {
+    expect(findExactMatch(groups, "Air")?.ancestors[0]).toBe("Gnome");
+    expect(findExactMatch(groups, "Githyanki")?.ancestors[0]).toBe("Gith");
+    expect(findExactMatch(groups, "Gnome")?.ancestors[0]).toBeUndefined();
+  });
+  it("returns null for text that is not an exact option", () => {
+    expect(findExactMatch(groups, "Airs")).toBeNull();
+    expect(findExactMatch(groups, "")).toBeNull();
   });
 });
