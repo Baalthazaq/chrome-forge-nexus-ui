@@ -561,12 +561,14 @@ export type Database = {
           personality: string | null
           physical_description: Json | null
           primary_weapon_purchase_id: string | null
+          race: string | null
           secondary_weapon_purchase_id: string | null
           selected_card_ids: Json | null
           severe_threshold_modifier: number
           stress_current: number
           stress_max: number
           subclass: string | null
+          transformation: string | null
           updated_at: string
           user_id: string
         }
@@ -593,12 +595,14 @@ export type Database = {
           personality?: string | null
           physical_description?: Json | null
           primary_weapon_purchase_id?: string | null
+          race?: string | null
           secondary_weapon_purchase_id?: string | null
           selected_card_ids?: Json | null
           severe_threshold_modifier?: number
           stress_current?: number
           stress_max?: number
           subclass?: string | null
+          transformation?: string | null
           updated_at?: string
           user_id: string
         }
@@ -625,12 +629,14 @@ export type Database = {
           personality?: string | null
           physical_description?: Json | null
           primary_weapon_purchase_id?: string | null
+          race?: string | null
           secondary_weapon_purchase_id?: string | null
           selected_card_ids?: Json | null
           severe_threshold_modifier?: number
           stress_current?: number
           stress_max?: number
           subclass?: string | null
+          transformation?: string | null
           updated_at?: string
           user_id?: string
         }
