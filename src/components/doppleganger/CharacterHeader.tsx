@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { CharacterSheet, GameCard } from "@/data/gameCardTypes";
 import { LevelUpDialog } from "./LevelUpDialog";
 import { getProficiency, getMulticlassInfo, type LevelUpChoices } from "@/lib/levelUpUtils";
-import { CircleCombobox } from "./CircleCombobox";
+import { CircleSelectionFields } from "./CircleSelectionFields";
 
 interface Props {
   profile: any;
@@ -66,6 +66,7 @@ function AncestryCombobox({ value, onChange, ancestryCards, isEditing }: {
   };
 
   if (!isEditing) {
+    if (!value.trim()) return null;
     return (
       <div>
         <label className="text-gray-300 text-xs mb-1 block">Ancestry</label>
@@ -259,7 +260,7 @@ export function CharacterHeader({
             </div>
 
             {/* Class */}
-            <div>
+            {(isEditing || sheet.class?.trim()) && <div>
               <label className="text-gray-300 text-xs mb-1 block">Class</label>
               {isEditing ? (
                 <Select value={sheet.class || '__none__'} onValueChange={handleClassChange}>
@@ -276,10 +277,10 @@ export function CharacterHeader({
               ) : (
                 <div className="text-lg font-bold text-white">{sheet.class || '—'}</div>
               )}
-            </div>
+            </div>}
 
             {/* Subclass */}
-            <div>
+            {(isEditing || sheet.subclass?.trim()) && <div>
               <label className="text-gray-300 text-xs mb-1 block">Subclass</label>
               {isEditing ? (
                 <Select
@@ -300,7 +301,7 @@ export function CharacterHeader({
               ) : (
                 <div className="text-lg font-bold text-white">{sheet.subclass || '—'}</div>
               )}
-            </div>
+            </div>}
 
             {/* Ancestry */}
             <AncestryCombobox
@@ -311,26 +312,26 @@ export function CharacterHeader({
             />
 
             {/* Race (from Circle of Life) */}
-            <CircleCombobox
+            <CircleSelectionFields
               label="Race"
               kind="races"
-              value={(sheet as any).race || ''}
-              onChange={(val) => updateSheet({ race: val || null } as any)}
+              value={sheet.race}
+              onChange={(val) => updateSheet({ race: val })}
               isEditing={isEditing}
             />
 
             {/* Transformation */}
-            <CircleCombobox
+            <CircleSelectionFields
               label="Transformation"
               kind="transformations"
-              value={(sheet as any).transformation || ''}
-              onChange={(val) => updateSheet({ transformation: val || null } as any)}
+              value={sheet.transformation}
+              onChange={(val) => updateSheet({ transformation: val })}
               isEditing={isEditing}
             />
 
 
             {/* Community */}
-            <div>
+            {(isEditing || sheet.community?.trim()) && <div>
               <label className="text-gray-300 text-xs mb-1 block">Community</label>
               {isEditing ? (
                 <Select
@@ -350,7 +351,7 @@ export function CharacterHeader({
               ) : (
                 <div className="text-lg font-bold text-white">{sheet.community || '—'}</div>
               )}
-            </div>
+            </div>}
 
             {/* Multiclass */}
             {multiclasses.length > 0 && multiclasses.map((mc, mcIndex) => {
@@ -379,7 +380,7 @@ export function CharacterHeader({
               return (
                 <React.Fragment key={`mc-header-${mcIndex}`}>
                   {/* MC Class */}
-                  <div>
+                  {(isEditing || mc.class?.trim()) && <div>
                     <label className="text-cyan-400 text-xs mb-1 block">Multiclass{mcLabel}</label>
                     {isEditing ? (
                       <Select value={mc.class || '__none__'} onValueChange={(v) => updateMulticlassField('class', v === '__none__' ? '' : v)}>
@@ -396,9 +397,9 @@ export function CharacterHeader({
                     ) : (
                       <div className="text-lg font-bold text-white">{mc.class || '—'}</div>
                     )}
-                  </div>
+                  </div>}
                   {/* MC Subclass */}
-                  <div>
+                  {(isEditing || mc.subclass?.trim()) && <div>
                     <label className="text-cyan-400 text-xs mb-1 block">MC Subclass{mcLabel}</label>
                     {isEditing ? (
                       <Select
@@ -419,7 +420,7 @@ export function CharacterHeader({
                     ) : (
                       <div className="text-lg font-bold text-white">{mc.subclass || '—'}</div>
                     )}
-                  </div>
+                  </div>}
                 </React.Fragment>
               );
             })}

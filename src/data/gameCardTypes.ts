@@ -14,6 +14,8 @@ export interface CharacterSheet {
   subclass: string | null;
   community: string | null;
   ancestry: string | null;
+  race?: string | null;
+  transformation?: string | null;
   level: number;
   evasion_modifier: number;
   hp_modifier: number;

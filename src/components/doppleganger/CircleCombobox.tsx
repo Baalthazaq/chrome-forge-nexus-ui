@@ -84,6 +84,7 @@ export function CircleCombobox({ label, kind, value, onChange, isEditing }: {
   const filtered = useMemo(() => filterCircleOptions(groups, text), [groups, text]);
 
   if (!isEditing) {
+    if (!value.trim()) return null;
     return (
       <div>
         <label className="text-gray-300 text-xs mb-1 block">{label}</label>
