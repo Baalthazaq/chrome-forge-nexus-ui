@@ -1,18 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-
-export interface ComboItem {
-  label: string;
-  depth: number;
-  /** Ancestor labels (nearest parent first) so search can keep the tree context. */
-  ancestors: string[];
-}
-
-export interface ComboGroup {
-  heading: string;
-  items: ComboItem[];
-}
+import { filterCircleOptions, type ComboGroup } from "./circleOptionSearch";
+export type { ComboItem, ComboGroup } from "./circleOptionSearch";
 
 let cache: Promise<{ races: ComboGroup[]; transformations: ComboGroup[] }> | null = null;
 
@@ -29,8 +19,9 @@ function loadCircleOptions() {
     const byId = new Map(nodes.map((n) => [n.id, n]));
     const children = new Map<string, string[]>();
     for (const e of edges) {
-      if (!children.has(e.parent_id)) children.set(e.parent_id, []);
-      children.get(e.parent_id)!.push(e.child_id);
+      const siblings = children.get(e.parent_id) ?? [];
+      siblings.push(e.child_id);
+      children.set(e.parent_id, siblings);
     }
     const placed = new Set<string>();
     const races: ComboGroup[] = [];
@@ -61,8 +52,9 @@ function loadCircleOptions() {
     const tMap = new Map<number, ComboGroup["items"]>();
     for (const t of (tRes.data ?? []) as { label: string; stage: number | null }[]) {
       const s = t.stage ?? 0;
-      if (!tMap.has(s)) tMap.set(s, []);
-      tMap.get(s)!.push({ label: t.label, depth: 0, ancestors: [] });
+      const items = tMap.get(s) ?? [];
+      items.push({ label: t.label, depth: 0, ancestors: [] });
+      tMap.set(s, items);
     }
     const transformations = [...tMap.entries()].sort(([a], [b]) => a - b).map(([s, items]) => ({
       heading: `Stage ${s}`,
@@ -89,28 +81,7 @@ export function CircleCombobox({ label, kind, value, onChange, isEditing }: {
     if (isEditing) loadCircleOptions().then((d) => setGroups(d[kind]));
   }, [isEditing, kind]);
 
-  const filtered = useMemo(() => {
-    const q = text.trim().toLowerCase();
-    if (!q || q === value.toLowerCase()) return groups;
-    const esc = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`(^|[\\s\\-(/])${esc}`, "i");
-    return groups
-      .map((g) => {
-        const keep = new Set<number>();
-        // Walk items in tree order, tracking the index of the current ancestor at each depth.
-        const stack: number[] = [];
-        g.items.forEach((i, idx) => {
-          stack.length = i.depth;
-          if (re.test(i.label)) {
-            keep.add(idx);
-            for (const a of stack) keep.add(a);
-          }
-          stack.push(idx);
-        });
-        return { ...g, items: g.items.filter((_, idx) => keep.has(idx)) };
-      })
-      .filter((g) => g.items.length > 0);
-  }, [groups, text, value]);
+  const filtered = useMemo(() => filterCircleOptions(groups, text), [groups, text]);
 
   if (!isEditing) {
     return (
