@@ -10,9 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Shield, ArrowLeft, Search, ChevronDown, Swords, Heart, Brain, Zap, RefreshCw, Plus, Copy } from 'lucide-react';
+import { Shield, ArrowLeft, Search, ChevronDown, Swords, Heart, Brain, Zap, RefreshCw, Plus, Copy, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { BestiaryCreatureDialog } from '@/components/bestiary/BestiaryCreatureDialog';
+import { BestiaryBulkUploadDialog } from '@/components/bestiary/BestiaryBulkUploadDialog';
 
 const BestiaryAdmin = () => {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ const BestiaryAdmin = () => {
   const [editCreature, setEditCreature] = useState<any | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [showBulk, setShowBulk] = useState(false);
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
@@ -137,6 +139,9 @@ const BestiaryAdmin = () => {
             <Button onClick={seedBestiary} size="sm" variant="outline" disabled={seeding}>
               <RefreshCw className={`h-4 w-4 mr-1 ${seeding ? 'animate-spin' : ''}`} />
               {seeding ? 'Seeding...' : 'Seed from Source'}
+            </Button>
+            <Button onClick={() => setShowBulk(true)} size="sm" variant="outline">
+              <Upload className="h-4 w-4 mr-1" /> Bulk upload
             </Button>
             <Button onClick={() => setShowCreateDialog(true)} size="sm">
               <Plus className="h-4 w-4 mr-1" /> Add Creature
@@ -336,6 +341,8 @@ const BestiaryAdmin = () => {
           </div>
         )}
       </div>
+
+      <BestiaryBulkUploadDialog open={showBulk} onClose={() => setShowBulk(false)} existing={creatures} onDone={loadCreatures} />
 
       {/* Edit Dialog */}
       {editCreature && (
