@@ -2,9 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 
+export interface ComboItem {
+  label: string;
+  depth: number;
+  /** Ancestor labels (nearest parent first) so search can keep the tree context. */
+  ancestors: string[];
+}
+
 export interface ComboGroup {
   heading: string;
-  items: { label: string; depth: number }[];
+  items: ComboItem[];
 }
 
 let cache: Promise<{ races: ComboGroup[]; transformations: ComboGroup[] }> | null = null;
