@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { CharacterSheet, GameCard } from "@/data/gameCardTypes";
 import { LevelUpDialog } from "./LevelUpDialog";
 import { getProficiency, getMulticlassInfo, type LevelUpChoices } from "@/lib/levelUpUtils";
+import { CircleCombobox } from "./CircleCombobox";
 
 interface Props {
   profile: any;
@@ -308,6 +309,25 @@ export function CharacterHeader({
               ancestryCards={ancestryCards}
               isEditing={isEditing}
             />
+
+            {/* Race (from Circle of Life) */}
+            <CircleCombobox
+              label="Race"
+              kind="races"
+              value={(sheet as any).race || ''}
+              onChange={(val) => updateSheet({ race: val || null } as any)}
+              isEditing={isEditing}
+            />
+
+            {/* Transformation */}
+            <CircleCombobox
+              label="Transformation"
+              kind="transformations"
+              value={(sheet as any).transformation || ''}
+              onChange={(val) => updateSheet({ transformation: val || null } as any)}
+              isEditing={isEditing}
+            />
+
 
             {/* Community */}
             <div>
