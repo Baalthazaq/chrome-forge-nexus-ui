@@ -62,7 +62,7 @@ function loadCircleOptions() {
     for (const t of (tRes.data ?? []) as { label: string; stage: number | null }[]) {
       const s = t.stage ?? 0;
       if (!tMap.has(s)) tMap.set(s, []);
-      tMap.get(s)!.push({ label: t.label, depth: 0 });
+      tMap.get(s)!.push({ label: t.label, depth: 0, ancestors: [] });
     }
     const transformations = [...tMap.entries()].sort(([a], [b]) => a - b).map(([s, items]) => ({
       heading: `Stage ${s}`,
