@@ -62,7 +62,7 @@ function loadCircleOptions() {
     for (const t of (tRes.data ?? []) as { label: string; stage: number | null }[]) {
       const s = t.stage ?? 0;
       if (!tMap.has(s)) tMap.set(s, []);
-      tMap.get(s)!.push({ label: t.label, depth: 0 });
+      tMap.get(s)!.push({ label: t.label, depth: 0, ancestors: [] });
     }
     const transformations = [...tMap.entries()].sort(([a], [b]) => a - b).map(([s, items]) => ({
       heading: `Stage ${s}`,
@@ -92,18 +92,22 @@ export function CircleCombobox({ label, kind, value, onChange, isEditing }: {
   const filtered = useMemo(() => {
     const q = text.trim().toLowerCase();
     if (!q || q === value.toLowerCase()) return groups;
+    const esc = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(^|[\\s\\-(/])${esc}`, "i");
     return groups
       .map((g) => {
-        const headingMatch = g.heading.toLowerCase().includes(q);
-        if (headingMatch) return g; // whole group stays when the heading itself matches
-        const keep = new Set<string>();
-        for (const i of g.items) {
-          if (i.label.toLowerCase().includes(q)) {
-            keep.add(i.label);
-            for (const a of i.ancestors) keep.add(a); // never drop a match's parents
+        const keep = new Set<number>();
+        // Walk items in tree order, tracking the index of the current ancestor at each depth.
+        const stack: number[] = [];
+        g.items.forEach((i, idx) => {
+          stack.length = i.depth;
+          if (re.test(i.label)) {
+            keep.add(idx);
+            for (const a of stack) keep.add(a);
           }
-        }
-        return { ...g, items: g.items.filter((i) => keep.has(i.label)) };
+          stack.push(idx);
+        });
+        return { ...g, items: g.items.filter((_, idx) => keep.has(idx)) };
       })
       .filter((g) => g.items.length > 0);
   }, [groups, text, value]);
