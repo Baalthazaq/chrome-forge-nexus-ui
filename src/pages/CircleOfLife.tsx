@@ -1343,7 +1343,7 @@ const EvolutionTree = ({ initialView = "tree", playerMode = false }: EvolutionTr
           )}
           <span className="text-xs text-muted-foreground ml-auto">
             {nodes.length} nodes • {edges.length} links
-            {!canEdit && " • read-only (admin login required to edit)"}
+            {!canEdit && !playerMode && " • read-only (admin login required to edit)"}
           </span>
         </div>
 
