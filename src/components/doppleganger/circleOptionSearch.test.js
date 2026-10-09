@@ -41,3 +41,9 @@ describe("circle option search", () => {
     expect(findExactMatch(groups, "")).toBeNull();
   });
 });
+import { encodeCircleValue, decodeCircleValue } from "./circleOptionSearch";
+it("saved value keeps the chosen parent for duplicate labels", () => {
+  const v = encodeCircleValue("Air", "Gnome");
+  expect(decodeCircleValue(v)).toEqual({ label: "Air", parent: "Gnome" });
+  expect(decodeCircleValue("Air")).toEqual({ label: "Air", parent: null });
+});

@@ -39,3 +39,15 @@ export function filterCircleOptions(groups: ComboGroup[], text: string): ComboGr
     return { ...group, items: group.items.filter((_, index) => keep.has(index)) };
   }).filter((group) => group.items.length > 0);
 }
+const PARENT_SEP = " └ ";
+
+/** Saved values keep the chosen parent so duplicate labels (e.g. two "Air"s) stay distinct. */
+export function encodeCircleValue(label: string, parent?: string | null): string {
+  return parent ? `${label}${PARENT_SEP}${parent}` : label;
+}
+
+export function decodeCircleValue(value: string): { label: string; parent: string | null } {
+  const i = value.indexOf(PARENT_SEP);
+  if (i === -1) return { label: value, parent: null };
+  return { label: value.slice(0, i), parent: value.slice(i + PARENT_SEP.length) };
+}
