@@ -9,6 +9,18 @@ export interface ComboGroup {
   items: ComboItem[];
 }
 
+/** Find the item whose label exactly matches the given text (first match wins). */
+export function findExactMatch(groups: ComboGroup[], text: string): ComboItem | null {
+  const query = text.trim().toLowerCase();
+  if (!query) return null;
+  for (const group of groups) {
+    for (const item of group.items) {
+      if (item.label.toLowerCase() === query) return item;
+    }
+  }
+  return null;
+}
+
 export function filterCircleOptions(groups: ComboGroup[], text: string): ComboGroup[] {
   const query = text.trim().toLowerCase();
   if (!query) return groups;

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { filterCircleOptions, type ComboGroup } from "./circleOptionSearch";
-export type { ComboItem, ComboGroup } from "./circleOptionSearch";
+import { filterCircleOptions, findExactMatch, type ComboGroup } from "./circleOptionSearch";
 
 let cache: Promise<{ races: ComboGroup[]; transformations: ComboGroup[] }> | null = null;
 
