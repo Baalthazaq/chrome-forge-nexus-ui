@@ -101,14 +101,21 @@ export function CircleCombobox({ label, kind, value, onChange, isEditing }: {
   return (
     <div className="relative">
       <label className="text-gray-300 text-xs mb-1 block">{label}</label>
-      <Input
-        value={text}
-        onChange={(e) => { setText(e.target.value); if (!open) setOpen(true); }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => { setOpen(false); if (text !== value) onChange(text.trim()); }, 150)}
-        placeholder={`Type or select ${label.toLowerCase()}...`}
-        className="bg-gray-800/50 border-gray-600 text-gray-100 text-sm"
-      />
+      <div className="relative">
+        <Input
+          value={text}
+          onChange={(e) => { setText(e.target.value); if (!open) setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => { setOpen(false); if (text !== value) onChange(text.trim()); }, 150)}
+          placeholder={`Type or select ${label.toLowerCase()}...`}
+          className={`bg-gray-800/50 border-gray-600 text-gray-100 text-sm ${directParent ? "pr-28" : ""}`}
+        />
+        {directParent && (
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 whitespace-nowrap">
+            └ {directParent}
+          </span>
+        )}
+      </div>
       {open && (
         <div className="absolute top-full left-0 mt-1 w-[520px] max-w-[90vw] bg-gray-800 border border-gray-600 rounded-md shadow-lg z-50 max-h-96 overflow-y-auto py-1">
           {text.trim() && !exact && (
