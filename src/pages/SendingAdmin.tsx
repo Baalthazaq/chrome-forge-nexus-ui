@@ -465,6 +465,78 @@ const SendingAdmin = () => {
           </DialogContent>
         </Dialog>
 
+        <Dialog open={showNewGroup} onOpenChange={setShowNewGroup}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Start New Group Chat</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm text-muted-foreground">Group name (optional)</label>
+                <Input
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  placeholder="Defaults to member names..."
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Initiating character</label>
+                <Select value={groupInitiatorId} onValueChange={setGroupInitiatorId}>
+                  <SelectTrigger><SelectValue placeholder="Select initiator..." /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from(profMap.entries())
+                      .sort((a, b) => a[1].localeCompare(b[1]))
+                      .map(([id, name]) => (
+                        <SelectItem key={id} value={id}>{name}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Recipients ({groupRecipientIds.length} selected)</label>
+                <ScrollArea className="h-48 border rounded-md p-2 mt-1">
+                  <div className="space-y-1">
+                    {Array.from(profMap.entries())
+                      .filter(([id]) => id !== groupInitiatorId)
+                      .sort((a, b) => a[1].localeCompare(b[1]))
+                      .map(([id, name]) => (
+                        <label key={id} className="flex items-center gap-2 p-1 rounded hover:bg-accent/50 cursor-pointer">
+                          <Checkbox
+                            checked={groupRecipientIds.includes(id)}
+                            onCheckedChange={(checked) =>
+                              setGroupRecipientIds(prev =>
+                                checked ? [...prev, id] : prev.filter(r => r !== id)
+                              )
+                            }
+                          />
+                          <span className="text-sm">{name}</span>
+                        </label>
+                      ))}
+                  </div>
+                </ScrollArea>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Opening message</label>
+                <Textarea
+                  value={groupMessage}
+                  onChange={(e) => setGroupMessage(e.target.value)}
+                  placeholder="Type the opening message..."
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowNewGroup(false)}>Cancel</Button>
+                <Button
+                  onClick={startNewGroup}
+                  disabled={!groupInitiatorId || groupRecipientIds.length === 0 || !groupMessage.trim() || creatingGroup}
+                >
+                  <UsersRound className="h-4 w-4 mr-2" /> Create Group
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
