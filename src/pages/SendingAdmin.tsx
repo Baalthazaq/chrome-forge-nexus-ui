@@ -400,6 +400,9 @@ const SendingAdmin = () => {
             <Button onClick={() => setShowNewConvo(true)} size="sm" className="gap-2">
               <Send className="h-4 w-4" /> Start Conversation
             </Button>
+            <Button onClick={() => setShowNewGroup(true)} size="sm" variant="outline" className="gap-2">
+              <UsersRound className="h-4 w-4" /> Start Group Chat
+            </Button>
             <Badge variant="outline" className="bg-primary/10 text-primary">
               <MessageCircle className="h-3 w-3 mr-1" />
               Admin Chat
