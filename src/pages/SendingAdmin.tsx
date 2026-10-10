@@ -139,6 +139,43 @@ const SendingAdmin = () => {
     }
   };
 
+  const startNewGroup = async () => {
+    if (!groupInitiatorId || groupRecipientIds.length === 0 || !groupMessage.trim()) return;
+    setCreatingGroup(true);
+    try {
+      const allMemberIds = Array.from(new Set([groupInitiatorId, ...groupRecipientIds]));
+      const name = groupName.trim() || allMemberIds.map(id => profMap.get(id) || 'Unknown').join(', ');
+      const { data: stone, error } = await supabase
+        .from('stones')
+        .insert({
+          name,
+          is_group: true,
+          created_by: groupInitiatorId,
+        })
+        .select().single();
+      if (error) throw error;
+      const { error: partErr } = await supabase.from('stone_participants').insert(
+        allMemberIds.map(id => ({ stone_id: stone.id, user_id: id }))
+      );
+      if (partErr) throw partErr;
+      const { error: castErr } = await supabase.from('casts').insert({
+        stone_id: stone.id,
+        sender_id: groupInitiatorId,
+        message: groupMessage.trim(),
+      });
+      if (castErr) throw castErr;
+      toast({ title: 'Group created', description: `"${name}" with ${allMemberIds.length} members.` });
+      setShowNewGroup(false);
+      setGroupName(''); setGroupInitiatorId(''); setGroupRecipientIds([]); setGroupMessage('');
+      loadAllConversations();
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Error', description: e.message || 'Failed to create group.', variant: 'destructive' });
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
   useEffect(() => {
     if (!isLoading && !isAdmin) {
       navigate('/admin');
