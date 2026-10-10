@@ -10,7 +10,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, MessageCircle, Users, Eye, Clock, ExternalLink, Trash2, Send, Edit, Pencil } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Users, Eye, Clock, ExternalLink, Trash2, Send, Edit, Pencil, UsersRound } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 
@@ -73,6 +75,12 @@ const SendingAdmin = () => {
   const [newRecipientId, setNewRecipientId] = useState('');
   const [newMessage, setNewMessage] = useState('');
   const [creatingConvo, setCreatingConvo] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [groupInitiatorId, setGroupInitiatorId] = useState('');
+  const [groupRecipientIds, setGroupRecipientIds] = useState<string[]>([]);
+  const [groupMessage, setGroupMessage] = useState('');
+  const [creatingGroup, setCreatingGroup] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const startNewConversation = async () => {
