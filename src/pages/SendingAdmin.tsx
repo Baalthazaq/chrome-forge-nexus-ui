@@ -10,7 +10,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, MessageCircle, Users, Eye, Clock, ExternalLink, Trash2, Send, Edit, Pencil } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Users, Eye, Clock, ExternalLink, Trash2, Send, Edit, Pencil, UsersRound } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 
@@ -73,6 +75,12 @@ const SendingAdmin = () => {
   const [newRecipientId, setNewRecipientId] = useState('');
   const [newMessage, setNewMessage] = useState('');
   const [creatingConvo, setCreatingConvo] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [groupInitiatorId, setGroupInitiatorId] = useState('');
+  const [groupRecipientIds, setGroupRecipientIds] = useState<string[]>([]);
+  const [groupMessage, setGroupMessage] = useState('');
+  const [creatingGroup, setCreatingGroup] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const startNewConversation = async () => {
@@ -128,6 +136,43 @@ const SendingAdmin = () => {
       toast({ title: 'Error', description: e.message || 'Failed to start conversation.', variant: 'destructive' });
     } finally {
       setCreatingConvo(false);
+    }
+  };
+
+  const startNewGroup = async () => {
+    if (!groupInitiatorId || groupRecipientIds.length === 0 || !groupMessage.trim()) return;
+    setCreatingGroup(true);
+    try {
+      const allMemberIds = Array.from(new Set([groupInitiatorId, ...groupRecipientIds]));
+      const name = groupName.trim() || allMemberIds.map(id => profMap.get(id) || 'Unknown').join(', ');
+      const { data: stone, error } = await supabase
+        .from('stones')
+        .insert({
+          name,
+          is_group: true,
+          created_by: groupInitiatorId,
+        })
+        .select().single();
+      if (error) throw error;
+      const { error: partErr } = await supabase.from('stone_participants').insert(
+        allMemberIds.map(id => ({ stone_id: stone.id, user_id: id }))
+      );
+      if (partErr) throw partErr;
+      const { error: castErr } = await supabase.from('casts').insert({
+        stone_id: stone.id,
+        sender_id: groupInitiatorId,
+        message: groupMessage.trim(),
+      });
+      if (castErr) throw castErr;
+      toast({ title: 'Group created', description: `"${name}" with ${allMemberIds.length} members.` });
+      setShowNewGroup(false);
+      setGroupName(''); setGroupInitiatorId(''); setGroupRecipientIds([]); setGroupMessage('');
+      loadAllConversations();
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Error', description: e.message || 'Failed to create group.', variant: 'destructive' });
+    } finally {
+      setCreatingGroup(false);
     }
   };
 
@@ -355,6 +400,9 @@ const SendingAdmin = () => {
             <Button onClick={() => setShowNewConvo(true)} size="sm" className="gap-2">
               <Send className="h-4 w-4" /> Start Conversation
             </Button>
+            <Button onClick={() => setShowNewGroup(true)} size="sm" variant="outline" className="gap-2">
+              <UsersRound className="h-4 w-4" /> Start Group Chat
+            </Button>
             <Badge variant="outline" className="bg-primary/10 text-primary">
               <MessageCircle className="h-3 w-3 mr-1" />
               Admin Chat
@@ -411,6 +459,78 @@ const SendingAdmin = () => {
                   disabled={!newInitiatorId || !newRecipientId || !newMessage.trim() || creatingConvo}
                 >
                   <Send className="h-4 w-4 mr-2" /> Send
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showNewGroup} onOpenChange={setShowNewGroup}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Start New Group Chat</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm text-muted-foreground">Group name (optional)</label>
+                <Input
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  placeholder="Defaults to member names..."
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Initiating character</label>
+                <Select value={groupInitiatorId} onValueChange={setGroupInitiatorId}>
+                  <SelectTrigger><SelectValue placeholder="Select initiator..." /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from(profMap.entries())
+                      .sort((a, b) => a[1].localeCompare(b[1]))
+                      .map(([id, name]) => (
+                        <SelectItem key={id} value={id}>{name}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Recipients ({groupRecipientIds.length} selected)</label>
+                <ScrollArea className="h-48 border rounded-md p-2 mt-1">
+                  <div className="space-y-1">
+                    {Array.from(profMap.entries())
+                      .filter(([id]) => id !== groupInitiatorId)
+                      .sort((a, b) => a[1].localeCompare(b[1]))
+                      .map(([id, name]) => (
+                        <label key={id} className="flex items-center gap-2 p-1 rounded hover:bg-accent/50 cursor-pointer">
+                          <Checkbox
+                            checked={groupRecipientIds.includes(id)}
+                            onCheckedChange={(checked) =>
+                              setGroupRecipientIds(prev =>
+                                checked ? [...prev, id] : prev.filter(r => r !== id)
+                              )
+                            }
+                          />
+                          <span className="text-sm">{name}</span>
+                        </label>
+                      ))}
+                  </div>
+                </ScrollArea>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Opening message</label>
+                <Textarea
+                  value={groupMessage}
+                  onChange={(e) => setGroupMessage(e.target.value)}
+                  placeholder="Type the opening message..."
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowNewGroup(false)}>Cancel</Button>
+                <Button
+                  onClick={startNewGroup}
+                  disabled={!groupInitiatorId || groupRecipientIds.length === 0 || !groupMessage.trim() || creatingGroup}
+                >
+                  <UsersRound className="h-4 w-4 mr-2" /> Create Group
                 </Button>
               </div>
             </div>
